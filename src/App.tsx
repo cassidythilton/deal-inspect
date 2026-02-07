@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MainLayout } from "@/layouts/MainLayout";
 import CommandCenter from "@/pages/CommandCenter";
 import TDRWorkspace from "@/pages/TDRWorkspace";
+import TDRHistory from "@/pages/TDRHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,7 +22,7 @@ const App = () => (
             <Route path="/" element={<CommandCenter />} />
             <Route path="/workspace" element={<TDRWorkspace />} />
             <Route path="/agenda" element={<CommandCenter />} />
-            <Route path="/history" element={<CommandCenter />} />
+            <Route path="/history" element={<TDRHistory />} />
             <Route path="/settings" element={<CommandCenter />} />
           </Route>
           <Route path="*" element={<NotFound />} />

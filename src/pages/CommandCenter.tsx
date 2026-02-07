@@ -3,6 +3,9 @@ import { TopBar } from '@/components/TopBar';
 import { MetricsGrid } from '@/components/MetricsGrid';
 import { DealsTable } from '@/components/DealsTable';
 import { AgendaSection } from '@/components/AgendaSection';
+import { ACVDistributionChart } from '@/components/charts/ACVDistributionChart';
+import { RiskMixChart } from '@/components/charts/RiskMixChart';
+import { ReadinessTrendChart } from '@/components/charts/ReadinessTrendChart';
 import { mockDeals, mockMetrics, hygieneIssues } from '@/data/mockData';
 
 export default function CommandCenter() {
@@ -33,9 +36,26 @@ export default function CommandCenter() {
       
       <main className="flex-1 p-6">
         <div className="mx-auto max-w-7xl space-y-6">
-          {/* Zone 1: Executive Metrics */}
-          <section>
-            <MetricsGrid metrics={mockMetrics} />
+          {/* Zone 1: Executive Metrics + Visualizations */}
+          <section className="grid grid-cols-12 gap-4">
+            <div className="col-span-8">
+              <MetricsGrid metrics={mockMetrics} />
+            </div>
+            <div className="col-span-4 grid grid-cols-2 gap-3">
+              <div className="stat-card">
+                <div className="section-header mb-2">ACV by Deal</div>
+                <ACVDistributionChart deals={deals} />
+              </div>
+              <div className="stat-card">
+                <div className="section-header mb-2">Risk Mix</div>
+                <RiskMixChart deals={deals} />
+              </div>
+            </div>
+          </section>
+
+          {/* Readiness Trend */}
+          <section className="stat-card max-w-xs">
+            <ReadinessTrendChart />
           </section>
 
           {/* Zone 2: Deals Table */}
