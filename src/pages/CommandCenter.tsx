@@ -36,26 +36,47 @@ export default function CommandCenter() {
       
       <main className="flex-1 p-6">
         <div className="mx-auto max-w-7xl space-y-6">
-          {/* Zone 1: Executive Metrics + Visualizations */}
-          <section className="grid grid-cols-12 gap-4">
-            <div className="col-span-8">
-              <MetricsGrid metrics={mockMetrics} />
-            </div>
-            <div className="col-span-4 grid grid-cols-2 gap-3">
+          {/* Zone 1: Metrics + Visualizations in balanced grid */}
+          <section className="space-y-3">
+            {/* Row 1: 4 metric cards + 2 chart cards */}
+            <div className="grid grid-cols-6 gap-3">
+              {/* Metrics - first 4 columns */}
+              {mockMetrics.map((metric, index) => (
+                <div key={index} className="stat-card">
+                  <div className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {metric.label}
+                  </div>
+                  <div className="mt-1 text-xl font-semibold tabular-nums">{metric.value}</div>
+                  <div className="mt-0.5 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{metric.subValue}</span>
+                    {metric.status && (
+                      <div
+                        className={`h-1.5 w-6 rounded-full ${
+                          metric.status === 'green' ? 'bg-success' : 'bg-destructive'
+                        }`}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+              {/* ACV by Deal */}
               <div className="stat-card">
                 <div className="section-header mb-2">ACV by Deal</div>
                 <ACVDistributionChart deals={deals} />
               </div>
+              {/* Risk Mix */}
               <div className="stat-card">
                 <div className="section-header mb-2">Risk Mix</div>
                 <RiskMixChart deals={deals} />
               </div>
             </div>
-          </section>
 
-          {/* Readiness Trend */}
-          <section className="stat-card max-w-xs">
-            <ReadinessTrendChart />
+            {/* Row 2: 5-week trend spanning appropriate width */}
+            <div className="grid grid-cols-6 gap-3">
+              <div className="col-span-2 stat-card">
+                <ReadinessTrendChart />
+              </div>
+            </div>
           </section>
 
           {/* Zone 2: Deals Table */}
