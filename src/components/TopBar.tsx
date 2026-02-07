@@ -10,8 +10,8 @@ import { managers, quarters } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 
 interface TopBarProps {
-  activeView: 'recommended' | 'agenda' | 'all';
-  onViewChange: (view: 'recommended' | 'agenda' | 'all') => void;
+  activeView?: 'recommended' | 'agenda' | 'all';
+  onViewChange?: (view: 'recommended' | 'agenda' | 'all') => void;
 }
 
 export function TopBar({ activeView, onViewChange }: TopBarProps) {
@@ -52,23 +52,27 @@ export function TopBar({ activeView, onViewChange }: TopBarProps) {
         </Select>
       </div>
 
-      {/* Center: View Toggle */}
-      <div className="flex items-center gap-1 rounded-md bg-secondary p-0.5">
-        {views.map((view) => (
-          <button
-            key={view.id}
-            onClick={() => onViewChange(view.id)}
-            className={cn(
-              'rounded px-3 py-1 text-xs font-medium transition-colors',
-              activeView === view.id
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {view.label}
-          </button>
-        ))}
-      </div>
+      {/* Center: View Toggle - only show if activeView and onViewChange are provided */}
+      {activeView && onViewChange ? (
+        <div className="flex items-center gap-1 rounded-md bg-secondary p-0.5">
+          {views.map((view) => (
+            <button
+              key={view.id}
+              onClick={() => onViewChange(view.id)}
+              className={cn(
+                'rounded px-3 py-1 text-xs font-medium transition-colors',
+                activeView === view.id
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {view.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div />
+      )}
 
       {/* Right: Profile */}
       <div className="flex items-center gap-2">
