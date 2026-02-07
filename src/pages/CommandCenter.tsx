@@ -36,11 +36,10 @@ export default function CommandCenter() {
       
       <main className="flex-1 p-6">
         <div className="mx-auto max-w-7xl space-y-6">
-          {/* Zone 1: Metrics + Visualizations in balanced grid */}
+          {/* Zone 1: Metrics + Visualizations in balanced 4-3 grid */}
           <section className="space-y-3">
-            {/* Row 1: 4 metric cards + 2 chart cards */}
-            <div className="grid grid-cols-6 gap-3">
-              {/* Metrics - first 4 columns */}
+            {/* Row 1: 4 metric cards - evenly spaced */}
+            <div className="grid grid-cols-4 gap-3">
               {mockMetrics.map((metric, index) => (
                 <div key={index} className="stat-card">
                   <div className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -59,21 +58,19 @@ export default function CommandCenter() {
                   </div>
                 </div>
               ))}
-              {/* ACV by Deal */}
+            </div>
+
+            {/* Row 2: 3 chart cards - evenly spaced */}
+            <div className="grid grid-cols-3 gap-3">
               <div className="stat-card">
                 <div className="section-header mb-2">ACV by Deal</div>
                 <ACVDistributionChart deals={deals} />
               </div>
-              {/* Risk Mix */}
               <div className="stat-card">
                 <div className="section-header mb-2">Risk Mix</div>
                 <RiskMixChart deals={deals} />
               </div>
-            </div>
-
-            {/* Row 2: 5-week trend spanning appropriate width */}
-            <div className="grid grid-cols-6 gap-3">
-              <div className="col-span-2 stat-card">
+              <div className="stat-card">
                 <ReadinessTrendChart />
               </div>
             </div>
