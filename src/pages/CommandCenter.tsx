@@ -75,13 +75,17 @@ export default function CommandCenter() {
     // Apply individual SE filter (Sales Engineer or PoC Architect)
     if (seFilters.selectedSE) {
       const seValue = seFilters.selectedSE;
-      if (seValue.startsWith('se:') || seValue.startsWith('poc:')) {
-        // Sales Engineer or PoC Architect filter (both are Sales Consultants)
-        const seName = seValue.replace('se:', '').replace('poc:', '');
+      if (seValue.startsWith('poc:')) {
+        // PoC Architect → filter on pocSalesConsultant field
+        const pocName = seValue.slice(4);
+        result = result.filter((d) => d.pocSalesConsultant === pocName);
+      } else if (seValue.startsWith('se:')) {
+        // Sales Engineer → filter on salesConsultant field
+        const seName = seValue.slice(3);
         result = result.filter((d) => d.salesConsultant === seName);
       } else {
-        // Legacy format without prefix
-        result = result.filter((d) => d.salesConsultant === seValue);
+        // Legacy format without prefix — check both fields
+        result = result.filter((d) => d.salesConsultant === seValue || d.pocSalesConsultant === seValue);
       }
     }
     
