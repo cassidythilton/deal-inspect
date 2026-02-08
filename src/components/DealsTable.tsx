@@ -18,6 +18,7 @@ import {
   Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2,
   TrendingUp, Sparkles, AlertTriangle, Layers, GitMerge, Server,
   Briefcase, ArrowUpRight, AlertOctagon, CheckCircle2, RefreshCcw,
+  ClipboardCheck, CircleDot,
   LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -358,16 +359,17 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
 
         <div className="overflow-x-auto">
           <table className="w-full table-fixed">
-            {/* Column widths matching backup layout */}
+            {/* Column widths */}
             <colgroup>
-              <col className="w-[18%]" />  {/* Deal / Account */}
+              <col className="w-[17%]" />  {/* Deal / Account */}
               <col className="w-[10%]" />  {/* Stage */}
-              <col className="w-[5%]" />   {/* Age */}
+              <col className="w-[4%]" />   {/* Age */}
               <col className="w-[7%]" />   {/* ACV */}
-              <col className="w-[5%]" />   {/* TDR */}
-              <col className="w-[12%]" />  {/* SE Team */}
+              <col className="w-[5%]" />   {/* TDR Score */}
+              <col className="w-[4%]" />   {/* TDR Done */}
+              <col className="w-[11%]" />  {/* SE Team */}
               <col className="w-[5%]" />   {/* Partner */}
-              <col className="w-[28%]" />  {/* Why TDR? */}
+              <col className="w-[27%]" />  {/* Why TDR? */}
               <col className="w-[10%]" />  {/* Action */}
             </colgroup>
             <thead>
@@ -377,6 +379,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                 <th className="section-header px-3 py-2 text-center">Age</th>
                 <th className="section-header px-3 py-2 text-right">ACV</th>
                 <th className="section-header px-3 py-2 text-center">TDR</th>
+                <th className="section-header px-2 py-2 text-center">Done</th>
                 <th className="section-header px-3 py-2 text-left">SE Team</th>
                 <th className="section-header px-3 py-2 text-center">Partner</th>
                 <th className="section-header px-3 py-2 text-left">Why TDR?</th>
@@ -477,6 +480,42 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                           </ul>
                         </TooltipContent>
                       </Tooltip>
+                    </td>
+
+                    {/* TDR Done indicator */}
+                    <td className="px-2 py-2.5 text-center">
+                      {deal.tdrStatus === 'completed' ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex cursor-help">
+                              <ClipboardCheck className="h-3.5 w-3.5 text-emerald-500" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="text-xs font-medium text-emerald-600">TDR Completed</p>
+                            {deal.tdrCompletedAt && (
+                              <p className="text-2xs text-muted-foreground mt-0.5">
+                                {new Date(deal.tdrCompletedAt).toLocaleDateString()}
+                              </p>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : deal.tdrStatus === 'in-progress' ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex cursor-help">
+                              <CircleDot className="h-3.5 w-3.5 text-amber-500" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p className="text-xs font-medium text-amber-600">TDR In Progress</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <span className="inline-flex text-muted-foreground/30">
+                          <CircleDot className="h-3.5 w-3.5" />
+                        </span>
+                      )}
                     </td>
 
                     {/* SE Team */}

@@ -18,6 +18,8 @@ import { fetchOpportunities, fetchSEMapping, DomoSEMapping, isDomoEnvironment } 
 import { Deal } from '@/types/tdr';
 import { ALLOWED_MANAGERS } from '@/lib/constants';
 import { calculateTDRScore } from '@/lib/tdrCriticalFactors';
+import { appDb, TDRSession } from '@/lib/appDb';
+import { getAppSettings } from '@/lib/appSettings';
 
 export const queryKeys = {
   opportunities: ['opportunities'] as const,
@@ -129,6 +131,31 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
 export function useDeals() {
   const { data: opportunities, isLoading: oppsLoading, error: oppsError, refetch: refetchOpps } = useOpportunities();
 
+  // ── AppDB: TDR session status ──
+  const [tdrStatusMap, setTdrStatusMap] = useState<Map<string, TDRSession>>(new Map());
+  const [tdrStatusLoaded, setTdrStatusLoaded] = useState(false);
+
+  const fetchTDRStatus = useCallback(async () => {
+    const settings = getAppSettings();
+    if (!settings.enableAppDB) {
+      setTdrStatusLoaded(true);
+      return;
+    }
+    try {
+      // Initialize collections (idempotent)
+      await appDb.initializeCollections();
+      const map = await appDb.getTDRStatusMap();
+      setTdrStatusMap(map);
+    } catch (err) {
+      console.error('[useDomo] Failed to fetch TDR status from AppDB:', err);
+    }
+    setTdrStatusLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    fetchTDRStatus();
+  }, [fetchTDRStatus]);
+
   // ── SE Mapping: direct useEffect (bypasses React Query entirely) ──
   const [seMappingData, setSeMappingData] = useState<DomoSEMapping[]>([]);
   const [seMappingStatus, setSeMappingStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
@@ -187,6 +214,7 @@ export function useDeals() {
     if (!opportunities) return [];
 
     let matchCount = 0;
+    let tdrMatchCount = 0;
     const unmatchedSEs = new Set<string>();
 
     const result = opportunities.map((opp) => {
@@ -213,6 +241,18 @@ export function useDeals() {
       }
 
       deal.tdrScore = calculateTDRScore(deal);
+
+      // Enrich with TDR session status from AppDB
+      const session = tdrStatusMap.get(deal.id);
+      if (session) {
+        deal.tdrStatus = session.status === 'completed' ? 'completed' : 'in-progress';
+        deal.tdrSessionId = session.id;
+        deal.tdrCompletedAt = session.status === 'completed' ? session.updatedAt : undefined;
+        tdrMatchCount++;
+      } else {
+        deal.tdrStatus = 'none';
+      }
+
       return deal;
     });
 
@@ -220,9 +260,12 @@ export function useDeals() {
     if (unmatchedSEs.size > 0) {
       console.log('[SE Join] Unmatched SEs:', Array.from(unmatchedSEs).slice(0, 10));
     }
+    if (tdrMatchCount > 0) {
+      console.log(`[AppDB] ${tdrMatchCount} deals have TDR sessions`);
+    }
 
     return result;
-  }, [opportunities, seLookup]);
+  }, [opportunities, seLookup, tdrStatusMap]);
 
   // ── Filter options ──
   const filterOptions = useMemo(() => {
@@ -317,7 +360,8 @@ export function useDeals() {
   const refetch = useCallback(() => {
     refetchOpps();
     fetchSEMappingDirect();
-  }, [refetchOpps, fetchSEMappingDirect]);
+    fetchTDRStatus();
+  }, [refetchOpps, fetchSEMappingDirect, fetchTDRStatus]);
 
   return {
     deals,
@@ -325,7 +369,9 @@ export function useDeals() {
     isLoading: oppsLoading || seMappingStatus === 'loading',
     error: oppsError,
     refetch,
+    refetchTDRStatus: fetchTDRStatus,
     isDomoConnected: isDomoEnvironment(),
     seMappingStatus,
+    tdrStatusLoaded,
   };
 }

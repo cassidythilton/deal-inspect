@@ -33,6 +33,10 @@ export interface Deal {
   numCompetitors?: number;      // Number of Competitors
   // TDR scoring
   tdrScore?: number; // 0-100 score
+  // TDR completion status (from AppDB)
+  tdrStatus?: 'completed' | 'in-progress' | 'none';
+  tdrSessionId?: string;
+  tdrCompletedAt?: string;
   // Categorization tags
   isCompetitive?: boolean;
   isPartnerPlay?: boolean;
