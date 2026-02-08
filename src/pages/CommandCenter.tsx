@@ -66,12 +66,24 @@ export default function CommandCenter() {
       agendaStatus: pinnedIds.has(d.id) ? (d.agendaStatus || 'draft') : undefined,
     }));
     
-    // Apply SE filter (can be either SE Manager or Sales Consultant)
+    // Apply SE filter (can be SE Manager, Sales Engineer, or PoC Architect)
     if (seFilters.selectedSE) {
-      result = result.filter((d) => 
-        d.seManager === seFilters.selectedSE || 
-        d.salesConsultant === seFilters.selectedSE
-      );
+      const seValue = seFilters.selectedSE;
+      if (seValue.startsWith('mgr:')) {
+        // SE Manager filter
+        const mgrName = seValue.replace('mgr:', '');
+        result = result.filter((d) => d.seManager === mgrName);
+      } else if (seValue.startsWith('se:') || seValue.startsWith('poc:')) {
+        // Sales Engineer or PoC Architect filter (both are Sales Consultants)
+        const seName = seValue.replace('se:', '').replace('poc:', '');
+        result = result.filter((d) => d.salesConsultant === seName);
+      } else {
+        // Legacy format without prefix
+        result = result.filter((d) => 
+          d.seManager === seValue || 
+          d.salesConsultant === seValue
+        );
+      }
     }
     
     // Apply Manager filter

@@ -200,8 +200,9 @@ export function useDeals() {
 
   // Extract unique filter options - ONLY from deals belonging to allowed managers
   const filterOptions = useMemo(() => {
-    // Import allowed managers
+    // Import allowed managers and PoC SE Manager
     const ALLOWED_MANAGERS = ['Andrew Rich', 'John Pasalano', 'Keith White', 'Taylor Rust', 'Casey Morgan'];
+    const POC_SE_MANAGER = 'Dan Wentworth';
     const allowedSet = new Set(ALLOWED_MANAGERS.map(m => m.toLowerCase()));
     
     // Current year for filtering
@@ -209,8 +210,21 @@ export function useDeals() {
     
     const seManagers = new Set<string>();
     const salesConsultants = new Set<string>();
+    const pocSalesConsultants = new Set<string>(); // PoC Architects - SEs under Dan Wentworth
     const forecastManagers = new Set<string>();
     const quarters = new Set<string>();
+    
+    // Build a map of SE -> SE Manager from the mapping data
+    const seToManagerMap = new Map<string, string>();
+    if (seMapping) {
+      for (const mapping of seMapping) {
+        const se = mapping['se']?.trim();
+        const manager = mapping['se_manager']?.trim();
+        if (se && manager) {
+          seToManagerMap.set(se.toLowerCase(), manager);
+        }
+      }
+    }
     
     // Helper to check if quarter is within current year or before
     const isValidQuarter = (q: string): boolean => {
@@ -234,7 +248,13 @@ export function useDeals() {
         
         const sc = opp['Sales Consultant'];
         if (sc) {
-          salesConsultants.add(sc);
+          // Check if this SE reports to Dan Wentworth (PoC SE Manager)
+          const seManager = seToManagerMap.get(sc.toLowerCase());
+          if (seManager === POC_SE_MANAGER) {
+            pocSalesConsultants.add(sc);
+          } else {
+            salesConsultants.add(sc);
+          }
         }
         
         if (mgrName) {
@@ -249,14 +269,14 @@ export function useDeals() {
       }
     }
     
-    // From SE mapping - get managers for SEs we found
+    // From SE mapping - get managers for SEs we found (excluding Dan Wentworth since those are PoC)
     if (seMapping) {
       for (const mapping of seMapping) {
         const sc = mapping['se'];
-        // Only include SE managers for SEs in our list
+        // Only include SE managers for SEs in our regular SE list (not PoC)
         if (sc && salesConsultants.has(sc)) {
           const manager = mapping['se_manager'];
-          if (manager && manager !== 'TBD') {
+          if (manager && manager !== 'TBD' && manager !== POC_SE_MANAGER) {
             seManagers.add(manager);
           }
         }
@@ -269,7 +289,12 @@ export function useDeals() {
       if (!allowedSet.has((deal.owner || '').toLowerCase())) continue;
       
       if (deal.salesConsultant) {
-        salesConsultants.add(deal.salesConsultant);
+        const seManager = seToManagerMap.get(deal.salesConsultant.toLowerCase());
+        if (seManager === POC_SE_MANAGER) {
+          pocSalesConsultants.add(deal.salesConsultant);
+        } else if (!salesConsultants.has(deal.salesConsultant)) {
+          salesConsultants.add(deal.salesConsultant);
+        }
       }
       if (deal.closeDateFQ && isValidQuarter(deal.closeDateFQ)) {
         quarters.add(deal.closeDateFQ);
@@ -279,6 +304,7 @@ export function useDeals() {
     return {
       seManagers: Array.from(seManagers).sort(),
       salesConsultants: Array.from(salesConsultants).sort(),
+      pocSalesConsultants: Array.from(pocSalesConsultants).sort(),
       forecastManagers: Array.from(forecastManagers).sort(),
       quarters: Array.from(quarters).sort(),
     };

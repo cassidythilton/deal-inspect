@@ -14,6 +14,7 @@ import { ALLOWED_MANAGERS, TDR_PRIORITY_OPTIONS } from '@/lib/constants';
 export interface SEFilterOptions {
   seManagers: string[];
   salesConsultants: string[];
+  pocSalesConsultants: string[];
   forecastManagers: string[];
   quarters: string[];
 }
@@ -70,7 +71,8 @@ export function TopBar({
   const managers = ALLOWED_MANAGERS;
 
   // Get SEs that belong to deals from allowed managers
-  const allSEs = seFilterOptions?.salesConsultants || [];
+  const salesEngineers = seFilterOptions?.salesConsultants || [];
+  const pocArchitects = seFilterOptions?.pocSalesConsultants || [];
   const seManagers = seFilterOptions?.seManagers || [];
 
   // Multi-select quarter handling
@@ -236,38 +238,52 @@ export function TopBar({
                 onValueChange={(v) => onSEFilterChange?.({ selectedSE: v === 'all' ? null : v })}
               >
                 <SelectTrigger className={cn(
-                  "h-8 w-36 text-xs font-medium shadow-none border",
+                  "h-8 w-44 text-xs font-medium shadow-none border",
                   seFilterState?.selectedSE 
                     ? "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400" 
                     : "border-none bg-secondary"
                 )}>
                   <SelectValue placeholder="All SEs" />
                 </SelectTrigger>
-                <SelectContent className="max-h-80">
+                <SelectContent className="max-h-96 min-w-[220px]">
                   <SelectItem value="all" className="text-xs font-medium">All SEs</SelectItem>
                   
                   {/* SE Managers Group */}
                   {seManagers.length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="text-2xs text-muted-foreground px-2 py-1">
+                      <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
                         SE Managers
                       </SelectLabel>
                       {seManagers.map((mgr) => (
-                        <SelectItem key={`mgr-${mgr}`} value={mgr} className="text-xs pl-4">
+                        <SelectItem key={`mgr-${mgr}`} value={`mgr:${mgr}`} className="text-xs pl-4">
                           {mgr}
                         </SelectItem>
                       ))}
                     </SelectGroup>
                   )}
                   
-                  {/* Sales Consultants (SEs) Group */}
-                  {allSEs.length > 0 && (
+                  {/* Sales Engineers Group */}
+                  {salesEngineers.length > 0 && (
                     <SelectGroup>
-                      <SelectLabel className="text-2xs text-muted-foreground px-2 py-1">
-                        Sales Consultants
+                      <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
+                        Sales Engineers
                       </SelectLabel>
-                      {allSEs.map((se) => (
-                        <SelectItem key={`se-${se}`} value={se} className="text-xs pl-4">
+                      {salesEngineers.map((se) => (
+                        <SelectItem key={`se-${se}`} value={`se:${se}`} className="text-xs pl-4">
+                          {se}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  
+                  {/* PoC Architects Group */}
+                  {pocArchitects.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
+                        PoC Architects
+                      </SelectLabel>
+                      {pocArchitects.map((se) => (
+                        <SelectItem key={`poc-${se}`} value={`poc:${se}`} className="text-xs pl-4">
                           {se}
                         </SelectItem>
                       ))}

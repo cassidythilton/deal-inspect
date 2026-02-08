@@ -30,6 +30,9 @@ export const TDR_PRIORITY_OPTIONS = [
 // Maximum stage age in days for data filtering (performance optimization)
 export const MAX_STAGE_AGE_DAYS = 365;
 
+// PoC SE Manager - SEs reporting to this person are PoC Architects
+export const POC_SE_MANAGER = 'Dan Wentworth';
+
 // TDR Steps for the workspace
 export const TDR_STEPS = [
   {
