@@ -256,23 +256,30 @@ export const appDb = {
   },
 
   /**
-   * Build a lookup of opportunityId → TDRSession status.
-   * Returns a Map for O(1) lookups in the deals table.
+   * Build a lookup of opportunityId → array of TDR sessions.
+   * A deal can have multiple TDRs over time.
+   * Sessions are sorted newest-first within each opportunity.
    */
-  async getTDRStatusMap(): Promise<Map<string, TDRSession>> {
+  async getTDRSessionsByDeal(): Promise<Map<string, TDRSession[]>> {
     const sessions = await this.getTDRSessions();
-    const map = new Map<string, TDRSession>();
+    const map = new Map<string, TDRSession[]>();
 
     for (const session of sessions) {
       const oppId = session.opportunityId;
-      // If multiple sessions exist for the same opp, prefer the latest
-      const existing = map.get(oppId);
-      if (!existing || session.updatedAt > existing.updatedAt) {
-        map.set(oppId, session);
-      }
+      if (!oppId) continue;
+      const existing = map.get(oppId) || [];
+      existing.push(session);
+      map.set(oppId, existing);
     }
 
-    console.log(`[AppDB] TDR status map: ${map.size} deals have TDR sessions`);
+    // Sort each list newest-first
+    for (const [, list] of map) {
+      list.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    }
+
+    const totalSessions = sessions.length;
+    const dealsWithTDR = map.size;
+    console.log(`[AppDB] ${totalSessions} TDR sessions across ${dealsWithTDR} deals`);
     return map;
   },
 };

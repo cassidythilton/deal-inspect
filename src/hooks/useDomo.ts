@@ -18,7 +18,9 @@ import { fetchOpportunities, fetchSEMapping, DomoSEMapping, isDomoEnvironment } 
 import { Deal } from '@/types/tdr';
 import { ALLOWED_MANAGERS } from '@/lib/constants';
 import { calculateTDRScore } from '@/lib/tdrCriticalFactors';
-import { appDb, TDRSession } from '@/lib/appDb';
+import { appDb } from '@/lib/appDb';
+import type { TDRSession } from '@/lib/appDb';
+import type { TDRSessionSummary } from '@/types/tdr';
 import { getAppSettings } from '@/lib/appSettings';
 
 export const queryKeys = {
@@ -131,8 +133,8 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
 export function useDeals() {
   const { data: opportunities, isLoading: oppsLoading, error: oppsError, refetch: refetchOpps } = useOpportunities();
 
-  // ── AppDB: TDR session status ──
-  const [tdrStatusMap, setTdrStatusMap] = useState<Map<string, TDRSession>>(new Map());
+  // ── AppDB: TDR sessions per deal ──
+  const [tdrSessionsByDeal, setTdrSessionsByDeal] = useState<Map<string, TDRSession[]>>(new Map());
   const [tdrStatusLoaded, setTdrStatusLoaded] = useState(false);
 
   const fetchTDRStatus = useCallback(async () => {
@@ -144,10 +146,10 @@ export function useDeals() {
     try {
       // Initialize collections (idempotent)
       await appDb.initializeCollections();
-      const map = await appDb.getTDRStatusMap();
-      setTdrStatusMap(map);
+      const map = await appDb.getTDRSessionsByDeal();
+      setTdrSessionsByDeal(map);
     } catch (err) {
-      console.error('[useDomo] Failed to fetch TDR status from AppDB:', err);
+      console.error('[useDomo] Failed to fetch TDR sessions from AppDB:', err);
     }
     setTdrStatusLoaded(true);
   }, []);
@@ -242,15 +244,18 @@ export function useDeals() {
 
       deal.tdrScore = calculateTDRScore(deal);
 
-      // Enrich with TDR session status from AppDB
-      const session = tdrStatusMap.get(deal.id);
-      if (session) {
-        deal.tdrStatus = session.status === 'completed' ? 'completed' : 'in-progress';
-        deal.tdrSessionId = session.id;
-        deal.tdrCompletedAt = session.status === 'completed' ? session.updatedAt : undefined;
+      // Enrich with TDR sessions from AppDB (multiple per deal)
+      const sessions = tdrSessionsByDeal.get(deal.id);
+      if (sessions && sessions.length > 0) {
+        deal.tdrSessions = sessions.map((s): TDRSessionSummary => ({
+          id: s.id || '',
+          status: s.status,
+          completedAt: s.status === 'completed' ? s.updatedAt : undefined,
+          createdAt: s.createdAt,
+        }));
         tdrMatchCount++;
       } else {
-        deal.tdrStatus = 'none';
+        deal.tdrSessions = [];
       }
 
       return deal;
@@ -265,7 +270,7 @@ export function useDeals() {
     }
 
     return result;
-  }, [opportunities, seLookup, tdrStatusMap]);
+  }, [opportunities, seLookup, tdrSessionsByDeal]);
 
   // ── Filter options ──
   const filterOptions = useMemo(() => {

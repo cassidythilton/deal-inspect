@@ -18,7 +18,6 @@ import {
   Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2,
   TrendingUp, Sparkles, AlertTriangle, Layers, GitMerge, Server,
   Briefcase, ArrowUpRight, AlertOctagon, CheckCircle2, RefreshCcw,
-  ClipboardCheck, CircleDot,
   LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -379,7 +378,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                 <th className="section-header px-3 py-2 text-center">Age</th>
                 <th className="section-header px-3 py-2 text-right">ACV</th>
                 <th className="section-header px-3 py-2 text-center">TDR</th>
-                <th className="section-header px-2 py-2 text-center">Done</th>
+                <th className="section-header px-2 py-2 text-center">TDRs</th>
                 <th className="section-header px-3 py-2 text-left">SE Team</th>
                 <th className="section-header px-3 py-2 text-center">Partner</th>
                 <th className="section-header px-3 py-2 text-left">Why TDR?</th>
@@ -482,40 +481,58 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                       </Tooltip>
                     </td>
 
-                    {/* TDR Done indicator */}
+                    {/* TDR Sessions — 5 dots */}
                     <td className="px-2 py-2.5 text-center">
-                      {deal.tdrStatus === 'completed' ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-flex cursor-help">
-                              <ClipboardCheck className="h-3.5 w-3.5 text-emerald-500" />
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-xs">
-                            <p className="text-xs font-medium text-emerald-600">TDR Completed</p>
-                            {deal.tdrCompletedAt && (
-                              <p className="text-2xs text-muted-foreground mt-0.5">
-                                {new Date(deal.tdrCompletedAt).toLocaleDateString()}
-                              </p>
-                            )}
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : deal.tdrStatus === 'in-progress' ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-flex cursor-help">
-                              <CircleDot className="h-3.5 w-3.5 text-amber-500" />
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">
-                            <p className="text-xs font-medium text-amber-600">TDR In Progress</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : (
-                        <span className="inline-flex text-muted-foreground/30">
-                          <CircleDot className="h-3.5 w-3.5" />
-                        </span>
-                      )}
+                      {(() => {
+                        const sessions = deal.tdrSessions || [];
+                        const MAX_DOTS = 5;
+                        // Build dot array: completed → emerald, in-progress → amber, empty → gray
+                        const completed = sessions.filter(s => s.status === 'completed');
+                        const inProgress = sessions.filter(s => s.status === 'in-progress');
+                        const filledCount = completed.length + inProgress.length;
+
+                        const dots = Array.from({ length: MAX_DOTS }, (_, i) => {
+                          if (i < completed.length) return 'completed' as const;
+                          if (i < filledCount) return 'in-progress' as const;
+                          return 'empty' as const;
+                        });
+
+                        const tooltipText = filledCount === 0
+                          ? 'No TDRs performed'
+                          : `${completed.length} completed${inProgress.length > 0 ? `, ${inProgress.length} in progress` : ''} of ${MAX_DOTS} max`;
+
+                        return (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="inline-flex items-center gap-[3px] cursor-help">
+                                {dots.map((status, i) => (
+                                  <span
+                                    key={i}
+                                    className={cn(
+                                      'block h-[6px] w-[6px] rounded-full transition-colors',
+                                      status === 'completed' && 'bg-emerald-500',
+                                      status === 'in-progress' && 'bg-amber-400',
+                                      status === 'empty' && 'bg-muted-foreground/20',
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <p className="text-xs font-medium">{tooltipText}</p>
+                              {completed.length > 0 && (
+                                <div className="mt-1 space-y-0.5">
+                                  {completed.map((s, i) => (
+                                    <p key={i} className="text-2xs text-muted-foreground">
+                                      TDR {i + 1}: {s.completedAt ? new Date(s.completedAt).toLocaleDateString() : 'Completed'}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })()}
                     </td>
 
                     {/* SE Team */}

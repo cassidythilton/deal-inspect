@@ -1,6 +1,14 @@
 export type DealStatus = 'ready' | 'at-risk' | 'needs-attention' | 'draft';
 export type ReadinessLevel = 'green' | 'yellow' | 'red';
 
+/** Lightweight summary of a single TDR session for the deals list */
+export interface TDRSessionSummary {
+  id: string;
+  status: 'in-progress' | 'completed';
+  completedAt?: string;
+  createdAt: string;
+}
+
 export interface Deal {
   id: string;
   account: string;
@@ -33,10 +41,8 @@ export interface Deal {
   numCompetitors?: number;      // Number of Competitors
   // TDR scoring
   tdrScore?: number; // 0-100 score
-  // TDR completion status (from AppDB)
-  tdrStatus?: 'completed' | 'in-progress' | 'none';
-  tdrSessionId?: string;
-  tdrCompletedAt?: string;
+  // TDR session tracking (from AppDB) — a deal can have up to 5 TDRs
+  tdrSessions?: TDRSessionSummary[];
   // Categorization tags
   isCompetitive?: boolean;
   isPartnerPlay?: boolean;
