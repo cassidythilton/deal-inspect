@@ -99,6 +99,10 @@ function transformOpportunityToDeal(opp: DomoOpportunity): Deal {
     reasons: reasons.slice(0, 3),
     owner: mgrForecastName,
     salesConsultant: opp['Sales Consultant'] || undefined,
+    // Partner details
+    partnersInvolved: opp['Partners Involved'] || undefined,
+    primaryPartnerRole: opp['Primary Partner Role'] || undefined,
+    dealCode: (opp['Deal Code'] as string) || undefined,
     tdrScore,
     isCompetitive: !!isCompetitive,
     isPartnerPlay: hasPartner,

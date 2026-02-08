@@ -7,6 +7,7 @@ import { MainLayout } from "@/layouts/MainLayout";
 import CommandCenter from "@/pages/CommandCenter";
 import TDRWorkspace from "@/pages/TDRWorkspace";
 import TDRHistory from "@/pages/TDRHistory";
+import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,7 +24,7 @@ const App = () => (
             <Route path="/workspace" element={<TDRWorkspace />} />
             <Route path="/agenda" element={<CommandCenter />} />
             <Route path="/history" element={<TDRHistory />} />
-            <Route path="/settings" element={<CommandCenter />} />
+            <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

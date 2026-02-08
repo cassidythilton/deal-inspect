@@ -20,6 +20,10 @@ export interface Deal {
   // SE Team fields
   salesConsultant?: string;
   seManager?: string;
+  // Partner fields
+  partnersInvolved?: string;
+  primaryPartnerRole?: string;
+  dealCode?: string;
   // TDR scoring
   tdrScore?: number; // 0-50 score
   // Categorization tags
