@@ -1,21 +1,36 @@
 /**
  * TDR Critical Factors Framework
- * Based on TDR Framework.pdf and backup logic
- * 
- * The key insight: Early-stage deals (Stage 2-3) are the SWEET SPOT because
- * the SME can influence architecture decisions BEFORE they're locked in.
- * Late-stage deals need "rescue intervention" not "strategic shaping".
+ *
+ * Based on TDR Framework.pdf — TDR exists to protect deal integrity,
+ * account expansion, and partner alignment.
+ *
+ * SCORING PHILOSOPHY:
+ *   - Base score is 0. Every point must be EARNED.
+ *   - Most deals should land LOW (0-24) or MEDIUM (25-49).
+ *   - Only truly complex, high-value, strategically important deals reach HIGH (50-74).
+ *   - CRITICAL (75+) is reserved for deals with multiple Tier 1 signals converging.
+ *
+ * SCORING COMPONENTS (aligned to TDR Framework sections):
+ *   1. ACV Significance (0-20)        — material ARR triggers TDR eligibility
+ *   2. Stage TDR Value (0-15)         — sweet spot = Stage 2-3 (shape architecture)
+ *   3. Cloud Partner Alignment (0-15) — Snowflake/Databricks/BigQuery platform
+ *   4. Competitive Pressure (0-10)    — displacement scenario
+ *   5. Deal Type Signal (0-10)        — new logo vs upsell vs renewal
+ *   6. Forecast Momentum (0-10)       — pipeline/probable/commit category
+ *   7. Stage Freshness (-10 to +5)    — stale deals lose priority
+ *   8. Deal Complexity (0-10)         — deal code, partner architecture
+ *   9. Partner Role (0-5)             — co-sell, reseller
+ *
+ *   Maximum theoretical: ~100 points
+ *   Expected distribution: ~60% LOW/MEDIUM, ~30% HIGH, ~10% CRITICAL
  */
 
 import { Deal } from '@/types/tdr';
 
-// Stage timing context
-export const STAGE_TIMING = {
-  sweetSpot: ['2: Determine Needs', '3: Demonstrate Value', 'Determine Needs', 'Demonstrate Value', 'Discovery', 'Validation'],
-  lateStage: ['4: Confirm Solution', '5: Negotiate', 'Confirm Solution', 'Negotiate', 'Proposal', 'Closing'],
-} as const;
+// ---------------------------------------------------------------------------
+// Critical Factor definitions (for display as "WHY TDR?" tags)
+// ---------------------------------------------------------------------------
 
-// Critical Factor Types with scoring
 export interface CriticalFactor {
   id: string;
   label: string;
@@ -29,260 +44,326 @@ export interface CriticalFactor {
 }
 
 export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
-  // TIER 1 - HIGH PRIORITY TRIGGERS (25 pts each)
+  // TIER 1 — High-priority triggers
   materialACV: {
     id: 'materialACV',
     label: 'Material ACV',
     shortLabel: 'High ACV',
     tier: 1,
-    points: 25,
-    description: 'ACV ≥ $150K (high priority if ≥ $300K)',
-    strategy: 'Prioritize for executive engagement and comprehensive solution design.',
+    points: 20,
+    description: 'ACV ≥ $100K — material revenue at stake',
+    strategy: 'Prioritize executive engagement and comprehensive solution design.',
     icon: 'DollarSign',
     color: 'green',
   },
-  partnerPlatform: {
-    id: 'partnerPlatform',
-    label: 'Partner Platform',
-    shortLabel: 'Partner platform',
+  cloudPartner: {
+    id: 'cloudPartner',
+    label: 'Cloud Partner Alignment',
+    shortLabel: 'Cloud partner',
     tier: 1,
-    points: 25,
-    description: 'Snowflake/Databricks/BigQuery involvement',
-    strategy: 'Position Domo as composable control layer. Start with ETL, expand to analytics.',
+    points: 15,
+    description: 'Snowflake, Databricks, or BigQuery is involved',
+    strategy: 'Position Domo as composable control layer on their infrastructure.',
     icon: 'Cloud',
     color: 'purple',
   },
-  strategicAccount: {
-    id: 'strategicAccount',
-    label: 'Strategic Account',
-    shortLabel: 'Strategic',
+  earlyStageSweet: {
+    id: 'earlyStageSweet',
+    label: 'Architecture Shaping Window',
+    shortLabel: 'Shaping window',
     tier: 1,
-    points: 25,
-    description: 'Enterprise segment OR revenue > $1B OR employees > 5K',
-    strategy: 'Engage executive sponsors and align with long-term strategic roadmap.',
-    icon: 'Building2',
-    color: 'blue',
+    points: 15,
+    description: 'Stage 2-3 — maximum opportunity to shape architecture before decisions lock in',
+    strategy: 'Engage now. Architecture decisions are being made.',
+    icon: 'Zap',
+    color: 'green',
   },
   competitiveDisplacement: {
     id: 'competitiveDisplacement',
     label: 'Competitive Displacement',
     shortLabel: 'Competitive',
     tier: 1,
-    points: 25,
-    description: 'Competitors present AND displacing incumbent',
-    strategy: 'Develop clear differentiation strategy. Focus on unique Domo capabilities.',
+    points: 10,
+    description: 'Competitors present — displacement scenario',
+    strategy: 'Develop clear differentiation. Focus on unique Domo capabilities.',
     icon: 'Swords',
     color: 'orange',
   },
-  earlyStageStrong: {
-    id: 'earlyStageStrong',
-    label: 'Early-Stage + Strong Signal',
-    shortLabel: 'Shaping window',
+  newLogoDeal: {
+    id: 'newLogoDeal',
+    label: 'New Logo',
+    shortLabel: 'New logo',
     tier: 1,
-    points: 25,
-    description: 'Stage 2-3 AND ACV ≥ $150K - THIS IS THE SWEET SPOT',
-    strategy: 'Maximum opportunity to shape architecture before decisions lock in.',
-    icon: 'Zap',
-    color: 'green',
+    points: 10,
+    description: 'New business — full architecture review needed',
+    strategy: 'Full discovery and architecture alignment. Shape from the ground up.',
+    icon: 'Building2',
+    color: 'blue',
+  },
+
+  // TIER 2 — Complexity indicators
+  partnerCoSell: {
+    id: 'partnerCoSell',
+    label: 'Partner Co-Sell',
+    shortLabel: 'Co-sell',
+    tier: 2,
+    points: 8,
+    description: 'Active partner co-sell — architecture validation needed',
+    strategy: 'Validate integration approach and ensure technical alignment with partner.',
+    icon: 'Users',
+    color: 'blue',
   },
   forecastMomentum: {
     id: 'forecastMomentum',
     label: 'Forecast Momentum',
     shortLabel: 'Momentum',
-    tier: 1,
-    points: 25,
-    description: 'Category suggests deal progression (Probable, Commit)',
+    tier: 2,
+    points: 10,
+    description: 'Probable/Best Case — deal has real momentum',
     strategy: 'Validate technical requirements align with timeline expectations.',
     icon: 'TrendingUp',
     color: 'green',
   },
-
-  // TIER 2 - COMPLEXITY INDICATORS (15 pts each)
-  multiCloud: {
-    id: 'multiCloud',
-    label: 'Multi-Cloud/Hybrid',
-    shortLabel: 'Multi-cloud',
+  complexDealCode: {
+    id: 'complexDealCode',
+    label: 'Complex Deal Structure',
+    shortLabel: 'Complex deal',
     tier: 2,
-    points: 15,
-    description: 'Multiple cloud platforms or hybrid deployment',
-    strategy: 'Position Domo as unified layer across environments.',
+    points: 5,
+    description: 'Multi-component deal code or partner architecture deal',
+    strategy: 'Ensure all components are technically validated.',
     icon: 'Layers',
     color: 'purple',
   },
-  dataIntegration: {
-    id: 'dataIntegration',
-    label: 'Complex Data Integration',
-    shortLabel: 'Integration',
-    tier: 2,
-    points: 15,
-    description: 'Multiple data sources requiring orchestration',
-    strategy: 'Demonstrate ETL/data pipeline capabilities and time-to-value.',
-    icon: 'GitMerge',
-    color: 'blue',
-  },
-  partnerCoSell: {
-    id: 'partnerCoSell',
-    label: 'Partner Co-Sell',
-    shortLabel: 'Partner co-sell',
-    tier: 2,
-    points: 15,
-    description: 'Partner sourcing active but architecture not validated',
-    strategy: 'Validate integration approach and ensure technical alignment.',
-    icon: 'Users',
-    color: 'blue',
-  },
-  aiScope: {
-    id: 'aiScope',
-    label: 'AI/Agentic Scope',
-    shortLabel: 'AI scope',
-    tier: 2,
-    points: 15,
-    description: 'Business challenge suggests AI/automation opportunity',
-    strategy: 'Position Domo AI capabilities and data science workflows.',
-    icon: 'Sparkles',
-    color: 'purple',
-  },
-  cloudCompute: {
-    id: 'cloudCompute',
-    label: 'Cloud Compute',
-    shortLabel: 'Cloud compute',
-    tier: 2,
-    points: 15,
-    description: 'Cloud platform identified, compute strategy unclear',
-    strategy: 'Demonstrate Domo can run natively on their infrastructure.',
-    icon: 'Server',
-    color: 'purple',
-  },
 
-  // TIER 3 - CONTEXT SIGNALS (10 pts each)
-  verticalDepth: {
-    id: 'verticalDepth',
-    label: 'Vertical Depth',
-    shortLabel: 'Vertical',
-    tier: 3,
-    points: 10,
-    description: 'Financial Services, Healthcare, Manufacturing, Technology',
-    strategy: 'Leverage industry-specific use cases and compliance expertise.',
-    icon: 'Briefcase',
-    color: 'blue',
-  },
-  architectureWindow: {
-    id: 'architectureWindow',
-    label: 'Architecture Decision Window',
-    shortLabel: 'Arch. window',
-    tier: 3,
-    points: 10,
-    description: 'Early stage + partner platform = critical timing',
-    strategy: 'Act now - architecture decisions are being made.',
-    icon: 'Clock',
-    color: 'amber',
-  },
+  // TIER 3 — Context signals
   staleSignals: {
     id: 'staleSignals',
-    label: 'Stale Signals',
-    shortLabel: 'Stalled',
+    label: 'Stalling in Stage',
+    shortLabel: 'Stalling',
     tier: 3,
-    points: 10,
-    description: 'Stage Age > 60 days OR no update in 14+ days',
-    strategy: 'Identify blockers and re-engage technical champions.',
+    points: 5,
+    description: 'Extended time in current stage — potential blockers',
+    strategy: 'Identify technical blockers and re-engage champions.',
     icon: 'Clock',
     color: 'amber',
-  },
-  expansionDynamics: {
-    id: 'expansionDynamics',
-    label: 'Expansion Dynamics',
-    shortLabel: 'Expansion',
-    tier: 3,
-    points: 10,
-    description: 'Existing customer expanding architecture',
-    strategy: 'Leverage existing relationship to expand footprint.',
-    icon: 'ArrowUpRight',
-    color: 'green',
   },
   lateStageRisk: {
     id: 'lateStageRisk',
     label: 'Late-Stage Risk',
-    shortLabel: 'Late-stage',
+    shortLabel: 'Late stage',
     tier: 3,
-    points: -5, // Negative - reduces priority
-    description: 'Stage ≥ 4 - technical strategy may be locked',
-    strategy: 'Rescue intervention needed, not strategic shaping. Focus on risk mitigation.',
+    points: -5,
+    description: 'Stage 4+ — technical strategy may be locked',
+    strategy: 'Focus on risk mitigation and delivery readiness, not reshaping.',
     icon: 'AlertOctagon',
+    color: 'red',
+  },
+  veryStale: {
+    id: 'veryStale',
+    label: 'Deal Stalled',
+    shortLabel: 'Stalled',
+    tier: 3,
+    points: -10,
+    description: 'Stage Age > 180 days — likely dead or deprioritized',
+    strategy: 'Re-qualify before investing more SE time.',
+    icon: 'AlertTriangle',
     color: 'red',
   },
 };
 
+// Stage timing from TDR Framework
+export const STAGE_TIMING = {
+  sweetSpot: [2, 3], // Stage numbers where TDR adds most value
+  late: [4, 5],
+} as const;
+
+// ---------------------------------------------------------------------------
+// Scoring engine
+// ---------------------------------------------------------------------------
+
 /**
- * Detect which critical factors apply to a deal
+ * Parse stage number from stage string.
+ * Handles: "2: Determine Needs", "Closed Won", etc.
+ */
+function parseStageNumber(stage: string): number {
+  // Try "N: ..." format first
+  const numMatch = stage.match(/^(\d+):/);
+  if (numMatch) return parseInt(numMatch[1]);
+
+  const lower = stage.toLowerCase();
+  if (lower.includes('closed')) return 6;
+  if (lower.includes('engage') || lower.includes('qualify')) return 1;
+  if (lower.includes('determine') || lower.includes('discovery')) return 2;
+  if (lower.includes('demonstrate') || lower.includes('validation')) return 3;
+  if (lower.includes('confirm') || lower.includes('proposal') || lower.includes('negotiate')) return 4;
+  if (lower.includes('close') || lower.includes('closing')) return 5;
+  return 1;
+}
+
+/**
+ * Calculate TDR score from 0-100 based on deal data.
+ *
+ * The score is built from independent components, each derived from
+ * the TDR Framework's eligibility criteria and sections.
+ */
+export function calculateTDRScore(deal: Deal): number {
+  let score = 0;
+  const stageNum = deal.stageNumber ?? parseStageNumber(deal.stage);
+  const stageAge = deal.stageAge ?? 0;
+  const acv = deal.acv ?? 0;
+  const forecastCat = (deal.forecastCategory ?? '').toLowerCase();
+  const dealType = (deal.dealType ?? '').toLowerCase();
+  const numComp = deal.numCompetitors ?? 0;
+  const partnerRole = (deal.primaryPartnerRole ?? '').toLowerCase();
+  const partnersInvolved = (deal.partnersInvolved ?? '').toLowerCase();
+  const snowflake = (deal.snowflakeTeam ?? '').toLowerCase();
+  const partnerInfluence = (deal.partnerInfluence ?? '').toLowerCase();
+  const dealCode = (deal.dealCode ?? '').toUpperCase();
+
+  // Skip closed deals entirely
+  if (forecastCat.includes('closed')) return 0;
+  if (deal.stage.toLowerCase().includes('closed')) return 0;
+
+  // ── 1. ACV Significance (0-20) ──────────────────────────────────────────
+  //    TDR Framework: "Material ARR" is an eligibility trigger
+  if (acv >= 250000) score += 20;
+  else if (acv >= 100000) score += 15;
+  else if (acv >= 50000) score += 10;
+  else if (acv >= 25000) score += 5;
+  else if (acv >= 10000) score += 2;
+  // acv < $10K: 0 pts
+
+  // ── 2. Stage TDR Value (0-15) ───────────────────────────────────────────
+  //    Sweet spot is Stage 2-3 where SE can shape architecture.
+  //    Late stage (4-5) has diminishing TDR value.
+  if (stageNum === 2) score += 15;       // Determine Needs — PEAK value
+  else if (stageNum === 3) score += 12;  // Demonstrate Value — still good
+  else if (stageNum === 1) score += 8;   // Early engage — some value
+  else if (stageNum === 4) score += 4;   // Confirm — limited value
+  // Stage 5+ / Closed: 0
+
+  // ── 3. Cloud Partner Alignment (0-15) ───────────────────────────────────
+  //    TDR Framework §6: How would a Snowflake/Databricks/GCP architect
+  //    describe this solution?
+  const hasCloudPartner = snowflake ||
+    /snowflake|databricks|bigquery|google cloud|gcp|aws|azure/i.test(partnersInvolved);
+
+  if (hasCloudPartner) {
+    score += 15;
+  } else if (partnerInfluence === 'yes' && partnerRole === 'co-sell') {
+    score += 8;
+  } else if (partnerInfluence === 'yes') {
+    score += 4;
+  }
+
+  // ── 4. Competitive Pressure (0-10) ──────────────────────────────────────
+  //    TDR Framework §8: Competitive & Technical Risk
+  if (numComp >= 2) score += 10;
+  else if (numComp === 1) score += 5;
+
+  // ── 5. Deal Type Signal (0-10) ──────────────────────────────────────────
+  //    New logos need full architecture review; upsells less so
+  if (dealType.includes('new logo') || dealType.includes('new business')) {
+    score += 10;
+  } else if (dealType.includes('acquisition')) {
+    score += 8;
+  } else if (dealType.includes('upsell') || dealType.includes('expansion')) {
+    score += 3;
+  }
+  // Renewal: 0
+
+  // ── 6. Forecast Momentum (0-10) ────────────────────────────────────────
+  //    Probable deals are the sweet spot for TDR — real but still shapeable
+  if (forecastCat.includes('probable')) score += 10;
+  else if (forecastCat.includes('best case')) score += 8;
+  else if (forecastCat.includes('pipeline')) score += 6;
+  else if (forecastCat.includes('commit')) score += 4;
+  else if (forecastCat.includes('omitted')) score += 0;
+
+  // ── 7. Stage Freshness (-10 to +5) ─────────────────────────────────────
+  //    Fresh deals are healthy; very stale deals waste SE time
+  if (stageAge <= 14) score += 5;
+  else if (stageAge <= 45) score += 3;
+  else if (stageAge <= 90) score += 0;
+  else if (stageAge <= 180) score -= 5;
+  else score -= 10; // > 180 days
+
+  // ── 8. Deal Complexity (0-10) ──────────────────────────────────────────
+  //    Complex deal codes suggest multi-component or partner architecture deals
+  if (dealCode.startsWith('PA')) score += 5; // Partner architecture
+  else if (dealCode.startsWith('P')) score += 3; // Partner deal
+  if (dealCode.includes('-') && !dealCode.endsWith('-A')) score += 3; // Multi-component (not basic)
+  if (/E0[2-9]|E[1-9]\d/.test(dealCode)) score += 2; // E02+ = complex enterprise
+
+  // ── 9. Partner Role Strength (0-5) ─────────────────────────────────────
+  if (partnerRole === 'co-sell') score += 5;
+  else if (partnerRole === 'reseller') score += 3;
+  else if (partnerRole === 'referral') score += 1;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+// ---------------------------------------------------------------------------
+// Factor detection (for WHY TDR? tags)
+// ---------------------------------------------------------------------------
+
+/**
+ * Detect which critical factors apply to a deal for display
  */
 export function detectCriticalFactors(deal: Deal): CriticalFactor[] {
   const factors: CriticalFactor[] = [];
-  const stageLower = (deal.stage || '').toLowerCase();
-  const isEarlyStage = STAGE_TIMING.sweetSpot.some(s => stageLower.includes(s.toLowerCase()));
-  const isLateStage = STAGE_TIMING.lateStage.some(s => stageLower.includes(s.toLowerCase()));
-  const stageAge = deal.stageAge || 0;
+  const stageNum = deal.stageNumber ?? parseStageNumber(deal.stage);
+  const stageAge = deal.stageAge ?? 0;
+  const acv = deal.acv ?? 0;
+  const numComp = deal.numCompetitors ?? 0;
+  const forecastCat = (deal.forecastCategory ?? '').toLowerCase();
+  const dealType = (deal.dealType ?? '').toLowerCase();
+  const partnersInvolved = (deal.partnersInvolved ?? '').toLowerCase();
+  const snowflake = (deal.snowflakeTeam ?? '').toLowerCase();
+  const partnerRole = (deal.primaryPartnerRole ?? '').toLowerCase();
+  const dealCode = (deal.dealCode ?? '').toUpperCase();
 
-  // TIER 1 checks
-  // High ACV deals
-  if (deal.acv >= 150000) {
-    factors.push(CRITICAL_FACTORS.materialACV);
+  // TIER 1
+  if (acv >= 100000) factors.push(CRITICAL_FACTORS.materialACV);
+
+  if (snowflake || /snowflake|databricks|bigquery|gcp|aws|azure/i.test(partnersInvolved)) {
+    factors.push(CRITICAL_FACTORS.cloudPartner);
   }
 
-  // Partner platform detection
-  if (deal.partnersInvolved && /snowflake|databricks|bigquery|aws|azure|gcp/i.test(deal.partnersInvolved)) {
-    factors.push(CRITICAL_FACTORS.partnerPlatform);
+  if (stageNum >= 2 && stageNum <= 3) {
+    factors.push(CRITICAL_FACTORS.earlyStageSweet);
   }
 
-  // Competitive displacement - check isCompetitive flag or reasons
-  if (deal.isCompetitive) {
-    factors.push(CRITICAL_FACTORS.competitiveDisplacement);
+  if (numComp >= 1) factors.push(CRITICAL_FACTORS.competitiveDisplacement);
+
+  if (dealType.includes('new logo') || dealType.includes('new business')) {
+    factors.push(CRITICAL_FACTORS.newLogoDeal);
   }
 
-  // Early-stage opportunity (Stage 1-2 = Discovery/Determine) - great for shaping
-  if (isEarlyStage) {
-    // If also high ACV, this is the SWEET SPOT
-    if (deal.acv >= 150000) {
-      factors.push(CRITICAL_FACTORS.earlyStageStrong);
-    } else {
-      // Even without high ACV, early stage is still valuable
-      // Add a modified factor for early stage
-      factors.push({
-        ...CRITICAL_FACTORS.earlyStageStrong,
-        id: 'earlyStage',
-        shortLabel: 'Early stage',
-        points: 15,
-        tier: 2,
-        description: 'Stage 1-2: Maximum opportunity to shape architecture direction',
-      });
-    }
-  }
-
-  // TIER 2 checks
-  // Partner co-sell - active partner involvement
-  if ((deal.isPartnerPlay || deal.partnerSignal === 'strong' || deal.partnerSignal === 'moderate') 
-      && !factors.some(f => f.id === 'partnerPlatform')) {
-    // Only add partnerCoSell if we didn't already add partnerPlatform
+  // TIER 2
+  if (partnerRole === 'co-sell') {
     factors.push(CRITICAL_FACTORS.partnerCoSell);
   }
 
-  // TIER 3 checks
-  // Stalled deals - extended time in stage
-  if (stageAge > 60) {
-    factors.push(CRITICAL_FACTORS.staleSignals);
-  } else if (stageAge > 30 && !isEarlyStage) {
-    // Moderate age in mid-late stage is also concerning
-    factors.push({
-      ...CRITICAL_FACTORS.staleSignals,
-      id: 'moderateAge',
-      shortLabel: 'Aging',
-      points: 5,
-      tier: 3,
-      description: `${stageAge}d in stage - monitor for delays`,
-    });
+  if (forecastCat.includes('probable') || forecastCat.includes('best case')) {
+    factors.push(CRITICAL_FACTORS.forecastMomentum);
   }
 
-  // Late-stage warning (negative factor)
-  if (isLateStage) {
+  if (dealCode.startsWith('PA') || dealCode.startsWith('P0') || /E0[2-9]/.test(dealCode)) {
+    factors.push(CRITICAL_FACTORS.complexDealCode);
+  }
+
+  // TIER 3
+  if (stageAge > 60 && stageAge <= 180) {
+    factors.push(CRITICAL_FACTORS.staleSignals);
+  }
+
+  if (stageAge > 180) {
+    factors.push(CRITICAL_FACTORS.veryStale);
+  }
+
+  if (stageNum >= 4 && stageNum < 6) {
     factors.push(CRITICAL_FACTORS.lateStageRisk);
   }
 
@@ -290,35 +371,7 @@ export function detectCriticalFactors(deal: Deal): CriticalFactor[] {
 }
 
 /**
- * Calculate TDR score based on critical factors
- * Base score starts at 25 (minimum for any deal in pipeline)
- */
-export function calculateTDRScore(deal: Deal): number {
-  const factors = detectCriticalFactors(deal);
-  
-  // Base score of 25 for any deal that made it to the pipeline
-  let score = 25;
-
-  // Add points from detected factors
-  for (const factor of factors) {
-    score += factor.points;
-  }
-  
-  // Bonus modifiers based on deal characteristics
-  // ACV bonus (scaled)
-  if (deal.acv >= 300000) score += 10;
-  else if (deal.acv >= 100000) score += 5;
-  else if (deal.acv >= 50000) score += 3;
-  
-  // Stage age penalty for very old deals
-  if (deal.stageAge && deal.stageAge > 180) score -= 10;
-
-  // Ensure score is within 0-100 range
-  return Math.max(0, Math.min(100, score));
-}
-
-/**
- * Get priority level from score
+ * Get priority label from score
  */
 export function getPriorityFromScore(score: number): 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' {
   if (score >= 75) return 'CRITICAL';
@@ -328,14 +381,12 @@ export function getPriorityFromScore(score: number): 'CRITICAL' | 'HIGH' | 'MEDI
 }
 
 /**
- * Get the top 2 most impactful factors for display as WHY TDR tags
+ * Get the top N most impactful factors for display as WHY TDR? tags
  */
 export function getTopFactors(deal: Deal, limit = 2): CriticalFactor[] {
   const factors = detectCriticalFactors(deal);
-  
-  // Sort by tier (lower = higher priority) then by points (higher = more important)
   return factors
-    .filter(f => f.points > 0) // Exclude negative factors from display
+    .filter(f => f.points > 0)
     .sort((a, b) => {
       if (a.tier !== b.tier) return a.tier - b.tier;
       return b.points - a.points;
@@ -344,16 +395,14 @@ export function getTopFactors(deal: Deal, limit = 2): CriticalFactor[] {
 }
 
 /**
- * Get risk flags for a deal (negative factors)
+ * Get risk flags for a deal
  */
 export function getRiskFlags(deal: Deal): CriticalFactor[] {
-  const factors = detectCriticalFactors(deal);
-  return factors.filter(f => f.points < 0 || f.id === 'staleSignals' || f.id === 'lateStageRisk');
+  return detectCriticalFactors(deal).filter(f => f.points < 0);
 }
 
 /**
  * TDR Priority Thresholds
- * Used for categorizing deals by priority level
  */
 export const TDR_PRIORITY_THRESHOLDS_NEW = {
   critical: 75,
@@ -361,4 +410,3 @@ export const TDR_PRIORITY_THRESHOLDS_NEW = {
   medium: 25,
   low: 0,
 } as const;
-

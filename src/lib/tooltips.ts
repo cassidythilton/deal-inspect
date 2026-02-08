@@ -7,15 +7,15 @@
 export const TDR_SCORE_TOOLTIPS = {
   critical: 'TDR Score 75+: Highest priority for SE engagement. Major architecture decisions pending, cloud platform integration opportunities, or competitive differentiation urgently needed.',
   high: 'TDR Score 50-74: Strong TDR candidates. Multiple technical factors present—partner integrations, complex data architectures, or platform expansion potential.',
-  medium: 'TDR Score 35-49: Moderate technical complexity. Consider for TDR if bandwidth allows—may have specific integration or architecture needs.',
-  low: 'TDR Score <35: Limited technical complexity. Standard sales-led motion likely sufficient unless specific technical questions arise.',
+  medium: 'TDR Score 25-49: Moderate technical complexity. Consider for TDR if bandwidth allows—may have specific integration or architecture needs.',
+  low: 'TDR Score <25: Limited technical complexity. Standard sales-led motion likely sufficient unless specific technical questions arise.',
 } as const;
 
 // Get TDR score tooltip based on score value
 export function getTDRScoreTooltip(score: number): string {
   if (score >= 75) return TDR_SCORE_TOOLTIPS.critical;
   if (score >= 50) return TDR_SCORE_TOOLTIPS.high;
-  if (score >= 35) return TDR_SCORE_TOOLTIPS.medium;
+  if (score >= 25) return TDR_SCORE_TOOLTIPS.medium;
   return TDR_SCORE_TOOLTIPS.low;
 }
 
@@ -23,7 +23,7 @@ export function getTDRScoreTooltip(score: number): string {
 export function getTDRPriorityLabel(score: number): 'Critical' | 'High' | 'Medium' | 'Low' {
   if (score >= 75) return 'Critical';
   if (score >= 50) return 'High';
-  if (score >= 35) return 'Medium';
+  if (score >= 25) return 'Medium';
   return 'Low';
 }
 

@@ -3,7 +3,6 @@
  * Handles all data fetching from Domo datasets with pre-filtering
  */
 
-// Maximum stage age in days - deals older than this are excluded
 import { MAX_STAGE_AGE_DAYS } from './constants';
 
 export { MAX_STAGE_AGE_DAYS };
@@ -20,21 +19,23 @@ export interface DomoOpportunity {
   'Close Date FQ': string;
   'Domo Opportunity Owner': string;
   'Sales Consultant': string;
+  'PoC Sales Consultant': string;     // PoC SE assigned to this deal
   'Primary Partner Role': string | null;
   'Partners Involved': string | null;
+  'Partner Influence': string | null;  // "Yes" or "No"
+  'Snowflake Team Picklist': string | null;
   'Domo Forecast Category': string;
   'Type': string;
+  'Deal Code': string | null;
+  'Number of Competitors': number | null;
   [key: string]: unknown;
 }
 
-// SE Mapping dataset structure
-// Columns: Sales Consultant, Solutions Consultant, PoC Sales Consultant, SE Manager
-// Used ONLY for SE → SE Manager lookup and PoC role identification
+// SE Mapping dataset — exactly 2 columns: se, se_manager
+// Used ONLY for SE → SE Manager lookup
 export interface DomoSEMapping {
-  salesConsultant: string;       // Regular Sales Consultant name
-  solutionsConsultant: string;   // Solutions Consultant name
-  pocSalesConsultant: string;    // PoC Sales Consultant name
-  seManager: string;             // SE Manager name
+  se: string;           // SE name (join key matching Sales Consultant / PoC SC from opportunities)
+  se_manager: string;   // SE Manager name
 }
 
 export const CONFIG = {
@@ -51,13 +52,11 @@ export const CONFIG = {
  */
 function normalizeRecord<T>(record: Record<string, unknown>, fieldMap: Record<string, string>): T {
   const normalized: Record<string, unknown> = { ...record };
-  
   for (const [alias, canonical] of Object.entries(fieldMap)) {
     if (alias in record && !(canonical in record)) {
       normalized[canonical] = record[alias];
     }
   }
-  
   return normalized as T;
 }
 
@@ -73,20 +72,23 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
   'DomoOpportunityOwner': 'Domo Opportunity Owner',
   'MgrForecastName': 'Mgr Forecast Name',
   'SalesConsultant': 'Sales Consultant',
+  'PocSalesConsultant': 'PoC Sales Consultant',
   'PrimaryPartnerRole': 'Primary Partner Role',
   'PartnersInvolved': 'Partners Involved',
+  'PartnerInfluence': 'Partner Influence',
+  'SnowflakeTeamPicklist': 'Snowflake Team Picklist',
   'DomoForecastCategory': 'Domo Forecast Category',
   'NumberOfCompetitors': 'Number of Competitors',
+  'DealCode': 'Deal Code',
 };
 
 /**
  * Fetch opportunities from Domo with pre-filtering for stage age
- * Deals with Stage Age > MAX_STAGE_AGE_DAYS are excluded
  */
 export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
-  const domo = (window as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo 
+  const domo = (window as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo
     || (globalThis as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo;
-  
+
   if (!domo) {
     console.log('[Domo] Dev mode - no domo SDK, returning empty data');
     return [];
@@ -94,33 +96,29 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
 
   const alias = CONFIG.datasets.opportunities;
   console.log(`[Domo] Fetching opportunities from /data/v1/${alias}...`);
-  
+
   try {
     const rawData = await domo.get(`/data/v1/${alias}`);
     const rawOpps = (rawData || []) as Record<string, unknown>[];
-    
+
     console.log(`[Domo] Fetched ${rawOpps.length} raw opportunity records`);
-    
+
     if (rawOpps.length > 0) {
-      console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).slice(0, 15));
+      console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).sort().slice(0, 20));
     }
 
-    // Normalize and pre-filter by stage age
     const allOpps = rawOpps
       .map((record) => normalizeRecord<DomoOpportunity>(record, OPPORTUNITY_FIELD_MAP))
       .filter((opp) => {
         const stageAge = opp['Stage Age'];
-        // Keep deals with null/undefined stage age or stage age <= MAX_STAGE_AGE_DAYS
-        if (stageAge === null || stageAge === undefined) {
-          return true;
-        }
+        if (stageAge === null || stageAge === undefined) return true;
         return stageAge <= MAX_STAGE_AGE_DAYS;
       });
 
     const filteredOut = rawOpps.length - allOpps.length;
     console.log(`[Domo] Pre-filtered ${filteredOut} deals with Stage Age > ${MAX_STAGE_AGE_DAYS} days`);
     console.log(`[Domo] Returning ${allOpps.length} opportunities`);
-    
+
     return allOpps;
   } catch (error) {
     console.error('[Domo] Failed to fetch opportunities:', error);
@@ -129,8 +127,7 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
 }
 
 /**
- * Read a string field from a record, trying multiple possible key variations.
- * Domo may return fields using aliases (camelCase) or full column names.
+ * Read a string value from a record, trying multiple key variations.
  */
 function readField(record: Record<string, unknown>, ...keys: string[]): string {
   for (const key of keys) {
@@ -144,21 +141,19 @@ function readField(record: Record<string, unknown>, ...keys: string[]): string {
 
 /**
  * Fetch SE mapping data from Domo
- * 
- * Dataset columns (manifest aliases → column names):
- *   SalesConsultant     → "Sales Consultant"
- *   SolutionsConsultant → "Solutions Consultant"
- *   PocSalesConsultant  → "PoC Sales Consultant"
- *   SeManager           → "SE Manager"
  *
- * Used ONLY for:
- *   1. SE → SE Manager lookup
- *   2. Identifying which SEs are PoC Sales Consultants
+ * The actual dataset has exactly 2 columns:
+ *   se          — SE name (join key)
+ *   se_manager  — SE Manager name
+ *
+ * Domo returns fields using the aliases from manifest.json:
+ *   alias "se"          → column "se"
+ *   alias "se_manager"  → column "se_manager"
  */
 export async function fetchSEMapping(): Promise<DomoSEMapping[]> {
-  const domo = (window as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo 
+  const domo = (window as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo
     || (globalThis as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo;
-  
+
   if (!domo) {
     console.log('[Domo] Dev mode - no domo SDK, returning empty SE mapping');
     return [];
@@ -166,46 +161,33 @@ export async function fetchSEMapping(): Promise<DomoSEMapping[]> {
 
   const alias = CONFIG.datasets.seMapping;
   console.log(`[Domo] Fetching SE mapping from /data/v1/${alias}...`);
-  
+
   try {
     const rawData = await domo.get(`/data/v1/${alias}`);
     const rawMappings = (rawData || []) as Record<string, unknown>[];
-    
+
     console.log(`[Domo] Fetched ${rawMappings.length} SE mapping records`);
-    
+
     if (rawMappings.length > 0) {
       console.log('[Domo] SE mapping field names:', Object.keys(rawMappings[0]));
-      console.log('[Domo] SE mapping sample record:', rawMappings[0]);
+      console.log('[Domo] SE mapping first row:', rawMappings[0]);
     }
 
-    // Normalize each record — try Domo aliases (camelCase), full column names,
-    // and legacy aliases (se, se_manager) for backward compatibility
+    // Normalize — try the exact alias names first, then common variations
     const seMappings: DomoSEMapping[] = rawMappings.map((record) => ({
-      salesConsultant: readField(record,
-        'SalesConsultant', 'Sales Consultant', 'sales_consultant', 'sc', 'se', 'SE'),
-      solutionsConsultant: readField(record,
-        'SolutionsConsultant', 'Solutions Consultant', 'solutions_consultant'),
-      pocSalesConsultant: readField(record,
-        'PocSalesConsultant', 'PoC Sales Consultant', 'poc_sales_consultant', 'PocSC'),
-      seManager: readField(record,
-        'SeManager', 'SE Manager', 'se_manager', 'SE_Manager', 'Manager'),
+      se: readField(record, 'se', 'SE', 'Sales Consultant', 'SalesConsultant'),
+      se_manager: readField(record, 'se_manager', 'SE Manager', 'SeManager', 'SE_Manager'),
     }));
-    
-    if (seMappings.length > 0) {
-      console.log('[Domo] Normalized SE mapping sample:', seMappings[0]);
-      console.log('[Domo] SE mapping samples:',
-        seMappings.slice(0, 5).map(m =>
-          `SC="${m.salesConsultant}" PoC="${m.pocSalesConsultant}" Mgr="${m.seManager}"`
-        )
-      );
-    }
-    
-    // Count stats
-    const withSC = seMappings.filter(m => m.salesConsultant).length;
-    const withPoC = seMappings.filter(m => m.pocSalesConsultant).length;
-    const withMgr = seMappings.filter(m => m.seManager).length;
-    console.log(`[Domo] SE mapping stats: ${withSC} with SC, ${withPoC} with PoC, ${withMgr} with Manager`);
-    
+
+    // Log stats
+    const validMappings = seMappings.filter(m => m.se && m.se_manager);
+    console.log(`[Domo] Valid SE mappings: ${validMappings.length}/${seMappings.length}`);
+    console.log('[Domo] SE mapping samples:', validMappings.slice(0, 5).map(m => `"${m.se}" → "${m.se_manager}"`));
+
+    // Log unique managers
+    const uniqueManagers = new Set(validMappings.map(m => m.se_manager));
+    console.log('[Domo] Unique SE Managers:', Array.from(uniqueManagers));
+
     return seMappings;
   } catch (error) {
     console.error('[Domo] Failed to fetch SE mapping:', error);
@@ -218,7 +200,7 @@ export async function fetchSEMapping(): Promise<DomoSEMapping[]> {
  */
 export function isDomoEnvironment(): boolean {
   return !!(
-    (window as unknown as { domo?: unknown }).domo || 
+    (window as unknown as { domo?: unknown }).domo ||
     (globalThis as unknown as { domo?: unknown }).domo
   );
 }

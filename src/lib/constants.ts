@@ -15,7 +15,7 @@ export const ALLOWED_MANAGERS = [
 export const TDR_PRIORITY_THRESHOLDS = {
   critical: 75,
   high: 50,
-  medium: 35,
+  medium: 25,
 } as const;
 
 // TDR Priority filter options
@@ -23,8 +23,8 @@ export const TDR_PRIORITY_OPTIONS = [
   { id: 'all', label: 'All Deals' },
   { id: 'critical', label: 'Critical (75+)', minScore: 75 },
   { id: 'high', label: 'High (50+)', minScore: 50 },
-  { id: 'medium', label: 'Medium (35+)', minScore: 35 },
-  { id: 'low', label: 'Low (<35)', maxScore: 35 },
+  { id: 'medium', label: 'Medium (25+)', minScore: 25 },
+  { id: 'low', label: 'Low (<25)', maxScore: 25 },
 ] as const;
 
 // Maximum stage age in days for data filtering (performance optimization)

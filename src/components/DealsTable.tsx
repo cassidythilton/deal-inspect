@@ -74,7 +74,7 @@ const getFactorPillStyle = (color: string): string => {
 const getTDRBadgeStyle = (score: number): string => {
   if (score >= 75) return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-700';
   if (score >= 50) return 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950 dark:text-teal-400 dark:border-teal-700';
-  if (score >= 35) return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-700';
+  if (score >= 25) return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-700';
   return 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600';
 };
 

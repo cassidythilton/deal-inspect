@@ -17,15 +17,22 @@ export interface Deal {
   owner: string;
   isPinned?: boolean;
   agendaStatus?: 'draft' | 'ready' | 'reviewed';
-  // SE Team fields
-  salesConsultant?: string;
-  seManager?: string;
+  // SE Team fields (sourced from Opportunities dataset)
+  salesConsultant?: string;     // From "Sales Consultant" column
+  pocSalesConsultant?: string;  // From "PoC Sales Consultant" column
+  seManager?: string;           // Looked up via SE mapping
   // Partner fields
   partnersInvolved?: string;
   primaryPartnerRole?: string;
+  partnerInfluence?: string;    // "Yes" or "No"
+  snowflakeTeam?: string;       // Snowflake Team Picklist
   dealCode?: string;
+  // Forecast fields
+  forecastCategory?: string;    // Domo Forecast Category
+  dealType?: string;            // Type: "New Logo", "Upsell", etc.
+  numCompetitors?: number;      // Number of Competitors
   // TDR scoring
-  tdrScore?: number; // 0-50 score
+  tdrScore?: number; // 0-100 score
   // Categorization tags
   isCompetitive?: boolean;
   isPartnerPlay?: boolean;

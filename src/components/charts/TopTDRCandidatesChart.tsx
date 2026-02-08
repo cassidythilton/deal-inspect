@@ -29,7 +29,7 @@ const formatCurrency = (value: number) => {
 const getBarColor = (score: number): string => {
   if (score >= 75) return 'hsl(152, 73%, 45%)';  // Emerald
   if (score >= 50) return 'hsl(161, 50%, 50%)';  // Teal
-  if (score >= 35) return 'hsl(38, 65%, 55%)';   // Amber
+  if (score >= 25) return 'hsl(38, 65%, 55%)';   // Amber
   return 'hsl(217, 30%, 60%)';                    // Gray-blue
 };
 
