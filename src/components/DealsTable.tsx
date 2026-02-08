@@ -93,38 +93,32 @@ const getStageBadgeStyle = (stageNum: number): string => {
 // ─── Partner icon/tooltip helpers ──────────────────────────────────────────────
 
 /**
- * Get the appropriate partner icon based on deal code and partner type.
+ * Get the appropriate partner icon based on partner name (cloud platform detection).
  *
- * Deal code prefixes:
- *   PA  = Partner Architecture → Cloud icon
- *   P   = Partner deal → Users icon
- *   E   = Enterprise → Building2 icon
- *   Default → RefreshCcw (integration icon)
+ * Matches original backup behavior:
+ *   - Snowflake / Databricks / BigQuery → Cloud icon (cyan)
+ *   - Any other partner present → Users icon (emerald)
+ *   - No partner → Users icon (muted)
  */
 function getPartnerIcon(deal: Deal): { Icon: LucideIcon; colorClass: string } {
-  const code = (deal.dealCode ?? '').toUpperCase();
-  const hasPartner = deal.partnerSignal !== 'none';
-  const isStrong = deal.partnerSignal === 'strong';
+  const partner = (deal.partnersInvolved ?? '').toLowerCase();
+  const snowflake = (deal.snowflakeTeam ?? '').toLowerCase();
+  const hasPartner = partner.length > 0 || snowflake.length > 0;
 
-  if (!hasPartner) {
-    return { Icon: Users, colorClass: 'text-muted-foreground/30' };
-  }
+  // Cloud platform partner — Snowflake, Databricks, BigQuery
+  const isCloudPlatform = partner.includes('snowflake') || partner.includes('databricks')
+    || partner.includes('bigquery') || snowflake.length > 0;
 
-  if (code.startsWith('PA')) {
-    // Partner Architecture — cloud platform deal
-    return { Icon: Cloud, colorClass: isStrong ? 'text-violet-500' : 'text-violet-400' };
-  }
-  if (code.startsWith('P')) {
-    // Partner deal — co-sell / channel
-    return { Icon: Users, colorClass: isStrong ? 'text-teal-500' : 'text-teal-400' };
-  }
-  if (code.startsWith('E')) {
-    // Enterprise deal with partner involvement
-    return { Icon: Building2, colorClass: isStrong ? 'text-emerald-500' : 'text-emerald-400' };
+  if (isCloudPlatform) {
+    return { Icon: Cloud, colorClass: 'text-cyan-500' };
   }
 
-  // Default: integration icon
-  return { Icon: RefreshCcw, colorClass: isStrong ? 'text-emerald-500' : 'text-teal-500' };
+  if (hasPartner) {
+    return { Icon: Users, colorClass: 'text-emerald-500' };
+  }
+
+  // No partner
+  return { Icon: Users, colorClass: 'text-muted-foreground/40' };
 }
 
 /**
