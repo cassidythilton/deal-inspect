@@ -40,32 +40,34 @@ export interface CriticalFactor {
   description: string;
   strategy: string;
   icon: string;
-  color: 'orange' | 'blue' | 'green' | 'purple' | 'red' | 'amber';
+  /** Color category matching the backup's WHY TDR? palette */
+  color: 'cyan' | 'emerald' | 'amber' | 'violet' | 'blue' | 'orange' | 'red' | 'secondary';
 }
 
 export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
   // TIER 1 — High-priority triggers
+  // TIER 1 — High-priority triggers
   materialACV: {
     id: 'materialACV',
-    label: 'Material ACV',
-    shortLabel: 'High ACV',
+    label: 'Material Deal',
+    shortLabel: '$100K+ ACV',
     tier: 1,
     points: 20,
     description: 'ACV ≥ $100K — material revenue at stake',
     strategy: 'Prioritize executive engagement and comprehensive solution design.',
     icon: 'DollarSign',
-    color: 'green',
+    color: 'blue',          // backup: "material" → blue
   },
   cloudPartner: {
     id: 'cloudPartner',
-    label: 'Cloud Partner Alignment',
-    shortLabel: 'Cloud partner',
+    label: 'Cloud Platform',
+    shortLabel: 'Cloud platform',
     tier: 1,
     points: 15,
     description: 'Snowflake, Databricks, or BigQuery is involved',
     strategy: 'Position Domo as composable control layer on their infrastructure.',
     icon: 'Cloud',
-    color: 'purple',
+    color: 'cyan',           // backup: "cloud-platform" → cyan
   },
   earlyStageSweet: {
     id: 'earlyStageSweet',
@@ -76,7 +78,7 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     description: 'Stage 2-3 — maximum opportunity to shape architecture before decisions lock in',
     strategy: 'Engage now. Architecture decisions are being made.',
     icon: 'Zap',
-    color: 'green',
+    color: 'emerald',        // backup: "early-stage" / "arch-window" → emerald
   },
   competitiveDisplacement: {
     id: 'competitiveDisplacement',
@@ -87,31 +89,31 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     description: 'Competitors present — displacement scenario',
     strategy: 'Develop clear differentiation. Focus on unique Domo capabilities.',
     icon: 'Swords',
-    color: 'orange',
+    color: 'amber',          // backup: "competitive" → amber
   },
   newLogoDeal: {
     id: 'newLogoDeal',
-    label: 'New Logo',
+    label: 'Greenfield / New Logo',
     shortLabel: 'New logo',
     tier: 1,
     points: 10,
     description: 'New business — full architecture review needed',
     strategy: 'Full discovery and architecture alignment. Shape from the ground up.',
     icon: 'Building2',
-    color: 'blue',
+    color: 'violet',         // backup: "greenfield" → violet
   },
 
   // TIER 2 — Complexity indicators
   partnerCoSell: {
     id: 'partnerCoSell',
-    label: 'Partner Co-Sell',
-    shortLabel: 'Co-sell',
+    label: 'Partner Play',
+    shortLabel: 'Partner play',
     tier: 2,
     points: 8,
     description: 'Active partner co-sell — architecture validation needed',
     strategy: 'Validate integration approach and ensure technical alignment with partner.',
     icon: 'Users',
-    color: 'blue',
+    color: 'cyan',           // backup: "partner-play" / "co-sell" → cyan
   },
   forecastMomentum: {
     id: 'forecastMomentum',
@@ -122,18 +124,18 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     description: 'Probable/Best Case — deal has real momentum',
     strategy: 'Validate technical requirements align with timeline expectations.',
     icon: 'TrendingUp',
-    color: 'green',
+    color: 'blue',           // backup: similar to "enterprise" → blue
   },
   complexDealCode: {
     id: 'complexDealCode',
-    label: 'Complex Deal Structure',
-    shortLabel: 'Complex deal',
+    label: 'Enterprise Scale',
+    shortLabel: 'Enterprise',
     tier: 2,
     points: 5,
     description: 'Multi-component deal code or partner architecture deal',
     strategy: 'Ensure all components are technically validated.',
     icon: 'Layers',
-    color: 'purple',
+    color: 'blue',           // backup: "enterprise" → blue
   },
 
   // TIER 3 — Context signals
@@ -146,18 +148,18 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     description: 'Extended time in current stage — potential blockers',
     strategy: 'Identify technical blockers and re-engage champions.',
     icon: 'Clock',
-    color: 'amber',
+    color: 'orange',         // backup: "check-progress" → orange
   },
   lateStageRisk: {
     id: 'lateStageRisk',
-    label: 'Late-Stage Risk',
+    label: 'Late Stage',
     shortLabel: 'Late stage',
     tier: 3,
     points: -5,
     description: 'Stage 4+ — technical strategy may be locked',
     strategy: 'Focus on risk mitigation and delivery readiness, not reshaping.',
     icon: 'AlertOctagon',
-    color: 'red',
+    color: 'secondary',      // backup: "late-stage" → secondary
   },
   veryStale: {
     id: 'veryStale',
@@ -168,7 +170,7 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     description: 'Stage Age > 180 days — likely dead or deprioritized',
     strategy: 'Re-qualify before investing more SE time.',
     icon: 'AlertTriangle',
-    color: 'red',
+    color: 'orange',         // backup: "stalled" → orange
   },
 };
 

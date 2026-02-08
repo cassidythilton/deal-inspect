@@ -55,33 +55,57 @@ const FACTOR_ICONS: Record<string, LucideIcon> = {
   'AlertOctagon': AlertOctagon,
 };
 
-// Pill color styles using the coolors.co palette
-const PILL_STYLES = {
-  emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800',
-  teal: 'bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/50 dark:text-teal-400 dark:border-teal-800',
-  amber: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800',
-  violet: 'bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950/50 dark:text-violet-400 dark:border-violet-800',
-  rose: 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800',
-  slate: 'bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-900/50 dark:text-slate-400 dark:border-slate-700',
+/**
+ * WHY TDR? pill colors — exact match to backup's factor category palette.
+ * Uses /10 opacity backgrounds with 500-level text and /20 borders.
+ */
+const FACTOR_PILL_COLORS: Record<string, string> = {
+  cyan:      'bg-cyan-500/10 text-cyan-700 border border-cyan-500/20',       // cloud-platform, partner-play, co-sell
+  emerald:   'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20', // early-stage, arch-window
+  amber:     'bg-amber-500/10 text-amber-700 border border-amber-500/20',    // competitive
+  violet:    'bg-violet-500/10 text-violet-700 border border-violet-500/20',  // greenfield
+  blue:      'bg-blue-500/10 text-blue-700 border border-blue-500/20',       // enterprise, material
+  orange:    'bg-orange-500/10 text-orange-700 border border-orange-500/20',  // stalled, check-progress
+  red:       'bg-red-500/10 text-red-700 border border-red-500/20',          // no-se
+  secondary: 'bg-secondary text-muted-foreground',                            // late-stage
+};
+
+/**
+ * Brand-specific pill styles for cloud platform pills.
+ * Snowflake: #00B9ED  |  Databricks: #CB2B1D  |  BigQuery: #4285F4
+ */
+const BRAND_PILL_STYLES = {
+  snowflake:  'border text-[#00B9ED] bg-[#00B9ED]/10 border-[#00B9ED]/20',
+  databricks: 'border text-[#CB2B1D] bg-[#CB2B1D]/10 border-[#CB2B1D]/20',
+  bigquery:   'border text-[#4285F4] bg-[#4285F4]/10 border-[#4285F4]/20',
 } as const;
 
 const getFactorPillStyle = (color: string): string => {
-  switch (color) {
-    case 'green': return PILL_STYLES.emerald;
-    case 'blue': return PILL_STYLES.teal;
-    case 'orange': return PILL_STYLES.amber;
-    case 'purple': return PILL_STYLES.violet;
-    case 'red': return PILL_STYLES.rose;
-    case 'amber': return PILL_STYLES.amber;
-    default: return PILL_STYLES.slate;
-  }
+  return FACTOR_PILL_COLORS[color] || 'bg-secondary/60 text-muted-foreground';
 };
 
+/** Get brand-specific pill style if the factor is cloudPartner. */
+function getBrandPillStyle(factor: CriticalFactor, deal: Deal): string | null {
+  if (factor.id !== 'cloudPartner') return null;
+  const partner = (deal.partnersInvolved ?? '').toLowerCase();
+  const snowflake = (deal.snowflakeTeam ?? '').toLowerCase();
+  if (snowflake || partner.includes('snowflake')) return BRAND_PILL_STYLES.snowflake;
+  if (partner.includes('databricks')) return BRAND_PILL_STYLES.databricks;
+  if (partner.includes('bigquery') || partner.includes('gcp') || partner.includes('google cloud')) return BRAND_PILL_STYLES.bigquery;
+  return null; // fall back to generic cyan
+}
+
+// Stage pill styles (kept from backup patterns)
+const PILL_STYLES = {
+  emerald: 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20',
+  teal: 'bg-teal-500/10 text-teal-700 border border-teal-500/20',
+  amber: 'bg-amber-500/10 text-amber-700 border border-amber-500/20',
+} as const;
+
 const getTDRBadgeStyle = (score: number): string => {
-  if (score >= 75) return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-700';
-  if (score >= 50) return 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950 dark:text-teal-400 dark:border-teal-700';
-  if (score >= 25) return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-700';
-  return 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600';
+  if (score >= 50) return 'bg-emerald-500/20 text-emerald-700';
+  if (score >= 35) return 'bg-amber-500/20 text-amber-700';
+  return 'bg-secondary text-muted-foreground';
 };
 
 const getStageBadgeStyle = (stageNum: number): string => {
@@ -105,14 +129,22 @@ function getPartnerIcon(deal: Deal): { Icon: LucideIcon; colorClass: string } {
   const snowflake = (deal.snowflakeTeam ?? '').toLowerCase();
   const hasPartner = partner.length > 0 || snowflake.length > 0;
 
-  // Cloud platform partner — Snowflake, Databricks, BigQuery
-  const isCloudPlatform = partner.includes('snowflake') || partner.includes('databricks')
-    || partner.includes('bigquery') || snowflake.length > 0;
-
-  if (isCloudPlatform) {
+  // Brand-specific cloud partner colors
+  if (snowflake || partner.includes('snowflake')) {
+    return { Icon: Cloud, colorClass: 'text-[#00B9ED]' };
+  }
+  if (partner.includes('databricks')) {
+    return { Icon: Cloud, colorClass: 'text-[#CB2B1D]' };
+  }
+  if (partner.includes('bigquery') || partner.includes('gcp') || partner.includes('google cloud')) {
+    return { Icon: Cloud, colorClass: 'text-[#4285F4]' };
+  }
+  // Other cloud platforms
+  if (partner.includes('aws') || partner.includes('amazon') || partner.includes('azure') || partner.includes('microsoft')) {
     return { Icon: Cloud, colorClass: 'text-cyan-500' };
   }
 
+  // Non-cloud partner
   if (hasPartner) {
     return { Icon: Users, colorClass: 'text-emerald-500' };
   }
@@ -320,41 +352,23 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="panel overflow-hidden">
-        <div className="border-b border-border px-5 py-4">
-          <h2 className="text-base font-semibold">Recommended Deals</h2>
+        <div className="border-b border-border/60 px-4 py-3">
+          <h2 className="text-sm font-medium">Recommended Deals</h2>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Deal / Account
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Stage
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Age
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  ACV
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  TDR
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  SE Team
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Partner
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Why TDR?
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Action
-                </th>
+              <tr className="border-b border-border/60">
+                <th className="section-header px-4 py-2 text-left">Deal / Account</th>
+                <th className="section-header px-3 py-2 text-left">Stage</th>
+                <th className="section-header px-3 py-2 text-center">Age</th>
+                <th className="section-header px-3 py-2 text-right">ACV</th>
+                <th className="section-header px-3 py-2 text-center">TDR</th>
+                <th className="section-header px-3 py-2 text-left">SE Team</th>
+                <th className="section-header px-3 py-2 text-center">Partner</th>
+                <th className="section-header px-3 py-2 text-left">Why TDR?</th>
+                <th className="section-header px-3 py-2 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -365,10 +379,10 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                 const priority = getPriorityFromScore(tdrScore);
                 const whyTags = getWhyTDRTags(deal);
 
-                const ageColorClass = deal.stageAge && deal.stageAge > 180
-                  ? 'text-rose-600 dark:text-rose-400'
-                  : deal.stageAge && deal.stageAge > 90
-                  ? 'text-amber-600 dark:text-amber-400'
+                const ageColorClass = deal.stageAge && deal.stageAge >= 60
+                  ? 'text-red-600'
+                  : deal.stageAge && deal.stageAge >= 30
+                  ? 'text-amber-600'
                   : 'text-muted-foreground';
 
                 // Partner icon + tooltip (dynamic)
@@ -378,40 +392,37 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                 return (
                   <tr
                     key={deal.id}
-                    className="group cursor-pointer transition-colors hover:bg-muted/40"
+                    className="table-row-tight group cursor-pointer"
                     onClick={() => navigate(`/workspace?deal=${deal.id}`)}
                   >
                     {/* Deal / Account */}
-                    <td className="px-5 py-4">
-                      <div className="min-w-[180px]">
-                        <p className="text-sm font-semibold text-foreground">{deal.account}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 max-w-[220px]">
+                    <td className="px-4 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{deal.account}</p>
+                        <p className="text-xs text-muted-foreground truncate">
                           {deal.dealName}
                         </p>
                       </div>
                     </td>
 
                     {/* Stage */}
-                    <td className="px-4 py-4">
+                    <td className="px-3 py-2.5">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="flex items-center gap-2 cursor-help">
+                          <span className={cn(
+                            "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium cursor-help",
+                            getStageBadgeStyle(stageNum)
+                          )}>
                             <CheckCircle2 className={cn(
-                              "h-4 w-4 shrink-0",
-                              stageNum <= 2 ? 'text-emerald-500' :
-                              stageNum === 3 ? 'text-teal-500' : 'text-amber-500'
+                              "h-3 w-3 shrink-0",
+                              stageNum <= 2 ? 'text-emerald-600' :
+                              stageNum === 3 ? 'text-teal-600' : 'text-amber-600'
                             )} />
-                            <span className={cn(
-                              "inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium",
-                              getStageBadgeStyle(stageNum)
-                            )}>
-                              [{stageNum.toString().padStart(2, '0')}] {stageName}
-                            </span>
-                          </div>
+                            [{stageNum.toString().padStart(2, '0')}] {stageName}
+                          </span>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-sm">
-                          <p className="font-medium mb-1">Stage {stageNum}: {stageName}</p>
-                          <p className="text-xs text-muted-foreground">
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="text-xs">
                             {stageNum <= 2
                               ? 'Maximum opportunity to shape architecture and solution direction.'
                               : stageNum === 3
@@ -423,138 +434,150 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                     </td>
 
                     {/* Age */}
-                    <td className={cn("px-4 py-4 text-right tabular-nums text-sm font-medium", ageColorClass)}>
+                    <td className={cn("px-3 py-2.5 text-center text-xs font-medium tabular-nums", ageColorClass)}>
                       {deal.stageAge ? `${deal.stageAge}d` : '-'}
                     </td>
 
                     {/* ACV */}
-                    <td className="px-4 py-4 text-right">
-                      <span className="text-sm font-semibold tabular-nums text-foreground">
+                    <td className="px-3 py-2.5 text-right">
+                      <span className="text-sm font-medium tabular-nums">
                         {formatCurrency(deal.acv)}
                       </span>
                     </td>
 
                     {/* TDR Score */}
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className={cn(
-                            "inline-flex h-7 min-w-[36px] items-center justify-center rounded-lg px-2 text-sm font-bold tabular-nums cursor-help border",
+                            "inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums cursor-help",
                             getTDRBadgeStyle(tdrScore)
                           )}>
                             {tdrScore}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-sm">
-                          <div className="space-y-2">
-                            <p className="font-bold">{priority} Priority</p>
-                            <p className="text-xs text-muted-foreground">
-                              {priority === 'CRITICAL' && 'Highest priority for SE engagement. Major decisions pending.'}
-                              {priority === 'HIGH' && 'Strong TDR candidate. Multiple technical factors present.'}
-                              {priority === 'MEDIUM' && 'Moderate complexity. Consider for TDR if bandwidth allows.'}
-                              {priority === 'LOW' && 'Standard sales-led motion likely sufficient.'}
-                            </p>
-                          </div>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="text-xs font-medium mb-1">TDR Priority Factors:</p>
+                          <ul className="text-xs space-y-0.5">
+                            {whyTags.map((f, i) => (
+                              <li key={i}>• {f.label}</li>
+                            ))}
+                          </ul>
                         </TooltipContent>
                       </Tooltip>
                     </td>
 
                     {/* SE Team */}
-                    <td className="px-4 py-4">
-                      <span className="text-sm text-foreground font-medium">
-                        {deal.salesConsultant || '-'}
-                      </span>
+                    <td className="px-3 py-2.5">
+                      <div className="space-y-0.5 min-w-0">
+                        {deal.salesConsultant ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className="text-xs font-medium truncate cursor-help">{deal.salesConsultant}</p>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <p className="text-xs">
+                                <strong>Sales Consultant (SE)</strong><br />
+                                {deal.seManager && <span className="text-muted-foreground">SE Manager: {deal.seManager}</span>}
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <p className="text-xs text-muted-foreground/50 italic">No SE</p>
+                        )}
+                        {deal.pocSalesConsultant && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <p className="text-2xs text-muted-foreground truncate cursor-help">PoC: {deal.pocSalesConsultant}</p>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">PoC Sales Consultant for demos/POCs</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
                     </td>
 
                     {/* Partner — dynamic icon + dynamic tooltip */}
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-3 py-2.5 text-center">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="inline-flex cursor-help">
-                            <PartnerIcon className={cn("h-[18px] w-[18px]", partnerColorClass)} />
-                          </div>
+                          <span className="inline-flex items-center justify-center cursor-help">
+                            <PartnerIcon className={cn("h-4 w-4", partnerColorClass)} />
+                          </span>
                         </TooltipTrigger>
-                        {partnerTip && (
-                          <TooltipContent side="top" className="max-w-sm">
-                            <div className="space-y-2">
-                              <p className="font-bold flex items-center gap-2">
-                                <PartnerIcon className="h-3.5 w-3.5" />
-                                {partnerTip.title}
+                        {partnerTip ? (
+                          <TooltipContent side="top" className="max-w-xs p-3">
+                            <p className="text-xs font-medium text-foreground mb-1">{partnerTip.title}</p>
+                            {partnerTip.role && (
+                              <p className="text-2xs text-muted-foreground">
+                                Role: <span className="font-medium">{partnerTip.role}</span>
                               </p>
-                              {partnerTip.platform && (
-                                <p className="text-sm">
-                                  <span className="text-muted-foreground">{partnerTip.platformLabel}:</span>{' '}
-                                  <span className="font-medium">{partnerTip.platform}</span>
-                                </p>
-                              )}
-                              {partnerTip.role && (
-                                <p className="text-sm">
-                                  <span className="text-muted-foreground">Role:</span>{' '}
-                                  <span className="font-medium">{partnerTip.role}</span>
-                                </p>
-                              )}
-                              {partnerTip.dealCode && (
-                                <p className="text-sm">
-                                  <span className="text-muted-foreground">Deal Code:</span>{' '}
-                                  <span className="font-mono text-xs">{partnerTip.dealCode}</span>
-                                </p>
-                              )}
-                              <p className="text-xs text-muted-foreground mt-2 italic">
+                            )}
+                            {partnerTip.dealCode && (
+                              <p className="text-2xs text-muted-foreground">
+                                Deal Code: <span className="font-mono">{partnerTip.dealCode}</span>
+                              </p>
+                            )}
+                            {partnerTip.platform && (
+                              <p className="text-xs text-primary mt-1.5">
                                 → {partnerTip.strategy}
                               </p>
-                            </div>
+                            )}
+                          </TooltipContent>
+                        ) : (
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="text-xs text-muted-foreground">No partner involvement detected</p>
                           </TooltipContent>
                         )}
                       </Tooltip>
                     </td>
 
-                    {/* WHY TDR? Tags — dynamic labels + descriptions */}
-                    <td className="px-4 py-4">
-                      <div className="flex flex-wrap gap-1.5">
+                    {/* WHY TDR? Tags — dynamic labels + descriptions, backup sizing */}
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap gap-1">
                         {whyTags.map((factor, i) => {
                           const IconComponent = getFactorIcon(factor.icon);
                           const dynamicLabel = getDynamicFactorLabel(factor, deal);
                           const dynamicDesc = getDynamicFactorDescription(factor, deal);
+                          // Use brand-specific style for cloud partner, fall back to category color
+                          const pillStyle = getBrandPillStyle(factor, deal) || getFactorPillStyle(factor.color);
                           return (
                             <Tooltip key={i}>
                               <TooltipTrigger asChild>
                                 <span className={cn(
-                                  'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium cursor-help transition-all hover:shadow-sm',
-                                  getFactorPillStyle(factor.color)
+                                  'inline-flex items-center gap-1 cursor-help rounded px-1.5 py-0.5 text-2xs font-medium',
+                                  pillStyle
                                 )}>
-                                  <IconComponent className="h-3.5 w-3.5" />
+                                  <IconComponent className="h-2.5 w-2.5" />
                                   {dynamicLabel}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-sm">
-                                <div className="space-y-2">
-                                  <p className="font-bold flex items-center gap-2">
-                                    <IconComponent className="h-4 w-4" />
-                                    {factor.label}
-                                  </p>
-                                  <p className="text-sm">{dynamicDesc}</p>
-                                  <p className="text-xs text-muted-foreground italic">
-                                    → {factor.strategy}
-                                  </p>
-                                </div>
+                              <TooltipContent side="top" className="max-w-xs p-3">
+                                <p className="text-xs font-medium text-foreground mb-1.5">
+                                  {dynamicDesc}
+                                </p>
+                                <p className="text-xs text-primary">
+                                  → {factor.strategy}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           );
                         })}
                         {whyTags.length === 0 && (
-                          <span className="text-xs text-muted-foreground">-</span>
+                          <span className="text-2xs text-muted-foreground">-</span>
                         )}
                       </div>
                     </td>
 
                     {/* Action */}
-                    <td className="px-4 py-4 text-right">
+                    <td className="px-3 py-2.5 text-right">
                       <Button
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          'h-8 gap-1.5 px-3 opacity-0 transition-all group-hover:opacity-100',
-                          deal.isPinned && 'opacity-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400'
+                          'h-7 gap-1 px-2 opacity-0 transition-opacity group-hover:opacity-100',
+                          deal.isPinned && 'opacity-100'
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -562,10 +585,10 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                         }}
                       >
                         <Pin className={cn(
-                          'h-3.5 w-3.5',
-                          deal.isPinned && 'fill-current'
+                          'h-3 w-3',
+                          deal.isPinned && 'fill-primary text-primary'
                         )} />
-                        <span className="text-xs font-medium">{deal.isPinned ? 'Pinned' : 'Pin'}</span>
+                        <span className="text-xs">{deal.isPinned ? 'Pinned' : 'Pin'}</span>
                       </Button>
                     </td>
                   </tr>
