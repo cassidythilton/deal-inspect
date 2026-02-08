@@ -269,18 +269,31 @@ export function useDeals() {
       }
     }
     
-    // From SE mapping - get managers for SEs we found (excluding Dan Wentworth since those are PoC)
+    // From SE mapping - categorize all SEs and get managers
     if (seMapping) {
+      console.log(`[SE Filter] Processing ${seMapping.length} SE mappings`);
+      let pocCount = 0;
+      let regularCount = 0;
+      
       for (const mapping of seMapping) {
-        const sc = mapping['se'];
-        // Only include SE managers for SEs in our regular SE list (not PoC)
-        if (sc && salesConsultants.has(sc)) {
-          const manager = mapping['se_manager'];
-          if (manager && manager !== 'TBD' && manager !== POC_SE_MANAGER) {
-            seManagers.add(manager);
-          }
+        const se = mapping['se']?.trim();
+        const manager = mapping['se_manager']?.trim();
+        
+        if (!se) continue;
+        
+        // Add to PoC Architects if they report to Dan Wentworth
+        if (manager === POC_SE_MANAGER) {
+          pocSalesConsultants.add(se);
+          pocCount++;
+        } else if (manager && manager !== 'TBD') {
+          // Regular SE with a manager
+          seManagers.add(manager);
+          regularCount++;
         }
       }
+      
+      console.log(`[SE Filter] Found ${pocCount} PoC Architects, ${regularCount} regular SEs with managers`);
+      console.log(`[SE Filter] PoC Architects:`, Array.from(pocSalesConsultants).slice(0, 5));
     }
     
     // Also get from deals (in case of mock data)
@@ -300,6 +313,13 @@ export function useDeals() {
         quarters.add(deal.closeDateFQ);
       }
     }
+    
+    // Remove any SE from salesConsultants if they're already in pocSalesConsultants
+    for (const pocSE of pocSalesConsultants) {
+      salesConsultants.delete(pocSE);
+    }
+    
+    console.log(`[SE Filter] Final: ${salesConsultants.size} Sales Engineers, ${pocSalesConsultants.size} PoC Architects`);
     
     return {
       seManagers: Array.from(seManagers).sort(),
