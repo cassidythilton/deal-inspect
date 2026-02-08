@@ -1,6 +1,6 @@
 import { Deal } from '@/types/tdr';
 import { cn } from '@/lib/utils';
-import { Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2, TrendingUp, Sparkles, AlertTriangle } from 'lucide-react';
+import { Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2, TrendingUp, Sparkles, AlertTriangle, RefreshCw, CheckCircle2, Layers, GitMerge, Server, Briefcase, ArrowUpRight, AlertOctagon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -81,6 +81,12 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       case 'Sparkles': return Sparkles;
       case 'Clock': return Clock;
       case 'AlertTriangle': return AlertTriangle;
+      case 'Layers': return Layers;
+      case 'GitMerge': return GitMerge;
+      case 'Server': return Server;
+      case 'Briefcase': return Briefcase;
+      case 'ArrowUpRight': return ArrowUpRight;
+      case 'AlertOctagon': return AlertOctagon;
       default: return Zap;
     }
   };
@@ -178,7 +184,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="flex items-center gap-1.5 cursor-help">
-                            <Zap className="h-3 w-3 text-emerald-500" />
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                             <span className="rounded bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400">
                               [{stageInfo.num.toString().padStart(2, '0')}] {stageInfo.name}
                             </span>
@@ -244,20 +250,13 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="inline-flex cursor-help">
-                            {deal.partnersInvolved?.toLowerCase().includes('snowflake') ? (
-                              <Cloud className={cn(
+                            {deal.partnerSignal === 'strong' || deal.partnerSignal === 'moderate' ? (
+                              <RefreshCw className={cn(
                                 "h-4 w-4 mx-auto",
-                                deal.partnerSignal === 'strong' ? 'text-sky-500' :
-                                deal.partnerSignal === 'moderate' ? 'text-sky-400' :
-                                'text-muted-foreground/40'
+                                deal.partnerSignal === 'strong' ? 'text-emerald-500' : 'text-emerald-400'
                               )} />
                             ) : (
-                              <Users className={cn(
-                                "h-4 w-4 mx-auto",
-                                deal.partnerSignal === 'strong' ? 'text-teal-500' :
-                                deal.partnerSignal === 'moderate' ? 'text-teal-400' :
-                                'text-muted-foreground/40'
-                              )} />
+                              <Users className="h-4 w-4 mx-auto text-muted-foreground/40" />
                             )}
                           </div>
                         </TooltipTrigger>

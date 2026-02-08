@@ -81,8 +81,8 @@ export function TDRPriorityChart({ deals }: TDRPriorityChartProps) {
 
   return (
     <TooltipProvider>
-      <div className="h-36">
-        <div className="flex items-center gap-1 mb-2">
+      <div className="h-40">
+        <div className="flex items-center gap-1 mb-3">
           <span className="section-header">TDR PRIORITY</span>
           <Tooltip>
             <TooltipTrigger asChild>

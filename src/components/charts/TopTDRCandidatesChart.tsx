@@ -57,7 +57,8 @@ const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<
 export function TopTDRCandidatesChart({ deals }: TopTDRCandidatesChartProps) {
   const data = deals
     .map((deal) => ({
-      name: deal.account.length > 15 ? deal.account.substring(0, 15) + '...' : deal.account,
+      // Truncate at 18 chars for better readability
+      name: deal.account.length > 18 ? deal.account.substring(0, 18) + '...' : deal.account,
       score: calculateTDRScore(deal),
       fullName: deal.account,
       dealName: deal.dealName,
@@ -75,8 +76,8 @@ export function TopTDRCandidatesChart({ deals }: TopTDRCandidatesChartProps) {
 
   return (
     <TooltipProvider>
-      <div className="h-36">
-        <div className="flex items-center justify-between mb-2">
+      <div className="h-44">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1">
             <span className="section-header">TOP TDR CANDIDATES</span>
             <Tooltip>
@@ -92,19 +93,19 @@ export function TopTDRCandidatesChart({ deals }: TopTDRCandidatesChartProps) {
           </div>
           <span className="text-xs text-muted-foreground">Range: {minScore}–{maxScore}</span>
         </div>
-        <ResponsiveContainer width="100%" height="85%">
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 0 }}>
+        <ResponsiveContainer width="100%" height="88%">
+          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 35, bottom: 0, left: 5 }}>
             <XAxis type="number" domain={[0, 50]} hide />
             <YAxis
               type="category"
               dataKey="name"
               axisLine={false}
               tickLine={false}
-              width={100}
+              width={115}
               tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
             />
             <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--secondary))' }} />
-            <Bar dataKey="score" radius={[0, 4, 4, 0]} barSize={14} fill="hsl(217, 91%, 60%)">
+            <Bar dataKey="score" radius={[0, 4, 4, 0]} barSize={16} fill="hsl(217, 91%, 60%)">
               <LabelList 
                 dataKey="score" 
                 position="right" 

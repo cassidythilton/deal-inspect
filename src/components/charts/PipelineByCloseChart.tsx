@@ -102,8 +102,8 @@ export function PipelineByCloseChart({ deals }: PipelineByCloseChartProps) {
 
   return (
     <TooltipProvider>
-      <div className="h-36">
-        <div className="flex items-center justify-between mb-2">
+      <div className="h-44">
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1">
             <span className="section-header">TDR PIPELINE BY CLOSE</span>
             <Tooltip>
@@ -117,22 +117,22 @@ export function PipelineByCloseChart({ deals }: PipelineByCloseChartProps) {
               </TooltipContent>
             </Tooltip>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             {(['D', 'W', 'M'] as TimeView[]).map((label) => (
               <button
                 key={label}
                 onClick={() => setTimeView(label)}
                 className={cn(
-                  'px-1.5 py-0.5 text-2xs rounded transition-colors',
+                  'px-2 py-0.5 text-xs rounded transition-colors',
                   timeView === label 
-                    ? 'bg-secondary text-foreground' 
+                    ? 'border border-border bg-secondary text-foreground' 
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 {label}
               </button>
             ))}
-            <span className="text-xs text-muted-foreground ml-2">{maxLabel}</span>
+            <span className="text-xs text-muted-foreground ml-3">{maxLabel}</span>
           </div>
         </div>
         <ResponsiveContainer width="100%" height="75%">
