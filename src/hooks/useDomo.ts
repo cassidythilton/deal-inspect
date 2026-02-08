@@ -187,10 +187,25 @@ export function useDeals() {
     const ALLOWED_MANAGERS = ['Andrew Rich', 'John Pasalano', 'Keith White', 'Taylor Rust', 'Casey Morgan'];
     const allowedSet = new Set(ALLOWED_MANAGERS.map(m => m.toLowerCase()));
     
+    // Current year for filtering
+    const currentYear = new Date().getFullYear();
+    
     const seManagers = new Set<string>();
     const salesConsultants = new Set<string>();
     const forecastManagers = new Set<string>();
     const quarters = new Set<string>();
+    
+    // Helper to check if quarter is within current year or before
+    const isValidQuarter = (q: string): boolean => {
+      if (!q) return false;
+      // Parse formats like "2026-Q1" or "Q1 2026"
+      const match = q.match(/(\d{4})/);
+      if (match) {
+        const year = parseInt(match[1]);
+        return year <= currentYear;
+      }
+      return false;
+    };
     
     // Only get SEs from deals belonging to allowed managers
     if (opportunities) {
@@ -209,11 +224,11 @@ export function useDeals() {
           forecastManagers.add(mgrName);
         }
         
-        // Get quarters from Close Date FQ or Current FQ
+        // Get quarters from Close Date FQ or Current FQ - only if within current year
         const closeFQ = opp['Close Date FQ'] as string | undefined;
         const currentFQ = opp['Current FQ'] as string | undefined;
-        if (closeFQ) quarters.add(closeFQ);
-        if (currentFQ) quarters.add(currentFQ);
+        if (closeFQ && isValidQuarter(closeFQ)) quarters.add(closeFQ);
+        if (currentFQ && isValidQuarter(currentFQ)) quarters.add(currentFQ);
       }
     }
     
@@ -239,7 +254,7 @@ export function useDeals() {
       if (deal.salesConsultant) {
         salesConsultants.add(deal.salesConsultant);
       }
-      if (deal.closeDateFQ) {
+      if (deal.closeDateFQ && isValidQuarter(deal.closeDateFQ)) {
         quarters.add(deal.closeDateFQ);
       }
     }
