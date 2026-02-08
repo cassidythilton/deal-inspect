@@ -9,7 +9,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AlertCircle, CheckCircle, FileText, Link, Save, Sparkles } from 'lucide-react';
+import { 
+  AlertCircle, 
+  CheckCircle, 
+  FileText, 
+  Link, 
+  Save, 
+  Sparkles,
+  Building2,
+  Users,
+  User,
+  Info,
+} from 'lucide-react';
 import { TDRSummaryModal } from './TDRSummaryModal';
 
 interface TDRIntelligenceProps {
@@ -26,30 +37,82 @@ export function TDRIntelligence({
   riskFlags,
 }: TDRIntelligenceProps) {
   const [showSummary, setShowSummary] = useState(false);
+
+  // Get short stage name
+  const getShortStage = (stage: string) => {
+    const lower = stage.toLowerCase();
+    if (lower.includes('validation')) return 'Validation';
+    if (lower.includes('discovery')) return 'Discovery';
+    if (lower.includes('closing')) return 'Closing';
+    if (lower.includes('proposal')) return 'Proposal';
+    return stage.split(' ').slice(0, 1).join(' ');
+  };
+
   return (
     <div className="flex h-full flex-col">
       {/* Deal Info Header */}
       {deal && (
         <div className="border-b border-border/60 p-4">
-          <h3 className="text-sm font-medium">{deal.account}</h3>
-          <p className="text-xs text-muted-foreground">{deal.dealName}</p>
-          <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="tabular-nums">${(deal.acv / 1000).toFixed(0)}K ACV</span>
+          <h3 className="text-base font-semibold">{deal.account}</h3>
+          <p className="text-sm text-muted-foreground">{deal.dealName}</p>
+          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="font-medium tabular-nums">${(deal.acv / 1000).toFixed(0)}K ACV</span>
             <span>·</span>
-            <span>{deal.stage}</span>
+            <span>{getShortStage(deal.stage)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Deal Team Section */}
+      {deal && (
+        <div className="border-b border-border/60 p-4">
+          <p className="section-header mb-3">DEAL TEAM</p>
+          <div className="space-y-3">
+            {/* Account Executive */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                <Building2 className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Account Executive</p>
+                <p className="text-sm font-medium">{deal.owner || 'Not assigned'}</p>
+              </div>
+            </div>
+            
+            {/* SE Manager */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900/30">
+                <Users className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">SE Manager</p>
+                <p className="text-sm font-medium">{deal.seManager || 'Not assigned'}</p>
+              </div>
+            </div>
+            
+            {/* Sales Consultant (SE) */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
+                <User className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Sales Consultant (SE)</p>
+                <p className="text-sm font-medium">{deal.salesConsultant || 'Not assigned'}</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Readiness Score */}
       <div className="border-b border-border/60 p-4">
-        <p className="section-header mb-2">Readiness Score</p>
+        <p className="section-header mb-2">READINESS SCORE</p>
         <div
           className={cn(
             'inline-flex items-center gap-2 rounded-md border px-3 py-2',
-            readinessLevel === 'green' && 'readiness-green',
-            readinessLevel === 'yellow' && 'readiness-yellow',
-            readinessLevel === 'red' && 'readiness-red'
+            readinessLevel === 'green' && 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400',
+            readinessLevel === 'yellow' && 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400',
+            readinessLevel === 'red' && 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-400'
           )}
         >
           {readinessLevel === 'green' ? (
@@ -62,45 +125,52 @@ export function TDRIntelligence({
       </div>
 
       {/* Risk Flags */}
-      {riskFlags.length > 0 && (
-        <div className="border-b border-border/60 p-4">
-          <p className="section-header mb-2">Risk Flags</p>
+      <div className="border-b border-border/60 p-4">
+        <p className="section-header mb-2">RISK FLAGS</p>
+        {riskFlags.length > 0 ? (
           <ul className="space-y-1.5">
             {riskFlags.map((flag, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs">
-                <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-warning" />
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
                 <span className="text-muted-foreground">{flag}</span>
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Info className="h-3.5 w-3.5 text-muted-foreground/60" />
+            <span>No significant risks identified</span>
+          </div>
+        )}
+      </div>
 
       {/* Missing Information */}
-      {missingInfo.length > 0 && (
-        <div className="border-b border-border/60 p-4">
-          <p className="section-header mb-2">Missing Information</p>
+      <div className="border-b border-border/60 p-4">
+        <p className="section-header mb-2">MISSING INFORMATION</p>
+        {missingInfo.length > 0 ? (
           <ul className="space-y-1.5">
             {missingInfo.map((info, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs">
-                <div className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
                 <span className="text-muted-foreground">{info}</span>
               </li>
             ))}
           </ul>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">All required information collected</p>
+        )}
+      </div>
 
       {/* Evidence Links */}
       <div className="border-b border-border/60 p-4">
-        <p className="section-header mb-2">Evidence</p>
+        <p className="section-header mb-2">EVIDENCE</p>
         <div className="space-y-1">
-          <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-            <Link className="h-3 w-3" />
+          <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            <Link className="h-3.5 w-3.5" />
             <span>Opportunity in CRM</span>
           </button>
-          <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-            <FileText className="h-3 w-3" />
+          <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            <FileText className="h-3.5 w-3.5" />
             <span>Technical Assessment</span>
           </button>
         </div>
@@ -108,9 +178,9 @@ export function TDRIntelligence({
 
       {/* Outcome Selector */}
       <div className="border-b border-border/60 p-4">
-        <p className="section-header mb-2">Final Outcome</p>
+        <p className="section-header mb-2">FINAL OUTCOME</p>
         <Select>
-          <SelectTrigger className="h-9 text-sm">
+          <SelectTrigger className="h-10 text-sm">
             <SelectValue placeholder="Select outcome..." />
           </SelectTrigger>
           <SelectContent>

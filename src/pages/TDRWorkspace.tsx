@@ -1,20 +1,29 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TDRSteps } from '@/components/TDRSteps';
 import { TDRInputs } from '@/components/TDRInputs';
 import { TDRIntelligence } from '@/components/TDRIntelligence';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Users, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { useDeals } from '@/hooks/useDomo';
 
 export default function TDRWorkspace() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dealId = searchParams.get('deal') || '1';
   
-  const deal = mockDeals.find((d) => d.id === dealId) || mockDeals[0];
+  // Try to get deal from Domo data first, fall back to mock
+  const { deals: domoDeals, isDomoConnected } = useDeals();
+  
+  const deal = useMemo(() => {
+    if (isDomoConnected && domoDeals.length > 0) {
+      return domoDeals.find((d) => d.id === dealId) || domoDeals[0];
+    }
+    return mockDeals.find((d) => d.id === dealId) || mockDeals[0];
+  }, [domoDeals, isDomoConnected, dealId]);
   
   const [steps, setSteps] = useState<TDRStep[]>(tdrSteps);
   
@@ -29,27 +38,52 @@ export default function TDRWorkspace() {
     );
   };
 
-  // Mock intelligence data
-  const missingInfo = ['Partner commitment documentation', 'Technical architecture diagram', 'Executive sponsor confirmation'];
-  const riskFlags = ['Competitive pressure from Tableau', 'Q1 budget cycle constraint'];
+  // Mock intelligence data based on deal
+  const missingInfo = deal.isPartnerPlay 
+    ? ['Partner commitment documentation', 'Technical architecture diagram']
+    : ['Technical architecture diagram', 'Executive sponsor confirmation'];
+  
+  const riskFlags = deal.riskLevel === 'green' 
+    ? []
+    : deal.riskLevel === 'yellow'
+    ? ['Competitive pressure identified']
+    : ['Critical timeline risk', 'Budget constraints'];
 
   return (
     <div className="flex h-screen flex-col">
-      {/* Minimal header */}
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1 text-muted-foreground"
-          onClick={() => navigate('/')}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <span className="text-xs">Back</span>
-        </Button>
-        <div className="h-4 w-px bg-border" />
-        <div>
-          <span className="text-sm font-medium">{deal.account}</span>
-          <span className="ml-2 text-xs text-muted-foreground">TDR Workspace</span>
+      {/* Header with Manager/SE pills */}
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1 text-muted-foreground"
+            onClick={() => navigate('/')}
+          >
+            <ChevronLeft className="h-4 w-4" />
+            <span className="text-xs">Back</span>
+          </Button>
+          <div className="h-4 w-px bg-border" />
+          <div>
+            <span className="text-sm font-medium">{deal.account}</span>
+            <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
+              draft
+            </span>
+          </div>
+        </div>
+        
+        {/* Manager and SE pills */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5">
+            <Users className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Manager:</span>
+            <span className="text-xs font-medium">{deal.owner}</span>
+          </div>
+          <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5">
+            <User className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">SE:</span>
+            <span className="text-xs font-medium">{deal.salesConsultant || 'Not assigned'}</span>
+          </div>
         </div>
       </header>
 
@@ -66,7 +100,7 @@ export default function TDRWorkspace() {
         </main>
 
         {/* Right Panel - Intelligence */}
-        <aside className="w-72 shrink-0 border-l border-border bg-card">
+        <aside className="w-80 shrink-0 border-l border-border bg-card overflow-y-auto">
           <TDRIntelligence
             deal={deal}
             readinessLevel={deal.riskLevel}
