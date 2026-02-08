@@ -14,13 +14,20 @@ import { Info } from 'lucide-react';
 // Default manager on load
 const DEFAULT_MANAGER = ALLOWED_MANAGERS[0]; // Andrew Rich
 
+// Get current quarter in format matching Domo data (e.g., "2026-Q1")
+const getCurrentQuarter = () => {
+  const now = new Date();
+  const q = Math.floor(now.getMonth() / 3) + 1;
+  return `${now.getFullYear()}-Q${q}`;
+};
+
 export default function CommandCenter() {
   const [activeView, setActiveView] = useState<'recommended' | 'agenda' | 'all'>('recommended');
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [seFilters, setSEFilters] = useState<SEFilterState>({
     selectedSE: null,
     selectedManager: DEFAULT_MANAGER, // Default to first manager
-    selectedQuarters: ['Q1 2026'], // Default to Q1 2026
+    selectedQuarters: [getCurrentQuarter()], // Default to current quarter
     selectedPriority: null,
     includeCurrentQuarter: true,
   });

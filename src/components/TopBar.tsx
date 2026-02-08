@@ -90,11 +90,11 @@ export function TopBar({
     onSEFilterChange?.({ selectedQuarters: null });
   };
 
-  // Get current quarter label for display
+  // Get current quarter label for display (format: "2026-Q1")
   const getCurrentQuarter = () => {
     const now = new Date();
     const q = Math.floor(now.getMonth() / 3) + 1;
-    return `Q${q} ${now.getFullYear()}`;
+    return `${now.getFullYear()}-Q${q}`;
   };
   const currentQuarter = getCurrentQuarter();
 
