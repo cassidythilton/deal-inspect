@@ -1,7 +1,7 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "tdr-deal-inspection",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "deploy": "npm run build && cd dist && domo publish",
+    "deploy:zip": "npm run build && cd dist && zip -r ../tdr-deal-inspection.zip . && cd .. && echo '✅ Ready to deploy: tdr-deal-inspection.zip'",
+    "deploy:check": "echo '📋 Checking deploy readiness...' && test -f public/manifest.json && echo '✓ manifest.json' && test -f public/thumbnail.png && echo '✓ thumbnail.png' && grep -q 'ryuu.js' index.html && echo '✓ Domo SDK in index.html' && echo '✅ All checks passed!'"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

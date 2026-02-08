@@ -1,0 +1,88 @@
+{
+  "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
+  "name": "TDR Deal Inspection",
+  "version": "1.5.0",
+  "datasetsMapping": [
+    {
+      "dataSetId": "79b2d8a2-2b91-41db-b1d2-532fc008f14c",
+      "alias": "forecastsmagic",
+      "fields": [
+        { "alias": "MgrForecastName", "columnName": "Mgr Forecast Name" },
+        { "alias": "ForecastQuarter", "columnName": "Forecast Quarter" },
+        { "alias": "LikelyCall", "columnName": "Likely Call" },
+        { "alias": "HighCall", "columnName": "High Call" },
+        { "alias": "LowCall", "columnName": "Low Call" },
+        { "alias": "ForecastQtrType", "columnName": "Forecast Qtr Type" },
+        { "alias": "ForecasterName", "columnName": "Forecaster Name" }
+      ]
+    },
+    {
+      "dataSetId": "6f12ec25-0018-4ed3-adfe-93ebdfad41fe",
+      "alias": "opportunitiesmagic",
+      "fields": [
+        { "alias": "OpportunityId", "columnName": "Opportunity Id" },
+        { "alias": "OpportunityName", "columnName": "Opportunity Name" },
+        { "alias": "AccountName", "columnName": "Account Name" },
+        { "alias": "MgrForecastName", "columnName": "Mgr Forecast Name" },
+        { "alias": "DomoForecastCategory", "columnName": "Domo Forecast Category" },
+        { "alias": "Stage", "columnName": "Stage" },
+        { "alias": "CloseDate", "columnName": "Close Date" },
+        { "alias": "CurrentFQ", "columnName": "Current FQ" },
+        { "alias": "CloseDateFQ", "columnName": "Close Date FQ" },
+        { "alias": "Likely", "columnName": "Likely" },
+        { "alias": "High", "columnName": "High" },
+        { "alias": "AcvUsd", "columnName": "ACV (USD)" },
+        { "alias": "AcvRecurring", "columnName": "ACV (USD) Recurring" },
+        { "alias": "AcvNonRecurring", "columnName": "ACV (USD) Non-Recurring" },
+        { "alias": "TcvUsd", "columnName": "TCV (USD)" },
+        { "alias": "IsWon", "columnName": "Is Won" },
+        { "alias": "LastActivityDate", "columnName": "Last Activity Date" },
+        { "alias": "StageAge", "columnName": "Stage Age" },
+        { "alias": "NumberOfCompetitors", "columnName": "Number of Competitors" },
+        { "alias": "DomoOpportunityOwner", "columnName": "Domo Opportunity Owner" },
+        { "alias": "LastModifiedDate", "columnName": "Last Modified Date" },
+        { "alias": "Type", "columnName": "Type" },
+        { "alias": "LeadSource", "columnName": "Lead Source" },
+        { "alias": "PartnerInfluence", "columnName": "Partner Influence" },
+        { "alias": "PartnersInvolved", "columnName": "Partners Involved" },
+        { "alias": "PartnerTier", "columnName": "Partner Tier" },
+        { "alias": "PartnerType", "columnName": "Partner Type" },
+        { "alias": "SnowflakeTeamPicklist", "columnName": "Snowflake Team Picklist" },
+        { "alias": "SalesConsultant", "columnName": "Sales Consultant" },
+        { "alias": "DealCode", "columnName": "Deal Code" },
+        { "alias": "PrimaryPartnerRole", "columnName": "Primary Partner Role" }
+      ]
+    },
+    {
+      "dataSetId": "62c805ae-4bad-4c17-8606-fc7c83c70213",
+      "alias": "wcpweekly",
+      "fields": [
+        { "alias": "MgrForecastName", "columnName": "Mgr Forecast Name" },
+        { "alias": "ForecastCategory", "columnName": "Forecast Category" },
+        { "alias": "ForecastCategoryBuckets", "columnName": "Forecast Category Buckets" },
+        { "alias": "SfdcAcv", "columnName": "SFDC ACV" },
+        { "alias": "Likely", "columnName": "Likely" },
+        { "alias": "High", "columnName": "High" },
+        { "alias": "MgrForecastTeam", "columnName": "Mgr Forecast Team" },
+        { "alias": "BatchId", "columnName": "_BATCH_ID_" },
+        { "alias": "BatchLastRun", "columnName": "_BATCH_LAST_RUN_" }
+      ]
+    },
+    {
+      "dataSetId": "6c2d47a4-c793-4829-8436-d2a09a25c713",
+      "alias": "semapping",
+      "fields": [
+        { "alias": "SalesConsultant", "columnName": "Sales Consultant" },
+        { "alias": "SolutionsConsultant", "columnName": "Solutions Consultant" },
+        { "alias": "PocSalesConsultant", "columnName": "PoC Sales Consultant" },
+        { "alias": "SeManager", "columnName": "SE Manager" }
+      ]
+    }
+  ],
+  "size": {
+    "width": 1,
+    "height": 1
+  },
+  "fullpage": true,
+  "fileName": "manifest.json"
+}
