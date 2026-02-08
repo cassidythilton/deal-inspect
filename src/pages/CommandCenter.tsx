@@ -5,7 +5,7 @@ import { AgendaSection } from '@/components/AgendaSection';
 import { TopTDRCandidatesChart } from '@/components/charts/TopTDRCandidatesChart';
 import { TDRPriorityChart } from '@/components/charts/TDRPriorityChart';
 import { PipelineByCloseChart } from '@/components/charts/PipelineByCloseChart';
-import { mockDeals, hygieneIssues } from '@/data/mockData';
+import { mockDeals } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
 import { MAX_STAGE_AGE_DAYS, TDR_PRIORITY_THRESHOLDS, ALLOWED_MANAGERS } from '@/lib/constants';
 import { Deal } from '@/types/tdr';
@@ -25,6 +25,7 @@ const getCurrentQuarter = () => {
 export default function CommandCenter() {
   const [activeView, setActiveView] = useState<'recommended' | 'agenda' | 'all'>('recommended');
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+  const [hasAppliedSuggestions, setHasAppliedSuggestions] = useState(false);
   const [seFilters, setSEFilters] = useState<SEFilterState>({
     selectedSEManager: null,        // SE Manager filter
     selectedSE: null,               // Individual SE filter
@@ -35,7 +36,25 @@ export default function CommandCenter() {
   });
   
   // Fetch deals from Domo (pre-filtered for stage age > 365 days)
-  const { deals: domoDeals, filterOptions, isLoading, isDomoConnected, refetch } = useDeals();
+  const {
+    deals: domoDeals, filterOptions, isLoading, isDomoConnected, refetch,
+    suggestedDealIds, aiRecommendations, aiStatus,
+  } = useDeals();
+
+  // Auto-pin AI-suggested deals (once, on first load)
+  useEffect(() => {
+    if (suggestedDealIds.size > 0 && !hasAppliedSuggestions) {
+      console.log(`[CommandCenter] Auto-pinning ${suggestedDealIds.size} AI-suggested deals`);
+      setPinnedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of suggestedDealIds) {
+          next.add(id);
+        }
+        return next;
+      });
+      setHasAppliedSuggestions(true);
+    }
+  }, [suggestedDealIds, hasAppliedSuggestions]);
   
   // Pre-filter to only deals from ALLOWED_MANAGERS
   const baseDeals = useMemo(() => {
@@ -122,6 +141,15 @@ export default function CommandCenter() {
   }, [baseDeals, pinnedIds, seFilters]);
 
   const pinnedDeals = deals.filter((d) => d.isPinned);
+  
+  // Build a lookup of AI recommendation data for pinned deals
+  const aiRecommendationMap = useMemo(() => {
+    const map = new Map<string, typeof aiRecommendations[0]>();
+    for (const rec of aiRecommendations) {
+      map.set(rec.opportunityId, rec);
+    }
+    return map;
+  }, [aiRecommendations]);
   
   // Recommended deals: Prioritize by critical factors score
   // Key insight: Early-stage deals (Stage 2-3) are the SWEET SPOT for TDR
@@ -274,9 +302,14 @@ export default function CommandCenter() {
             <DealsTable deals={filteredDeals} onPinDeal={handlePinDeal} />
           </section>
 
-          {/* Zone 4: Agenda + Hygiene */}
+          {/* Zone 4: Agenda */}
           <section>
-            <AgendaSection pinnedDeals={pinnedDeals} hygieneIssues={hygieneIssues} />
+            <AgendaSection
+              pinnedDeals={pinnedDeals}
+              suggestedDealIds={suggestedDealIds}
+              aiRecommendationMap={aiRecommendationMap}
+              aiStatus={aiStatus}
+            />
           </section>
         </div>
       </main>

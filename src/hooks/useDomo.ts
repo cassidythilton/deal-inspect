@@ -22,6 +22,8 @@ import { appDb } from '@/lib/appDb';
 import type { TDRSession } from '@/lib/appDb';
 import type { TDRSessionSummary } from '@/types/tdr';
 import { getAppSettings } from '@/lib/appSettings';
+import { generateTDRRecommendations, isAIEnabled } from '@/lib/domoAi';
+import type { TDRRecommendation } from '@/lib/domoAi';
 
 export const queryKeys = {
   opportunities: ['opportunities'] as const,
@@ -362,10 +364,53 @@ export function useDeals() {
     };
   }, [seMappingData, seMappingStatus, opportunities, deals]);
 
+  // ── Domo AI: TDR candidate recommendations ──
+  const [aiRecommendations, setAiRecommendations] = useState<TDRRecommendation[]>([]);
+  const [aiStatus, setAiStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
+
+  const fetchAIRecommendations = useCallback(async () => {
+    if (!isDomoEnvironment() || !isAIEnabled()) {
+      setAiStatus('loaded');
+      return;
+    }
+    if (!opportunities || opportunities.length === 0) return;
+
+    setAiStatus('loading');
+    try {
+      console.log('[useDomo] Fetching Domo AI TDR recommendations...');
+      const recs = await generateTDRRecommendations(opportunities);
+      console.log(`[useDomo] AI returned ${recs.length} recommendations`);
+      setAiRecommendations(recs);
+      setAiStatus('loaded');
+    } catch (err) {
+      console.error('[useDomo] AI recommendations failed:', err);
+      setAiStatus('error');
+    }
+  }, [opportunities]);
+
+  // Trigger AI call once opportunities are loaded
+  useEffect(() => {
+    if (opportunities && opportunities.length > 0 && aiStatus === 'idle') {
+      fetchAIRecommendations();
+    }
+  }, [opportunities, aiStatus, fetchAIRecommendations]);
+
+  // Derive the IDs of AI-suggested deals (top 3-5)
+  const suggestedDealIds: Set<string> = useMemo(() => {
+    if (aiRecommendations.length === 0) return new Set();
+    // Take top 5 by AI score, minimum score ≥ 50
+    const top = aiRecommendations
+      .filter((r) => r.score >= 50)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+    return new Set(top.map((r) => r.opportunityId));
+  }, [aiRecommendations]);
+
   const refetch = useCallback(() => {
     refetchOpps();
     fetchSEMappingDirect();
     fetchTDRStatus();
+    setAiStatus('idle'); // will re-trigger when opportunities reload
   }, [refetchOpps, fetchSEMappingDirect, fetchTDRStatus]);
 
   return {
@@ -378,5 +423,9 @@ export function useDeals() {
     isDomoConnected: isDomoEnvironment(),
     seMappingStatus,
     tdrStatusLoaded,
+    // AI Recommendations
+    aiRecommendations,
+    suggestedDealIds,
+    aiStatus,
   };
 }
