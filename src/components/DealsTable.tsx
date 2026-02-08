@@ -422,7 +422,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className={cn(
-                            "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium cursor-help",
+                            "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium cursor-help whitespace-nowrap",
                             getStageBadgeStyle(stageNum)
                           )}>
                             <CheckCircle2 className={cn(

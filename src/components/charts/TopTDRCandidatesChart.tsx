@@ -33,7 +33,7 @@ const getBarColor = (score: number): string => {
   return 'hsl(217, 30%, 60%)';                    // Gray-blue
 };
 
-// Custom tooltip component with rich information
+// Custom tooltip — compact, matching backup
 const CustomTooltip = ({ active, payload }: { 
   active?: boolean; 
   payload?: Array<{ payload: ChartDataPoint }> 
@@ -44,30 +44,15 @@ const CustomTooltip = ({ active, payload }: {
   const priority = getPriorityFromScore(data.score);
   
   return (
-    <div className="bg-card border border-border rounded-lg shadow-xl p-4 text-sm min-w-[220px]">
-      <p className="font-bold text-foreground">{data.fullName}</p>
-      <p className="text-muted-foreground text-xs mt-0.5 line-clamp-2">{data.dealName}</p>
-      <div className="mt-3 pt-2 border-t border-border">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">TDR Score</span>
-          <span className="font-bold text-lg">{data.score}</span>
-        </div>
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-muted-foreground">Priority</span>
-          <span className={`font-medium ${
-            priority === 'CRITICAL' ? 'text-emerald-600' :
-            priority === 'HIGH' ? 'text-teal-600' :
-            priority === 'MEDIUM' ? 'text-amber-600' : 'text-muted-foreground'
-          }`}>{priority}</span>
-        </div>
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-muted-foreground">ACV</span>
-          <span className="font-medium">{formatCurrency(data.acv)}</span>
-        </div>
-        <div className="flex items-center justify-between mt-1">
-          <span className="text-muted-foreground">Stage</span>
-          <span className="font-medium">{data.stage}</span>
-        </div>
+    <div className="rounded-md bg-popover px-3 py-2 text-xs shadow-md border">
+      <div className="font-medium">{data.fullName}</div>
+      <div className="text-muted-foreground">{data.dealName}</div>
+      <div className="flex items-center gap-2 mt-1">
+        <span className="font-semibold">TDR: {data.score}</span>
+        <span className="text-muted-foreground">({priority})</span>
+      </div>
+      <div className="text-muted-foreground mt-0.5">
+        {formatCurrency(data.acv)} • {data.stage}
       </div>
     </div>
   );
@@ -89,98 +74,103 @@ export function TopTDRCandidatesChart({ deals }: TopTDRCandidatesChartProps) {
     .map((deal) => {
       const score = deal.tdrScore ?? calculateTDRScore(deal);
       return {
-        // Show more of the account name for readability
-        name: deal.account.length > 20 ? deal.account.substring(0, 20) + '...' : deal.account,
+        name: deal.account.length > 18 ? deal.account.substring(0, 18) + '...' : deal.account,
         score,
         fullName: deal.account,
         dealName: deal.dealName,
         acv: deal.acv,
-        stage: deal.stage.replace(/^\d+:\s*/, ''), // Remove "2: " prefix if present
+        stage: deal.stage.replace(/^\d+:\s*/, ''),
         fill: getBarColor(score),
       };
     })
     .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 
-  // Calculate range for display
+  // Range label
   const maxScore = data.length > 0 ? Math.max(...data.map(d => d.score)) : 50;
   const minScore = data.length > 0 ? Math.min(...data.map(d => d.score)) : 0;
+  const rangeLabel = minScore === maxScore ? `All scoring ${maxScore}` : `Range: ${minScore}–${maxScore}`;
 
   if (data.length === 0) {
     return (
-      <div className="h-52 flex items-center justify-center text-muted-foreground text-sm">
-        No deals to display
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="section-header">Top TDR Candidates</span>
+        </div>
+        <div className="flex items-center justify-center h-24 text-xs text-muted-foreground">
+          No deal data
+        </div>
       </div>
     );
   }
 
   return (
     <TooltipProvider delayDuration={100}>
-      <div className="h-52">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
+      <div className="space-y-2">
+        {/* Header — matching backup */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Top TDR Candidates
-            </span>
+            <span className="section-header">Top TDR Candidates</span>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="h-3.5 w-3.5 text-muted-foreground/40 cursor-help hover:text-muted-foreground transition-colors" />
+                <Info className="h-3 w-3 text-muted-foreground/50 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs">
-                <p className="text-sm">
-                  Deals ranked by TDR priority score. Higher scores indicate greater 
-                  technical complexity and opportunity for SE engagement.
+                <p className="text-xs">
+                  <strong>Top 5 deals by TDR Score</strong><br />
+                  Color indicates priority cohort:<br />
+                  • <span className="text-red-500">Red</span>: Critical (75+)<br />
+                  • <span className="text-amber-500">Amber</span>: High (50-74)<br />
+                  • <span className="text-sky-500">Blue</span>: Medium (25-49)<br />
+                  • <span className="text-gray-400">Gray</span>: Low (&lt;25)
                 </p>
               </TooltipContent>
             </Tooltip>
           </div>
-          <span className="text-xs text-muted-foreground font-medium">
-            Range: {minScore}–{maxScore}
-          </span>
+          <span className="text-2xs text-muted-foreground">{rangeLabel}</span>
         </div>
 
-        {/* Chart */}
-        <ResponsiveContainer width="100%" height="85%">
-          <BarChart 
-            data={data} 
-            layout="vertical" 
-            margin={{ top: 0, right: 40, bottom: 0, left: 0 }}
-          >
-            <XAxis type="number" domain={[0, 100]} hide />
-            <YAxis
-              type="category"
-              dataKey="name"
-              axisLine={false}
-              tickLine={false}
-              width={130}
-              tick={{ 
-                fontSize: 12, 
-                fill: 'hsl(var(--foreground))',
-                fontWeight: 500,
-              }}
-            />
-            <RechartsTooltip 
-              content={<CustomTooltip />} 
-              cursor={{ fill: 'hsl(var(--muted))', fillOpacity: 0.3 }} 
-            />
-            <Bar 
-              dataKey="score" 
-              radius={[0, 6, 6, 0]} 
-              barSize={22}
+        {/* Chart — backup uses h-28 */}
+        <div className="h-28">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart 
+              data={data} 
+              layout="vertical" 
+              margin={{ top: 0, right: 35, bottom: 0, left: 0 }}
             >
-              <LabelList 
-                dataKey="score" 
-                position="right" 
-                style={{ 
-                  fontSize: 12, 
-                  fill: 'hsl(var(--muted-foreground))',
-                  fontWeight: 600,
-                }} 
+              <XAxis type="number" hide domain={[0, 100]} />
+              <YAxis
+                type="category"
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                width={100}
+                tick={{ 
+                  fontSize: 10, 
+                  fill: 'hsl(127, 5%, 55%)',
+                }}
               />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+              <RechartsTooltip 
+                content={<CustomTooltip />} 
+                cursor={{ fill: 'hsl(127, 5%, 95%)', radius: 4 }} 
+              />
+              <Bar 
+                dataKey="score" 
+                radius={[0, 4, 4, 0]} 
+              >
+                <LabelList 
+                  dataKey="score" 
+                  position="right" 
+                  style={{ 
+                    fontSize: 10, 
+                    fill: 'hsl(127, 5%, 45%)',
+                  }}
+                  formatter={(v: number) => v.toString()}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </TooltipProvider>
   );
