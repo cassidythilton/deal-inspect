@@ -64,11 +64,14 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
   'AcvUsd': 'ACV (USD)',
   'CloseDate': 'Close Date',
   'CloseDateFQ': 'Close Date FQ',
+  'CurrentFQ': 'Current FQ',
   'DomoOpportunityOwner': 'Domo Opportunity Owner',
+  'MgrForecastName': 'Mgr Forecast Name',
   'SalesConsultant': 'Sales Consultant',
   'PrimaryPartnerRole': 'Primary Partner Role',
   'PartnersInvolved': 'Partners Involved',
   'DomoForecastCategory': 'Domo Forecast Category',
+  'NumberOfCompetitors': 'Number of Competitors',
 };
 
 const SE_MAPPING_FIELD_MAP: Record<string, string> = {

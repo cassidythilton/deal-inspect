@@ -81,6 +81,9 @@ function transformOpportunityToDeal(opp: DomoOpportunity): Deal {
   if (acv > 100000) tdrScore += 5;
   tdrScore = Math.min(50, tdrScore);
 
+  // Get manager name (Mgr Forecast Name is the sales manager)
+  const mgrForecastName = (opp['Mgr Forecast Name'] as string) || opp['Domo Opportunity Owner'] || 'Unassigned';
+
   return {
     id: opp['Opportunity Id'],
     account: opp['Account Name'] || 'Unknown Account',
@@ -90,11 +93,11 @@ function transformOpportunityToDeal(opp: DomoOpportunity): Deal {
     stageAge: opp['Stage Age'] ?? undefined,
     acv,
     closeDate: opp['Close Date'] || new Date().toISOString().split('T')[0],
-    closeDateFQ: opp['Close Date FQ'] || undefined,
+    closeDateFQ: (opp['Close Date FQ'] as string) || undefined,
     partnerSignal,
     riskLevel,
     reasons: reasons.slice(0, 3),
-    owner: opp['Domo Opportunity Owner'] || 'Unassigned',
+    owner: mgrForecastName,
     salesConsultant: opp['Sales Consultant'] || undefined,
     tdrScore,
     isCompetitive: !!isCompetitive,
@@ -178,6 +181,8 @@ export function useDeals() {
   const filterOptions = useMemo(() => {
     const seManagers = new Set<string>();
     const salesConsultants = new Set<string>();
+    const forecastManagers = new Set<string>();
+    const quarters = new Set<string>();
     
     // From SE mapping - get managers
     if (seMapping) {
@@ -189,13 +194,25 @@ export function useDeals() {
       }
     }
     
-    // From opportunities - get unique Sales Consultants
+    // From opportunities - get unique Sales Consultants, Managers, and Quarters
     if (opportunities) {
       for (const opp of opportunities) {
         const sc = opp['Sales Consultant'];
         if (sc) {
           salesConsultants.add(sc);
         }
+        
+        // Get forecast manager (Mgr Forecast Name)
+        const mgrName = opp['Mgr Forecast Name'] as string | undefined;
+        if (mgrName) {
+          forecastManagers.add(mgrName);
+        }
+        
+        // Get quarters from Close Date FQ or Current FQ
+        const closeFQ = opp['Close Date FQ'] as string | undefined;
+        const currentFQ = opp['Current FQ'] as string | undefined;
+        if (closeFQ) quarters.add(closeFQ);
+        if (currentFQ) quarters.add(currentFQ);
       }
     }
     
@@ -204,11 +221,16 @@ export function useDeals() {
       if (deal.salesConsultant) {
         salesConsultants.add(deal.salesConsultant);
       }
+      if (deal.closeDateFQ) {
+        quarters.add(deal.closeDateFQ);
+      }
     }
     
     return {
       seManagers: Array.from(seManagers).sort(),
       salesConsultants: Array.from(salesConsultants).sort(),
+      forecastManagers: Array.from(forecastManagers).sort(),
+      quarters: Array.from(quarters).sort(),
     };
   }, [seMapping, opportunities, deals]);
 

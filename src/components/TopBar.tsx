@@ -8,17 +8,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { managers, quarters } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 
 export interface SEFilterOptions {
   seManagers: string[];
   salesConsultants: string[];
+  forecastManagers: string[];
+  quarters: string[];
 }
 
 export interface SEFilterState {
   selectedSE: string | null;
+  selectedManager: string | null;
+  selectedQuarter: string | null;
+  includeCurrentQuarter: boolean;
 }
 
 interface TopBarProps {
@@ -47,6 +50,14 @@ export function TopBar({
     seFilterOptions.salesConsultants.length > 0
   );
 
+  // Get quarters from options or use defaults
+  const quarters = seFilterOptions?.quarters?.length 
+    ? seFilterOptions.quarters 
+    : ['Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+
+  // Get managers from options
+  const managers = seFilterOptions?.forecastManagers || [];
+
   // Combine all SEs for the grouped dropdown
   const allSEs = [
     ...(seFilterOptions?.salesConsultants || []),
@@ -64,33 +75,54 @@ export function TopBar({
         </div>
 
         {/* Quarter dropdown */}
-        <Select defaultValue="q1-24">
-          <SelectTrigger className="h-8 w-24 border-none bg-secondary text-xs font-medium shadow-none">
+        <Select 
+          value={seFilterState?.selectedQuarter || 'all'} 
+          onValueChange={(v) => onSEFilterChange?.({ selectedQuarter: v === 'all' ? null : v })}
+        >
+          <SelectTrigger className="h-8 w-28 border-none bg-secondary text-xs font-medium shadow-none">
             <SelectValue placeholder="Quarter" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all" className="text-xs">All Quarters</SelectItem>
             {quarters.map((q) => (
-              <SelectItem key={q.id} value={q.id} className="text-xs">
-                {q.name}
+              <SelectItem key={q} value={q} className="text-xs">
+                {q}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         {/* Include Current toggle */}
-        <div className="flex items-center gap-2 rounded-md bg-secondary px-2 py-1">
-          <span className="text-xs text-muted-foreground">Incl. Current</span>
-        </div>
+        <button 
+          className={cn(
+            "flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors",
+            seFilterState?.includeCurrentQuarter 
+              ? "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" 
+              : "bg-secondary text-muted-foreground"
+          )}
+          onClick={() => onSEFilterChange?.({ includeCurrentQuarter: !seFilterState?.includeCurrentQuarter })}
+        >
+          Incl. Current
+        </button>
 
         {/* Manager dropdown */}
-        <Select defaultValue="all">
-          <SelectTrigger className="h-8 w-36 border-none bg-teal-600 text-white text-xs font-medium shadow-none">
-            <SelectValue placeholder="Manager" />
+        <Select 
+          value={seFilterState?.selectedManager || 'all'} 
+          onValueChange={(v) => onSEFilterChange?.({ selectedManager: v === 'all' ? null : v })}
+        >
+          <SelectTrigger className={cn(
+            "h-8 w-40 text-xs font-medium shadow-none",
+            seFilterState?.selectedManager 
+              ? "bg-teal-600 text-white border-none" 
+              : "bg-teal-600 text-white border-none"
+          )}>
+            <SelectValue placeholder="All Managers" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all" className="text-xs font-medium">All Managers</SelectItem>
             {managers.map((m) => (
-              <SelectItem key={m.id} value={m.id} className="text-xs">
-                {m.name}
+              <SelectItem key={m} value={m} className="text-xs">
+                {m}
               </SelectItem>
             ))}
           </SelectContent>

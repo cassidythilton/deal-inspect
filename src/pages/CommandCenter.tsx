@@ -16,6 +16,9 @@ export default function CommandCenter() {
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [seFilters, setSEFilters] = useState<SEFilterState>({
     selectedSE: null,
+    selectedManager: null,
+    selectedQuarter: null,
+    includeCurrentQuarter: true,
   });
   
   // Fetch deals from Domo (pre-filtered for stage age > 365 days)
@@ -33,7 +36,7 @@ export default function CommandCenter() {
     return filtered;
   }, [domoDeals, isDomoConnected]);
 
-  // Apply pinned status and SE filters to deals
+  // Apply pinned status and all filters to deals
   const deals: Deal[] = useMemo(() => {
     let result = baseDeals.map((d) => ({
       ...d,
@@ -47,6 +50,16 @@ export default function CommandCenter() {
         d.seManager === seFilters.selectedSE || 
         d.salesConsultant === seFilters.selectedSE
       );
+    }
+    
+    // Apply Manager filter
+    if (seFilters.selectedManager) {
+      result = result.filter((d) => d.owner === seFilters.selectedManager);
+    }
+    
+    // Apply Quarter filter
+    if (seFilters.selectedQuarter) {
+      result = result.filter((d) => d.closeDateFQ === seFilters.selectedQuarter);
     }
     
     return result;
