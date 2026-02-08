@@ -185,8 +185,8 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     points: 10,
     description: 'Stage Age > 60 days OR no update in 14+ days',
     strategy: 'Identify blockers and re-engage technical champions.',
-    icon: 'AlertTriangle',
-    color: 'red',
+    icon: 'Clock',
+    color: 'amber',
   },
   expansionDynamics: {
     id: 'expansionDynamics',
