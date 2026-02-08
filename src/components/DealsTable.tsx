@@ -273,31 +273,166 @@ function getDynamicFactorDescription(factor: CriticalFactor, deal: Deal): string
   switch (factor.id) {
     case 'cloudPartner': {
       const partner = deal.partnersInvolved ?? deal.snowflakeTeam ?? '';
-      if (partner) return `${partner} is involved in this deal's architecture.`;
+      const snowflake = deal.snowflakeTeam ?? '';
+      if (snowflake || /snowflake/i.test(partner)) {
+        return `Snowflake is part of this deal. TDR should validate Domo as the composable layer \u2014 MagicETL compute strategy, Snowflake-native features, and joint positioning.`;
+      }
+      if (/databricks/i.test(partner)) {
+        return `Databricks lakehouse is involved. TDR should define the semantic/experience layer positioning and validate data pipeline architecture across platforms.`;
+      }
+      if (/bigquery|gcp|google cloud/i.test(partner)) {
+        return `Google BigQuery is in the stack. TDR should validate the analytics and app layer role and confirm data connectivity architecture.`;
+      }
+      if (partner) return `${partner} cloud platform is involved \u2014 validate integration architecture and positioning before technical decisions lock in.`;
       return factor.description;
     }
     case 'materialACV': {
       const formatted = deal.acv >= 1000000
         ? `$${(deal.acv / 1000000).toFixed(1)}M`
         : `$${Math.round(deal.acv / 1000)}K`;
-      return `ACV is ${formatted} — material revenue warrants deep technical engagement.`;
+      if (deal.acv >= 250000) {
+        return `ACV is ${formatted} \u2014 strategic deal demanding executive-level solution design and multi-stakeholder alignment. Ensure architecture supports long-term account expansion.`;
+      }
+      return `ACV is ${formatted} \u2014 material revenue at stake. Comprehensive solution design and ROI framework should be prepared for the TDR.`;
+    }
+    case 'earlyStageSweet': {
+      const stageNum = deal.stageNumber ?? 2;
+      if (stageNum === 2) {
+        return 'Stage 2 (Determine Needs) \u2014 this is the TDR sweet spot. The SME can shape architecture decisions, partner alignment, and competitive positioning before they lock in.';
+      }
+      return 'Stage 3 (Demonstrate Value) \u2014 still a strong window to influence technical direction. Architecture decisions are being evaluated but not yet committed.';
     }
     case 'competitiveDisplacement': {
       const n = deal.numCompetitors ?? 0;
-      return `${n} competitor${n !== 1 ? 's' : ''} present — differentiation strategy needed.`;
+      if (n >= 2) {
+        return `${n} competitors are in play \u2014 contested evaluation. TDR should develop a clear differentiation strategy, identify competitor weaknesses, and design demo scenarios that highlight unique strengths.`;
+      }
+      return 'Competitor present \u2014 head-to-head evaluation likely. TDR should prepare competitive battle card and design evaluation criteria that favor the Domo architecture.';
     }
-    case 'staleSignals':
+    case 'newLogoDeal': {
+      return 'New business with no existing footprint. TDR should cover full discovery: business challenge, current tech stack, integration requirements, and a phased implementation approach for land-and-expand.';
+    }
+    case 'staleSignals': {
+      const age = deal.stageAge ?? 0;
+      return `Deal has been in current stage for ${age} days \u2014 likely facing technical or organizational blockers. TDR should investigate root cause and determine whether a technical reset or champion re-engagement is needed.`;
+    }
     case 'veryStale': {
       const age = deal.stageAge ?? 0;
-      return `Deal has been in current stage for ${age} days — potential blockers.`;
+      return `Deal has been stalled for ${age} days (6+ months). TDR should re-qualify: is this deal still viable? If so, what fundamental approach change is needed? Consider opportunity cost of SE time.`;
     }
     case 'partnerCoSell': {
       const p = deal.partnersInvolved;
-      if (p) return `Active co-sell with ${p}. Validate integration approach.`;
+      if (p) return `Active co-sell with ${p} \u2014 architecture has not been validated across both platforms. TDR should include a joint architecture review and confirm both teams are positioning consistently.`;
       return factor.description;
+    }
+    case 'forecastMomentum': {
+      const cat = deal.forecastCategory ?? '';
+      if (cat.toLowerCase().includes('probable')) {
+        return 'Deal is forecast as Probable \u2014 the customer is actively evaluating and progression is expected. TDR should ensure technical requirements are fully understood and timeline is realistic.';
+      }
+      if (cat.toLowerCase().includes('best case')) {
+        return 'Deal is Best Case \u2014 positive momentum but uncertainty remains. TDR should validate technical fit and identify potential blockers that could prevent progression.';
+      }
+      return factor.description;
+    }
+    case 'complexDealCode': {
+      const code = deal.dealCode ?? '';
+      if (code.toUpperCase().startsWith('PA')) {
+        return `Partner architecture deal (${code}) \u2014 multi-platform solution with integration complexity. Each component needs technical validation and cross-platform dependencies must be mapped.`;
+      }
+      return `Complex deal structure (${code || 'multi-component'}) \u2014 ensure all solution components are technically validated and integration points are well-defined.`;
+    }
+    case 'lateStageRisk': {
+      return 'Stage 4+ \u2014 technical strategy is likely already committed. TDR focus should shift from shaping to risk validation: is the committed architecture sound? Are there hidden risks before contracts close?';
     }
     default:
       return factor.description;
+  }
+}
+
+/**
+ * Get DYNAMIC TDR preparation steps tailored to the deal data.
+ * Pulls from factor.tdrPrep but can inject deal-specific context.
+ */
+function getDynamicTDRPrep(factor: CriticalFactor, deal: Deal): string[] {
+  const base = factor.tdrPrep || [];
+
+  switch (factor.id) {
+    case 'cloudPartner': {
+      const partner = deal.partnersInvolved ?? deal.snowflakeTeam ?? '';
+      const snowflake = deal.snowflakeTeam;
+      if (snowflake || /snowflake/i.test(partner)) {
+        return [
+          'Validate MagicETL compute strategy \u2014 Domo compute vs. Snowflake pushdown',
+          'Identify Snowflake SA and schedule joint architecture review',
+          'Prepare Snowflake-native integration diagram (data sharing, external tables)',
+          'Confirm role in the stack: control layer, semantic layer, or app layer on Snowflake',
+          'Review Snowflake consumption model impact on customer TCO',
+        ];
+      }
+      if (/databricks/i.test(partner)) {
+        return [
+          'Define the role in the Databricks lakehouse architecture',
+          'Validate data connectivity: Unity Catalog, Delta Lake, or direct query',
+          'Prepare joint positioning with Databricks partner team',
+          'Confirm governance model across both platforms',
+        ];
+      }
+      if (/bigquery|gcp|google cloud/i.test(partner)) {
+        return [
+          'Validate BigQuery connector performance and data freshness requirements',
+          'Confirm analytics layer role vs. Looker positioning',
+          'Prepare Google Cloud integration architecture diagram',
+          'Review BigQuery cost model implications for the customer',
+        ];
+      }
+      return base;
+    }
+    case 'materialACV': {
+      if (deal.acv >= 250000) {
+        return [
+          'Prepare executive-level solution architecture and ROI framework',
+          'Map all stakeholders in the buying committee and their technical concerns',
+          'Ensure solution scope matches long-term data strategy',
+          'Identify account expansion opportunities beyond the initial deal scope',
+          'Review pricing model alignment with the proposed architecture',
+        ];
+      }
+      return base;
+    }
+    case 'competitiveDisplacement': {
+      const n = deal.numCompetitors ?? 0;
+      if (n >= 2) {
+        return [
+          `Prepare battle cards for all ${n} competitors in the evaluation`,
+          'Design demo scenarios that highlight unique differentiators',
+          'Anticipate competitor objections and prepare counter-narratives',
+          'Validate evaluation criteria \u2014 ensure they favor Domo strengths',
+          'Identify potential landmines and address proactively',
+        ];
+      }
+      return base;
+    }
+    case 'earlyStageSweet': {
+      const stageNum = deal.stageNumber ?? 2;
+      if (stageNum === 2) {
+        return [
+          'This is the peak shaping window \u2014 architecture decisions are being made now',
+          'Map current vs. target architecture and identify the optimal insertion point',
+          'Define what the SME can uniquely influence: platform choice, data flow, governance',
+          'Align with any cloud partner SA before the customer commits to a direction',
+          'Prepare a solution vision the technical team can rally around',
+        ];
+      }
+      return [
+        'Architecture evaluation is in progress \u2014 influence is still possible',
+        'Validate that technical proof points align with evaluation criteria',
+        'Ensure demo/POC scenarios address specific business challenges',
+        'Prepare competitive positioning materials for active evaluation',
+      ];
+    }
+    default:
+      return base;
   }
 }
 
@@ -435,13 +570,24 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                             [{stageNum.toString().padStart(2, '0')}] {stageName}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs">
+                        <TooltipContent side="top" className="max-w-sm p-3">
+                          <p className="text-xs font-medium mb-1">
                             {stageNum <= 2
-                              ? 'Maximum opportunity to shape architecture and solution direction.'
+                              ? 'Peak TDR Value \u2014 Architecture Shaping Window'
                               : stageNum === 3
-                              ? 'Good opportunity to influence technical decisions.'
-                              : 'Focus on risk validation and delivery readiness.'}
+                              ? 'Strong TDR Value \u2014 Evaluation Phase'
+                              : stageNum === 4
+                              ? 'Limited TDR Value \u2014 Confirmation Phase'
+                              : 'Minimal TDR Value \u2014 Closing Phase'}
+                          </p>
+                          <p className="text-2xs text-muted-foreground">
+                            {stageNum <= 2
+                              ? 'Maximum opportunity to shape architecture. The SE SME can influence platform choice, data strategy, partner alignment, and competitive positioning before technical decisions lock in.'
+                              : stageNum === 3
+                              ? 'Customer is actively evaluating. Technical proof points and demos are happening. Architecture decisions are being made \u2014 influence is still possible but the window is narrowing.'
+                              : stageNum === 4
+                              ? 'Technical strategy is likely set. TDR value shifts from shaping to risk validation \u2014 verify the committed architecture will work at scale before contracts close.'
+                              : 'Deal is near close. TDR should only focus on last-minute risk prevention and ensuring implementation readiness.'}
                           </p>
                         </TooltipContent>
                       </Tooltip>
@@ -470,13 +616,37 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                             {tdrScore}
                           </span>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-xs font-medium mb-1">TDR Priority Factors:</p>
-                          <ul className="text-xs space-y-0.5">
-                            {whyTags.map((f, i) => (
-                              <li key={i}>• {f.label}</li>
-                            ))}
-                          </ul>
+                        <TooltipContent side="top" className="max-w-sm p-3">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-semibold">TDR Index: {tdrScore}/100</p>
+                              <span className={cn(
+                                'rounded px-1.5 py-0.5 text-2xs font-bold',
+                                priority === 'CRITICAL' ? 'bg-red-500/20 text-red-700' :
+                                priority === 'HIGH' ? 'bg-emerald-500/20 text-emerald-700' :
+                                priority === 'MEDIUM' ? 'bg-amber-500/20 text-amber-700' :
+                                'bg-secondary text-muted-foreground'
+                              )}>{priority}</span>
+                            </div>
+                            <p className="text-2xs text-muted-foreground">
+                              {priority === 'CRITICAL' ? 'Immediate TDR required \u2014 multiple high-value signals converging. Early-stage shaping opportunity with strategic impact.' :
+                               priority === 'HIGH' ? 'TDR strongly recommended \u2014 good intervention opportunity to shape technical strategy and protect deal integrity.' :
+                               priority === 'MEDIUM' ? 'TDR beneficial \u2014 monitor for escalation. Consider scheduling if additional signals emerge.' :
+                               'Standard process \u2014 no urgent TDR need at this time.'}
+                            </p>
+                            {whyTags.length > 0 && (
+                              <div className="border-t border-border/40 pt-1.5">
+                                <p className="text-2xs font-medium text-muted-foreground mb-1">Contributing Factors:</p>
+                                <ul className="space-y-0.5">
+                                  {whyTags.map((f, i) => (
+                                    <li key={i} className="text-2xs text-muted-foreground">
+                                      {'\u2022'} <span className="font-medium text-foreground">{f.label}</span> {'\u2014'} Tier {f.tier}, +{f.points}pts
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
                         </TooltipContent>
                       </Tooltip>
                     </td>
@@ -601,13 +771,14 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                       </Tooltip>
                     </td>
 
-                    {/* WHY TDR? Tags — dynamic labels + descriptions, backup sizing */}
+                    {/* WHY TDR? Tags — comprehensive tooltips aligned to AI framework */}
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1">
                         {whyTags.map((factor, i) => {
                           const IconComponent = getFactorIcon(factor.icon);
                           const dynamicLabel = getDynamicFactorLabel(factor, deal);
                           const dynamicDesc = getDynamicFactorDescription(factor, deal);
+                          const tdrPrep = getDynamicTDRPrep(factor, deal);
                           // Use brand-specific style for cloud partner, fall back to category color
                           const pillStyle = getBrandPillStyle(factor, deal) || getFactorPillStyle(factor.color);
                           return (
@@ -621,13 +792,30 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                                   {dynamicLabel}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs p-3">
-                                <p className="text-xs font-medium text-foreground mb-1.5">
+                              <TooltipContent side="top" className="max-w-sm p-3">
+                                {/* Factor context */}
+                                <p className="text-xs font-medium text-foreground mb-1">
                                   {dynamicDesc}
                                 </p>
-                                <p className="text-xs text-primary">
-                                  → {factor.strategy}
+                                {/* Strategy */}
+                                <p className="text-xs text-primary mt-1.5 mb-2">
+                                  {'\u2192'} {factor.strategy}
                                 </p>
+                                {/* TDR Preparation Steps */}
+                                {tdrPrep.length > 0 && (
+                                  <div className="border-t border-border/40 pt-2">
+                                    <p className="text-2xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                                      TDR Preparation
+                                    </p>
+                                    <ul className="space-y-0.5">
+                                      {tdrPrep.map((step, j) => (
+                                        <li key={j} className="text-2xs text-muted-foreground leading-relaxed">
+                                          {'\u2022'} {step}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
                               </TooltipContent>
                             </Tooltip>
                           );

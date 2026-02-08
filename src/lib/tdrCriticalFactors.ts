@@ -39,6 +39,8 @@ export interface CriticalFactor {
   points: number;
   description: string;
   strategy: string;
+  /** Detailed TDR preparation guidance — aligned with the 17-factor AI prompt */
+  tdrPrep: string[];
   icon: string;
   /** Color category matching the backup's WHY TDR? palette */
   color: 'cyan' | 'emerald' | 'amber' | 'violet' | 'blue' | 'orange' | 'red' | 'secondary';
@@ -54,7 +56,13 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     tier: 1,
     points: 20,
     description: 'ACV ≥ $100K — material revenue at stake',
-    strategy: 'Prioritize executive engagement and comprehensive solution design.',
+    strategy: 'Prioritize executive engagement, comprehensive solution design, and multi-stakeholder alignment. Ensure architecture supports long-term account expansion.',
+    tdrPrep: [
+      'Review current architecture fit — does the proposed solution protect future ACV growth?',
+      'Identify executive sponsors and validate buying committee alignment',
+      'Prepare ROI framework tied to specific business outcomes',
+      'Assess whether deal scope matches the long-term data strategy',
+    ],
     icon: 'DollarSign',
     color: 'blue',          // backup: "material" → blue
   },
@@ -64,8 +72,15 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'Cloud platform',
     tier: 1,
     points: 15,
-    description: 'Snowflake, Databricks, or BigQuery is involved',
-    strategy: 'Position Domo as composable control layer on their infrastructure.',
+    description: 'Cloud data platform is involved — architecture alignment is critical',
+    strategy: 'Position Domo as the composable control layer on their data infrastructure. Validate compute strategy and integration approach before architecture decisions lock in.',
+    tdrPrep: [
+      'How would a cloud architect describe the solution? Validate the Domo role in the stack',
+      'Confirm whether MagicETL runs on cloud compute vs. Domo compute',
+      'Identify partner SA (Solutions Architect) and schedule joint architecture review',
+      'Prepare integration architecture diagram showing data flow between platforms',
+      'Validate that cloud-native capabilities align with the overall cloud strategy',
+    ],
     icon: 'Cloud',
     color: 'cyan',           // backup: "cloud-platform" → cyan
   },
@@ -75,8 +90,15 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'Shaping window',
     tier: 1,
     points: 15,
-    description: 'Stage 2-3 — maximum opportunity to shape architecture before decisions lock in',
-    strategy: 'Engage now. Architecture decisions are being made.',
+    description: 'Stage 2–3 = maximum opportunity to shape technical strategy before architecture decisions lock in',
+    strategy: 'This is the TDR sweet spot. The SE Subject Matter Expert can still influence architecture decisions, partner alignment, and competitive positioning.',
+    tdrPrep: [
+      'Engage now — architecture decisions are actively being made at this stage',
+      'Define what the SME can uniquely shape: platform choice, integration approach, data governance',
+      'Map current vs. target architecture and identify the optimal Domo insertion point',
+      'Prepare solution positioning that differentiates from evaluation alternatives',
+      'Align with partner SA before the technical team commits to a direction',
+    ],
     icon: 'Zap',
     color: 'emerald',        // backup: "early-stage" / "arch-window" → emerald
   },
@@ -86,8 +108,15 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'Competitive',
     tier: 1,
     points: 10,
-    description: 'Competitors present — displacement scenario',
-    strategy: 'Develop clear differentiation. Focus on unique Domo capabilities.',
+    description: 'Competitors are present — displacement or head-to-head evaluation',
+    strategy: 'Build differentiation strategy around unique Domo capabilities. Identify competitor weaknesses and align demo scenarios to exploit gaps.',
+    tdrPrep: [
+      'Identify specific competitors and their likely positioning',
+      'Prepare competitive battle card with differentiation points and landmines',
+      'Design demo scenarios that highlight unique strengths (governance, speed to insight, app layer)',
+      'Anticipate competitor objections and prepare counter-narratives',
+      'Validate that the technical evaluation criteria favor the Domo architecture',
+    ],
     icon: 'Swords',
     color: 'amber',          // backup: "competitive" → amber
   },
@@ -97,8 +126,15 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'New logo',
     tier: 1,
     points: 10,
-    description: 'New business — full architecture review needed',
-    strategy: 'Full discovery and architecture alignment. Shape from the ground up.',
+    description: 'New business — full architecture review required. No existing footprint to build on.',
+    strategy: 'Full discovery and architecture alignment. Shape the solution from the ground up — this is the best opportunity to establish Domo as the data experience platform.',
+    tdrPrep: [
+      'Conduct full business challenge discovery — what problem drives this initiative?',
+      'Map the existing tech stack and identify integration requirements',
+      'Prepare a phased implementation approach (crawl → walk → run)',
+      'Define success metrics that tie to specific business outcomes',
+      'Identify potential land-and-expand path for long-term account growth',
+    ],
     icon: 'Building2',
     color: 'violet',         // backup: "greenfield" → violet
   },
@@ -110,8 +146,15 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'Partner play',
     tier: 2,
     points: 8,
-    description: 'Active partner co-sell — architecture validation needed',
-    strategy: 'Validate integration approach and ensure technical alignment with partner.',
+    description: 'Active partner co-sell — architecture has not been validated across both platforms',
+    strategy: 'Validate the integration approach between Domo and the partner platform. Ensure the combined architecture delivers on requirements without gaps.',
+    tdrPrep: [
+      'Schedule joint architecture session with partner Solutions Architect',
+      'Validate data flow: where does data originate, transform, and land?',
+      'Confirm co-sell motion alignment — are both teams positioning consistently?',
+      'Identify potential friction: overlapping capabilities, conflicting roadmaps',
+      'Prepare a unified architecture diagram for the technical team',
+    ],
     icon: 'Users',
     color: 'cyan',           // backup: "partner-play" / "co-sell" → cyan
   },
@@ -121,8 +164,14 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'Momentum',
     tier: 2,
     points: 10,
-    description: 'Probable/Best Case — deal has real momentum',
-    strategy: 'Validate technical requirements align with timeline expectations.',
+    description: 'Forecast category suggests real deal progression — customer is actively evaluating',
+    strategy: 'This deal has momentum. Validate that technical requirements are fully understood and that the timeline expectations are realistic for the proposed solution scope.',
+    tdrPrep: [
+      'Confirm that the technical evaluation criteria and success metrics are defined',
+      'Validate that the implementation timeline matches the expected go-live date',
+      'Ensure all technical stakeholders have been identified and are aligned',
+      'Prepare for potential POC or technical deep-dive requests',
+    ],
     icon: 'TrendingUp',
     color: 'blue',           // backup: similar to "enterprise" → blue
   },
@@ -132,21 +181,33 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'Enterprise',
     tier: 2,
     points: 5,
-    description: 'Multi-component deal code or partner architecture deal',
-    strategy: 'Ensure all components are technically validated.',
+    description: 'Multi-component deal structure or partner architecture deal — complexity demands coordination',
+    strategy: 'Ensure all solution components are technically validated. Complex deal structures often have integration points that can become delivery risks if not reviewed.',
+    tdrPrep: [
+      'Map each deal component to specific technical deliverables',
+      'Identify cross-component dependencies and integration requirements',
+      'Validate that licensing aligns with the actual architecture',
+      'Confirm whether professional services or partner delivery is required',
+    ],
     icon: 'Layers',
     color: 'blue',           // backup: "enterprise" → blue
   },
 
-  // TIER 3 — Context signals
+  // TIER 3 — Context signals / Risk flags
   staleSignals: {
     id: 'staleSignals',
     label: 'Stalling in Stage',
     shortLabel: 'Stalling',
     tier: 3,
     points: 5,
-    description: 'Extended time in current stage — potential blockers',
-    strategy: 'Identify technical blockers and re-engage champions.',
+    description: 'Extended time in current stage — potential technical or organizational blockers preventing progression',
+    strategy: 'Identify technical blockers, re-engage champions, and determine if the deal needs a technical re-set or a champion shift. Stale deals often indicate an unresolved technical objection.',
+    tdrPrep: [
+      'Investigate: Is the stall technical (architecture concerns, POC issues) or organizational (budget, priority shift)?',
+      'Re-engage the technical champion — has the evaluation team changed?',
+      'Review last technical touchpoint: what was the outcome? Were there open questions?',
+      'Consider a technical reset: new demo, updated architecture proposal, or POC extension',
+    ],
     icon: 'Clock',
     color: 'orange',         // backup: "check-progress" → orange
   },
@@ -156,8 +217,15 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'Late stage',
     tier: 3,
     points: -5,
-    description: 'Stage 4+ — technical strategy may be locked',
-    strategy: 'Focus on risk mitigation and delivery readiness, not reshaping.',
+    description: 'Stage 4+ — technical strategy is likely already set. TDR value shifts from shaping to risk validation.',
+    strategy: 'Focus on risk mitigation and delivery readiness. The architecture may already be committed — verify it will actually work at scale before contracts close.',
+    tdrPrep: [
+      'Validate: Is the committed architecture technically sound? Are there hidden risks?',
+      'Review implementation plan for feasibility — does the timeline match the complexity?',
+      'Identify any last-minute technical objections that could derail the close',
+      'Ensure professional services scope aligns with the proposed solution',
+      'Late-stage TDR is about risk prevention, not reshaping — adjust expectations accordingly',
+    ],
     icon: 'AlertOctagon',
     color: 'secondary',      // backup: "late-stage" → secondary
   },
@@ -167,8 +235,14 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     shortLabel: 'Stalled',
     tier: 3,
     points: -10,
-    description: 'Stage Age > 180 days — likely dead or deprioritized',
-    strategy: 'Re-qualify before investing more SE time.',
+    description: 'Stage Age > 180 days — deal is likely dead, deprioritized, or facing fundamental obstacles',
+    strategy: 'Re-qualify before investing more SE time. If the deal is still alive, identify what has changed and whether a completely new approach is needed.',
+    tdrPrep: [
+      'Re-qualify: Is this deal still real? Has the budget been reallocated?',
+      'If still active: what fundamental blocker has prevented 6+ months of progression?',
+      'Consider whether a new champion, new use case, or new approach is needed',
+      'Assess opportunity cost — is SE time better spent on fresher pipeline?',
+    ],
     icon: 'AlertTriangle',
     color: 'orange',         // backup: "stalled" → orange
   },
