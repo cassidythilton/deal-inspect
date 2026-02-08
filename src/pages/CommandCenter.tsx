@@ -1,22 +1,21 @@
 import { useState, useMemo, useCallback } from 'react';
 import { TopBar, SEFilterState } from '@/components/TopBar';
-import { MetricsGrid } from '@/components/MetricsGrid';
 import { DealsTable } from '@/components/DealsTable';
 import { AgendaSection } from '@/components/AgendaSection';
-import { ACVDistributionChart } from '@/components/charts/ACVDistributionChart';
-import { RiskMixChart } from '@/components/charts/RiskMixChart';
-import { ReadinessTrendChart } from '@/components/charts/ReadinessTrendChart';
-import { mockDeals, mockMetrics, hygieneIssues } from '@/data/mockData';
+import { TopTDRCandidatesChart } from '@/components/charts/TopTDRCandidatesChart';
+import { TDRPriorityChart } from '@/components/charts/TDRPriorityChart';
+import { PipelineByCloseChart } from '@/components/charts/PipelineByCloseChart';
+import { mockDeals, hygieneIssues } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
 import { MAX_STAGE_AGE_DAYS } from '@/lib/domo';
 import { Deal } from '@/types/tdr';
+import { Info } from 'lucide-react';
 
 export default function CommandCenter() {
   const [activeView, setActiveView] = useState<'recommended' | 'agenda' | 'all'>('recommended');
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [seFilters, setSEFilters] = useState<SEFilterState>({
-    seManager: null,
-    pocSalesConsultant: null,
+    selectedSE: null,
   });
   
   // Fetch deals from Domo (pre-filtered for stage age > 365 days)
@@ -42,14 +41,12 @@ export default function CommandCenter() {
       agendaStatus: pinnedIds.has(d.id) ? (d.agendaStatus || 'draft') : undefined,
     }));
     
-    // Apply SE Manager filter
-    if (seFilters.seManager) {
-      result = result.filter((d) => d.seManager === seFilters.seManager);
-    }
-    
-    // Apply PoC Sales Consultant filter
-    if (seFilters.pocSalesConsultant) {
-      result = result.filter((d) => d.pocSalesConsultant === seFilters.pocSalesConsultant);
+    // Apply SE filter (can be either SE Manager or Sales Consultant)
+    if (seFilters.selectedSE) {
+      result = result.filter((d) => 
+        d.seManager === seFilters.selectedSE || 
+        d.salesConsultant === seFilters.selectedSE
+      );
     }
     
     return result;
@@ -58,10 +55,34 @@ export default function CommandCenter() {
   const pinnedDeals = deals.filter((d) => d.isPinned);
   
   const filteredDeals = activeView === 'recommended'
-    ? deals.filter((d) => d.riskLevel !== 'red').slice(0, 5)
+    ? deals.filter((d) => d.riskLevel !== 'red').slice(0, 10)
     : activeView === 'agenda'
     ? pinnedDeals
     : deals;
+
+  // Calculate metrics from actual deals
+  const metrics = useMemo(() => {
+    const eligibleACV = deals.reduce((sum, d) => sum + d.acv, 0);
+    const recommendedDeals = deals.filter(d => d.riskLevel !== 'red');
+    const recommendedACV = recommendedDeals.reduce((sum, d) => sum + d.acv, 0);
+    const agendaACV = pinnedDeals.reduce((sum, d) => sum + d.acv, 0);
+    const atRiskDeals = deals.filter(d => d.riskLevel === 'red' || d.riskLevel === 'yellow');
+    const atRiskACV = atRiskDeals.reduce((sum, d) => sum + d.acv, 0);
+    const criticalCount = deals.filter(d => d.riskLevel === 'red').length;
+
+    const formatValue = (val: number) => {
+      if (val >= 1000000) return `$${(val / 1000000).toFixed(2)}M`;
+      if (val >= 1000) return `$${Math.round(val / 1000)}K`;
+      return `$${val}`;
+    };
+
+    return {
+      eligible: { value: formatValue(eligibleACV), deals: deals.length },
+      recommended: { value: formatValue(recommendedACV), deals: recommendedDeals.length },
+      agenda: { value: formatValue(agendaACV), deals: pinnedDeals.length },
+      atRisk: { value: formatValue(atRiskACV), deals: atRiskDeals.length, critical: criticalCount },
+    };
+  }, [deals, pinnedDeals]);
     
   const handleSEFilterChange = useCallback((filters: Partial<SEFilterState>) => {
     setSEFilters((prev) => ({ ...prev, ...filters }));
@@ -89,54 +110,86 @@ export default function CommandCenter() {
         onSEFilterChange={handleSEFilterChange}
       />
       
-      <main className="flex-1 p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
-          {/* Zone 1: Metrics + Visualizations in balanced 4-3 grid */}
-          <section className="space-y-3">
-            {/* Row 1: 4 metric cards - evenly spaced */}
-            <div className="grid grid-cols-4 gap-3">
-              {mockMetrics.map((metric, index) => (
-                <div key={index} className="stat-card">
-                  <div className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
-                    {metric.label}
-                  </div>
-                  <div className="mt-1 text-xl font-semibold tabular-nums">{metric.value}</div>
-                  <div className="mt-0.5 flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{metric.subValue}</span>
-                    {metric.status && (
-                      <div
-                        className={`h-1.5 w-6 rounded-full ${
-                          metric.status === 'green' ? 'bg-success' : 'bg-destructive'
-                        }`}
-                      />
-                    )}
-                  </div>
-                </div>
-              ))}
+      <main className="flex-1 p-6 bg-background">
+        <div className="mx-auto max-w-7xl space-y-4">
+          {/* Zone 1: Metrics Row */}
+          <section className="grid grid-cols-4 gap-3">
+            {/* Eligible ACV */}
+            <div className="stat-card">
+              <div className="flex items-center gap-1">
+                <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                  ELIGIBLE ACV
+                </span>
+                <Info className="h-3 w-3 text-muted-foreground/50" />
+              </div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.eligible.value}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{metrics.eligible.deals} deals</div>
             </div>
 
-            {/* Row 2: 3 chart cards - evenly spaced */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="stat-card">
-                <div className="section-header mb-2">ACV by Deal</div>
-                <ACVDistributionChart deals={deals} />
+            {/* Recommended */}
+            <div className="stat-card">
+              <div className="flex items-center gap-1">
+                <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                  RECOMMENDED
+                </span>
+                <Info className="h-3 w-3 text-muted-foreground/50" />
               </div>
-              <div className="stat-card">
-                <div className="section-header mb-2">Risk Mix</div>
-                <RiskMixChart deals={deals} />
+              <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.recommended.value}</div>
+              <div className="mt-0.5 flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{metrics.recommended.deals} deals</span>
+                <div className="h-1.5 w-6 rounded-full bg-success" />
               </div>
-              <div className="stat-card">
-                <ReadinessTrendChart />
+            </div>
+
+            {/* Agenda */}
+            <div className="stat-card">
+              <div className="flex items-center gap-1">
+                <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                  AGENDA
+                </span>
+                <Info className="h-3 w-3 text-muted-foreground/50" />
+              </div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.agenda.value}</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">{metrics.agenda.deals} deals pinned</div>
+            </div>
+
+            {/* At-Risk */}
+            <div className="stat-card">
+              <div className="flex items-center gap-1">
+                <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                  AT-RISK
+                </span>
+                <Info className="h-3 w-3 text-muted-foreground/50" />
+              </div>
+              <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.atRisk.value}</div>
+              <div className="mt-0.5 flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {metrics.atRisk.critical} critical · {metrics.atRisk.deals - metrics.atRisk.critical} at risk
+                </span>
+                <div className="h-1.5 w-6 rounded-full bg-destructive" />
               </div>
             </div>
           </section>
 
-          {/* Zone 2: Deals Table */}
+          {/* Zone 2: Charts Row */}
+          <section className="grid grid-cols-3 gap-3">
+            <div className="stat-card">
+              <TopTDRCandidatesChart deals={deals} />
+            </div>
+            <div className="stat-card">
+              <TDRPriorityChart deals={deals} />
+            </div>
+            <div className="stat-card">
+              <PipelineByCloseChart deals={deals} />
+            </div>
+          </section>
+
+          {/* Zone 3: Deals Table */}
           <section>
             <DealsTable deals={filteredDeals} onPinDeal={handlePinDeal} />
           </section>
 
-          {/* Zone 3: Agenda + Hygiene */}
+          {/* Zone 4: Agenda + Hygiene */}
           <section>
             <AgendaSection pinnedDeals={pinnedDeals} hygieneIssues={hygieneIssues} />
           </section>

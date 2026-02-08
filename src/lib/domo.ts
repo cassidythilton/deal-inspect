@@ -26,12 +26,10 @@ export interface DomoOpportunity {
 }
 
 // SE Mapping dataset structure
-// Join key: SalesConsultant (from opportunities) matches SalesConsultant here
+// Join key: se (SE name) matches Sales Consultant from opportunities
 export interface DomoSEMapping {
-  'Sales Consultant': string;      // The key to join on
-  'Solutions Consultant': string;  // SE name
-  'PoC Sales Consultant': string;  // PoC SE name
-  'SE Manager': string;            // SE Manager name
+  'se': string;           // SE name - join key matching opportunities['Sales Consultant']
+  'se_manager': string;   // SE Manager name
 }
 
 export const CONFIG = {
@@ -74,10 +72,8 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
 };
 
 const SE_MAPPING_FIELD_MAP: Record<string, string> = {
-  'SalesConsultant': 'Sales Consultant',
-  'SolutionsConsultant': 'Solutions Consultant',
-  'PocSalesConsultant': 'PoC Sales Consultant',
-  'SeManager': 'SE Manager',
+  'SalesConsultant': 'se',
+  'SeManager': 'se_manager',
 };
 
 /**

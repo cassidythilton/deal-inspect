@@ -51,28 +51,56 @@ function transformOpportunityToDeal(opp: DomoOpportunity): Deal {
     riskLevel = 'yellow';
   }
 
-  // Build reasons based on deal characteristics
+  // Build reasons/tags based on deal characteristics
   const reasons: string[] = [];
+  const isCompetitive = opp['Number of Competitors'] && Number(opp['Number of Competitors']) > 0;
+  if (isCompetitive) reasons.push('Competitive');
+  if (hasPartner) reasons.push('Partner play');
+  if (stageAge > 90) reasons.push('Stalled');
   if (opp['Type']) reasons.push(opp['Type']);
-  if (stageAge > 90) reasons.push(`${stageAge}d in stage`);
-  if (hasPartner) reasons.push('Partner involved');
 
   // Get ACV - prefer Likely, fallback to ACV (USD)
   const acv = opp['Likely'] || opp['ACV (USD)'] || 0;
+
+  // Get stage number from stage name
+  const stage = opp['Stage'] || 'Unknown';
+  const stageLower = stage.toLowerCase();
+  let stageNumber = 1;
+  if (stageLower.includes('discovery') || stageLower.includes('determine')) stageNumber = 2;
+  else if (stageLower.includes('validation') || stageLower.includes('demonstrate')) stageNumber = 3;
+  else if (stageLower.includes('proposal') || stageLower.includes('negotiate')) stageNumber = 4;
+  else if (stageLower.includes('closing') || stageLower.includes('close')) stageNumber = 5;
+
+  // Calculate TDR score
+  let tdrScore = 25;
+  if (riskLevel === 'green') tdrScore += 15;
+  if (riskLevel === 'yellow') tdrScore += 5;
+  if (partnerSignal === 'strong') tdrScore += 10;
+  if (partnerSignal === 'moderate') tdrScore += 5;
+  if (stageAge < 60) tdrScore += 5;
+  if (acv > 100000) tdrScore += 5;
+  tdrScore = Math.min(50, tdrScore);
 
   return {
     id: opp['Opportunity Id'],
     account: opp['Account Name'] || 'Unknown Account',
     dealName: opp['Opportunity Name'] || 'Unnamed Opportunity',
-    stage: opp['Stage'] || 'Unknown',
+    stage: stage,
+    stageNumber,
     stageAge: opp['Stage Age'] ?? undefined,
     acv,
     closeDate: opp['Close Date'] || new Date().toISOString().split('T')[0],
+    closeDateFQ: opp['Close Date FQ'] || undefined,
     partnerSignal,
     riskLevel,
     reasons: reasons.slice(0, 3),
     owner: opp['Domo Opportunity Owner'] || 'Unassigned',
     salesConsultant: opp['Sales Consultant'] || undefined,
+    tdrScore,
+    isCompetitive: !!isCompetitive,
+    isPartnerPlay: hasPartner,
+    isStalled: stageAge > 90,
+    isEarlyStage: stageNumber <= 2,
   };
 }
 
@@ -93,8 +121,6 @@ export function useSEMapping() {
 // SE Mapping lookup result
 interface SEMappingResult {
   seManager?: string;
-  solutionsConsultant?: string;
-  pocSalesConsultant?: string;
 }
 
 /**
@@ -106,18 +132,16 @@ export function useDeals() {
   const { data: seMapping, isLoading: seLoading } = useSEMapping();
 
   // Create SE lookup map
-  // Key: Sales Consultant (from opportunities) -> SE mapping data
+  // Key: se (SE name from mapping) -> SE Manager
   const seLookup = useMemo(() => {
     const lookup = new Map<string, SEMappingResult>();
     if (seMapping) {
       console.log(`[SE Join] Building lookup from ${seMapping.length} SE mappings`);
       for (const mapping of seMapping) {
-        const key = mapping['Sales Consultant'];
+        const key = mapping['se'];
         if (key) {
           lookup.set(key, {
-            seManager: mapping['SE Manager'] || undefined,
-            solutionsConsultant: mapping['Solutions Consultant'] || undefined,
-            pocSalesConsultant: mapping['PoC Sales Consultant'] || undefined,
+            seManager: mapping['se_manager'] || undefined,
           });
         }
       }
@@ -127,7 +151,7 @@ export function useDeals() {
   }, [seMapping]);
 
   // Transform and enrich deals with SE data
-  // Dynamic join: opportunities['Sales Consultant'] -> SE mapping
+  // Dynamic join: opportunities['Sales Consultant'] -> SE mapping['se']
   const deals: Deal[] = useMemo(() => {
     if (!opportunities) return [];
     
@@ -140,7 +164,6 @@ export function useDeals() {
       if (salesConsultant && seLookup.has(salesConsultant)) {
         const seData = seLookup.get(salesConsultant)!;
         deal.seManager = seData.seManager;
-        deal.pocSalesConsultant = seData.pocSalesConsultant;
         matchCount++;
       }
       
@@ -151,31 +174,43 @@ export function useDeals() {
     return result;
   }, [opportunities, seLookup]);
 
-  // Extract unique filter options
+  // Extract unique filter options from both SE mapping and opportunities
   const filterOptions = useMemo(() => {
     const seManagers = new Set<string>();
-    const pocSalesConsultants = new Set<string>();
+    const salesConsultants = new Set<string>();
     
-    // From SE mapping
+    // From SE mapping - get managers
     if (seMapping) {
       for (const mapping of seMapping) {
-        const manager = mapping['SE Manager'];
-        const pocSE = mapping['PoC Sales Consultant'];
+        const manager = mapping['se_manager'];
         if (manager && manager !== 'TBD') {
           seManagers.add(manager);
         }
-        if (pocSE) {
-          pocSalesConsultants.add(pocSE);
+      }
+    }
+    
+    // From opportunities - get unique Sales Consultants
+    if (opportunities) {
+      for (const opp of opportunities) {
+        const sc = opp['Sales Consultant'];
+        if (sc) {
+          salesConsultants.add(sc);
         }
+      }
+    }
+    
+    // Also get from deals (in case of mock data)
+    for (const deal of deals) {
+      if (deal.salesConsultant) {
+        salesConsultants.add(deal.salesConsultant);
       }
     }
     
     return {
       seManagers: Array.from(seManagers).sort(),
-      salesConsultants: [] as string[], // Not used for filtering
-      pocSalesConsultants: Array.from(pocSalesConsultants).sort(),
+      salesConsultants: Array.from(salesConsultants).sort(),
     };
-  }, [seMapping]);
+  }, [seMapping, opportunities, deals]);
 
   return {
     deals,

@@ -1,7 +1,7 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "datasetsMapping": [
     {
       "dataSetId": "79b2d8a2-2b91-41db-b1d2-532fc008f14c",
@@ -72,10 +72,8 @@
       "dataSetId": "6c2d47a4-c793-4829-8436-d2a09a25c713",
       "alias": "semapping",
       "fields": [
-        { "alias": "SalesConsultant", "columnName": "Sales Consultant" },
-        { "alias": "SolutionsConsultant", "columnName": "Solutions Consultant" },
-        { "alias": "PocSalesConsultant", "columnName": "PoC Sales Consultant" },
-        { "alias": "SeManager", "columnName": "SE Manager" }
+        { "alias": "SalesConsultant", "columnName": "se" },
+        { "alias": "SeManager", "columnName": "se_manager" }
       ]
     }
   ],
