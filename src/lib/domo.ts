@@ -4,7 +4,9 @@
  */
 
 // Maximum stage age in days - deals older than this are excluded
-export const MAX_STAGE_AGE_DAYS = 365;
+import { MAX_STAGE_AGE_DAYS } from './constants';
+
+export { MAX_STAGE_AGE_DAYS };
 
 export interface DomoOpportunity {
   'Opportunity Id': string;
@@ -26,10 +28,12 @@ export interface DomoOpportunity {
 }
 
 // SE Mapping dataset structure
-// Join key: se (SE name) matches Sales Consultant from opportunities
+// Join key: Sales Consultant matches Sales Consultant from opportunities
 export interface DomoSEMapping {
-  'se': string;           // SE name - join key matching opportunities['Sales Consultant']
-  'se_manager': string;   // SE Manager name
+  'Sales Consultant': string;       // SE name - join key matching opportunities['Sales Consultant']
+  'Solutions Consultant': string;   // Solutions Consultant
+  'PoC Sales Consultant': string;   // PoC Sales Consultant  
+  'SE Manager': string;             // SE Manager name
 }
 
 export const CONFIG = {
@@ -75,8 +79,10 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
 };
 
 const SE_MAPPING_FIELD_MAP: Record<string, string> = {
-  'SalesConsultant': 'se',
-  'SeManager': 'se_manager',
+  'SalesConsultant': 'Sales Consultant',
+  'SolutionsConsultant': 'Solutions Consultant',
+  'PocSalesConsultant': 'PoC Sales Consultant',
+  'SeManager': 'SE Manager',
 };
 
 /**

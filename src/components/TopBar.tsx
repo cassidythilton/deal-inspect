@@ -1,4 +1,4 @@
-import { User, Users, RefreshCw } from 'lucide-react';
+import { User, Users, RefreshCw, Filter, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { ALLOWED_MANAGERS, TDR_PRIORITY_OPTIONS } from '@/lib/constants';
 
 export interface SEFilterOptions {
   seManagers: string[];
@@ -21,6 +22,7 @@ export interface SEFilterState {
   selectedSE: string | null;
   selectedManager: string | null;
   selectedQuarter: string | null;
+  selectedPriority: string | null;
   includeCurrentQuarter: boolean;
 }
 
@@ -30,6 +32,7 @@ interface TopBarProps {
   seFilterOptions?: SEFilterOptions;
   seFilterState?: SEFilterState;
   onSEFilterChange?: (filters: Partial<SEFilterState>) => void;
+  onRefresh?: () => void;
 }
 
 export function TopBar({ 
@@ -38,6 +41,7 @@ export function TopBar({
   seFilterOptions,
   seFilterState,
   onSEFilterChange,
+  onRefresh,
 }: TopBarProps) {
   const views = [
     { id: 'recommended' as const, label: 'Recommended' },
@@ -53,10 +57,10 @@ export function TopBar({
   // Get quarters from options or use defaults
   const quarters = seFilterOptions?.quarters?.length 
     ? seFilterOptions.quarters 
-    : ['Q1 2024', 'Q2 2024', 'Q3 2024', 'Q4 2024'];
+    : [];
 
-  // Get managers from options
-  const managers = seFilterOptions?.forecastManagers || [];
+  // Filter to only allowed managers
+  const managers = ALLOWED_MANAGERS;
 
   // Combine all SEs for the grouped dropdown
   const allSEs = [
@@ -65,47 +69,66 @@ export function TopBar({
 
   const seManagers = seFilterOptions?.seManagers || [];
 
+  // Check if any filter is active
+  const hasActiveQuarterFilter = seFilterState?.selectedQuarter;
+
   return (
     <header className="flex h-12 items-center justify-between border-b border-border bg-card px-6">
       {/* Left: Filters */}
       <div className="flex items-center gap-3">
-        {/* Filters label */}
+        {/* Filters label with icon */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Filter className="h-3.5 w-3.5" />
           <span className="font-medium">FILTERS</span>
         </div>
 
         {/* Quarter dropdown */}
-        <Select 
-          value={seFilterState?.selectedQuarter || 'all'} 
-          onValueChange={(v) => onSEFilterChange?.({ selectedQuarter: v === 'all' ? null : v })}
-        >
-          <SelectTrigger className="h-8 w-28 border-none bg-secondary text-xs font-medium shadow-none">
-            <SelectValue placeholder="Quarter" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">All Quarters</SelectItem>
-            {quarters.map((q) => (
-              <SelectItem key={q} value={q} className="text-xs">
-                {q}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center">
+          <Select 
+            value={seFilterState?.selectedQuarter || 'all'} 
+            onValueChange={(v) => onSEFilterChange?.({ selectedQuarter: v === 'all' ? null : v })}
+          >
+            <SelectTrigger className={cn(
+              "h-8 w-28 text-xs font-medium shadow-none",
+              hasActiveQuarterFilter 
+                ? "border-none bg-secondary" 
+                : "border-none bg-secondary"
+            )}>
+              <SelectValue placeholder="Quarter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs">All Quarters</SelectItem>
+              {quarters.map((q) => (
+                <SelectItem key={q} value={q} className="text-xs">
+                  {q}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {hasActiveQuarterFilter && (
+            <button 
+              className="ml-1 p-1 hover:bg-secondary rounded"
+              onClick={() => onSEFilterChange?.({ selectedQuarter: null })}
+            >
+              <X className="h-3 w-3 text-muted-foreground" />
+            </button>
+          )}
+        </div>
 
         {/* Include Current toggle */}
         <button 
           className={cn(
-            "flex items-center gap-2 rounded-md px-2 py-1 text-xs transition-colors",
+            "flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
             seFilterState?.includeCurrentQuarter 
-              ? "bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400" 
-              : "bg-secondary text-muted-foreground"
+              ? "bg-secondary text-foreground" 
+              : "bg-secondary/50 text-muted-foreground"
           )}
           onClick={() => onSEFilterChange?.({ includeCurrentQuarter: !seFilterState?.includeCurrentQuarter })}
         >
           Incl. Current
         </button>
 
-        {/* Manager dropdown */}
+        {/* Manager dropdown - filtered to allowed managers */}
         <Select 
           value={seFilterState?.selectedManager || 'all'} 
           onValueChange={(v) => onSEFilterChange?.({ selectedManager: v === 'all' ? null : v })}
@@ -138,7 +161,7 @@ export function TopBar({
                 onValueChange={(v) => onSEFilterChange?.({ selectedSE: v === 'all' ? null : v })}
               >
                 <SelectTrigger className={cn(
-                  "h-8 w-40 text-xs font-medium shadow-none border",
+                  "h-8 w-36 text-xs font-medium shadow-none border",
                   seFilterState?.selectedSE 
                     ? "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400" 
                     : "border-none bg-secondary"
@@ -180,17 +203,32 @@ export function TopBar({
             </div>
 
             {/* Refresh icon */}
-            <RefreshCw className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
+            <button 
+              className="p-1.5 hover:bg-secondary rounded-md transition-colors"
+              onClick={onRefresh}
+            >
+              <RefreshCw className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            </button>
 
-            {/* All Deals dropdown */}
-            <Select defaultValue="all-deals">
-              <SelectTrigger className="h-8 w-28 border-none bg-secondary text-xs font-medium shadow-none">
+            {/* TDR Priority / Deals Filter */}
+            <Select 
+              value={seFilterState?.selectedPriority || 'all'} 
+              onValueChange={(v) => onSEFilterChange?.({ selectedPriority: v === 'all' ? null : v })}
+            >
+              <SelectTrigger className={cn(
+                "h-8 w-32 text-xs font-medium shadow-none border",
+                seFilterState?.selectedPriority 
+                  ? "border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/20 dark:text-teal-400" 
+                  : "border-none bg-secondary"
+              )}>
                 <SelectValue placeholder="All Deals" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all-deals" className="text-xs">All Deals</SelectItem>
-                <SelectItem value="my-deals" className="text-xs">My Deals</SelectItem>
-                <SelectItem value="team-deals" className="text-xs">Team Deals</SelectItem>
+                {TDR_PRIORITY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.id} value={opt.id} className="text-xs">
+                    {opt.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </>

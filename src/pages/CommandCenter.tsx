@@ -7,7 +7,7 @@ import { TDRPriorityChart } from '@/components/charts/TDRPriorityChart';
 import { PipelineByCloseChart } from '@/components/charts/PipelineByCloseChart';
 import { mockDeals, hygieneIssues } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
-import { MAX_STAGE_AGE_DAYS } from '@/lib/domo';
+import { MAX_STAGE_AGE_DAYS, TDR_PRIORITY_THRESHOLDS } from '@/lib/constants';
 import { Deal } from '@/types/tdr';
 import { Info } from 'lucide-react';
 
@@ -18,11 +18,12 @@ export default function CommandCenter() {
     selectedSE: null,
     selectedManager: null,
     selectedQuarter: null,
+    selectedPriority: null,
     includeCurrentQuarter: true,
   });
   
   // Fetch deals from Domo (pre-filtered for stage age > 365 days)
-  const { deals: domoDeals, filterOptions, isLoading, isDomoConnected } = useDeals();
+  const { deals: domoDeals, filterOptions, isLoading, isDomoConnected, refetch } = useDeals();
   
   // Use Domo data if connected, otherwise fall back to pre-filtered mock data
   const baseDeals = useMemo(() => {
@@ -60,6 +61,25 @@ export default function CommandCenter() {
     // Apply Quarter filter
     if (seFilters.selectedQuarter) {
       result = result.filter((d) => d.closeDateFQ === seFilters.selectedQuarter);
+    }
+    
+    // Apply TDR Priority filter (based on tdrScore)
+    if (seFilters.selectedPriority && seFilters.selectedPriority !== 'all') {
+      result = result.filter((d) => {
+        const score = d.tdrScore ?? 0;
+        switch (seFilters.selectedPriority) {
+          case 'critical':
+            return score >= TDR_PRIORITY_THRESHOLDS.critical;
+          case 'high':
+            return score >= TDR_PRIORITY_THRESHOLDS.high && score < TDR_PRIORITY_THRESHOLDS.critical;
+          case 'medium':
+            return score >= TDR_PRIORITY_THRESHOLDS.medium && score < TDR_PRIORITY_THRESHOLDS.high;
+          case 'low':
+            return score < TDR_PRIORITY_THRESHOLDS.medium;
+          default:
+            return true;
+        }
+      });
     }
     
     return result;
@@ -121,6 +141,7 @@ export default function CommandCenter() {
         seFilterOptions={filterOptions}
         seFilterState={seFilters}
         onSEFilterChange={handleSEFilterChange}
+        onRefresh={refetch}
       />
       
       <main className="flex-1 p-6 bg-background">

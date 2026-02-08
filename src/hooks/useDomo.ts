@@ -135,16 +135,16 @@ export function useDeals() {
   const { data: seMapping, isLoading: seLoading } = useSEMapping();
 
   // Create SE lookup map
-  // Key: se (SE name from mapping) -> SE Manager
+  // Key: Sales Consultant (SE name from mapping) -> SE Manager
   const seLookup = useMemo(() => {
     const lookup = new Map<string, SEMappingResult>();
     if (seMapping) {
       console.log(`[SE Join] Building lookup from ${seMapping.length} SE mappings`);
       for (const mapping of seMapping) {
-        const key = mapping['se'];
+        const key = mapping['Sales Consultant'];
         if (key) {
           lookup.set(key, {
-            seManager: mapping['se_manager'] || undefined,
+            seManager: mapping['SE Manager'] || undefined,
           });
         }
       }
@@ -187,7 +187,7 @@ export function useDeals() {
     // From SE mapping - get managers
     if (seMapping) {
       for (const mapping of seMapping) {
-        const manager = mapping['se_manager'];
+        const manager = mapping['SE Manager'];
         if (manager && manager !== 'TBD') {
           seManagers.add(manager);
         }
