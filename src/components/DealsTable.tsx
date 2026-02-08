@@ -133,6 +133,7 @@ function getPartnerIcon(deal: Deal): { Icon: LucideIcon; colorClass: string } {
  */
 function getPartnerTooltipContent(deal: Deal): {
   title: string;
+  platformLabel: string;
   platform: string | null;
   role: string | null;
   dealCode: string | null;
@@ -144,21 +145,25 @@ function getPartnerTooltipContent(deal: Deal): {
   const snowflake = deal.snowflakeTeam;
 
   // Detect specific cloud platform
-  const isSnowflake = snowflake || /snowflake/i.test(partner ?? '');
+  const isCloud = !!(snowflake || /snowflake|databricks|bigquery|google cloud|gcp|aws|amazon|azure|microsoft/i.test(partner ?? ''));
+  const isSnowflake = !!(snowflake || /snowflake/i.test(partner ?? ''));
   const isDatabricks = /databricks/i.test(partner ?? '');
   const isBigQuery = /bigquery|google cloud|gcp/i.test(partner ?? '');
   const isAWS = /aws|amazon/i.test(partner ?? '');
   const isAzure = /azure|microsoft/i.test(partner ?? '');
 
-  // Dynamic title
-  let title = 'Partner Integration';
+  // Dynamic title based on actual partner
+  let title = 'Partner Involvement';
   if (isSnowflake) title = 'Snowflake Integration';
   else if (isDatabricks) title = 'Databricks Integration';
   else if (isBigQuery) title = 'BigQuery Integration';
   else if (isAWS) title = 'AWS Integration';
   else if (isAzure) title = 'Azure Integration';
-  else if (code?.startsWith('PA')) title = 'Partner Architecture';
-  else if (code?.startsWith('P')) title = 'Partner Co-Sell';
+  else if (code?.toUpperCase().startsWith('PA')) title = 'Partner Architecture';
+  else if (code?.toUpperCase().startsWith('P')) title = 'Partner Co-Sell';
+
+  // Label: "Cloud Platform" for cloud deals, "Partner" for others
+  const platformLabel = isCloud ? 'Cloud Platform' : 'Partner';
 
   // Dynamic strategy
   let strategy: string;
@@ -168,8 +173,10 @@ function getPartnerTooltipContent(deal: Deal): {
     strategy = 'Position Domo as the semantic/experience layer on Databricks lakehouse.';
   } else if (isBigQuery) {
     strategy = 'Position Domo as the analytics and app layer on BigQuery.';
-  } else if (role === 'Co-sell') {
-    strategy = 'Validate integration approach and co-sell alignment with partner.';
+  } else if (role?.toLowerCase() === 'co-sell' || role?.toLowerCase() === 'co sell') {
+    strategy = `Validate integration approach and co-sell opportunity with ${partner || 'partner'}.`;
+  } else if (role?.toLowerCase() === 'referral') {
+    strategy = `Leverage referral relationship with ${partner || 'partner'} to accelerate deal.`;
   } else if (partner) {
     strategy = `Validate architecture compatibility with ${partner}.`;
   } else {
@@ -178,6 +185,7 @@ function getPartnerTooltipContent(deal: Deal): {
 
   return {
     title,
+    platformLabel,
     platform: partner || snowflake || null,
     role: role || null,
     dealCode: code || null,
@@ -481,7 +489,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                               </p>
                               {partnerTip.platform && (
                                 <p className="text-sm">
-                                  <span className="text-muted-foreground">Platform:</span>{' '}
+                                  <span className="text-muted-foreground">{partnerTip.platformLabel}:</span>{' '}
                                   <span className="font-medium">{partnerTip.platform}</span>
                                 </p>
                               )}

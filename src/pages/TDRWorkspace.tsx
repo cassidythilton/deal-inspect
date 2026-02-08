@@ -91,6 +91,13 @@ export default function TDRWorkspace() {
             <span className="text-xs text-muted-foreground">SE:</span>
             <span className="text-xs font-medium">{deal.salesConsultant || 'Not assigned'}</span>
           </div>
+          {deal.pocSalesConsultant && (
+            <div className="flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1.5 dark:bg-emerald-950/30 dark:border-emerald-800">
+              <User className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs text-emerald-600 dark:text-emerald-400">PoC SE:</span>
+              <span className="text-xs font-medium text-emerald-800 dark:text-emerald-300">{deal.pocSalesConsultant}</span>
+            </div>
+          )}
         </div>
       </header>
 
