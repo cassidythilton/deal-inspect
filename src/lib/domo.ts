@@ -28,10 +28,13 @@ export interface DomoOpportunity {
 }
 
 // SE Mapping dataset structure
-// Join key: se matches Sales Consultant from opportunities
+// Columns: Sales Consultant, Solutions Consultant, PoC Sales Consultant, SE Manager
+// Used ONLY for SE → SE Manager lookup and PoC role identification
 export interface DomoSEMapping {
-  'se': string;           // SE name - join key matching opportunities['Sales Consultant']
-  'se_manager': string;   // SE Manager name
+  salesConsultant: string;       // Regular Sales Consultant name
+  solutionsConsultant: string;   // Solutions Consultant name
+  pocSalesConsultant: string;    // PoC Sales Consultant name
+  seManager: string;             // SE Manager name
 }
 
 export const CONFIG = {
@@ -76,11 +79,6 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
   'NumberOfCompetitors': 'Number of Competitors',
 };
 
-const SE_MAPPING_FIELD_MAP: Record<string, string> = {
-  'se': 'se',
-  'se_manager': 'se_manager',
-};
-
 /**
  * Fetch opportunities from Domo with pre-filtering for stage age
  * Deals with Stage Age > MAX_STAGE_AGE_DAYS are excluded
@@ -104,7 +102,7 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
     console.log(`[Domo] Fetched ${rawOpps.length} raw opportunity records`);
     
     if (rawOpps.length > 0) {
-      console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).slice(0, 10));
+      console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).slice(0, 15));
     }
 
     // Normalize and pre-filter by stage age
@@ -131,8 +129,31 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
 }
 
 /**
- * Fetch SE mapping data
- * Used for dynamic join: opportunities['Sales Consultant'] -> SE mapping
+ * Read a string field from a record, trying multiple possible key variations.
+ * Domo may return fields using aliases (camelCase) or full column names.
+ */
+function readField(record: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const val = record[key];
+    if (val !== undefined && val !== null && val !== '') {
+      return String(val).trim();
+    }
+  }
+  return '';
+}
+
+/**
+ * Fetch SE mapping data from Domo
+ * 
+ * Dataset columns (manifest aliases → column names):
+ *   SalesConsultant     → "Sales Consultant"
+ *   SolutionsConsultant → "Solutions Consultant"
+ *   PocSalesConsultant  → "PoC Sales Consultant"
+ *   SeManager           → "SE Manager"
+ *
+ * Used ONLY for:
+ *   1. SE → SE Manager lookup
+ *   2. Identifying which SEs are PoC Sales Consultants
  */
 export async function fetchSEMapping(): Promise<DomoSEMapping[]> {
   const domo = (window as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo 
@@ -153,32 +174,37 @@ export async function fetchSEMapping(): Promise<DomoSEMapping[]> {
     console.log(`[Domo] Fetched ${rawMappings.length} SE mapping records`);
     
     if (rawMappings.length > 0) {
-      console.log('[Domo] Sample SE mapping fields:', Object.keys(rawMappings[0]));
+      console.log('[Domo] SE mapping field names:', Object.keys(rawMappings[0]));
+      console.log('[Domo] SE mapping sample record:', rawMappings[0]);
     }
 
-    // Debug: log raw field names from first record
-    if (rawMappings.length > 0) {
-      console.log('[Domo] Raw SE mapping keys:', Object.keys(rawMappings[0]));
-      console.log('[Domo] Raw SE mapping sample:', rawMappings[0]);
-    }
-
-    // Normalize field names - try multiple possible column name variations
-    const seMappings = rawMappings.map((record) => {
-      // Try to find SE name (could be 'se', 'SE', 'Sales Consultant', 'solutions_consultant', etc.)
-      const seValue = (record['se'] || record['SE'] || record['solutions_consultant'] || record['Sales Consultant'] || '') as string;
-      const seManagerValue = (record['se_manager'] || record['SE_Manager'] || record['SE Manager'] || record['Manager'] || '') as string;
-      
-      return {
-        se: seValue.trim(),
-        se_manager: seManagerValue.trim(),
-      } as DomoSEMapping;
-    });
+    // Normalize each record — try Domo aliases (camelCase), full column names,
+    // and legacy aliases (se, se_manager) for backward compatibility
+    const seMappings: DomoSEMapping[] = rawMappings.map((record) => ({
+      salesConsultant: readField(record,
+        'SalesConsultant', 'Sales Consultant', 'sales_consultant', 'sc', 'se', 'SE'),
+      solutionsConsultant: readField(record,
+        'SolutionsConsultant', 'Solutions Consultant', 'solutions_consultant'),
+      pocSalesConsultant: readField(record,
+        'PocSalesConsultant', 'PoC Sales Consultant', 'poc_sales_consultant', 'PocSC'),
+      seManager: readField(record,
+        'SeManager', 'SE Manager', 'se_manager', 'SE_Manager', 'Manager'),
+    }));
     
     if (seMappings.length > 0) {
       console.log('[Domo] Normalized SE mapping sample:', seMappings[0]);
-      // Log a few sample mappings for debugging
-      console.log('[Domo] SE mapping samples:', seMappings.slice(0, 5).map(m => `${m.se} -> ${m.se_manager}`));
+      console.log('[Domo] SE mapping samples:',
+        seMappings.slice(0, 5).map(m =>
+          `SC="${m.salesConsultant}" PoC="${m.pocSalesConsultant}" Mgr="${m.seManager}"`
+        )
+      );
     }
+    
+    // Count stats
+    const withSC = seMappings.filter(m => m.salesConsultant).length;
+    const withPoC = seMappings.filter(m => m.pocSalesConsultant).length;
+    const withMgr = seMappings.filter(m => m.seManager).length;
+    console.log(`[Domo] SE mapping stats: ${withSC} with SC, ${withPoC} with PoC, ${withMgr} with Manager`);
     
     return seMappings;
   } catch (error) {

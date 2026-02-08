@@ -1,7 +1,9 @@
 /**
  * TopBar Component
  * Main filter bar with Manager, SE Manager, SE, Quarter, and Priority filters
- * Rebuilt to match original formatting exactly
+ *
+ * Dropdown styling: light, legible backgrounds — no dark fills.
+ * Selected states use tinted backgrounds with subtle borders.
  */
 
 import { User, Users, Building2, RefreshCw, Filter, X, Check } from 'lucide-react';
@@ -26,7 +28,7 @@ export interface SEFilterOptions {
 }
 
 export interface SEFilterState {
-  selectedSEManager: string | null;  // Separate SE Manager selection
+  selectedSEManager: string | null;  // SE Manager selection (dedicated dropdown)
   selectedSE: string | null;         // Individual SE selection (with prefix se: or poc:)
   selectedManager: string | null;    // Forecast Manager (AE Manager)
   selectedQuarters: string[] | null; // Multi-select quarters
@@ -57,18 +59,10 @@ export function TopBar({
     { id: 'all' as const, label: 'All Eligible' },
   ];
 
-  // Check if we have filter data
-  const hasFilters = seFilterOptions && (
-    seFilterOptions.seManagers.length > 0 || 
-    seFilterOptions.salesConsultants.length > 0 ||
-    seFilterOptions.pocSalesConsultants.length > 0
-  );
-
   // Sort quarters in descending order (newest first)
   const quarters = (seFilterOptions?.quarters || [])
     .slice()
     .sort((a, b) => {
-      // Handle formats like "2026-Q1" 
       const matchA = a.match(/(\d{4})-Q(\d)/);
       const matchB = b.match(/(\d{4})-Q(\d)/);
       if (matchA && matchB) {
@@ -121,14 +115,20 @@ export function TopBar({
   // Get display text for SE dropdown
   const getSeDisplayText = () => {
     if (!seFilterState?.selectedSE) return 'All SEs';
-    const [prefix, name] = seFilterState.selectedSE.split(':');
-    return name || seFilterState.selectedSE;
+    const val = seFilterState.selectedSE;
+    // Strip prefix
+    if (val.startsWith('se:')) return val.slice(3);
+    if (val.startsWith('poc:')) return val.slice(4);
+    return val;
   };
+
+  // Has any SE-related data
+  const hasSeData = salesEngineers.length > 0 || pocArchitects.length > 0;
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-6">
       {/* Left: Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         {/* Filters label */}
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Filter className="h-3.5 w-3.5" />
@@ -144,7 +144,7 @@ export function TopBar({
             <SelectTrigger className={cn(
               "h-9 min-w-[120px] text-sm font-medium shadow-none gap-2 rounded-lg",
               selectedQuarters.length > 0 
-                ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700" 
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800" 
                 : "bg-secondary border-transparent hover:bg-secondary/80"
             )}>
               <span className="truncate">{quarterDisplayText}</span>
@@ -177,7 +177,7 @@ export function TopBar({
                   >
                     <div className={cn(
                       "h-4 w-4 border-2 rounded flex items-center justify-center transition-colors",
-                      isSelected ? "bg-emerald-600 border-emerald-600" : "border-muted-foreground/40"
+                      isSelected ? "bg-emerald-500 border-emerald-500" : "border-muted-foreground/40"
                     )}>
                       {isSelected && <Check className="h-3 w-3 text-white" />}
                     </div>
@@ -223,7 +223,7 @@ export function TopBar({
 
         <div className="h-6 w-px bg-border" />
 
-        {/* Manager (Forecast Manager) dropdown */}
+        {/* Manager (Forecast / AE Manager) dropdown */}
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-muted-foreground" />
           <span className="text-xs text-muted-foreground font-medium">Manager:</span>
@@ -234,7 +234,7 @@ export function TopBar({
             <SelectTrigger className={cn(
               "h-9 w-[160px] text-sm font-medium shadow-none rounded-lg",
               seFilterState?.selectedManager 
-                ? "bg-teal-600 text-white border-teal-600 hover:bg-teal-700" 
+                ? "bg-teal-50 text-teal-800 border border-teal-200 hover:bg-teal-100 dark:bg-teal-950/30 dark:text-teal-400 dark:border-teal-800" 
                 : "bg-secondary border-transparent hover:bg-secondary/80"
             )}>
               <SelectValue placeholder="All Managers" />
@@ -250,37 +250,35 @@ export function TopBar({
           </Select>
         </div>
 
-        {/* SE Manager dropdown - SEPARATE from SE selection */}
-        {seManagers.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground font-medium">SE Mgr:</span>
-            <Select 
-              value={seFilterState?.selectedSEManager || 'all'} 
-              onValueChange={(v) => onSEFilterChange?.({ selectedSEManager: v === 'all' ? null : v })}
-            >
-              <SelectTrigger className={cn(
-                "h-9 w-[160px] text-sm font-medium shadow-none rounded-lg",
-                seFilterState?.selectedSEManager 
-                  ? "bg-violet-600 text-white border-violet-600 hover:bg-violet-700" 
-                  : "bg-secondary border-transparent hover:bg-secondary/80"
-              )}>
-                <SelectValue placeholder="All SE Managers" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-sm font-medium">All SE Managers</SelectItem>
-                {seManagers.map((mgr) => (
-                  <SelectItem key={mgr} value={mgr} className="text-sm">
-                    {mgr}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        {/* SE Manager dropdown — dedicated, independent filter */}
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground font-medium">SE Mgr:</span>
+          <Select 
+            value={seFilterState?.selectedSEManager || 'all'} 
+            onValueChange={(v) => onSEFilterChange?.({ selectedSEManager: v === 'all' ? null : v })}
+          >
+            <SelectTrigger className={cn(
+              "h-9 w-[160px] text-sm font-medium shadow-none rounded-lg",
+              seFilterState?.selectedSEManager 
+                ? "bg-violet-50 text-violet-800 border border-violet-200 hover:bg-violet-100 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-800" 
+                : "bg-secondary border-transparent hover:bg-secondary/80"
+            )}>
+              <SelectValue placeholder="All SE Managers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-sm font-medium">All SE Managers</SelectItem>
+              {seManagers.map((mgr) => (
+                <SelectItem key={mgr} value={mgr} className="text-sm">
+                  {mgr}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-        {/* SE Filter with grouped Sales Engineers and PoC Architects */}
-        {hasFilters && (
+        {/* SE dropdown with grouped Sales Engineers and PoC Architects */}
+        {hasSeData && (
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground font-medium">SE:</span>
@@ -291,7 +289,7 @@ export function TopBar({
               <SelectTrigger className={cn(
                 "h-9 w-[180px] text-sm font-medium shadow-none rounded-lg",
                 seFilterState?.selectedSE 
-                  ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700" 
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800" 
                   : "bg-secondary border-transparent hover:bg-secondary/80"
               )}>
                 <SelectValue placeholder="All SEs">{getSeDisplayText()}</SelectValue>
@@ -302,7 +300,7 @@ export function TopBar({
                 {/* Sales Engineers Group */}
                 {salesEngineers.length > 0 && (
                   <SelectGroup>
-                    <SelectLabel className="text-xs uppercase tracking-wider text-muted-foreground px-3 py-2 font-bold bg-muted/50">
+                    <SelectLabel className="text-xs uppercase tracking-wider text-muted-foreground px-3 py-2 font-bold">
                       Sales Engineers
                     </SelectLabel>
                     {salesEngineers.map((se) => (
@@ -320,7 +318,7 @@ export function TopBar({
                 {/* PoC Architects Group */}
                 {pocArchitects.length > 0 && (
                   <SelectGroup>
-                    <SelectLabel className="text-xs uppercase tracking-wider text-muted-foreground px-3 py-2 font-bold bg-muted/50">
+                    <SelectLabel className="text-xs uppercase tracking-wider text-muted-foreground px-3 py-2 font-bold">
                       PoC Architects
                     </SelectLabel>
                     {pocArchitects.map((se) => (
@@ -356,7 +354,7 @@ export function TopBar({
           <SelectTrigger className={cn(
             "h-9 w-[130px] text-sm font-medium shadow-none rounded-lg",
             seFilterState?.selectedPriority 
-              ? "bg-amber-600 text-white border-amber-600 hover:bg-amber-700" 
+              ? "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800" 
               : "bg-secondary border-transparent hover:bg-secondary/80"
           )}>
             <SelectValue placeholder="All Deals" />

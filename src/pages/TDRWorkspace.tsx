@@ -72,13 +72,20 @@ export default function TDRWorkspace() {
           </div>
         </div>
         
-        {/* Manager and SE pills */}
+        {/* Manager, SE Manager, and SE pills */}
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Manager:</span>
             <span className="text-xs font-medium">{deal.owner}</span>
           </div>
+          {deal.seManager && (
+            <div className="flex items-center gap-2 rounded-full bg-violet-50 border border-violet-200 px-3 py-1.5 dark:bg-violet-950/30 dark:border-violet-800">
+              <Users className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+              <span className="text-xs text-violet-600 dark:text-violet-400">SE Mgr:</span>
+              <span className="text-xs font-medium text-violet-800 dark:text-violet-300">{deal.seManager}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5">
             <User className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">SE:</span>
