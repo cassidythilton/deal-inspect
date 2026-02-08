@@ -357,9 +357,21 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full table-fixed">
+            {/* Column widths matching backup layout */}
+            <colgroup>
+              <col className="w-[18%]" />  {/* Deal / Account */}
+              <col className="w-[10%]" />  {/* Stage */}
+              <col className="w-[5%]" />   {/* Age */}
+              <col className="w-[7%]" />   {/* ACV */}
+              <col className="w-[5%]" />   {/* TDR */}
+              <col className="w-[12%]" />  {/* SE Team */}
+              <col className="w-[5%]" />   {/* Partner */}
+              <col className="w-[28%]" />  {/* Why TDR? */}
+              <col className="w-[10%]" />  {/* Action */}
+            </colgroup>
             <thead>
-              <tr className="border-b border-border/60">
+              <tr className="border-b border-border/40">
                 <th className="section-header px-4 py-2 text-left">Deal / Account</th>
                 <th className="section-header px-3 py-2 text-left">Stage</th>
                 <th className="section-header px-3 py-2 text-center">Age</th>
@@ -371,7 +383,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                 <th className="section-header px-3 py-2 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody>
               {deals.map((deal) => {
                 const stageNum = deal.stageNumber || getStageNumber(deal.stage);
                 const stageName = getShortStageName(deal.stage);

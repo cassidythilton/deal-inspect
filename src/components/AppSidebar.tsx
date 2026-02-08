@@ -32,15 +32,15 @@ export function AppSidebar() {
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
-      {/* Logo area */}
-      <div className="flex h-12 items-center justify-center border-b border-sidebar-border px-3">
+      {/* Logo area — left-aligned */}
+      <div className="flex h-12 items-center border-b border-sidebar-border px-3">
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sidebar-accent">
             <span className="text-xs font-semibold text-sidebar-accent-foreground">T</span>
           </div>
           <span
             className={cn(
-              'whitespace-nowrap text-sm font-medium text-sidebar-primary transition-opacity',
+              'whitespace-nowrap text-sm font-semibold text-white transition-opacity',
               isExpanded ? 'opacity-100' : 'opacity-0'
             )}
           >

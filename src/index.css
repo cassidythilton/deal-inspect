@@ -72,14 +72,14 @@
 
     /* Sidebar - deep aubergine navigation */
     --sidebar-background: 281 19% 15%;
-    --sidebar-foreground: 161 30% 75%;
-    --sidebar-primary: 152 73% 62%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 281 19% 15%;
     --sidebar-accent: 281 19% 22%;
-    --sidebar-accent-foreground: 161 40% 85%;
+    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 281 15% 22%;
     --sidebar-ring: 161 50% 45%;
-    --sidebar-muted: 161 20% 50%;
+    --sidebar-muted: 0 0% 60%;
   }
 
   .dark {
@@ -113,14 +113,14 @@
     --input: 281 15% 22%;
     --ring: 161 50% 45%;
     --sidebar-background: 281 22% 6%;
-    --sidebar-foreground: 161 30% 70%;
-    --sidebar-primary: 152 73% 55%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 281 19% 10%;
     --sidebar-accent: 281 22% 14%;
-    --sidebar-accent-foreground: 161 40% 85%;
+    --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 281 22% 14%;
     --sidebar-ring: 161 50% 45%;
-    --sidebar-muted: 161 20% 45%;
+    --sidebar-muted: 0 0% 55%;
   }
 }
 
