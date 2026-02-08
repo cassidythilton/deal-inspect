@@ -6,6 +6,7 @@ export interface Deal {
   account: string;
   dealName: string;
   stage: string;
+  stageAge?: number; // Days in current stage
   acv: number;
   closeDate: string;
   partnerSignal: 'strong' | 'moderate' | 'weak' | 'none';
@@ -14,6 +15,10 @@ export interface Deal {
   owner: string;
   isPinned?: boolean;
   agendaStatus?: 'draft' | 'ready' | 'reviewed';
+  // SE Team fields
+  salesConsultant?: string;
+  pocSalesConsultant?: string;
+  seManager?: string;
 }
 
 export interface TDRStep {

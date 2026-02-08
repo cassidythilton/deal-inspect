@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { TopBar } from '@/components/TopBar';
+import { useState, useMemo, useCallback } from 'react';
+import { TopBar, SEFilterState } from '@/components/TopBar';
 import { MetricsGrid } from '@/components/MetricsGrid';
 import { DealsTable } from '@/components/DealsTable';
 import { AgendaSection } from '@/components/AgendaSection';
@@ -7,10 +7,53 @@ import { ACVDistributionChart } from '@/components/charts/ACVDistributionChart';
 import { RiskMixChart } from '@/components/charts/RiskMixChart';
 import { ReadinessTrendChart } from '@/components/charts/ReadinessTrendChart';
 import { mockDeals, mockMetrics, hygieneIssues } from '@/data/mockData';
+import { useDeals } from '@/hooks/useDomo';
+import { MAX_STAGE_AGE_DAYS } from '@/lib/domo';
+import { Deal } from '@/types/tdr';
 
 export default function CommandCenter() {
   const [activeView, setActiveView] = useState<'recommended' | 'agenda' | 'all'>('recommended');
-  const [deals, setDeals] = useState(mockDeals);
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
+  const [seFilters, setSEFilters] = useState<SEFilterState>({
+    seManager: null,
+    pocSalesConsultant: null,
+  });
+  
+  // Fetch deals from Domo (pre-filtered for stage age > 365 days)
+  const { deals: domoDeals, filterOptions, isLoading, isDomoConnected } = useDeals();
+  
+  // Use Domo data if connected, otherwise fall back to pre-filtered mock data
+  const baseDeals = useMemo(() => {
+    if (isDomoConnected && domoDeals.length > 0) {
+      console.log(`[CommandCenter] Using ${domoDeals.length} Domo deals (pre-filtered for Stage Age <= ${MAX_STAGE_AGE_DAYS})`);
+      return domoDeals;
+    }
+    // Fall back to mock data for local development, also pre-filtered
+    const filtered = mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
+    console.log(`[CommandCenter] Using ${filtered.length} mock deals (dev mode)`);
+    return filtered;
+  }, [domoDeals, isDomoConnected]);
+
+  // Apply pinned status and SE filters to deals
+  const deals: Deal[] = useMemo(() => {
+    let result = baseDeals.map((d) => ({
+      ...d,
+      isPinned: pinnedIds.has(d.id),
+      agendaStatus: pinnedIds.has(d.id) ? (d.agendaStatus || 'draft') : undefined,
+    }));
+    
+    // Apply SE Manager filter
+    if (seFilters.seManager) {
+      result = result.filter((d) => d.seManager === seFilters.seManager);
+    }
+    
+    // Apply PoC Sales Consultant filter
+    if (seFilters.pocSalesConsultant) {
+      result = result.filter((d) => d.pocSalesConsultant === seFilters.pocSalesConsultant);
+    }
+    
+    return result;
+  }, [baseDeals, pinnedIds, seFilters]);
 
   const pinnedDeals = deals.filter((d) => d.isPinned);
   
@@ -19,20 +62,32 @@ export default function CommandCenter() {
     : activeView === 'agenda'
     ? pinnedDeals
     : deals;
+    
+  const handleSEFilterChange = useCallback((filters: Partial<SEFilterState>) => {
+    setSEFilters((prev) => ({ ...prev, ...filters }));
+  }, []);
 
   const handlePinDeal = (id: string) => {
-    setDeals((prev) =>
-      prev.map((d) =>
-        d.id === id
-          ? { ...d, isPinned: !d.isPinned, agendaStatus: d.isPinned ? undefined : 'draft' }
-          : d
-      )
-    );
+    setPinnedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   return (
     <div className="flex min-h-screen flex-col">
-      <TopBar activeView={activeView} onViewChange={setActiveView} />
+      <TopBar 
+        activeView={activeView} 
+        onViewChange={setActiveView}
+        seFilterOptions={filterOptions}
+        seFilterState={seFilters}
+        onSEFilterChange={handleSEFilterChange}
+      />
       
       <main className="flex-1 p-6">
         <div className="mx-auto max-w-7xl space-y-6">
