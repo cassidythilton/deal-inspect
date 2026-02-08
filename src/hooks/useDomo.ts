@@ -140,19 +140,27 @@ export function useDeals() {
 
   // Create SE lookup map
   // Key: se (SE name from mapping) -> se_manager
+  // Use case-insensitive lookup for robustness
   const seLookup = useMemo(() => {
     const lookup = new Map<string, SEMappingResult>();
     if (seMapping) {
       console.log(`[SE Join] Building lookup from ${seMapping.length} SE mappings`);
       for (const mapping of seMapping) {
-        const key = mapping['se'];
-        if (key) {
-          lookup.set(key, {
-            seManager: mapping['se_manager'] || undefined,
+        const key = mapping['se']?.trim();
+        const manager = mapping['se_manager']?.trim();
+        if (key && manager) {
+          // Store with lowercase key for case-insensitive matching
+          lookup.set(key.toLowerCase(), {
+            seManager: manager,
           });
         }
       }
-      console.log(`[SE Join] Lookup has ${lookup.size} entries. Sample keys:`, Array.from(lookup.keys()).slice(0, 5));
+      console.log(`[SE Join] Lookup has ${lookup.size} entries.`);
+      console.log(`[SE Join] Sample mappings:`, Array.from(lookup.entries()).slice(0, 10).map(([k, v]) => `${k} -> ${v.seManager}`));
+      
+      // Check specifically for Mike Tong
+      const mikeTong = lookup.get('mike tong');
+      console.log(`[SE Join] Mike Tong mapping:`, mikeTong);
     }
     return lookup;
   }, [seMapping]);
@@ -163,21 +171,30 @@ export function useDeals() {
     if (!opportunities) return [];
     
     let matchCount = 0;
+    const unmatchedSEs = new Set<string>();
+    
     const result = opportunities.map((opp) => {
       const deal = transformOpportunityToDeal(opp);
       
-      // Dynamic join: Look up SE data using Sales Consultant as the key
-      const salesConsultant = deal.salesConsultant;
-      if (salesConsultant && seLookup.has(salesConsultant)) {
-        const seData = seLookup.get(salesConsultant)!;
-        deal.seManager = seData.seManager;
-        matchCount++;
+      // Dynamic join: Look up SE data using Sales Consultant as the key (case-insensitive)
+      const salesConsultant = deal.salesConsultant?.trim();
+      if (salesConsultant) {
+        const seData = seLookup.get(salesConsultant.toLowerCase());
+        if (seData) {
+          deal.seManager = seData.seManager;
+          matchCount++;
+        } else {
+          unmatchedSEs.add(salesConsultant);
+        }
       }
       
       return deal;
     });
     
     console.log(`[SE Join] Matched ${matchCount}/${result.length} deals with SE data`);
+    if (unmatchedSEs.size > 0) {
+      console.log(`[SE Join] Unmatched SEs (not in mapping):`, Array.from(unmatchedSEs).slice(0, 10));
+    }
     return result;
   }, [opportunities, seLookup]);
 

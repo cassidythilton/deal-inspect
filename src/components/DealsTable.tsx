@@ -1,6 +1,6 @@
 import { Deal } from '@/types/tdr';
 import { cn } from '@/lib/utils';
-import { Pin, Users, Zap, Swords, Clock, Cloud } from 'lucide-react';
+import { Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2, TrendingUp, Sparkles, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -14,8 +14,8 @@ import {
   getTDRScoreTooltip, 
   getTDRPriorityLabel,
   getTDRPriorityFactorsTooltip,
-  WHY_TDR_TAGS,
 } from '@/lib/tooltips';
+import { getTopFactors, CriticalFactor, calculateTDRScore } from '@/lib/tdrCriticalFactors';
 
 interface DealsTableProps {
   deals: Deal[];
@@ -57,82 +57,50 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
     return stage.split(' ').slice(0, 2).join(' ');
   };
 
-  // Calculate TDR score if not provided
+  // Calculate TDR score using critical factors framework
   const getTDRScore = (deal: Deal): number => {
     if (deal.tdrScore !== undefined) return deal.tdrScore;
-    // Calculate based on various factors
-    let score = 25; // Base score
-    if (deal.riskLevel === 'green') score += 15;
-    if (deal.riskLevel === 'yellow') score += 5;
-    if (deal.partnerSignal === 'strong') score += 10;
-    if (deal.partnerSignal === 'moderate') score += 5;
-    if (deal.stageAge && deal.stageAge < 60) score += 5;
-    if (deal.acv > 100000) score += 5;
-    return Math.min(50, score);
+    return calculateTDRScore(deal);
   };
 
-  // Get WHY TDR? tags
-  const getWhyTDRTags = (deal: Deal): { label: string; type: 'competitive' | 'partner' | 'stalled' | 'early' }[] => {
-    const tags: { label: string; type: 'competitive' | 'partner' | 'stalled' | 'early' }[] = [];
-    
-    if (deal.isCompetitive || deal.reasons.some(r => r.toLowerCase().includes('compet'))) {
-      tags.push({ label: 'Competitive', type: 'competitive' });
-    }
-    if (deal.isPartnerPlay || deal.partnerSignal === 'strong' || deal.partnerSignal === 'moderate') {
-      tags.push({ label: 'Partner play', type: 'partner' });
-    }
-    if (deal.isStalled || (deal.stageAge && deal.stageAge > 90)) {
-      tags.push({ label: 'Stalled', type: 'stalled' });
-    }
-    if (deal.isEarlyStage || getStageNumber(deal.stage) <= 2) {
-      tags.push({ label: 'Early stage', type: 'early' });
-    }
-    
-    return tags.slice(0, 2);
+  // Get WHY TDR? tags using critical factors framework
+  const getWhyTDRTags = (deal: Deal): CriticalFactor[] => {
+    return getTopFactors(deal, 2);
   };
 
-  const getTagStyle = (type: string) => {
-    switch (type) {
-      case 'competitive':
+  // Get icon component for a factor
+  const getFactorIcon = (factor: CriticalFactor) => {
+    switch (factor.icon) {
+      case 'DollarSign': return DollarSign;
+      case 'Cloud': return Cloud;
+      case 'Building2': return Building2;
+      case 'Swords': return Swords;
+      case 'Zap': return Zap;
+      case 'TrendingUp': return TrendingUp;
+      case 'Users': return Users;
+      case 'Sparkles': return Sparkles;
+      case 'Clock': return Clock;
+      case 'AlertTriangle': return AlertTriangle;
+      default: return Zap;
+    }
+  };
+
+  const getTagStyle = (color: string) => {
+    switch (color) {
+      case 'orange':
         return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-      case 'partner':
+      case 'blue':
         return 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400';
-      case 'stalled':
+      case 'purple':
+        return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
+      case 'red':
+        return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
+      case 'amber':
         return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-      case 'early':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'green':
+        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
       default:
         return 'bg-secondary text-muted-foreground';
-    }
-  };
-
-  const getTagIcon = (type: string) => {
-    switch (type) {
-      case 'competitive':
-        return <Swords className="h-3 w-3" />;
-      case 'partner':
-        return <Users className="h-3 w-3" />;
-      case 'stalled':
-        return <Clock className="h-3 w-3" />;
-      case 'early':
-        return <Zap className="h-3 w-3" />;
-      default:
-        return null;
-    }
-  };
-
-  const getWhyTDRTooltip = (type: string, deal: Deal): string => {
-    switch (type) {
-      case 'competitive':
-        return `${WHY_TDR_TAGS.competitive.description}.\n→ ${WHY_TDR_TAGS.competitive.strategy}`;
-      case 'partner':
-        return `${WHY_TDR_TAGS.partnerPlay.description}.\n→ ${WHY_TDR_TAGS.partnerPlay.strategy}`;
-      case 'stalled':
-        return `${WHY_TDR_TAGS.stalled.description}.\n→ ${WHY_TDR_TAGS.stalled.strategy}`;
-      case 'early':
-        return `${WHY_TDR_TAGS.earlyStage.description}.\n→ ${WHY_TDR_TAGS.earlyStage.strategy}`;
-      default:
-        return '';
     }
   };
 
@@ -308,38 +276,33 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                       </Tooltip>
                     </td>
                     
-                    {/* WHY TDR? Tags with tooltips */}
+                    {/* WHY TDR? Tags with tooltips - using Critical Factors framework */}
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap gap-1">
-                        {whyTags.map((tag, i) => (
-                          <Tooltip key={i}>
-                            <TooltipTrigger asChild>
-                              <span
-                                className={cn(
-                                  'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs font-medium cursor-help',
-                                  getTagStyle(tag.type)
-                                )}
-                              >
-                                {getTagIcon(tag.type)}
-                                {tag.label}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-xs">
-                              <div className="text-sm space-y-2">
-                                <p className="font-medium">{tag.label === 'Partner play' ? 'Partner-influenced deal. Validate integration approach.' : 
-                                  tag.label === 'Competitive' ? 'Competitive deal. Assess differentiation strategy.' :
-                                  tag.label === 'Stalled' ? 'Extended time in stage. Identify blockers.' :
-                                  'Early stage opportunity. Shape solution direction.'}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {tag.type === 'partner' && '→ Identify platform, position for composable entry (start with ETL, expand to analytics).'}
-                                  {tag.type === 'competitive' && '→ Assess competitive positioning and differentiation strategy.'}
-                                  {tag.type === 'stalled' && '→ Identify blockers and accelerate technical decision-making.'}
-                                  {tag.type === 'early' && '→ Shape architecture direction and establish technical credibility.'}
-                                </p>
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
+                        {whyTags.map((factor, i) => {
+                          const IconComponent = getFactorIcon(factor);
+                          return (
+                            <Tooltip key={i}>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className={cn(
+                                    'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs font-medium cursor-help',
+                                    getTagStyle(factor.color)
+                                  )}
+                                >
+                                  <IconComponent className="h-3 w-3" />
+                                  {factor.shortLabel}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <div className="text-sm space-y-2">
+                                  <p className="font-medium">{factor.description}</p>
+                                  <p className="text-xs text-muted-foreground">→ {factor.strategy}</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })}
                       </div>
                     </td>
                     

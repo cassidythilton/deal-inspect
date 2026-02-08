@@ -156,13 +156,28 @@ export async function fetchSEMapping(): Promise<DomoSEMapping[]> {
       console.log('[Domo] Sample SE mapping fields:', Object.keys(rawMappings[0]));
     }
 
-    // Normalize field names
-    const seMappings = rawMappings.map((record) => 
-      normalizeRecord<DomoSEMapping>(record, SE_MAPPING_FIELD_MAP)
-    );
+    // Debug: log raw field names from first record
+    if (rawMappings.length > 0) {
+      console.log('[Domo] Raw SE mapping keys:', Object.keys(rawMappings[0]));
+      console.log('[Domo] Raw SE mapping sample:', rawMappings[0]);
+    }
+
+    // Normalize field names - try multiple possible column name variations
+    const seMappings = rawMappings.map((record) => {
+      // Try to find SE name (could be 'se', 'SE', 'Sales Consultant', 'solutions_consultant', etc.)
+      const seValue = (record['se'] || record['SE'] || record['solutions_consultant'] || record['Sales Consultant'] || '') as string;
+      const seManagerValue = (record['se_manager'] || record['SE_Manager'] || record['SE Manager'] || record['Manager'] || '') as string;
+      
+      return {
+        se: seValue.trim(),
+        se_manager: seManagerValue.trim(),
+      } as DomoSEMapping;
+    });
     
     if (seMappings.length > 0) {
       console.log('[Domo] Normalized SE mapping sample:', seMappings[0]);
+      // Log a few sample mappings for debugging
+      console.log('[Domo] SE mapping samples:', seMappings.slice(0, 5).map(m => `${m.se} -> ${m.se_manager}`));
     }
     
     return seMappings;

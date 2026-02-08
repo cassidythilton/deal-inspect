@@ -10,6 +10,7 @@ import { useDeals } from '@/hooks/useDomo';
 import { MAX_STAGE_AGE_DAYS, TDR_PRIORITY_THRESHOLDS, ALLOWED_MANAGERS } from '@/lib/constants';
 import { Deal } from '@/types/tdr';
 import { Info } from 'lucide-react';
+import { calculateTDRScore, getTopFactors, STAGE_TIMING } from '@/lib/tdrCriticalFactors';
 
 // Default manager on load
 const DEFAULT_MANAGER = ALLOWED_MANAGERS[0]; // Andrew Rich
@@ -107,8 +108,23 @@ export default function CommandCenter() {
 
   const pinnedDeals = deals.filter((d) => d.isPinned);
   
+  // Recommended deals: Prioritize by critical factors score
+  // Key insight: Early-stage deals (Stage 2-3) are the SWEET SPOT for TDR
+  const recommendedDeals = useMemo(() => {
+    return deals
+      .map(d => ({
+        ...d,
+        tdrScore: d.tdrScore ?? calculateTDRScore(d),
+        factors: getTopFactors(d, 2),
+      }))
+      // Sort by TDR score (higher = more recommended)
+      .sort((a, b) => (b.tdrScore ?? 0) - (a.tdrScore ?? 0))
+      // Take top 10 for recommended view
+      .slice(0, 10);
+  }, [deals]);
+  
   const filteredDeals = activeView === 'recommended'
-    ? deals.filter((d) => d.riskLevel !== 'red').slice(0, 10)
+    ? recommendedDeals
     : activeView === 'agenda'
     ? pinnedDeals
     : deals;
@@ -116,7 +132,7 @@ export default function CommandCenter() {
   // Calculate metrics from actual deals
   const metrics = useMemo(() => {
     const eligibleACV = deals.reduce((sum, d) => sum + d.acv, 0);
-    const recommendedDeals = deals.filter(d => d.riskLevel !== 'red');
+    // Use the already-computed recommendedDeals which is sorted by TDR score
     const recommendedACV = recommendedDeals.reduce((sum, d) => sum + d.acv, 0);
     const agendaACV = pinnedDeals.reduce((sum, d) => sum + d.acv, 0);
     const atRiskDeals = deals.filter(d => d.riskLevel === 'red' || d.riskLevel === 'yellow');
