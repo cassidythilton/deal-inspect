@@ -19,10 +19,10 @@ export interface DomoOpportunity {
   'Close Date FQ': string;
   'Domo Opportunity Owner': string;
   'Sales Consultant': string;
-  'PoC Sales Consultant': string;     // PoC SE assigned to this deal
+  'PoC Sales Consultant': string;
   'Primary Partner Role': string | null;
   'Partners Involved': string | null;
-  'Partner Influence': string | null;  // "Yes" or "No"
+  'Partner Influence': string | null;
   'Snowflake Team Picklist': string | null;
   'Domo Forecast Category': string;
   'Type': string;
@@ -31,11 +31,10 @@ export interface DomoOpportunity {
   [key: string]: unknown;
 }
 
-// SE Mapping dataset — exactly 2 columns: se, se_manager
-// Used ONLY for SE → SE Manager lookup
+// SE Mapping — exactly 2 columns in the actual dataset: se, se_manager
 export interface DomoSEMapping {
-  se: string;           // SE name (join key matching Sales Consultant / PoC SC from opportunities)
-  se_manager: string;   // SE Manager name
+  se: string;
+  se_manager: string;
 }
 
 export const CONFIG = {
@@ -104,7 +103,7 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
     console.log(`[Domo] Fetched ${rawOpps.length} raw opportunity records`);
 
     if (rawOpps.length > 0) {
-      console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).sort().slice(0, 20));
+      console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).sort());
     }
 
     const allOpps = rawOpps
@@ -126,11 +125,30 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
   }
 }
 
+// ─── SE Mapping ──────────────────────────────────────────────────────────────
+
 /**
- * Read a string value from a record, trying multiple key variations.
+ * All possible key names Domo might use to return the SE name column.
+ * Covers: current manifest aliases, old v1.4 aliases, raw column names.
  */
-function readField(record: Record<string, unknown>, ...keys: string[]): string {
-  for (const key of keys) {
+const SE_KEY_CANDIDATES = [
+  'se', 'SE',
+  'SalesConsultant', 'Sales Consultant', 'Sales_Consultant',
+  'SolutionsConsultant', 'Solutions Consultant',
+  'PocSalesConsultant', 'PoC Sales Consultant',
+];
+
+const MANAGER_KEY_CANDIDATES = [
+  'se_manager', 'SE_Manager', 'SE Manager',
+  'SeManager', 'seManager',
+  'se_mgr', 'Manager',
+];
+
+/**
+ * Read the first non-empty string value from a record trying multiple keys.
+ */
+function readField(record: Record<string, unknown>, candidates: string[]): string {
+  for (const key of candidates) {
     const val = record[key];
     if (val !== undefined && val !== null && val !== '') {
       return String(val).trim();
@@ -140,15 +158,81 @@ function readField(record: Record<string, unknown>, ...keys: string[]): string {
 }
 
 /**
- * Fetch SE mapping data from Domo
+ * Auto-detect which keys in the record correspond to SE name and SE Manager.
  *
- * The actual dataset has exactly 2 columns:
- *   se          — SE name (join key)
- *   se_manager  — SE Manager name
+ * The dataset has exactly 2 text columns. One is a person name (the SE),
+ * the other is their manager. We identify them by:
+ *   1. Trying known key candidates first
+ *   2. Falling back to heuristic: the key containing 'manager'/'mgr' is the manager
+ *   3. Last resort: the 2-column dataset → first key with fewer unique values is likely manager
+ */
+function detectSEMappingKeys(records: Record<string, unknown>[]): { seKey: string; mgrKey: string } | null {
+  if (records.length === 0) return null;
+
+  const allKeys = Object.keys(records[0]);
+  console.log('[SE Detect] Record keys:', allKeys);
+  console.log('[SE Detect] First record values:', records[0]);
+
+  // Method 1: Try known candidates
+  let seKey = '';
+  let mgrKey = '';
+
+  for (const k of allKeys) {
+    if (!seKey && SE_KEY_CANDIDATES.some(c => c.toLowerCase() === k.toLowerCase())) {
+      seKey = k;
+    }
+    if (!mgrKey && MANAGER_KEY_CANDIDATES.some(c => c.toLowerCase() === k.toLowerCase())) {
+      mgrKey = k;
+    }
+  }
+
+  if (seKey && mgrKey) {
+    console.log(`[SE Detect] Found via candidates: SE="${seKey}", Manager="${mgrKey}"`);
+    return { seKey, mgrKey };
+  }
+
+  // Method 2: Heuristic — key containing 'manager' or 'mgr' is the manager
+  for (const k of allKeys) {
+    const kl = k.toLowerCase();
+    if (kl.includes('manager') || kl.includes('mgr')) {
+      mgrKey = k;
+    }
+  }
+
+  if (mgrKey) {
+    // The other key is the SE
+    seKey = allKeys.find(k => k !== mgrKey) || '';
+    if (seKey) {
+      console.log(`[SE Detect] Found via heuristic: SE="${seKey}", Manager="${mgrKey}"`);
+      return { seKey, mgrKey };
+    }
+  }
+
+  // Method 3: 2-column dataset — column with fewer unique values is likely manager
+  if (allKeys.length === 2) {
+    const [k1, k2] = allKeys;
+    const unique1 = new Set(records.map(r => String(r[k1] ?? ''))).size;
+    const unique2 = new Set(records.map(r => String(r[k2] ?? ''))).size;
+
+    // The column with fewer unique values is the manager (29 SEs → ~4 managers)
+    if (unique1 < unique2) {
+      console.log(`[SE Detect] 2-col heuristic: Manager="${k1}" (${unique1} unique), SE="${k2}" (${unique2} unique)`);
+      return { seKey: k2, mgrKey: k1 };
+    } else {
+      console.log(`[SE Detect] 2-col heuristic: Manager="${k2}" (${unique2} unique), SE="${k1}" (${unique1} unique)`);
+      return { seKey: k1, mgrKey: k2 };
+    }
+  }
+
+  console.warn('[SE Detect] Could not identify SE mapping columns from keys:', allKeys);
+  return null;
+}
+
+/**
+ * Fetch SE mapping data from Domo.
  *
- * Domo returns fields using the aliases from manifest.json:
- *   alias "se"          → column "se"
- *   alias "se_manager"  → column "se_manager"
+ * The actual dataset has exactly 2 columns: se, se_manager (29 rows).
+ * This function is ultra-robust: it tries known aliases, then auto-detects.
  */
 export async function fetchSEMapping(): Promise<DomoSEMapping[]> {
   const domo = (window as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo
@@ -168,24 +252,40 @@ export async function fetchSEMapping(): Promise<DomoSEMapping[]> {
 
     console.log(`[Domo] Fetched ${rawMappings.length} SE mapping records`);
 
-    if (rawMappings.length > 0) {
-      console.log('[Domo] SE mapping field names:', Object.keys(rawMappings[0]));
-      console.log('[Domo] SE mapping first row:', rawMappings[0]);
+    if (rawMappings.length === 0) {
+      console.warn('[Domo] SE mapping returned 0 records');
+      return [];
     }
 
-    // Normalize — try the exact alias names first, then common variations
-    const seMappings: DomoSEMapping[] = rawMappings.map((record) => ({
-      se: readField(record, 'se', 'SE', 'Sales Consultant', 'SalesConsultant'),
-      se_manager: readField(record, 'se_manager', 'SE Manager', 'SeManager', 'SE_Manager'),
-    }));
+    // Log the raw structure
+    console.log('[Domo] SE mapping raw keys:', Object.keys(rawMappings[0]));
+    console.log('[Domo] SE mapping first 3 rows:', rawMappings.slice(0, 3));
 
-    // Log stats
-    const validMappings = seMappings.filter(m => m.se && m.se_manager);
-    console.log(`[Domo] Valid SE mappings: ${validMappings.length}/${seMappings.length}`);
-    console.log('[Domo] SE mapping samples:', validMappings.slice(0, 5).map(m => `"${m.se}" → "${m.se_manager}"`));
+    // Auto-detect which keys are SE and Manager
+    const detected = detectSEMappingKeys(rawMappings);
 
-    // Log unique managers
-    const uniqueManagers = new Set(validMappings.map(m => m.se_manager));
+    let seMappings: DomoSEMapping[];
+
+    if (detected) {
+      // Use detected keys
+      seMappings = rawMappings.map((record) => ({
+        se: String(record[detected.seKey] ?? '').trim(),
+        se_manager: String(record[detected.mgrKey] ?? '').trim(),
+      }));
+    } else {
+      // Fallback: try all known candidates
+      seMappings = rawMappings.map((record) => ({
+        se: readField(record, SE_KEY_CANDIDATES),
+        se_manager: readField(record, MANAGER_KEY_CANDIDATES),
+      }));
+    }
+
+    // Validate
+    const valid = seMappings.filter(m => m.se && m.se_manager);
+    console.log(`[Domo] Valid SE mappings: ${valid.length}/${seMappings.length}`);
+    console.log('[Domo] SE mapping samples:', valid.slice(0, 5).map(m => `"${m.se}" → "${m.se_manager}"`));
+
+    const uniqueManagers = new Set(valid.map(m => m.se_manager));
     console.log('[Domo] Unique SE Managers:', Array.from(uniqueManagers));
 
     return seMappings;
