@@ -220,35 +220,65 @@ export function detectCriticalFactors(deal: Deal): CriticalFactor[] {
   const stageLower = (deal.stage || '').toLowerCase();
   const isEarlyStage = STAGE_TIMING.sweetSpot.some(s => stageLower.includes(s.toLowerCase()));
   const isLateStage = STAGE_TIMING.lateStage.some(s => stageLower.includes(s.toLowerCase()));
+  const stageAge = deal.stageAge || 0;
 
   // TIER 1 checks
+  // High ACV deals
   if (deal.acv >= 150000) {
     factors.push(CRITICAL_FACTORS.materialACV);
   }
 
-  // Partner platform detection (would need partner data)
+  // Partner platform detection
   if (deal.partnersInvolved && /snowflake|databricks|bigquery|aws|azure|gcp/i.test(deal.partnersInvolved)) {
     factors.push(CRITICAL_FACTORS.partnerPlatform);
   }
 
-  // Competitive displacement
-  if (deal.isCompetitive || deal.reasons.some(r => r.toLowerCase().includes('compet'))) {
+  // Competitive displacement - check isCompetitive flag or reasons
+  if (deal.isCompetitive) {
     factors.push(CRITICAL_FACTORS.competitiveDisplacement);
   }
 
-  // Early-stage + strong signal (THE SWEET SPOT)
-  if (isEarlyStage && deal.acv >= 150000) {
-    factors.push(CRITICAL_FACTORS.earlyStageStrong);
+  // Early-stage opportunity (Stage 1-2 = Discovery/Determine) - great for shaping
+  if (isEarlyStage) {
+    // If also high ACV, this is the SWEET SPOT
+    if (deal.acv >= 150000) {
+      factors.push(CRITICAL_FACTORS.earlyStageStrong);
+    } else {
+      // Even without high ACV, early stage is still valuable
+      // Add a modified factor for early stage
+      factors.push({
+        ...CRITICAL_FACTORS.earlyStageStrong,
+        id: 'earlyStage',
+        shortLabel: 'Early stage',
+        points: 15,
+        tier: 2,
+        description: 'Stage 1-2: Maximum opportunity to shape architecture direction',
+      });
+    }
   }
 
   // TIER 2 checks
-  if (deal.isPartnerPlay || deal.partnerSignal === 'strong' || deal.partnerSignal === 'moderate') {
+  // Partner co-sell - active partner involvement
+  if ((deal.isPartnerPlay || deal.partnerSignal === 'strong' || deal.partnerSignal === 'moderate') 
+      && !factors.some(f => f.id === 'partnerPlatform')) {
+    // Only add partnerCoSell if we didn't already add partnerPlatform
     factors.push(CRITICAL_FACTORS.partnerCoSell);
   }
 
   // TIER 3 checks
-  if (deal.stageAge && deal.stageAge > 60) {
+  // Stalled deals - extended time in stage
+  if (stageAge > 60) {
     factors.push(CRITICAL_FACTORS.staleSignals);
+  } else if (stageAge > 30 && !isEarlyStage) {
+    // Moderate age in mid-late stage is also concerning
+    factors.push({
+      ...CRITICAL_FACTORS.staleSignals,
+      id: 'moderateAge',
+      shortLabel: 'Aging',
+      points: 5,
+      tier: 3,
+      description: `${stageAge}d in stage - monitor for delays`,
+    });
   }
 
   // Late-stage warning (negative factor)
@@ -261,14 +291,27 @@ export function detectCriticalFactors(deal: Deal): CriticalFactor[] {
 
 /**
  * Calculate TDR score based on critical factors
+ * Base score starts at 25 (minimum for any deal in pipeline)
  */
 export function calculateTDRScore(deal: Deal): number {
   const factors = detectCriticalFactors(deal);
-  let score = 0;
+  
+  // Base score of 25 for any deal that made it to the pipeline
+  let score = 25;
 
+  // Add points from detected factors
   for (const factor of factors) {
     score += factor.points;
   }
+  
+  // Bonus modifiers based on deal characteristics
+  // ACV bonus (scaled)
+  if (deal.acv >= 300000) score += 10;
+  else if (deal.acv >= 100000) score += 5;
+  else if (deal.acv >= 50000) score += 3;
+  
+  // Stage age penalty for very old deals
+  if (deal.stageAge && deal.stageAge > 180) score -= 10;
 
   // Ensure score is within 0-100 range
   return Math.max(0, Math.min(100, score));
