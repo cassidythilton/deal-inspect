@@ -1803,7 +1803,243 @@ const currentUser = await domo.get('/domo/users/v1/me');
 
 ---
 
-## 15. Reference Links
+## 15. Sprint Plan & Progress Tracker
+
+Each sprint is a focused work session (2–4 hours). The app remains fully functional after every sprint — no sprint leaves the app in a broken state. Sprints are ordered by dependency: each builds on the one before it.
+
+### Sprint 1 — Snowflake Foundation ⬜
+
+> **Goal:** Stand up the Snowflake environment. Zero app changes.
+> **Risk to app:** None — purely infrastructure.
+
+- [ ] Run bootstrap DDL: create `TDR_APP` database, `TDR_DATA` schema, `TDR_APP_WH` warehouse (XS, auto-suspend 60s), `TDR_APP_ROLE` role
+- [ ] Run table DDL: create all 6 tables (`TDR_SESSIONS`, `TDR_STEP_INPUTS`, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `API_USAGE_LOG`, `CORTEX_ANALYSIS_RESULTS`)
+- [ ] Grant permissions: `TDR_APP_ROLE` gets USAGE + ALL on schema/tables/warehouse + `CORTEX_USER` database role
+- [ ] Deploy `snowflakeAuth.js` shared infrastructure to Code Engine (JWT auth + `executeSql` + `mapRows`)
+- [ ] Validate: run a test SQL (`SELECT CURRENT_TIMESTAMP()`) from Code Engine → confirm it returns successfully
+- [ ] Verify: `INSERT` + `SELECT` on `TDR_SESSIONS` from Code Engine → confirm round-trip works
+
+**Definition of Done:** Code Engine can authenticate to Snowflake and execute SQL against all 6 tables.
+
+---
+
+### Sprint 2 — Session Persistence (Dual-Write) ⬜
+
+> **Goal:** TDR sessions save to Snowflake AND AppDB. Reads prefer Snowflake, fall back to AppDB.
+> **Risk to app:** Low — dual-write means AppDB is still the safety net.
+
+- [ ] Deploy persistence functions to Code Engine: `createSession`, `updateSession`, `getSessionsByOpp`, `getAllSessions`, `deleteSession`
+- [ ] Add `packageMapping` entries for the 5 session functions to `manifest.json`
+- [ ] Create `src/lib/snowflakeStore.ts` — front-end service wrapping Code Engine calls
+- [ ] Capture user identity: call `/domo/users/v1/me` on app init, store in React context
+- [ ] Wire `TDRWorkspace.tsx`: session create/update → `snowflakeStore` (with AppDB dual-write)
+- [ ] Wire `useDomo.ts`: session fetch → try Snowflake first, fall back to AppDB
+- [ ] Test: create a TDR session in the app → verify row appears in Snowflake AND AppDB
+- [ ] Test: load deals table → verify TDR status column still populates correctly
+
+**Definition of Done:** Sessions persist to both Snowflake and AppDB. Users see no difference in behavior.
+
+---
+
+### Sprint 3 — Step Input Persistence ⬜
+
+> **Goal:** TDR step field values save to Snowflake (append-only). Edit history becomes available.
+> **Risk to app:** Low — additive only.
+
+- [ ] Deploy remaining persistence functions: `saveStepInput`, `getLatestInputs`, `getInputHistory`
+- [ ] Add `packageMapping` entries for the 3 input functions
+- [ ] Wire `TDRInputs.tsx`: on field blur/change → debounced `saveStepInput` call
+- [ ] Wire `TDRWorkspace.tsx`: on session open → `getLatestInputs` to populate fields
+- [ ] Add "View edit history" button per field → calls `getInputHistory`, shows modal with timestamped changes
+- [ ] Test: fill out TDR steps, close workspace, reopen → fields restore from Snowflake
+- [ ] Test: edit a field 3 times → "View history" shows all 3 values with timestamps
+
+**Definition of Done:** All TDR step inputs persist to Snowflake with full edit history. Fields auto-populate on session open.
+
+---
+
+### Sprint 4 — Sumble Account Enrichment ⬜
+
+> **Goal:** Enrich accounts with firmographic + technographic data from Sumble.
+> **Risk to app:** None — new feature, no existing behavior changes.
+
+- [ ] Create Domo Account for Sumble API key (store `apiKey` property)
+- [ ] Deploy `enrichSumble`, `getLatestIntel`, `getIntelHistory` functions to Code Engine
+- [ ] Add `packageMapping` entries
+- [ ] Create `src/lib/accountIntel.ts` — front-end orchestration service
+- [ ] Add domain input field to TDR Workspace (editable, with heuristic pre-fill from account name)
+- [ ] Add "Enrich Account" button → calls `enrichSumble` → displays tech stack as categorized badges
+- [ ] Add "Account Intelligence" section to `TDRIntelligence.tsx` — industry, revenue, employee count, tech stack
+- [ ] Test: click "Enrich Account" for a real deal → see Sumble data in workspace AND in Snowflake table
+- [ ] Test: click again → see 2 pulls in `ACCOUNT_INTEL_SUMBLE`
+
+**Definition of Done:** SE Manager can enrich an account with one click. Tech stack displays in workspace. Data persists with timestamps.
+
+---
+
+### Sprint 5 — Perplexity Web Research ⬜
+
+> **Goal:** Research accounts via web to surface strategic context, competitive landscape, and technology signals.
+> **Risk to app:** None — new feature, no existing behavior changes.
+
+- [ ] Create Domo Account for Perplexity API key (store `apiKey` property)
+- [ ] Deploy `researchPerplexity` function to Code Engine
+- [ ] Add `packageMapping` entry
+- [ ] Add "Account Research" step to TDR Workspace (new Step 2 between Deal Context and Business Decision)
+- [ ] Research view: summary, recent initiatives, technology signals, competitive landscape, key insights, citations
+- [ ] "Research Account" button → calls `researchPerplexity` with deal context
+- [ ] "Refresh Research" button → appends new row (doesn't overwrite)
+- [ ] Show citation URLs as clickable links
+- [ ] Test: research a well-known company → see structured findings with sources
+- [ ] Test: research twice → both pulls visible in history
+
+**Definition of Done:** SE Manager can research any account from the workspace. Findings are structured, sourced, and persisted.
+
+---
+
+### Sprint 6 — Caching, Settings & Usage Tracking ⬜
+
+> **Goal:** Add cache-first reads, configurable TTL, and API usage visibility. Prevent unnecessary API calls.
+> **Risk to app:** None — new Settings card, no existing behavior changes.
+
+- [ ] Deploy `getUsageStats` function to Code Engine
+- [ ] Implement cache-first logic in `accountIntel.ts`: check `getLatestIntel` before calling APIs
+- [ ] Add configurable cache TTL to `AppSettings` interface (default 24 hours)
+- [ ] Add "Account Intelligence" card to Settings page: enable/disable toggle, auto-enrich on TDR start toggle, cache duration slider
+- [ ] Add monthly API usage counter to Settings page (calls `getUsageStats`)
+- [ ] Implement `getIntelHistory` UI: "View Research History" button showing timestamped pulls with diff highlights
+- [ ] Add 🔍 icon to DealsTable account name column when cached intel exists
+- [ ] Test: open workspace for a previously-enriched deal → intel loads from cache (no API call)
+- [ ] Test: Settings page shows accurate call counts
+
+**Definition of Done:** API calls only happen when cache is stale or user explicitly requests refresh. Usage is visible.
+
+---
+
+### Sprint 7 — Cortex AI: Deal-Level Intelligence ⬜
+
+> **Goal:** AI-generated TDR briefs, auto-classified findings, entity extraction.
+> **Risk to app:** None — new features behind buttons.
+
+- [ ] Deploy `generateTDRBrief`, `classifyFindings`, `extractEntities` to Code Engine
+- [ ] Add `packageMapping` entries
+- [ ] Create `src/lib/cortexAi.ts` front-end service
+- [ ] Add "Generate TDR Brief" button to TDR Workspace → renders structured brief (executive summary, risks, recommendations)
+- [ ] Auto-classify Perplexity findings after each research pull → color-coded category tags in UI
+- [ ] Auto-extract entities after each research pull → competitor names populate "Competitive Signals" section, technologies supplement Sumble data
+- [ ] Store all Cortex outputs in `CORTEX_ANALYSIS_RESULTS`
+- [ ] Test: complete a TDR session with enrichment → generate brief → verify it references Sumble tech stack and Perplexity findings
+- [ ] Test: classified findings show distinct categories (competitive threat vs. strategic initiative vs. expansion opportunity)
+
+**Definition of Done:** AI generates actionable TDR briefs grounded in real account intelligence. Findings are automatically categorized and entities extracted.
+
+---
+
+### Sprint 8 — Cortex AI: Portfolio & Sentiment ⬜
+
+> **Goal:** Cross-deal portfolio analysis, intelligence evolution summaries, sentiment tracking.
+> **Risk to app:** None — new features on existing pages.
+
+- [ ] Deploy `getPortfolioInsights`, `summarizeIntelHistory`, `getSentimentTrend` to Code Engine
+- [ ] Add `packageMapping` entries
+- [ ] Add "Portfolio Insights" button to Command Center → AI-generated analysis across all manager's TDR sessions
+- [ ] Add "Intelligence Evolution" section to workspace (visible when 2+ research pulls exist)
+- [ ] Add sentiment trend visualization to TDR History view (sparkline or small chart across iterations)
+- [ ] Test: manager with 5+ TDR sessions → portfolio insights identify patterns across deals
+- [ ] Test: account researched 3 times → evolution summary describes what changed
+
+**Definition of Done:** Manager gets AI-powered portfolio view. Deal health trends are visible over time.
+
+---
+
+### Sprint 9 — TDR Scoring Enrichment ⬜
+
+> **Goal:** Intelligence data feeds into TDR scoring and Domo AI prompt.
+> **Risk to app:** Moderate — modifies existing scoring logic. Test carefully.
+
+- [ ] Add `techStackOverlap` critical factor to `tdrCriticalFactors.ts` (Tier 2, 10 pts — triggered by Sumble competitive tool detection)
+- [ ] Add `strategicMomentum` critical factor (Tier 2, 8 pts — triggered by Perplexity strategic initiative findings)
+- [ ] Enhance existing factor tooltips with intel validation (e.g., "Confirmed via Sumble: Account runs Snowflake" for `cloudPartner`)
+- [ ] Enrich Domo AI prompt payload in `domoAi.ts` with cached intel (tech stack, recent signals)
+- [ ] Add enrichment indicators to DealsTable: new "Why TDR?" pills for intelligence-based factors
+- [ ] TDR Score tooltip notes when enrichment data contributed to the score
+- [ ] Test: deal with competitive tech in Sumble → `techStackOverlap` pill appears, score increases by 10
+- [ ] Test: Domo AI recommendations reference account tech stack in their reasoning
+
+**Definition of Done:** TDR scores incorporate real-world account intelligence. AI recommendations are grounded in external data.
+
+---
+
+### Sprint 10 — Semantic Search & Analyst ⬜
+
+> **Goal:** Search across all stored intelligence. Ask questions in natural language.
+> **Risk to app:** None — new features on new UI elements.
+
+- [ ] Deploy `findSimilarDeals`, `askAnalyst` to Code Engine
+- [ ] Add `packageMapping` entries
+- [ ] Build Cortex Analyst semantic model YAML over TDR tables
+- [ ] Add "Similar Deals" section to Intelligence panel → shows deals with comparable tech profiles
+- [ ] Add "Ask TDR" query bar to Command Center → natural language questions → table results
+- [ ] (Stretch) Set up Cortex Search service over intel + TDR notes → search bar in Command Center
+- [ ] Test: find similar deals for an enriched account → results show relevant matches
+- [ ] Test: ask "Which accounts have Snowflake but no TDR?" → get accurate results
+
+**Definition of Done:** Manager can find similar deals and ask questions about their portfolio in plain English.
+
+---
+
+### Sprint 11 — Migration & Cleanup ⬜
+
+> **Goal:** Remove AppDB dependency. Snowflake is the single source of truth.
+> **Risk to app:** Moderate — removes a persistence layer. Validate thoroughly.
+
+- [ ] Build one-time AppDB → Snowflake migration Code Engine function
+- [ ] Run migration: read all AppDB documents → INSERT into Snowflake tables → validate counts match
+- [ ] Switch `snowflakeStore.ts` to Snowflake-only reads (remove AppDB fallback)
+- [ ] Remove dual-write: stop writing to AppDB
+- [ ] Remove `appDb.ts` (or mark as deprecated)
+- [ ] Remove `enableAppDB` setting from `appSettings.ts`
+- [ ] Update Settings page: remove AppDB toggle, add Snowflake connection status indicator
+- [ ] (Stretch) Set up scheduled Cortex batch analysis via Snowflake Tasks (weekly win/loss correlation, competitive agg, stale intel detection)
+- [ ] Final regression test: full TDR workflow end-to-end on Snowflake-only
+- [ ] Version bump + deploy
+
+**Definition of Done:** AppDB fully retired. All data lives in Snowflake. App is clean and future-proof.
+
+---
+
+### Progress Dashboard
+
+| Sprint | Name | Status | Dependencies |
+|--------|------|--------|-------------|
+| 1 | Snowflake Foundation | ⬜ Not Started | None |
+| 2 | Session Persistence (Dual-Write) | ⬜ Not Started | Sprint 1 |
+| 3 | Step Input Persistence | ⬜ Not Started | Sprint 2 |
+| 4 | Sumble Account Enrichment | ⬜ Not Started | Sprint 1 |
+| 5 | Perplexity Web Research | ⬜ Not Started | Sprint 1 |
+| 6 | Caching, Settings & Usage | ⬜ Not Started | Sprints 4 + 5 |
+| 7 | Cortex AI: Deal-Level | ⬜ Not Started | Sprints 3 + 6 |
+| 8 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | Sprint 7 |
+| 9 | TDR Scoring Enrichment | ⬜ Not Started | Sprint 6 |
+| 10 | Semantic Search & Analyst | ⬜ Not Started | Sprint 7 |
+| 11 | Migration & Cleanup | ⬜ Not Started | All above |
+
+**Parallel tracks:** Sprints 4 and 5 (Sumble + Perplexity) can run in parallel — they both depend on Sprint 1 but not on each other. Similarly, Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6.
+
+```
+Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┐
+            │                           ├── Sprint 7 ── Sprint 8
+            ├── Sprint 4 ──┐            │        │
+            │               ├── Sprint 6 ┘        ├── Sprint 10
+            └── Sprint 5 ──┘      │               │
+                                  └── Sprint 9     │
+                                                   │
+                                         Sprint 11 ┘
+```
+
+---
+
+## 16. Reference Links
 
 | Resource | URL |
 |----------|-----|
