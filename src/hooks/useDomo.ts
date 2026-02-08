@@ -181,33 +181,30 @@ export function useDeals() {
     return result;
   }, [opportunities, seLookup]);
 
-  // Extract unique filter options from both SE mapping and opportunities
+  // Extract unique filter options - ONLY from deals belonging to allowed managers
   const filterOptions = useMemo(() => {
+    // Import allowed managers
+    const ALLOWED_MANAGERS = ['Andrew Rich', 'John Pasalano', 'Keith White', 'Taylor Rust', 'Casey Morgan'];
+    const allowedSet = new Set(ALLOWED_MANAGERS.map(m => m.toLowerCase()));
+    
     const seManagers = new Set<string>();
     const salesConsultants = new Set<string>();
     const forecastManagers = new Set<string>();
     const quarters = new Set<string>();
     
-    // From SE mapping - get managers
-    if (seMapping) {
-      for (const mapping of seMapping) {
-        const manager = mapping['SE Manager'];
-        if (manager && manager !== 'TBD') {
-          seManagers.add(manager);
-        }
-      }
-    }
-    
-    // From opportunities - get unique Sales Consultants, Managers, and Quarters
+    // Only get SEs from deals belonging to allowed managers
     if (opportunities) {
       for (const opp of opportunities) {
+        const mgrName = (opp['Mgr Forecast Name'] as string) || opp['Domo Opportunity Owner'] || '';
+        
+        // Only include if manager is in allowed list
+        if (!allowedSet.has(mgrName.toLowerCase())) continue;
+        
         const sc = opp['Sales Consultant'];
         if (sc) {
           salesConsultants.add(sc);
         }
         
-        // Get forecast manager (Mgr Forecast Name)
-        const mgrName = opp['Mgr Forecast Name'] as string | undefined;
         if (mgrName) {
           forecastManagers.add(mgrName);
         }
@@ -220,8 +217,25 @@ export function useDeals() {
       }
     }
     
+    // From SE mapping - get managers for SEs we found
+    if (seMapping) {
+      for (const mapping of seMapping) {
+        const sc = mapping['Sales Consultant'];
+        // Only include SE managers for SEs in our list
+        if (sc && salesConsultants.has(sc)) {
+          const manager = mapping['SE Manager'];
+          if (manager && manager !== 'TBD') {
+            seManagers.add(manager);
+          }
+        }
+      }
+    }
+    
     // Also get from deals (in case of mock data)
     for (const deal of deals) {
+      // Only include if manager is in allowed list
+      if (!allowedSet.has((deal.owner || '').toLowerCase())) continue;
+      
       if (deal.salesConsultant) {
         salesConsultants.add(deal.salesConsultant);
       }

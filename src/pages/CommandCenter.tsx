@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { TopBar, SEFilterState } from '@/components/TopBar';
 import { DealsTable } from '@/components/DealsTable';
 import { AgendaSection } from '@/components/AgendaSection';
@@ -7,17 +7,20 @@ import { TDRPriorityChart } from '@/components/charts/TDRPriorityChart';
 import { PipelineByCloseChart } from '@/components/charts/PipelineByCloseChart';
 import { mockDeals, hygieneIssues } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
-import { MAX_STAGE_AGE_DAYS, TDR_PRIORITY_THRESHOLDS } from '@/lib/constants';
+import { MAX_STAGE_AGE_DAYS, TDR_PRIORITY_THRESHOLDS, ALLOWED_MANAGERS } from '@/lib/constants';
 import { Deal } from '@/types/tdr';
 import { Info } from 'lucide-react';
+
+// Default manager on load
+const DEFAULT_MANAGER = ALLOWED_MANAGERS[0]; // Andrew Rich
 
 export default function CommandCenter() {
   const [activeView, setActiveView] = useState<'recommended' | 'agenda' | 'all'>('recommended');
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [seFilters, setSEFilters] = useState<SEFilterState>({
     selectedSE: null,
-    selectedManager: null,
-    selectedQuarter: null,
+    selectedManager: DEFAULT_MANAGER, // Default to first manager
+    selectedQuarters: ['Q1 2026'], // Default to Q1 2026
     selectedPriority: null,
     includeCurrentQuarter: true,
   });
@@ -25,19 +28,29 @@ export default function CommandCenter() {
   // Fetch deals from Domo (pre-filtered for stage age > 365 days)
   const { deals: domoDeals, filterOptions, isLoading, isDomoConnected, refetch } = useDeals();
   
-  // Use Domo data if connected, otherwise fall back to pre-filtered mock data
+  // Pre-filter to only deals from ALLOWED_MANAGERS
   const baseDeals = useMemo(() => {
+    let deals: Deal[];
+    
     if (isDomoConnected && domoDeals.length > 0) {
-      console.log(`[CommandCenter] Using ${domoDeals.length} Domo deals (pre-filtered for Stage Age <= ${MAX_STAGE_AGE_DAYS})`);
-      return domoDeals;
+      deals = domoDeals;
+    } else {
+      // Fall back to mock data for local development
+      deals = mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
     }
-    // Fall back to mock data for local development, also pre-filtered
-    const filtered = mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
-    console.log(`[CommandCenter] Using ${filtered.length} mock deals (dev mode)`);
+    
+    // IMPORTANT: Only include deals from allowed managers
+    const allowedSet = new Set(ALLOWED_MANAGERS.map(m => m.toLowerCase()));
+    const filtered = deals.filter((d) => {
+      const ownerLower = d.owner?.toLowerCase() || '';
+      return allowedSet.has(ownerLower);
+    });
+    
+    console.log(`[CommandCenter] Filtered to ${filtered.length} deals from allowed managers (${ALLOWED_MANAGERS.join(', ')})`);
     return filtered;
   }, [domoDeals, isDomoConnected]);
 
-  // Apply pinned status and all filters to deals
+  // Apply all filters to deals
   const deals: Deal[] = useMemo(() => {
     let result = baseDeals.map((d) => ({
       ...d,
@@ -58,9 +71,9 @@ export default function CommandCenter() {
       result = result.filter((d) => d.owner === seFilters.selectedManager);
     }
     
-    // Apply Quarter filter
-    if (seFilters.selectedQuarter) {
-      result = result.filter((d) => d.closeDateFQ === seFilters.selectedQuarter);
+    // Apply Quarter filter (multi-select)
+    if (seFilters.selectedQuarters && seFilters.selectedQuarters.length > 0) {
+      result = result.filter((d) => seFilters.selectedQuarters!.includes(d.closeDateFQ || ''));
     }
     
     // Apply TDR Priority filter (based on tdrScore)

@@ -1,4 +1,4 @@
-import { User, Users, RefreshCw, Filter, X } from 'lucide-react';
+import { User, Users, RefreshCw, Filter, X, Check } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -21,7 +21,7 @@ export interface SEFilterOptions {
 export interface SEFilterState {
   selectedSE: string | null;
   selectedManager: string | null;
-  selectedQuarter: string | null;
+  selectedQuarters: string[] | null; // Multi-select
   selectedPriority: string | null;
   includeCurrentQuarter: boolean;
 }
@@ -54,23 +54,56 @@ export function TopBar({
     seFilterOptions.salesConsultants.length > 0
   );
 
-  // Get quarters from options or use defaults
-  const quarters = seFilterOptions?.quarters?.length 
-    ? seFilterOptions.quarters 
-    : [];
+  // Get quarters from options - sort in descending order (newest first)
+  const quarters = (seFilterOptions?.quarters || [])
+    .slice()
+    .sort((a, b) => {
+      // Parse quarter strings like "Q1 2026"
+      const [qA, yearA] = a.split(' ');
+      const [qB, yearB] = b.split(' ');
+      const yearDiff = parseInt(yearB) - parseInt(yearA);
+      if (yearDiff !== 0) return yearDiff;
+      return parseInt(qB.replace('Q', '')) - parseInt(qA.replace('Q', ''));
+    });
 
-  // Filter to only allowed managers
+  // Filter managers to only allowed ones
   const managers = ALLOWED_MANAGERS;
 
-  // Combine all SEs for the grouped dropdown
-  const allSEs = [
-    ...(seFilterOptions?.salesConsultants || []),
-  ].filter((v, i, a) => a.indexOf(v) === i).sort();
-
+  // Get SEs that belong to deals from allowed managers
+  const allSEs = seFilterOptions?.salesConsultants || [];
   const seManagers = seFilterOptions?.seManagers || [];
 
-  // Check if any filter is active
-  const hasActiveQuarterFilter = seFilterState?.selectedQuarter;
+  // Multi-select quarter handling
+  const selectedQuarters = seFilterState?.selectedQuarters || [];
+  const toggleQuarter = (quarter: string) => {
+    const current = [...selectedQuarters];
+    const idx = current.indexOf(quarter);
+    if (idx >= 0) {
+      current.splice(idx, 1);
+    } else {
+      current.push(quarter);
+    }
+    onSEFilterChange?.({ selectedQuarters: current.length > 0 ? current : null });
+  };
+  
+  const clearQuarters = () => {
+    onSEFilterChange?.({ selectedQuarters: null });
+  };
+
+  // Get current quarter label for display
+  const getCurrentQuarter = () => {
+    const now = new Date();
+    const q = Math.floor(now.getMonth() / 3) + 1;
+    return `Q${q} ${now.getFullYear()}`;
+  };
+  const currentQuarter = getCurrentQuarter();
+
+  // Quarter display text
+  const quarterDisplayText = selectedQuarters.length === 0 
+    ? 'All Quarters'
+    : selectedQuarters.length === 1
+    ? selectedQuarters[0]
+    : `${selectedQuarters.length} Quarters`;
 
   return (
     <header className="flex h-12 items-center justify-between border-b border-border bg-card px-6">
@@ -82,33 +115,75 @@ export function TopBar({
           <span className="font-medium">FILTERS</span>
         </div>
 
-        {/* Quarter dropdown */}
-        <div className="flex items-center">
-          <Select 
-            value={seFilterState?.selectedQuarter || 'all'} 
-            onValueChange={(v) => onSEFilterChange?.({ selectedQuarter: v === 'all' ? null : v })}
+        {/* Quarter multi-select dropdown */}
+        <div className="relative">
+          <Select
+            value={selectedQuarters.join(',')}
+            onValueChange={() => {}} // Handled by toggleQuarter
           >
             <SelectTrigger className={cn(
-              "h-8 w-28 text-xs font-medium shadow-none",
-              hasActiveQuarterFilter 
+              "h-8 w-28 text-xs font-medium shadow-none gap-1",
+              selectedQuarters.length > 0 
                 ? "border-none bg-secondary" 
                 : "border-none bg-secondary"
             )}>
-              <SelectValue placeholder="Quarter" />
+              <span className="truncate">{quarterDisplayText}</span>
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">All Quarters</SelectItem>
-              {quarters.map((q) => (
-                <SelectItem key={q} value={q} className="text-xs">
-                  {q}
-                </SelectItem>
-              ))}
+            <SelectContent className="min-w-[180px]">
+              {quarters.map((q) => {
+                const isSelected = selectedQuarters.includes(q);
+                const isCurrent = q === currentQuarter;
+                return (
+                  <div
+                    key={q}
+                    className={cn(
+                      "flex items-center gap-2 px-2 py-1.5 cursor-pointer text-sm hover:bg-accent rounded-sm",
+                      isSelected && "bg-accent"
+                    )}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleQuarter(q);
+                    }}
+                  >
+                    <div className={cn(
+                      "h-4 w-4 border rounded flex items-center justify-center",
+                      isSelected ? "bg-primary border-primary" : "border-border"
+                    )}>
+                      {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                    <span>{q}</span>
+                    {isCurrent && (
+                      <span className="ml-auto text-xs text-muted-foreground">Current</span>
+                    )}
+                  </div>
+                );
+              })}
+              {selectedQuarters.length > 0 && (
+                <>
+                  <div className="border-t border-border my-1" />
+                  <div
+                    className="flex items-center gap-2 px-2 py-1.5 cursor-pointer text-sm hover:bg-accent text-muted-foreground"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      clearQuarters();
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    <span>Clear all</span>
+                  </div>
+                </>
+              )}
             </SelectContent>
           </Select>
-          {hasActiveQuarterFilter && (
+          {selectedQuarters.length > 0 && (
             <button 
-              className="ml-1 p-1 hover:bg-secondary rounded"
-              onClick={() => onSEFilterChange?.({ selectedQuarter: null })}
+              className="absolute right-8 top-1/2 -translate-y-1/2 p-0.5 hover:bg-secondary rounded"
+              onClick={(e) => {
+                e.stopPropagation();
+                clearQuarters();
+              }}
             >
               <X className="h-3 w-3 text-muted-foreground" />
             </button>
