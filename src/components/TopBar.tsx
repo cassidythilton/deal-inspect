@@ -270,52 +270,50 @@ export function TopBar({
             </Select>
           )}
 
-          {/* SE dropdown */}
-          {salesEngineers.length > 0 && (
+          {/* Combined SE + PoC dropdown with groupings */}
+          {hasSeData && (
             <Select 
-              value={seFilterState?.selectedSE?.startsWith('se:') ? seFilterState.selectedSE : (seFilterState?.selectedSE && !seFilterState.selectedSE.startsWith('poc:') ? seFilterState.selectedSE : 'all')} 
+              value={seFilterState?.selectedSE || 'all'} 
               onValueChange={(v) => onSEFilterChange?.({ selectedSE: v === 'all' ? null : v })}
             >
               <SelectTrigger className={cn(
-                "h-7 w-24 text-2xs font-medium shadow-none border",
-                seFilterState?.selectedSE?.startsWith('se:') 
-                  ? "border-sky-500/50 bg-sky-500/5 text-sky-700 dark:text-sky-400" 
+                "h-7 w-28 text-2xs font-medium shadow-none border",
+                seFilterState?.selectedSE 
+                  ? seFilterState.selectedSE.startsWith('poc:')
+                    ? "border-teal-500/50 bg-teal-500/5 text-teal-700 dark:text-teal-400"
+                    : "border-sky-500/50 bg-sky-500/5 text-sky-700 dark:text-sky-400"
                   : "border-border bg-secondary"
               )}>
-                <SelectValue placeholder="SE" />
+                <SelectValue placeholder="All SEs">{getSeDisplayText()}</SelectValue>
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs">All SEs</SelectItem>
-                {salesEngineers.map((se) => (
-                  <SelectItem key={se} value={`se:${se}`} className="text-xs">
-                    {se}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+              <SelectContent className="max-h-[400px] min-w-[220px]">
+                <SelectItem value="all" className="text-xs font-medium">All SEs</SelectItem>
 
-          {/* PoC SE dropdown */}
-          {pocArchitects.length > 0 && (
-            <Select 
-              value={seFilterState?.selectedSE?.startsWith('poc:') ? seFilterState.selectedSE : 'all'} 
-              onValueChange={(v) => onSEFilterChange?.({ selectedSE: v === 'all' ? null : v })}
-            >
-              <SelectTrigger className={cn(
-                "h-7 w-24 text-2xs font-medium shadow-none border",
-                seFilterState?.selectedSE?.startsWith('poc:') 
-                  ? "border-teal-500/50 bg-teal-500/5 text-teal-700 dark:text-teal-400" 
-                  : "border-border bg-secondary"
-              )}>
-                <SelectValue placeholder="PoC SE" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="text-xs">All PoC SEs</SelectItem>
-                {pocArchitects.map((se) => (
-                  <SelectItem key={se} value={`poc:${se}`} className="text-xs">
-                    {se}
-                  </SelectItem>
-                ))}
+                {salesEngineers.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
+                      Sales Engineers
+                    </SelectLabel>
+                    {salesEngineers.map((se) => (
+                      <SelectItem key={`se-${se}`} value={`se:${se}`} className="text-xs pl-4">
+                        {se}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+
+                {pocArchitects.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
+                      PoC Architects
+                    </SelectLabel>
+                    {pocArchitects.map((se) => (
+                      <SelectItem key={`poc-${se}`} value={`poc:${se}`} className="text-xs pl-4">
+                        {se}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
               </SelectContent>
             </Select>
           )}
