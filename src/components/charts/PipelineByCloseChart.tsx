@@ -1,8 +1,14 @@
-import { useState } from 'react';
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip, CartesianGrid } from 'recharts';
+/**
+ * Pipeline By Close Chart
+ * Area chart showing pipeline distribution by close date
+ * Rebuilt with coolors.co palette and improved tooltips
+ */
+
+import { useState, useMemo } from 'react';
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { Deal } from '@/types/tdr';
 import { Info } from 'lucide-react';
-import { format, parseISO, startOfMonth, startOfWeek, addMonths, addWeeks, addDays, isBefore } from 'date-fns';
+import { format, parseISO, startOfMonth, startOfWeek, addMonths, addWeeks, addDays, isBefore, startOfDay } from 'date-fns';
 import {
   Tooltip,
   TooltipContent,
@@ -10,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { calculateTDRScore, TDR_PRIORITY_THRESHOLDS_NEW } from '@/lib/tdrCriticalFactors';
 
 interface PipelineByCloseChartProps {
   deals: Deal[];
@@ -23,191 +30,226 @@ const formatCurrency = (value: number) => {
   return `$${value}`;
 };
 
-// Calculate TDR score for categorization
-const calculateTDRScore = (deal: Deal): number => {
-  if (deal.tdrScore !== undefined) return deal.tdrScore;
-  let score = 25;
-  if (deal.riskLevel === 'green') score += 15;
-  if (deal.riskLevel === 'yellow') score += 5;
-  if (deal.partnerSignal === 'strong') score += 10;
-  if (deal.partnerSignal === 'moderate') score += 5;
-  if (deal.stageAge && deal.stageAge < 60) score += 5;
-  if (deal.acv > 100000) score += 5;
-  return Math.min(50, score);
+// Colors matching the new palette
+const CHART_COLORS = {
+  critical: 'hsl(152, 73%, 45%)', // Emerald
+  high: 'hsl(161, 50%, 50%)',     // Teal
+  medium: 'hsl(38, 65%, 55%)',    // Amber
+};
+
+// Custom tooltip
+const CustomTooltip = ({ active, payload, label }: { 
+  active?: boolean; 
+  payload?: Array<{ name: string; value: number; color: string }>; 
+  label?: string 
+}) => {
+  if (!active || !payload || !payload.length) return null;
+  
+  const total = payload.reduce((sum, p) => sum + (p.value || 0), 0);
+  
+  return (
+    <div className="bg-card border border-border rounded-lg shadow-xl p-4 text-sm min-w-[180px]">
+      <p className="font-bold text-foreground mb-3">{label}</p>
+      {payload.reverse().map((item, i) => (
+        <div key={i} className="flex items-center justify-between py-1">
+          <div className="flex items-center gap-2">
+            <div 
+              className="h-2.5 w-2.5 rounded-full" 
+              style={{ backgroundColor: item.color }}
+            />
+            <span className="text-muted-foreground">{item.name}</span>
+          </div>
+          <span className="font-medium tabular-nums">{formatCurrency(item.value * 1000)}</span>
+        </div>
+      ))}
+      <div className="flex items-center justify-between pt-2 mt-2 border-t border-border">
+        <span className="font-medium">Total</span>
+        <span className="font-bold tabular-nums">{formatCurrency(total * 1000)}</span>
+      </div>
+    </div>
+  );
 };
 
 export function PipelineByCloseChart({ deals }: PipelineByCloseChartProps) {
   const [timeView, setTimeView] = useState<TimeView>('M');
 
   // Generate time periods based on view
-  const now = new Date();
-  let periods: { start: Date; label: string }[] = [];
-  
-  if (timeView === 'M') {
-    for (let i = 0; i < 4; i++) {
-      const month = addMonths(startOfMonth(now), i);
-      periods.push({ start: month, label: format(month, 'MMM d') });
-    }
-  } else if (timeView === 'W') {
-    for (let i = 0; i < 6; i++) {
-      const week = addWeeks(startOfWeek(now), i);
-      periods.push({ start: week, label: format(week, 'MMM d') });
-    }
-  } else {
-    for (let i = 0; i < 14; i++) {
-      const day = addDays(now, i);
-      periods.push({ start: day, label: format(day, 'MMM d') });
-    }
-  }
-
-  const data = periods.map((period, idx) => {
-    const nextPeriod = periods[idx + 1]?.start || addMonths(period.start, 1);
-    const periodDeals = deals.filter((deal) => {
-      try {
-        const closeDate = parseISO(deal.closeDate);
-        return !isBefore(closeDate, period.start) && isBefore(closeDate, nextPeriod);
-      } catch {
-        return false;
+  const periods = useMemo(() => {
+    const now = new Date();
+    const result: { start: Date; end: Date; label: string }[] = [];
+    
+    if (timeView === 'M') {
+      for (let i = 0; i < 4; i++) {
+        const start = addMonths(startOfMonth(now), i);
+        const end = addMonths(start, 1);
+        result.push({ start, end, label: format(start, 'MMM') });
       }
+    } else if (timeView === 'W') {
+      for (let i = 0; i < 6; i++) {
+        const start = addWeeks(startOfWeek(now), i);
+        const end = addWeeks(start, 1);
+        result.push({ start, end, label: format(start, 'MMM d') });
+      }
+    } else {
+      for (let i = 0; i < 7; i++) {
+        const start = addDays(startOfDay(now), i);
+        const end = addDays(start, 1);
+        result.push({ start, end, label: format(start, 'EEE') });
+      }
+    }
+    
+    return result;
+  }, [timeView]);
+
+  // Process data
+  const data = useMemo(() => {
+    return periods.map((period) => {
+      const periodDeals = deals.filter((deal) => {
+        try {
+          const closeDate = parseISO(deal.closeDate);
+          return !isBefore(closeDate, period.start) && isBefore(closeDate, period.end);
+        } catch {
+          return false;
+        }
+      });
+
+      // Categorize by TDR score
+      let critical = 0, high = 0, medium = 0;
+      
+      for (const deal of periodDeals) {
+        const score = deal.tdrScore ?? calculateTDRScore(deal);
+        const acvK = deal.acv / 1000;
+        
+        if (score >= TDR_PRIORITY_THRESHOLDS_NEW.critical) {
+          critical += acvK;
+        } else if (score >= TDR_PRIORITY_THRESHOLDS_NEW.high) {
+          high += acvK;
+        } else if (score >= TDR_PRIORITY_THRESHOLDS_NEW.medium) {
+          medium += acvK;
+        }
+      }
+
+      return {
+        period: period.label,
+        Critical: critical,
+        High: high,
+        Medium: medium,
+      };
     });
+  }, [deals, periods]);
 
-    // Categorize by TDR score instead of risk
-    const criticalACV = periodDeals
-      .filter(d => calculateTDRScore(d) >= 75)
-      .reduce((sum, d) => sum + d.acv, 0);
-    const highACV = periodDeals
-      .filter(d => {
-        const score = calculateTDRScore(d);
-        return score >= 50 && score < 75;
-      })
-      .reduce((sum, d) => sum + d.acv, 0);
-    const mediumACV = periodDeals
-      .filter(d => {
-        const score = calculateTDRScore(d);
-        return score >= 35 && score < 50;
-      })
-      .reduce((sum, d) => sum + d.acv, 0);
-
-    return {
-      period: period.label,
-      critical: criticalACV / 1000,
-      high: highACV / 1000,
-      medium: mediumACV / 1000,
-    };
-  });
-
-  // Calculate max for Y axis label
-  const maxTotal = Math.max(...data.map(d => d.critical + d.high + d.medium), 60);
+  // Calculate max for display
+  const maxTotal = Math.max(...data.map(d => d.Critical + d.High + d.Medium), 50);
   const maxLabel = formatCurrency(maxTotal * 1000);
 
   return (
-    <TooltipProvider>
-      <div className="h-44">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1">
-            <span className="section-header">TDR PIPELINE BY CLOSE</span>
+    <TooltipProvider delayDuration={100}>
+      <div className="h-52">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              TDR Pipeline by Close
+            </span>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="h-3 w-3 text-muted-foreground/50 cursor-help" />
+                <Info className="h-3.5 w-3.5 text-muted-foreground/40 cursor-help hover:text-muted-foreground transition-colors" />
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs">
                 <p className="text-sm">
-                  Pipeline ACV distribution by expected close date, segmented by TDR priority level.
+                  Pipeline ACV distribution by expected close date, 
+                  stacked by TDR priority level.
                 </p>
               </TooltipContent>
             </Tooltip>
           </div>
-          <div className="flex items-center gap-0.5">
-            {(['D', 'W', 'M'] as TimeView[]).map((label) => (
-              <button
-                key={label}
-                onClick={() => setTimeView(label)}
-                className={cn(
-                  'px-2 py-0.5 text-xs rounded transition-colors',
-                  timeView === label 
-                    ? 'border border-border bg-secondary text-foreground' 
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {label}
-              </button>
-            ))}
-            <span className="text-xs text-muted-foreground ml-3">{maxLabel}</span>
+          <div className="flex items-center gap-2">
+            {/* Time toggle */}
+            <div className="flex items-center rounded-lg border border-border p-0.5">
+              {(['D', 'W', 'M'] as TimeView[]).map((label) => (
+                <button
+                  key={label}
+                  onClick={() => setTimeView(label)}
+                  className={cn(
+                    'px-2.5 py-1 text-xs font-medium rounded-md transition-all',
+                    timeView === label 
+                      ? 'bg-secondary text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground font-medium ml-2">{maxLabel}</span>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height="75%">
+
+        {/* Chart */}
+        <ResponsiveContainer width="100%" height="70%">
           <AreaChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: 5 }}>
             <defs>
-              <linearGradient id="criticalGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(350, 55%, 50%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(350, 55%, 50%)" stopOpacity={0} />
+              <linearGradient id="criticalGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={CHART_COLORS.critical} stopOpacity={0.4} />
+                <stop offset="95%" stopColor={CHART_COLORS.critical} stopOpacity={0} />
               </linearGradient>
-              <linearGradient id="highGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(38, 65%, 50%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(38, 65%, 50%)" stopOpacity={0} />
+              <linearGradient id="highGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={CHART_COLORS.high} stopOpacity={0.4} />
+                <stop offset="95%" stopColor={CHART_COLORS.high} stopOpacity={0} />
               </linearGradient>
-              <linearGradient id="mediumGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(217, 91%, 60%)" stopOpacity={0} />
+              <linearGradient id="mediumGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={CHART_COLORS.medium} stopOpacity={0.4} />
+                <stop offset="95%" stopColor={CHART_COLORS.medium} stopOpacity={0} />
               </linearGradient>
             </defs>
             <XAxis 
               dataKey="period" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
             />
             <YAxis hide />
-            <RechartsTooltip 
-              formatter={(value: number, name: string) => [formatCurrency(value * 1000), name]}
-              labelStyle={{ color: 'hsl(var(--foreground))' }}
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--popover))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-              }}
+            <RechartsTooltip content={<CustomTooltip />} />
+            <Area
+              type="monotone"
+              dataKey="Medium"
+              stackId="1"
+              stroke={CHART_COLORS.medium}
+              fill="url(#mediumGrad)"
+              strokeWidth={2}
             />
             <Area
               type="monotone"
-              dataKey="medium"
+              dataKey="High"
               stackId="1"
-              stroke="hsl(217, 91%, 60%)"
-              fill="url(#mediumGradient)"
+              stroke={CHART_COLORS.high}
+              fill="url(#highGrad)"
               strokeWidth={2}
-              name="Medium"
             />
             <Area
               type="monotone"
-              dataKey="high"
+              dataKey="Critical"
               stackId="1"
-              stroke="hsl(38, 65%, 50%)"
-              fill="url(#highGradient)"
+              stroke={CHART_COLORS.critical}
+              fill="url(#criticalGrad)"
               strokeWidth={2}
-              name="High"
-            />
-            <Area
-              type="monotone"
-              dataKey="critical"
-              stackId="1"
-              stroke="hsl(350, 55%, 50%)"
-              fill="url(#criticalGradient)"
-              strokeWidth={2}
-              name="Critical"
             />
           </AreaChart>
         </ResponsiveContainer>
-        <div className="flex items-center justify-center gap-4 mt-1">
-          <div className="flex items-center gap-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-[hsl(350,55%,50%)]" />
-            <span className="text-2xs text-muted-foreground">Critical</span>
+
+        {/* Legend */}
+        <div className="flex items-center justify-center gap-6 mt-3">
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS.critical }} />
+            <span className="text-xs text-muted-foreground">Critical</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-[hsl(38,65%,50%)]" />
-            <span className="text-2xs text-muted-foreground">High</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS.high }} />
+            <span className="text-xs text-muted-foreground">High</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="h-1.5 w-1.5 rounded-full bg-[hsl(217,91%,60%)]" />
-            <span className="text-2xs text-muted-foreground">Medium</span>
+          <div className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS.medium }} />
+            <span className="text-xs text-muted-foreground">Medium</span>
           </div>
         </div>
       </div>

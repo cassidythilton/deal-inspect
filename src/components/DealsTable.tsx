@@ -1,6 +1,17 @@
+/**
+ * DealsTable Component
+ * Displays recommended deals in a table with proper formatting, pills, and tooltips
+ * Rebuilt with coolors.co palette and improved UX
+ */
+
 import { Deal } from '@/types/tdr';
 import { cn } from '@/lib/utils';
-import { Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2, TrendingUp, Sparkles, AlertTriangle, RefreshCw, CheckCircle2, Layers, GitMerge, Server, Briefcase, ArrowUpRight, AlertOctagon } from 'lucide-react';
+import { 
+  Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2, 
+  TrendingUp, Sparkles, AlertTriangle, Layers, GitMerge, Server, 
+  Briefcase, ArrowUpRight, AlertOctagon, CheckCircle2, RefreshCcw,
+  LucideIcon
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -9,18 +20,70 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { 
-  getStageConfig, 
-  getTDRScoreTooltip, 
-  getTDRPriorityLabel,
-  getTDRPriorityFactorsTooltip,
-} from '@/lib/tooltips';
-import { getTopFactors, CriticalFactor, calculateTDRScore } from '@/lib/tdrCriticalFactors';
+import { getTopFactors, CriticalFactor, calculateTDRScore, getPriorityFromScore } from '@/lib/tdrCriticalFactors';
 
 interface DealsTableProps {
   deals: Deal[];
   onPinDeal?: (id: string) => void;
 }
+
+// Icon mapping for critical factors
+const FACTOR_ICONS: Record<string, LucideIcon> = {
+  'DollarSign': DollarSign,
+  'Cloud': Cloud,
+  'Building2': Building2,
+  'Swords': Swords,
+  'Zap': Zap,
+  'TrendingUp': TrendingUp,
+  'Users': Users,
+  'Sparkles': Sparkles,
+  'Clock': Clock,
+  'AlertTriangle': AlertTriangle,
+  'Layers': Layers,
+  'GitMerge': GitMerge,
+  'Server': Server,
+  'Briefcase': Briefcase,
+  'ArrowUpRight': ArrowUpRight,
+  'AlertOctagon': AlertOctagon,
+};
+
+// Pill color styles using the coolors.co palette
+const PILL_STYLES = {
+  emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800',
+  teal: 'bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/50 dark:text-teal-400 dark:border-teal-800',
+  amber: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800',
+  violet: 'bg-violet-50 text-violet-700 border border-violet-200 dark:bg-violet-950/50 dark:text-violet-400 dark:border-violet-800',
+  rose: 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-800',
+  slate: 'bg-slate-50 text-slate-600 border border-slate-200 dark:bg-slate-900/50 dark:text-slate-400 dark:border-slate-700',
+} as const;
+
+// Map factor colors to pill styles
+const getFactorPillStyle = (color: string): string => {
+  switch (color) {
+    case 'green': return PILL_STYLES.emerald;
+    case 'blue': return PILL_STYLES.teal;
+    case 'orange': return PILL_STYLES.amber;
+    case 'purple': return PILL_STYLES.violet;
+    case 'red': return PILL_STYLES.rose;
+    case 'amber': return PILL_STYLES.amber;
+    default: return PILL_STYLES.slate;
+  }
+};
+
+// Get TDR score badge style
+const getTDRBadgeStyle = (score: number): string => {
+  if (score >= 75) return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-700';
+  if (score >= 50) return 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-950 dark:text-teal-400 dark:border-teal-700';
+  if (score >= 35) return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-700';
+  return 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-600';
+};
+
+// Get stage badge style
+const getStageBadgeStyle = (stageNum: number): string => {
+  if (stageNum <= 2) return PILL_STYLES.emerald; // Early stage - sweet spot
+  if (stageNum === 3) return PILL_STYLES.teal;   // Validation
+  return PILL_STYLES.amber;                       // Late stage
+};
 
 export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
   const navigate = useNavigate();
@@ -31,13 +94,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
     return `$${value}`;
   };
 
-  // Get stage display with number prefix
-  const getStageDisplay = (deal: Deal) => {
-    const stageNum = deal.stageNumber || getStageNumber(deal.stage);
-    const stageName = getShortStageName(deal.stage);
-    return { num: stageNum, name: stageName };
-  };
-
+  // Get stage number from stage name
   const getStageNumber = (stage: string): number => {
     const lower = stage.toLowerCase();
     if (lower.includes('discovery') || lower.includes('determine')) return 2;
@@ -47,6 +104,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
     return 1;
   };
 
+  // Get short stage name
   const getShortStageName = (stage: string): string => {
     const lower = stage.toLowerCase();
     if (lower.includes('discovery') || lower.includes('determine')) return 'Discovery';
@@ -54,219 +112,208 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
     if (lower.includes('proposal')) return 'Proposal';
     if (lower.includes('negotiat')) return 'Negotiating';
     if (lower.includes('closing') || lower.includes('close')) return 'Closing';
-    return stage.split(' ').slice(0, 2).join(' ');
+    return stage.replace(/^\d+:\s*/, '').substring(0, 12);
   };
 
-  // Calculate TDR score using critical factors framework
-  const getTDRScore = (deal: Deal): number => {
-    if (deal.tdrScore !== undefined) return deal.tdrScore;
-    return calculateTDRScore(deal);
-  };
-
-  // Get WHY TDR? tags using critical factors framework
+  // Get WHY TDR tags
   const getWhyTDRTags = (deal: Deal): CriticalFactor[] => {
     return getTopFactors(deal, 2);
   };
 
-  // Get icon component for a factor
-  const getFactorIcon = (factor: CriticalFactor) => {
-    switch (factor.icon) {
-      case 'DollarSign': return DollarSign;
-      case 'Cloud': return Cloud;
-      case 'Building2': return Building2;
-      case 'Swords': return Swords;
-      case 'Zap': return Zap;
-      case 'TrendingUp': return TrendingUp;
-      case 'Users': return Users;
-      case 'Sparkles': return Sparkles;
-      case 'Clock': return Clock;
-      case 'AlertTriangle': return AlertTriangle;
-      case 'Layers': return Layers;
-      case 'GitMerge': return GitMerge;
-      case 'Server': return Server;
-      case 'Briefcase': return Briefcase;
-      case 'ArrowUpRight': return ArrowUpRight;
-      case 'AlertOctagon': return AlertOctagon;
-      default: return Zap;
-    }
+  // Get icon for a factor
+  const getFactorIcon = (iconName: string): LucideIcon => {
+    return FACTOR_ICONS[iconName] || Zap;
   };
 
-  const getTagStyle = (color: string) => {
-    switch (color) {
-      case 'orange':
-        return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
-      case 'blue':
-        return 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400';
-      case 'purple':
-        return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
-      case 'red':
-        return 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400';
-      case 'amber':
-        return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
-      case 'green':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-      default:
-        return 'bg-secondary text-muted-foreground';
-    }
-  };
-
-  // Get partner tooltip
-  const getPartnerTooltip = (deal: Deal): string | null => {
-    if (deal.partnerSignal === 'none') return null;
-    
-    const lines: string[] = [];
-    
-    // Cloud platform info (would come from deal data)
-    if (deal.partnersInvolved) {
-      lines.push(`Cloud Platform: ${deal.partnersInvolved}`);
-    }
-    
-    if (deal.primaryPartnerRole) {
-      lines.push(`Role: ${deal.primaryPartnerRole}`);
-    }
-    
-    if (deal.dealCode) {
-      lines.push(`Deal Code: ${deal.dealCode}`);
-    }
-    
-    // Strategy recommendation
-    lines.push('→ Position Domo as control layer on their infrastructure');
-    
-    return lines.join('\n');
-  };
+  if (deals.length === 0) {
+    return (
+      <div className="panel p-8 text-center">
+        <p className="text-muted-foreground">No deals match the current filters.</p>
+      </div>
+    );
+  }
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delayDuration={150}>
       <div className="panel overflow-hidden">
-        <div className="border-b border-border/60 px-4 py-3">
-          <h2 className="text-sm font-medium">Recommended Deals</h2>
+        {/* Header */}
+        <div className="border-b border-border px-5 py-4">
+          <h2 className="text-base font-semibold">Recommended Deals</h2>
         </div>
+
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-border/40">
-                <th className="section-header px-4 py-2 text-left">DEAL / ACCOUNT</th>
-                <th className="section-header px-3 py-2 text-left">STAGE</th>
-                <th className="section-header px-3 py-2 text-right">Age</th>
-                <th className="section-header px-3 py-2 text-right">ACV</th>
-                <th className="section-header px-3 py-2 text-center">TDR</th>
-                <th className="section-header px-3 py-2 text-left">SE Team</th>
-                <th className="section-header px-3 py-2 text-center">PARTNER</th>
-                <th className="section-header px-3 py-2 text-left">WHY TDR?</th>
-                <th className="section-header px-3 py-2 text-right">ACTION</th>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Deal / Account
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Stage
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Age
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  ACV
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  TDR
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  SE Team
+                </th>
+                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Partner
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Why TDR?
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Action
+                </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border">
               {deals.map((deal) => {
-                const stageInfo = getStageDisplay(deal);
-                const tdrScore = getTDRScore(deal);
+                const stageNum = deal.stageNumber || getStageNumber(deal.stage);
+                const stageName = getShortStageName(deal.stage);
+                const tdrScore = deal.tdrScore ?? calculateTDRScore(deal);
+                const priority = getPriorityFromScore(tdrScore);
                 const whyTags = getWhyTDRTags(deal);
-                const stageConfig = getStageConfig(deal.stage);
-                const ageColor = deal.stageAge && deal.stageAge > 180 ? 'text-destructive' : 
-                                deal.stageAge && deal.stageAge > 90 ? 'text-warning' : 'text-muted-foreground';
+                
+                // Age color based on staleness
+                const ageColorClass = deal.stageAge && deal.stageAge > 180 
+                  ? 'text-rose-600 dark:text-rose-400' 
+                  : deal.stageAge && deal.stageAge > 90 
+                  ? 'text-amber-600 dark:text-amber-400' 
+                  : 'text-muted-foreground';
                 
                 return (
                   <tr
                     key={deal.id}
-                    className="table-row-tight group cursor-pointer hover:bg-secondary/30"
+                    className="group cursor-pointer transition-colors hover:bg-muted/40"
                     onClick={() => navigate(`/workspace?deal=${deal.id}`)}
                   >
                     {/* Deal / Account */}
-                    <td className="px-4 py-2.5">
-                      <div>
-                        <p className="text-sm font-medium">{deal.account}</p>
-                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{deal.dealName}</p>
+                    <td className="px-5 py-4">
+                      <div className="min-w-[180px]">
+                        <p className="text-sm font-semibold text-foreground">{deal.account}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 max-w-[220px]">
+                          {deal.dealName}
+                        </p>
                       </div>
                     </td>
                     
-                    {/* Stage with badge and tooltip */}
-                    <td className="px-3 py-2.5">
+                    {/* Stage */}
+                    <td className="px-4 py-4">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <div className="flex items-center gap-1.5 cursor-help">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                            <span className="rounded bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-400">
-                              [{stageInfo.num.toString().padStart(2, '0')}] {stageInfo.name}
+                          <div className="flex items-center gap-2 cursor-help">
+                            <CheckCircle2 className={cn(
+                              "h-4 w-4 shrink-0",
+                              stageNum <= 2 ? 'text-emerald-500' : 
+                              stageNum === 3 ? 'text-teal-500' : 'text-amber-500'
+                            )} />
+                            <span className={cn(
+                              "inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium",
+                              getStageBadgeStyle(stageNum)
+                            )}>
+                              [{stageNum.toString().padStart(2, '0')}] {stageName}
                             </span>
                           </div>
                         </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs">
-                          <p className="text-sm whitespace-pre-wrap">
-                            {stageConfig?.tooltip || `Stage ${stageInfo.num} - ${stageInfo.name}`}
+                        <TooltipContent side="top" className="max-w-sm">
+                          <p className="font-medium mb-1">Stage {stageNum}: {stageName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {stageNum <= 2 
+                              ? 'Maximum opportunity to shape architecture and solution direction.'
+                              : stageNum === 3
+                              ? 'Good opportunity to influence technical decisions.'
+                              : 'Focus on risk validation and delivery readiness.'}
                           </p>
                         </TooltipContent>
                       </Tooltip>
                     </td>
                     
                     {/* Age */}
-                    <td className={cn("px-3 py-2.5 text-right tabular-nums text-sm", ageColor)}>
+                    <td className={cn("px-4 py-4 text-right tabular-nums text-sm font-medium", ageColorClass)}>
                       {deal.stageAge ? `${deal.stageAge}d` : '-'}
                     </td>
                     
                     {/* ACV */}
-                    <td className="px-3 py-2.5 text-right">
-                      <span className="text-sm font-medium tabular-nums">
+                    <td className="px-4 py-4 text-right">
+                      <span className="text-sm font-semibold tabular-nums text-foreground">
                         {formatCurrency(deal.acv)}
                       </span>
                     </td>
                     
-                    {/* TDR Score with tooltip */}
-                    <td className="px-3 py-2.5 text-center">
+                    {/* TDR Score */}
+                    <td className="px-4 py-4 text-center">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className={cn(
-                            "inline-flex h-6 min-w-[28px] items-center justify-center rounded-md px-1.5 text-xs font-semibold tabular-nums cursor-help",
-                            tdrScore >= 40 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
-                            tdrScore >= 30 ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400" :
-                            "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-500"
+                            "inline-flex h-7 min-w-[36px] items-center justify-center rounded-lg px-2 text-sm font-bold tabular-nums cursor-help border",
+                            getTDRBadgeStyle(tdrScore)
                           )}>
                             {tdrScore}
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-sm">
                           <div className="space-y-2">
-                            <p className="text-sm font-medium">
-                              TDR Priority Factors:
+                            <p className="font-bold">{priority} Priority</p>
+                            <p className="text-xs text-muted-foreground">
+                              {priority === 'CRITICAL' && 'Highest priority for SE engagement. Major decisions pending.'}
+                              {priority === 'HIGH' && 'Strong TDR candidate. Multiple technical factors present.'}
+                              {priority === 'MEDIUM' && 'Moderate complexity. Consider for TDR if bandwidth allows.'}
+                              {priority === 'LOW' && 'Standard sales-led motion likely sufficient.'}
                             </p>
-                            <ul className="text-xs space-y-1 text-muted-foreground">
-                              {deal.isCompetitive && <li>• 1 competitor</li>}
-                              {deal.isPartnerPlay && <li>• Partner play</li>}
-                              {deal.stageAge && <li>• {deal.stageAge}d in stage</li>}
-                            </ul>
                           </div>
                         </TooltipContent>
                       </Tooltip>
                     </td>
                     
                     {/* SE Team */}
-                    <td className="px-3 py-2.5">
-                      <span className="text-sm text-foreground">
+                    <td className="px-4 py-4">
+                      <span className="text-sm text-foreground font-medium">
                         {deal.salesConsultant || '-'}
                       </span>
                     </td>
                     
-                    {/* Partner with tooltip */}
-                    <td className="px-3 py-2.5 text-center">
+                    {/* Partner */}
+                    <td className="px-4 py-4 text-center">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div className="inline-flex cursor-help">
                             {deal.partnerSignal === 'strong' || deal.partnerSignal === 'moderate' ? (
-                              <RefreshCw className={cn(
-                                "h-4 w-4 mx-auto",
-                                deal.partnerSignal === 'strong' ? 'text-emerald-500' : 'text-emerald-400'
+                              <RefreshCcw className={cn(
+                                "h-4.5 w-4.5",
+                                deal.partnerSignal === 'strong' ? 'text-emerald-500' : 'text-teal-500'
                               )} />
                             ) : (
-                              <Users className="h-4 w-4 mx-auto text-muted-foreground/40" />
+                              <Users className="h-4.5 w-4.5 text-muted-foreground/30" />
                             )}
                           </div>
                         </TooltipTrigger>
-                        {(deal.partnerSignal !== 'none' && deal.partnersInvolved) && (
-                          <TooltipContent side="top" className="max-w-xs">
-                            <div className="space-y-1 text-sm">
-                              <p className="font-medium">Cloud Platform: {deal.partnersInvolved}</p>
-                              {deal.primaryPartnerRole && <p>Role: {deal.primaryPartnerRole}</p>}
-                              {deal.dealCode && <p>Deal Code: {deal.dealCode}</p>}
-                              <p className="text-muted-foreground text-xs mt-2">
+                        {deal.partnerSignal !== 'none' && (
+                          <TooltipContent side="top" className="max-w-sm">
+                            <div className="space-y-2">
+                              <p className="font-bold flex items-center gap-2">
+                                <RefreshCcw className="h-3.5 w-3.5" />
+                                Partner Integration
+                              </p>
+                              {deal.partnersInvolved && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Platform:</span> {deal.partnersInvolved}
+                                </p>
+                              )}
+                              {deal.primaryPartnerRole && (
+                                <p className="text-sm">
+                                  <span className="text-muted-foreground">Role:</span> {deal.primaryPartnerRole}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground mt-2 italic">
                                 → Position Domo as control layer on their infrastructure
                               </p>
                             </div>
@@ -275,57 +322,62 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                       </Tooltip>
                     </td>
                     
-                    {/* WHY TDR? Tags with tooltips - using Critical Factors framework */}
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-wrap gap-1">
+                    {/* WHY TDR? Tags */}
+                    <td className="px-4 py-4">
+                      <div className="flex flex-wrap gap-1.5">
                         {whyTags.map((factor, i) => {
-                          const IconComponent = getFactorIcon(factor);
+                          const IconComponent = getFactorIcon(factor.icon);
                           return (
                             <Tooltip key={i}>
                               <TooltipTrigger asChild>
-                                <span
-                                  className={cn(
-                                    'inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-2xs font-medium cursor-help',
-                                    getTagStyle(factor.color)
-                                  )}
-                                >
-                                  <IconComponent className="h-3 w-3" />
+                                <span className={cn(
+                                  'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium cursor-help transition-all hover:shadow-sm',
+                                  getFactorPillStyle(factor.color)
+                                )}>
+                                  <IconComponent className="h-3.5 w-3.5" />
                                   {factor.shortLabel}
                                 </span>
                               </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs">
-                                <div className="text-sm space-y-2">
-                                  <p className="font-medium">{factor.description}</p>
-                                  <p className="text-xs text-muted-foreground">→ {factor.strategy}</p>
+                              <TooltipContent side="top" className="max-w-sm">
+                                <div className="space-y-2">
+                                  <p className="font-bold flex items-center gap-2">
+                                    <IconComponent className="h-4 w-4" />
+                                    {factor.label}
+                                  </p>
+                                  <p className="text-sm">{factor.description}</p>
+                                  <p className="text-xs text-muted-foreground italic">
+                                    → {factor.strategy}
+                                  </p>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
                           );
                         })}
+                        {whyTags.length === 0 && (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
                       </div>
                     </td>
                     
                     {/* Action */}
-                    <td className="px-3 py-2.5 text-right">
+                    <td className="px-4 py-4 text-right">
                       <Button
                         variant="ghost"
                         size="sm"
                         className={cn(
-                          'h-7 gap-1 px-2 opacity-0 transition-opacity group-hover:opacity-100',
-                          deal.isPinned && 'opacity-100'
+                          'h-8 gap-1.5 px-3 opacity-0 transition-all group-hover:opacity-100',
+                          deal.isPinned && 'opacity-100 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400'
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
                           onPinDeal?.(deal.id);
                         }}
                       >
-                        <Pin
-                          className={cn(
-                            'h-3 w-3',
-                            deal.isPinned && 'fill-primary text-primary'
-                          )}
-                        />
-                        <span className="text-xs">{deal.isPinned ? 'Pinned' : 'Pin'}</span>
+                        <Pin className={cn(
+                          'h-3.5 w-3.5',
+                          deal.isPinned && 'fill-current'
+                        )} />
+                        <span className="text-xs font-medium">{deal.isPinned ? 'Pinned' : 'Pin'}</span>
                       </Button>
                     </td>
                   </tr>

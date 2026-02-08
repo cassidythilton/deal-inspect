@@ -351,3 +351,14 @@ export function getRiskFlags(deal: Deal): CriticalFactor[] {
   return factors.filter(f => f.points < 0 || f.id === 'staleSignals' || f.id === 'lateStageRisk');
 }
 
+/**
+ * TDR Priority Thresholds
+ * Used for categorizing deals by priority level
+ */
+export const TDR_PRIORITY_THRESHOLDS_NEW = {
+  critical: 75,
+  high: 50,
+  medium: 25,
+  low: 0,
+} as const;
+

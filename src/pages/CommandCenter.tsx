@@ -26,8 +26,9 @@ export default function CommandCenter() {
   const [activeView, setActiveView] = useState<'recommended' | 'agenda' | 'all'>('recommended');
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [seFilters, setSEFilters] = useState<SEFilterState>({
-    selectedSE: null,
-    selectedManager: DEFAULT_MANAGER, // Default to first manager
+    selectedSEManager: null,        // SE Manager filter
+    selectedSE: null,               // Individual SE filter
+    selectedManager: DEFAULT_MANAGER, // Default to first AE manager
     selectedQuarters: [getCurrentQuarter()], // Default to current quarter
     selectedPriority: null,
     includeCurrentQuarter: true,
@@ -66,23 +67,21 @@ export default function CommandCenter() {
       agendaStatus: pinnedIds.has(d.id) ? (d.agendaStatus || 'draft') : undefined,
     }));
     
-    // Apply SE filter (can be SE Manager, Sales Engineer, or PoC Architect)
+    // Apply SE Manager filter (separate from individual SE)
+    if (seFilters.selectedSEManager) {
+      result = result.filter((d) => d.seManager === seFilters.selectedSEManager);
+    }
+    
+    // Apply individual SE filter (Sales Engineer or PoC Architect)
     if (seFilters.selectedSE) {
       const seValue = seFilters.selectedSE;
-      if (seValue.startsWith('mgr:')) {
-        // SE Manager filter
-        const mgrName = seValue.replace('mgr:', '');
-        result = result.filter((d) => d.seManager === mgrName);
-      } else if (seValue.startsWith('se:') || seValue.startsWith('poc:')) {
+      if (seValue.startsWith('se:') || seValue.startsWith('poc:')) {
         // Sales Engineer or PoC Architect filter (both are Sales Consultants)
         const seName = seValue.replace('se:', '').replace('poc:', '');
         result = result.filter((d) => d.salesConsultant === seName);
       } else {
         // Legacy format without prefix
-        result = result.filter((d) => 
-          d.seManager === seValue || 
-          d.salesConsultant === seValue
-        );
+        result = result.filter((d) => d.salesConsultant === seValue);
       }
     }
     
