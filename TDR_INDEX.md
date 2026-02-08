@@ -2,7 +2,7 @@
 
 > A Domo-embedded sales engineering workspace for identifying, scoring, and reviewing deals that need a **Technical Deal Review (TDR)**.
 
-**Version:** 1.22.0 · **Platform:** Domo Custom App · **Stack:** React 18 + TypeScript + Vite + Tailwind CSS + Recharts
+**Version:** 1.23.0 · **Platform:** Domo Custom App · **Stack:** React 18 + TypeScript + Vite + Tailwind CSS + Recharts
 
 ---
 
