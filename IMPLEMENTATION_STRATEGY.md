@@ -1,46 +1,130 @@
 # TDR Deal Inspection — Implementation Strategy
 
-> Account Intelligence, Snowflake Persistence, and Cortex AI Integration
+> Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** Planning · **Version:** Draft 1.0 · **Date:** February 8, 2026
+**Status:** Planning · **Version:** Draft 2.0 · **Date:** February 8, 2026
 
 ---
 
 ## Table of Contents
 
 1. [Executive Summary](#1-executive-summary)
-2. [Current Architecture Baseline](#2-current-architecture-baseline)
-3. [Strategic Goals](#3-strategic-goals)
-4. [Snowflake Schema Design](#4-snowflake-schema-design)
-5. [Code Engine Functions](#5-code-engine-functions)
-6. [Perplexity Integration](#6-perplexity-integration)
-7. [Sumble Integration](#7-sumble-integration)
-8. [Snowflake Cortex Integration](#8-snowflake-cortex-integration)
-9. [Front-End Architecture Changes](#9-front-end-architecture-changes)
-10. [TDR Scoring Enrichment](#10-tdr-scoring-enrichment)
-11. [API Cost & Rate Limit Strategy](#11-api-cost--rate-limit-strategy)
-12. [Migration Plan (AppDB → Snowflake)](#12-migration-plan-appdb--snowflake)
-13. [Risks & Considerations](#13-risks--considerations)
-14. [Implementation Phases](#14-implementation-phases)
-15. [Reference Links](#15-reference-links)
+2. [Solution Architecture Overview](#2-solution-architecture-overview)
+3. [Current Architecture Baseline](#3-current-architecture-baseline)
+4. [Strategic Goals](#4-strategic-goals)
+5. [Snowflake Schema Design](#5-snowflake-schema-design)
+6. [Code Engine Functions](#6-code-engine-functions)
+7. [Perplexity Integration](#7-perplexity-integration)
+8. [Sumble Integration](#8-sumble-integration)
+9. [Snowflake Cortex Integration](#9-snowflake-cortex-integration)
+10. [TDR Inline Chat Experience](#10-tdr-inline-chat-experience)
+11. [Front-End Architecture Changes](#11-front-end-architecture-changes)
+12. [TDR Scoring Enrichment](#12-tdr-scoring-enrichment)
+13. [API Cost & Rate Limit Strategy](#13-api-cost--rate-limit-strategy)
+14. [Migration Plan (AppDB → Snowflake)](#14-migration-plan-appdb--snowflake)
+15. [Risks & Considerations](#15-risks--considerations)
+16. [Implementation Phases](#16-implementation-phases)
+17. [Sprint Plan & Progress Tracker](#17-sprint-plan--progress-tracker)
+18. [Reference Links](#18-reference-links)
 
 ---
 
 ## 1. Executive Summary
 
-This document describes the strategy for transforming the TDR Deal Inspection app from an internally-scoped scoring tool into an intelligence-enriched review platform. Three new capabilities are introduced:
+This document describes the strategy for transforming the TDR Deal Inspection app from an internally-scoped scoring tool into an **AI-native, intelligence-enriched review platform**. Four capabilities are introduced:
 
 1. **External Account Intelligence** — Perplexity (web research) and Sumble (firmographic/technographic enrichment) provide real-world context about each account's technology stack, strategic initiatives, and competitive landscape.
 
-2. **Snowflake Persistence** — All TDR session data, step inputs, and account intelligence move from Domo AppDB to Snowflake. Every write is append-only with timestamps, enabling full iteration history and cross-deal analytics.
+2. **Snowflake Persistence** — All TDR session data, step inputs, chat conversations, and account intelligence move from Domo AppDB to Snowflake. Every write is append-only with timestamps, enabling full iteration history and cross-deal analytics.
 
 3. **Snowflake Cortex AI** — Cortex AI SQL functions (`AI_COMPLETE`, `AI_AGG`, `AI_SUMMARIZE_AGG`, `AI_CLASSIFY`, `AI_EXTRACT`, `AI_EMBED`, Cortex Analyst, Cortex Search) process stored data directly in Snowflake to generate TDR summaries, cross-deal insights, competitive intelligence aggregation, and semantic search across all account research.
+
+4. **TDR Inline Chat** — A context-aware conversational AI embedded in the TDR Workspace. The chat knows the current deal, all TDR inputs entered so far, and all cached account intelligence. It can answer questions using stored data (Cortex), search the web in real-time (Perplexity), or provide TDR methodology guidance — enabling the SE Manager to get answers without leaving the review workflow.
 
 The architecture routes all external API calls and Snowflake operations through **Domo Code Engine functions**, keeping API keys server-side and the front-end stateless.
 
 ---
 
-## 2. Current Architecture Baseline
+## 2. Solution Architecture Overview
+
+The final solution has four distinct layers. Each layer is independently valuable — you can ship persistence without chat, or intelligence without Cortex. But together they compound: every piece of stored data makes the chat smarter, every chat answer can feed back into TDR inputs, and every interaction is persisted for posterity.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        EXPERIENCE LAYER (React SPA)                     │
+│                                                                         │
+│   ┌─────────────┐  ┌─────────────┐  ┌────────────┐  ┌──────────────┐  │
+│   │ Command      │  │ TDR          │  │ Inline     │  │ Settings &   │  │
+│   │ Center       │  │ Workspace    │  │ Chat       │  │ Analytics    │  │
+│   │              │  │              │  │            │  │              │  │
+│   │ • Deal table │  │ • 10 steps   │  │ • Multi-   │  │ • API usage  │  │
+│   │ • Scoring    │  │ • Intel panel│  │   turn     │  │ • Cache TTL  │  │
+│   │ • Portfolio  │  │ • TDR brief  │  │ • Context- │  │ • Toggles    │  │
+│   │   insights   │  │ • Similar    │  │   aware    │  │ • Connection │  │
+│   │ • Ask TDR    │  │   deals      │  │ • Smart    │  │   status     │  │
+│   │ • Search     │  │ • History    │  │   routing  │  │              │  │
+│   └──────┬───────┘  └──────┬───────┘  └─────┬──────┘  └──────┬───────┘  │
+│          │                 │                │                │          │
+└──────────┼─────────────────┼────────────────┼────────────────┼──────────┘
+           │                 │                │                │
+           ▼                 ▼                ▼                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     INTELLIGENCE LAYER (Code Engine)                     │
+│                                                                         │
+│   ┌───────────────┐  ┌───────────────┐  ┌──────────────────────────┐   │
+│   │ Perplexity    │  │ Sumble        │  │ Cortex AI                │   │
+│   │ (Web Research)│  │ (Firmographic)│  │ (In-Snowflake LLM)       │   │
+│   │               │  │               │  │                          │   │
+│   │ • Real-time   │  │ • Tech stack  │  │ • AI_COMPLETE (briefs)   │   │
+│   │   web search  │  │ • Industry    │  │ • AI_AGG (portfolio)     │   │
+│   │ • Strategic   │  │ • Revenue     │  │ • AI_CLASSIFY (tags)     │   │
+│   │   context     │  │ • Competitive │  │ • AI_EXTRACT (entities)  │   │
+│   │ • Citations   │  │   tools       │  │ • AI_EMBED (similarity)  │   │
+│   │               │  │               │  │ • AI_SENTIMENT (health)  │   │
+│   │               │  │               │  │ • Analyst (NL → SQL)     │   │
+│   │               │  │               │  │ • Search (hybrid)        │   │
+│   └───────┬───────┘  └───────┬───────┘  └────────────┬─────────────┘   │
+│           │                  │                       │                  │
+└───────────┼──────────────────┼───────────────────────┼──────────────────┘
+            │                  │                       │
+            ▼                  ▼                       ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      PERSISTENCE LAYER (Snowflake)                      │
+│                                                                         │
+│   TDR_SESSIONS  │ TDR_STEP_INPUTS │ TDR_CHAT_MESSAGES                  │
+│   ACCOUNT_INTEL_SUMBLE │ ACCOUNT_INTEL_PERPLEXITY                      │
+│   API_USAGE_LOG │ CORTEX_ANALYSIS_RESULTS                              │
+│                                                                         │
+│   • Append-only writes with timestamps                                  │
+│   • Full iteration & edit history                                       │
+│   • Chat conversations persisted per session                            │
+│   • Cross-deal queryable via SQL / Cortex Analyst                       │
+│   • Cortex functions operate directly on stored data                    │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+            ▲                  ▲                       ▲
+            │                  │                       │
+┌───────────┼──────────────────┼───────────────────────┼──────────────────┐
+│                        DATA LAYER (Source Systems)                       │
+│                                                                         │
+│   SFDC Opportunities │ SE Mapping │ Forecasts │ WCP Weekly              │
+│   (via Domo Datasets — existing, unchanged)                             │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### What Makes Each Layer Tick
+
+| Layer | Core Principle | Key Insight |
+|-------|---------------|-------------|
+| **Experience** | Every interaction is contextual | The user never leaves the TDR workflow to get answers. Chat, research, briefs, and insights all happen inline. |
+| **Intelligence** | Three AI backends, one unified context | Cortex for stored data, Perplexity for live web, Domo AI for candidate ranking. The chat routes to the right one automatically. |
+| **Persistence** | Everything is append-only | No data is ever overwritten. Every edit, every research pull, every chat message creates a new timestamped row. This enables full posterity, iteration comparison, and trend analysis. |
+| **Data** | SFDC remains the source of truth for pipeline | We enrich it but never replace it. The app works on SFDC data alone if all intelligence services are unavailable. |
+
+---
+
+## 3. Current Architecture Baseline
 
 ### What Exists Today
 
@@ -95,7 +179,7 @@ These gaps directly impact TDR quality. An SE Manager preparing for a review has
 
 ---
 
-## 3. Strategic Goals
+## 4. Strategic Goals
 
 | # | Goal | Metric |
 |---|------|--------|
@@ -107,7 +191,7 @@ These gaps directly impact TDR quality. An SE Manager preparing for a review has
 
 ---
 
-## 4. Snowflake Schema Design
+## 5. Snowflake Schema Design
 
 All tables live in a dedicated schema (e.g., `TDR_APP.PUBLIC` or `TDR_APP.TDR_DATA`). All writes are append-only with timestamps to support iteration tracking.
 
@@ -260,9 +344,38 @@ CREATE TABLE IF NOT EXISTS CORTEX_ANALYSIS_RESULTS (
 );
 ```
 
+### Table 7: `TDR_CHAT_MESSAGES`
+
+Stores all inline chat messages (user questions + assistant responses) per TDR session.
+
+```sql
+CREATE TABLE IF NOT EXISTS TDR_CHAT_MESSAGES (
+    MESSAGE_ID          VARCHAR(36) PRIMARY KEY,    -- UUID
+    SESSION_ID          VARCHAR(36) NOT NULL,        -- FK → TDR_SESSIONS
+    OPPORTUNITY_ID      VARCHAR(18) NOT NULL,        -- SFDC Opp Id
+    ACCOUNT_NAME        VARCHAR(255),                -- For cross-account queries
+    ROLE                VARCHAR(10) NOT NULL,         -- 'user' | 'assistant'
+    CONTENT             VARCHAR NOT NULL,             -- Message text
+    CONTEXT_STEP        VARCHAR(50),                  -- TDR step user was on when asking
+    BACKEND             VARCHAR(20),                  -- 'cortex' | 'perplexity' | 'domo_ai'
+    MODEL_USED          VARCHAR(50),                  -- e.g. 'mistral-large2' | 'sonar-pro'
+    TOKENS_IN           INTEGER,                      -- For cost tracking
+    TOKENS_OUT          INTEGER,
+    CITED_SOURCES       VARIANT,                      -- JSON array of citation URLs
+    CREATED_AT          TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    CREATED_BY          VARCHAR(100)                   -- Domo user display name
+);
+```
+
+**Why a flat table instead of a `VARIANT` column on sessions?** Chat history can grow unbounded. A dedicated table lets us:
+- Query across all sessions: *"What questions are SE Managers most commonly asking?"*
+- Track Perplexity vs. Cortex usage and costs separately
+- Cortex can analyze chat patterns via `AI_AGG` across all rows
+- No risk of hitting Snowflake's per-row size limits on large conversations
+
 ---
 
-## 5. Code Engine Functions
+## 6. Code Engine Functions
 
 ### Architecture Overview
 
@@ -281,9 +394,10 @@ A local `codeengine/` directory serves as a **reference copy** of the Code Engin
 
 ```
 codeengine/
-├── functions.js        ← Main entry point. Exports all 21 functions.
+├── functions.js        ← Main entry point. Exports all 23 functions.
 ├── snowflakeAuth.js    ← Shared JWT auth + SQL execution (from cortexAnalystCodeEngine.js)
 ├── persistence.js      ← TDR session + step input CRUD (8 functions)
+├── chat.js             ← Inline chat: send messages + get history (2 functions)
 ├── accountIntel.js     ← Perplexity + Sumble API proxying + persistence (5 functions)
 ├── cortexAi.js         ← Cortex AI SQL function wrappers (8 functions)
 └── package.json        ← Dependencies: codeengine, sdk, axios, crypto
@@ -553,6 +667,29 @@ The output specifies the return shape with the same type system.
         { "alias": "conversationHistory", "type": "object", "nullable": true, "isList": true, "children": null }
       ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+
+    {
+      "alias": "sendChatMessage",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "question", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "context", "type": "object", "nullable": false, "isList": false, "children": null },
+        { "alias": "backend", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "step", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "userId", "type": "string", "nullable": true, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+
+    {
+      "alias": "getChatHistory",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "messages", "type": "object", "isList": true, "children": null }
     }
 
   ],
@@ -955,6 +1092,97 @@ See [Section 8](#8-snowflake-cortex-integration) for full SQL examples.
 }
 ```
 
+---
+
+#### Group D: Inline Chat (2 functions)
+
+These handle the conversational AI experience in the TDR Workspace. Source: `codeengine/chat.js`
+
+##### `sendChatMessage`
+
+| | |
+|---|---|
+| **Purpose** | Route a user question to the appropriate AI backend, persist the exchange, and return the response |
+| **Domo Input** | Object: `{ sessionId, opportunityId, accountName, question, context, backend, step, userId }` |
+| **Domo Output** | Object |
+
+**Logic flow:**
+1. Validate inputs; generate UUIDs for user message and assistant message
+2. Based on `backend` parameter:
+   - **`"cortex"`**: Assemble system prompt from `context` object (deal info, TDR inputs, cached intel, TDR framework). Call Snowflake SQL API: `SELECT AI_COMPLETE('mistral-large2', [system_prompt, user_question])`. Parse response.
+   - **`"perplexity"`**: Call Perplexity chat completions API (`sonar-pro` model) with the question + context as system prompt. Include `return_citations: true`. Extract response + citations.
+3. INSERT two rows into `TDR_CHAT_MESSAGES`: one for `role='user'`, one for `role='assistant'` (with token counts, backend, model, citations)
+4. INSERT one row into `API_USAGE_LOG` for cost tracking
+5. Return response object
+
+**Input:**
+- `sessionId` (string): `"sess-abc123"`
+- `opportunityId` (string): `"006Dn000012abcDEF"`
+- `accountName` (string): `"Acme Corp"`
+- `question` (string): `"What BI tools does Acme use?"`
+- `context` (object): `{ deal: {...}, tdrInputs: {...}, techStack: {...}, webResearch: {...}, currentStep: "Current Architecture" }`
+- `backend` (string): `"cortex"` or `"perplexity"`
+- `step` (string, nullable): `"Current Architecture"`
+- `userId` (string, nullable): `"john.smith@company.com"`
+
+**Output:**
+```json
+{
+  "success": true,
+  "messageId": "msg-xyz789",
+  "content": "Based on Sumble enrichment (Feb 7): Acme Corp uses Tableau (primary BI), Power BI (departmental), and Excel (ad-hoc reporting). Perplexity research (Feb 5) also noted an active Looker evaluation for embedded analytics use cases.",
+  "backend": "cortex",
+  "model": "mistral-large2",
+  "citations": null,
+  "tokensIn": 1200,
+  "tokensOut": 85
+}
+```
+
+##### `getChatHistory`
+
+| | |
+|---|---|
+| **Purpose** | Retrieve all chat messages for a TDR session |
+| **Domo Input** | Text: `sessionId` |
+| **Domo Output** | Object (list) |
+
+**SQL:** `SELECT * FROM TDR_CHAT_MESSAGES WHERE SESSION_ID = :sessionId ORDER BY CREATED_AT ASC`
+
+**Input:**
+- `sessionId` (string): `"sess-abc123"`
+
+**Output:**
+```json
+{
+  "success": true,
+  "messages": [
+    {
+      "messageId": "msg-001",
+      "role": "user",
+      "content": "What BI tools does Acme use?",
+      "contextStep": "Current Architecture",
+      "backend": null,
+      "createdAt": "2026-02-08T14:30:00Z"
+    },
+    {
+      "messageId": "msg-002",
+      "role": "assistant",
+      "content": "Based on Sumble enrichment (Feb 7): ...",
+      "contextStep": "Current Architecture",
+      "backend": "cortex",
+      "model": "mistral-large2",
+      "citations": null,
+      "tokensIn": 1200,
+      "tokensOut": 85,
+      "createdAt": "2026-02-08T14:30:02Z"
+    }
+  ]
+}
+```
+
+---
+
 ### 5.3 Shared Infrastructure (`snowflakeAuth.js`)
 
 This module is directly adapted from `samples/cortexAnalystCodeEngine.js` and provides:
@@ -999,7 +1227,7 @@ const result = await callCodeEngine('createSession', {
 
 ---
 
-## 6. Perplexity Integration
+## 7. Perplexity Integration
 
 **API:** [Perplexity Sonar API](https://docs.perplexity.ai/docs/getting-started/overview)
 
@@ -1056,7 +1284,7 @@ Perplexity Sonar returns markdown-style text with inline citations. The Code Eng
 
 ---
 
-## 7. Sumble Integration
+## 8. Sumble Integration
 
 **API:** [Sumble Organization Enrichment API](https://docs.sumble.com/api)
 
@@ -1119,7 +1347,7 @@ Same trigger model as Perplexity — user-initiated, cached, never batch. Sumble
 
 ---
 
-## 8. Snowflake Cortex Integration
+## 9. Snowflake Cortex Integration
 
 Cortex AI functions run **inside Snowflake** as SQL expressions. This is powerful because the AI has direct access to all stored TDR data, account intelligence, and pipeline information — no need to assemble payloads and send them to an external API.
 
@@ -1408,7 +1636,265 @@ Both Cortex and Domo AI remain in the architecture, but with distinct roles:
 
 ---
 
-## 9. Front-End Architecture Changes
+## 10. TDR Inline Chat Experience
+
+### 10.1 The Problem
+
+During a TDR review, the SE Manager constantly needs answers: *"What BI tools does this account use?" "What's the competitive landscape here?" "How have we positioned against Tableau in similar deals?" "What should I ask about their data governance?"* Today, these questions require leaving the TDR workflow — opening browser tabs, checking Slack, searching email, or pinging colleagues.
+
+The inline chat eliminates that context-switching entirely.
+
+### 10.2 Core Concept
+
+A **context-aware conversational AI panel** that lives inside the TDR Workspace. It knows:
+
+- **The current deal** — account name, ACV, stage, close date, partners, forecast category
+- **All TDR inputs** — every field the manager has filled in across all 10 steps
+- **Cached account intelligence** — Sumble tech stack, Perplexity research, previous findings
+- **TDR scoring context** — which critical factors fired and why
+- **Historical context** — previous TDR sessions for this deal, edit history
+- **The TDR framework itself** — the 17-factor methodology, so it can coach the process
+
+### 10.3 Smart Routing
+
+Not every question should go to the same AI backend. The chat routes automatically:
+
+```
+User types question
+        │
+        ▼
+┌─────────────────────┐
+│  Intent Classifier   │  (Cortex AI_CLASSIFY or keyword-based)
+│                      │
+│  Categories:         │
+│  • stored_data       │ → Cortex AI_COMPLETE (queries Snowflake data)
+│  • real_time_web     │ → Perplexity Sonar (live web search)
+│  • methodology       │ → Cortex AI_COMPLETE (TDR framework prompt)
+│  • similar_deals     │ → Cortex AI_EMBED + AI_SIMILARITY
+│  • general           │ → Cortex AI_COMPLETE (with full context)
+└──────────┬──────────┘
+           │
+           ▼
+   Route to appropriate backend
+           │
+           ▼
+   Persist Q&A to TDR_CHAT_MESSAGES
+           │
+           ▼
+   Return response to UI
+```
+
+**Routing examples:**
+
+| Question | Route | Why |
+|----------|-------|-----|
+| "What BI tools does Acme use?" | **Cortex** (stored data) | Answer is in cached Sumble enrichment |
+| "What's the latest news about Acme's cloud migration?" | **Perplexity** (web) | Needs real-time web context |
+| "What should I ask about their data governance?" | **Cortex** (methodology) | TDR framework guidance |
+| "Have we seen similar deals to this one?" | **Cortex** (similar deals) | Needs embedding similarity search |
+| "Summarize what we know about this account" | **Cortex** (general) | Combines stored intel + inputs |
+
+**Simplified v1 approach:** Start without automated routing. Default all questions to Cortex AI_COMPLETE with full deal context assembled as the system prompt. Add a toggle/button for "Search the web" that explicitly routes to Perplexity. This keeps the initial implementation simple while still being contextually powerful.
+
+### 10.4 Context Assembly
+
+Every chat request assembles a **deal context object** that becomes the system prompt. This is what makes the chat "inline" — it always knows what you're working on.
+
+```typescript
+interface ChatContext {
+  // From the current TDR session
+  deal: {
+    name: string;
+    account: string;
+    acv: number;
+    stage: string;
+    closeDate: string;
+    partners: string[];
+    forecastCategory: string;
+    tdrScore: number;
+    criticalFactors: string[];
+  };
+
+  // From TDR step inputs (whatever has been filled in so far)
+  tdrInputs: Record<string, string>;
+
+  // From Sumble (if available)
+  techStack?: {
+    categories: Record<string, string[]>;
+    lastUpdated: string;
+  };
+
+  // From Perplexity (if available)
+  webResearch?: {
+    summary: string;
+    keyFindings: string[];
+    lastUpdated: string;
+  };
+
+  // Current step context
+  currentStep: string;  // e.g., "Current Architecture"
+
+  // Previous sessions for this deal (if any)
+  previousSessions?: { date: string; status: string; summary: string }[];
+}
+```
+
+**System prompt template:**
+
+```
+You are a Technical Deal Review (TDR) assistant helping an SE Manager
+review a sales opportunity. You have access to the following context
+about the current deal:
+
+DEAL: {deal.name} | Account: {deal.account} | ACV: ${deal.acv}
+Stage: {deal.stage} | Close: {deal.closeDate}
+TDR Score: {deal.tdrScore}/100 | Critical Factors: {deal.criticalFactors}
+
+TDR INPUTS SO FAR:
+{tdrInputs formatted as key: value pairs}
+
+ACCOUNT INTELLIGENCE:
+Tech Stack: {techStack.categories}
+Web Research Summary: {webResearch.summary}
+
+CURRENT STEP: {currentStep}
+
+Answer the user's question concisely and specifically in the context
+of THIS deal. If you reference stored data, cite where it came from
+(Sumble, Perplexity, or TDR inputs). If the question requires
+real-time web data that you don't have, say so and suggest the user
+click "Search Web" to route the question to Perplexity.
+```
+
+### 10.5 Conversation Persistence
+
+Every chat message persists to Snowflake. This serves three purposes:
+
+1. **Continuity** — Close the workspace, reopen it next week, chat history is intact
+2. **Posterity** — The conversation becomes part of the TDR record. Future reviewers can see what questions were asked and what the AI recommended.
+3. **Training signal** — Over time, the accumulated Q&A corpus reveals common questions, knowledge gaps, and coaching opportunities
+
+**New table: `TDR_CHAT_MESSAGES`**
+
+```sql
+CREATE TABLE IF NOT EXISTS TDR_CHAT_MESSAGES (
+    MESSAGE_ID          VARCHAR(36) PRIMARY KEY,   -- UUID
+    SESSION_ID          VARCHAR(36) NOT NULL,       -- FK → TDR_SESSIONS
+    OPPORTUNITY_ID      VARCHAR(18) NOT NULL,       -- SFDC Opp Id
+    ACCOUNT_NAME        VARCHAR(255),               -- For cross-account queries
+    ROLE                VARCHAR(10) NOT NULL,        -- 'user' | 'assistant'
+    CONTENT             VARCHAR NOT NULL,            -- Message text
+    CONTEXT_STEP        VARCHAR(50),                 -- TDR step active when question was asked
+    BACKEND             VARCHAR(20),                 -- 'cortex' | 'perplexity' | 'domo_ai'
+    MODEL_USED          VARCHAR(50),                 -- e.g., 'mistral-large2' | 'sonar-pro'
+    TOKENS_IN           INTEGER,                     -- For cost tracking
+    TOKENS_OUT          INTEGER,
+    CITED_SOURCES       VARIANT,                     -- JSON array of citation URLs (Perplexity)
+    CREATED_AT          TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    CREATED_BY          VARCHAR(100)                 -- Domo user display name
+);
+```
+
+### 10.6 Code Engine Functions for Chat
+
+Two new Code Engine functions:
+
+**`sendChatMessage`** — Receives the question + assembled context, routes to the appropriate backend, persists both the question and the response, returns the response.
+
+| Property | Value |
+|----------|-------|
+| **Input** | `{ sessionId, opportunityId, accountName, question, context, backend, step, userId }` |
+| **Domo I/O** | Input: Object, Output: Object |
+| **Backend = "cortex"** | Assembles system prompt from context, calls `AI_COMPLETE` via SQL API |
+| **Backend = "perplexity"** | Calls Perplexity chat completion API, includes `return_citations: true` |
+| **Persist** | INSERTs user message row + assistant message row into `TDR_CHAT_MESSAGES` |
+| **Returns** | `{ messageId, content, backend, citations?, tokensUsed }` |
+
+**`getChatHistory`** — Returns all messages for a session, ordered chronologically.
+
+| Property | Value |
+|----------|-------|
+| **Input** | `{ sessionId }` |
+| **Domo I/O** | Input: Text, Output: Object |
+| **SQL** | `SELECT * FROM TDR_CHAT_MESSAGES WHERE SESSION_ID = ? ORDER BY CREATED_AT ASC` |
+| **Returns** | `{ messages: ChatMessage[] }` |
+
+### 10.7 UI Design
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  TDR Workspace                                                       │
+│  ┌──────────────────────────────────┐  ┌──────────────────────────┐ │
+│  │  TDR Steps (left panel)          │  │  Intelligence + Chat     │ │
+│  │                                  │  │  (right panel)           │ │
+│  │  ┌────────────────────────────┐  │  │                          │ │
+│  │  │ Step 4: Current            │  │  │  [Intel] [Chat] [Brief]  │ │
+│  │  │ Architecture               │  │  │        ▼ active tab      │ │
+│  │  │                            │  │  │  ┌──────────────────────┐│ │
+│  │  │ What BI tools?             │  │  │  │ You (2 min ago)     ││ │
+│  │  │ [________________]         │  │  │  │ What BI tools does   ││ │
+│  │  │                            │  │  │  │ Acme use?            ││ │
+│  │  │ Current data platform?     │  │  │  ├──────────────────────┤│ │
+│  │  │ [________________]         │  │  │  │ TDR Assistant        ││ │
+│  │  │                            │  │  │  │ Based on Sumble      ││ │
+│  │  │ Pain points?               │  │  │  │ (enriched Feb 7):    ││ │
+│  │  │ [________________]         │  │  │  │                      ││ │
+│  │  │                            │  │  │  │ • Tableau (primary)  ││ │
+│  │  │                            │  │  │  │ • Power BI (dept.)   ││ │
+│  │  │                            │  │  │  │ • Excel (ad-hoc)     ││ │
+│  │  │                            │  │  │  │                      ││ │
+│  │  │                            │  │  │  │ Perplexity (Feb 5)   ││ │
+│  │  │                            │  │  │  │ also noted Looker    ││ │
+│  │  │                            │  │  │  │ eval for embedded.   ││ │
+│  │  └────────────────────────────┘  │  │  └──────────────────────┘│ │
+│  │                                  │  │                          │ │
+│  │  [◀ Prev]  Step 4 of 10  [Next ▶]│  │  ┌──────────────────────┐│ │
+│  │                                  │  │  │ 🔍 Ask about this    ││ │
+│  │                                  │  │  │ deal...              ││ │
+│  │                                  │  │  │       [Web 🌐] [Send]││ │
+│  │                                  │  │  └──────────────────────┘│ │
+│  └──────────────────────────────────┘  └──────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Key UX decisions:**
+
+- **Tab-based right panel:** Three tabs — Intel (Sumble/Perplexity data), Chat (conversation), Brief (generated TDR brief). All share the same panel real estate.
+- **"Web 🌐" toggle:** When enabled, the next message routes to Perplexity instead of Cortex. Auto-disables after one message to prevent accidental API burns.
+- **Step awareness:** The chat input placeholder changes based on the current step: *"Ask about their architecture..."* on Step 4, *"Ask about competitive positioning..."* on Step 6.
+- **Citations:** Perplexity responses show clickable source URLs below the message.
+- **Suggestion chips:** Below the input, 2–3 contextual suggestions based on the current step: *"What BI tools does {account} use?" "What competitors are in this account?" "How should I position against {competitor}?"*
+
+### 10.8 Interaction Patterns
+
+**Pattern 1: Fill-assist** — Ask a question, use the answer to fill in a TDR input field.
+> "What's Acme's current data platform?" → "Based on Sumble: Snowflake (cloud DW) + Tableau (BI)" → User pastes into "Current Architecture" field.
+
+**Pattern 2: Strategy coaching** — Ask for TDR methodology guidance.
+> "What should I be asking about their data governance?" → AI responds with framework-aligned questions drawn from the TDR methodology.
+
+**Pattern 3: Live research** — Toggle "Web" and ask about current events.
+> "What's the latest on Acme's digital transformation initiative?" → Perplexity returns real-time web results with citations.
+
+**Pattern 4: Cross-deal learning** — Ask about similar deals.
+> "Have we reviewed similar deals?" → Cortex uses AI_EMBED similarity to find comparable TDR sessions.
+
+**Pattern 5: Summarization** — Ask for a synthesis of everything known.
+> "Summarize everything we know about this account" → Cortex combines stored intel, inputs, and previous sessions into a coherent brief.
+
+### 10.9 Cost Controls
+
+Chat can generate significant API usage. Controls:
+
+- **Rate limiting:** Max 30 messages per session per day (configurable in Settings)
+- **Token budget:** Each Cortex call capped at 2,000 output tokens; Perplexity capped at 1,500
+- **Usage display:** Message count shown in chat footer: "12/30 messages today"
+- **Cache hit:** If a question has been asked before in this session, return the cached answer (exact match check)
+- **Web toggle friction:** "Search Web" requires an explicit toggle press — prevents accidental Perplexity API calls
+
+---
+
+## 11. Front-End Architecture Changes
 
 ### 9.1 New Service: `src/lib/snowflakeStore.ts`
 
@@ -1512,7 +1998,7 @@ API keys are NOT in the Settings page — they live as Domo Account secrets acce
 
 ---
 
-## 10. TDR Scoring Enrichment
+## 12. TDR Scoring Enrichment
 
 ### New Critical Factors (from intelligence data)
 
@@ -1594,7 +2080,7 @@ The Domo AI 17-factor prompt in `domoAi.ts` can be enriched with cached intel:
 
 ---
 
-## 11. API Cost & Rate Limit Strategy
+## 13. API Cost & Rate Limit Strategy
 
 ### Call Budget
 
@@ -1633,7 +2119,7 @@ The Domo AI 17-factor prompt in `domoAi.ts` can be enriched with cached intel:
 
 ---
 
-## 12. Migration Plan (AppDB → Snowflake)
+## 14. Migration Plan (AppDB → Snowflake)
 
 ### Phase 1: Dual-Write
 
@@ -1670,7 +2156,7 @@ const currentUser = await domo.get('/domo/users/v1/me');
 
 ---
 
-## 13. Risks & Considerations
+## 15. Risks & Considerations
 
 ### Technical Risks
 
@@ -1703,7 +2189,7 @@ const currentUser = await domo.get('/domo/users/v1/me');
 
 ---
 
-## 14. Implementation Phases
+## 16. Implementation Phases
 
 ### Phase 1 — Snowflake Foundation
 
@@ -1803,7 +2289,7 @@ const currentUser = await domo.get('/domo/users/v1/me');
 
 ---
 
-## 15. Sprint Plan & Progress Tracker
+## 17. Sprint Plan & Progress Tracker
 
 Each sprint is a focused work session (2–4 hours). The app remains fully functional after every sprint — no sprint leaves the app in a broken state. Sprints are ordered by dependency: each builds on the one before it.
 
@@ -1813,7 +2299,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 > **Risk to app:** None — purely infrastructure.
 
 - [ ] Run bootstrap DDL: create `TDR_APP` database, `TDR_DATA` schema, `TDR_APP_WH` warehouse (XS, auto-suspend 60s), `TDR_APP_ROLE` role
-- [ ] Run table DDL: create all 6 tables (`TDR_SESSIONS`, `TDR_STEP_INPUTS`, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `API_USAGE_LOG`, `CORTEX_ANALYSIS_RESULTS`)
+- [ ] Run table DDL: create all 7 tables (`TDR_SESSIONS`, `TDR_STEP_INPUTS`, `TDR_CHAT_MESSAGES`, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `API_USAGE_LOG`, `CORTEX_ANALYSIS_RESULTS`)
 - [ ] Grant permissions: `TDR_APP_ROLE` gets USAGE + ALL on schema/tables/warehouse + `CORTEX_USER` database role
 - [ ] Deploy `snowflakeAuth.js` shared infrastructure to Code Engine (JWT auth + `executeSql` + `mapRows`)
 - [ ] Validate: run a test SQL (`SELECT CURRENT_TIMESTAMP()`) from Code Engine → confirm it returns successfully
@@ -1935,7 +2421,37 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
-### Sprint 8 — Cortex AI: Portfolio & Sentiment ⬜
+### Sprint 8 — TDR Inline Chat ⬜
+
+> **Goal:** Embed a context-aware conversational AI in the TDR Workspace. The manager can ask questions about the deal, the account, the TDR methodology, or the web — without leaving the review.
+> **Risk to app:** None — new panel in existing workspace. All existing functionality untouched.
+
+- [ ] Deploy `sendChatMessage`, `getChatHistory` Code Engine functions
+- [ ] Add `packageMapping` entries for both functions
+- [ ] Create `codeengine/chat.js` reference file
+- [ ] Create `src/lib/tdrChat.ts` — front-end service for chat orchestration + context assembly
+- [ ] Build `src/components/TDRChat.tsx` — chat panel component (message list, input, send button)
+- [ ] Integrate chat panel as a tab in the TDR Workspace right panel: [Intel] [**Chat**] [Brief]
+- [ ] Implement context assembly: gather deal info, TDR inputs, cached Sumble/Perplexity intel, current step → system prompt
+- [ ] Default routing: all messages → Cortex AI_COMPLETE with assembled context
+- [ ] Add "Search Web 🌐" toggle button: when active, next message routes to Perplexity (auto-disables after send)
+- [ ] Persist all messages to `TDR_CHAT_MESSAGES` (user + assistant rows)
+- [ ] Load chat history on session open via `getChatHistory`
+- [ ] Step-aware input placeholder: *"Ask about their architecture..."* when on Step 4, etc.
+- [ ] Add 2–3 contextual suggestion chips below input based on current step
+- [ ] Add message count display in footer: "8/30 messages today"
+- [ ] Add rate limit: max 30 messages per session per day (configurable)
+- [ ] Perplexity responses show clickable citation URLs
+- [ ] Test: open TDR session → ask "What BI tools does this account use?" → get answer citing Sumble data
+- [ ] Test: toggle "Search Web" → ask about current events → get Perplexity response with citations
+- [ ] Test: close workspace, reopen → chat history persists
+- [ ] Test: hit 30 message limit → graceful "limit reached" message
+
+**Definition of Done:** SE Manager can have a multi-turn, context-aware conversation with AI while reviewing a deal. Chat persists. Web search available on-demand.
+
+---
+
+### Sprint 9 — Cortex AI: Portfolio & Sentiment ⬜
 
 > **Goal:** Cross-deal portfolio analysis, intelligence evolution summaries, sentiment tracking.
 > **Risk to app:** None — new features on existing pages.
@@ -1952,7 +2468,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
-### Sprint 9 — TDR Scoring Enrichment ⬜
+### Sprint 10 — TDR Scoring Enrichment ⬜
 
 > **Goal:** Intelligence data feeds into TDR scoring and Domo AI prompt.
 > **Risk to app:** Moderate — modifies existing scoring logic. Test carefully.
@@ -1970,7 +2486,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
-### Sprint 10 — Semantic Search & Analyst ⬜
+### Sprint 11 — Semantic Search & Analyst ⬜
 
 > **Goal:** Search across all stored intelligence. Ask questions in natural language.
 > **Risk to app:** None — new features on new UI elements.
@@ -1988,7 +2504,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
-### Sprint 11 — Migration & Cleanup ⬜
+### Sprint 12 — Migration & Cleanup ⬜
 
 > **Goal:** Remove AppDB dependency. Snowflake is the single source of truth.
 > **Risk to app:** Moderate — removes a persistence layer. Validate thoroughly.
@@ -2010,36 +2526,39 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ### Progress Dashboard
 
-| Sprint | Name | Status | Dependencies |
-|--------|------|--------|-------------|
-| 1 | Snowflake Foundation | ⬜ Not Started | None |
-| 2 | Session Persistence (Dual-Write) | ⬜ Not Started | Sprint 1 |
-| 3 | Step Input Persistence | ⬜ Not Started | Sprint 2 |
-| 4 | Sumble Account Enrichment | ⬜ Not Started | Sprint 1 |
-| 5 | Perplexity Web Research | ⬜ Not Started | Sprint 1 |
-| 6 | Caching, Settings & Usage | ⬜ Not Started | Sprints 4 + 5 |
-| 7 | Cortex AI: Deal-Level | ⬜ Not Started | Sprints 3 + 6 |
-| 8 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | Sprint 7 |
-| 9 | TDR Scoring Enrichment | ⬜ Not Started | Sprint 6 |
-| 10 | Semantic Search & Analyst | ⬜ Not Started | Sprint 7 |
-| 11 | Migration & Cleanup | ⬜ Not Started | All above |
+| Sprint | Name | Status | Dependencies | Scope |
+|--------|------|--------|-------------|-------|
+| 1 | Snowflake Foundation | ⬜ Not Started | None | Infrastructure |
+| 2 | Session Persistence (Dual-Write) | ⬜ Not Started | Sprint 1 | Persistence |
+| 3 | Step Input Persistence | ⬜ Not Started | Sprint 2 | Persistence |
+| 4 | Sumble Account Enrichment | ⬜ Not Started | Sprint 1 | Intelligence |
+| 5 | Perplexity Web Research | ⬜ Not Started | Sprint 1 | Intelligence |
+| 6 | Caching, Settings & Usage | ⬜ Not Started | Sprints 4 + 5 | Intelligence |
+| 7 | Cortex AI: Deal-Level | ⬜ Not Started | Sprints 3 + 6 | AI |
+| **8** | **TDR Inline Chat** | ⬜ Not Started | Sprints 3 + 6 | **Experience** |
+| 9 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | Sprint 7 | AI |
+| 10 | TDR Scoring Enrichment | ⬜ Not Started | Sprint 6 | Scoring |
+| 11 | Semantic Search & Analyst | ⬜ Not Started | Sprints 7 + 8 | AI |
+| 12 | Migration & Cleanup | ⬜ Not Started | All above | Cleanup |
 
-**Parallel tracks:** Sprints 4 and 5 (Sumble + Perplexity) can run in parallel — they both depend on Sprint 1 but not on each other. Similarly, Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6.
+**Parallel tracks:** Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6. Sprints 7 and 8 (Cortex deal-level and inline chat) can also run in parallel — both depend on persistence + intelligence but not on each other. They converge again at Sprint 11 (search & analyst).
 
 ```
 Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┐
-            │                           ├── Sprint 7 ── Sprint 8
-            ├── Sprint 4 ──┐            │        │
-            │               ├── Sprint 6 ┘        ├── Sprint 10
-            └── Sprint 5 ──┘      │               │
-                                  └── Sprint 9     │
-                                                   │
-                                         Sprint 11 ┘
+            │                           ├── Sprint 7 ── Sprint 9 ──┐
+            ├── Sprint 4 ──┐            │                          │
+            │               ├── Sprint 6 ┤                          ├── Sprint 11
+            └── Sprint 5 ──┘      │      │                          │
+                                  │      ├── Sprint 8 ─────────────┘
+                                  │      │
+                                  │      └── Sprint 10
+                                  │
+                                  └─────────────────── Sprint 12
 ```
 
 ---
 
-## 16. Reference Links
+## 18. Reference Links
 
 | Resource | URL |
 |----------|-----|
@@ -2052,6 +2571,79 @@ Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┐
 | Domo AppDB API | https://developer.domo.com/portal/1l1fm2g0sfm69-app-db-api |
 | Sample: aptSnowflakeCodeEngine.js | `samples/aptSnowflakeCodeEngine.js` (local) |
 | Sample: cortexAnalystCodeEngine.js | `samples/cortexAnalystCodeEngine.js` (local) |
+
+---
+
+---
+
+## 19. Solution Strategy Summary — The Five Pillars
+
+This is the "elevator pitch" view. The final solution is built on five distinct pillars. Each pillar is independently valuable, but together they create a compounding effect: more data makes the chat smarter, chat interactions surface insights that improve scoring, scoring drives better TDR prioritization, and better prioritization means more valuable data is collected. It's a flywheel.
+
+### Pillar 1: Persistent Memory (Sprints 1–3)
+**What:** Every TDR session, every step input, every edit — stored in Snowflake with timestamps. Full history, never overwritten.
+**Why it matters independently:** Even without AI, the team gains posterity. "What did we know about this deal in October?" becomes answerable. TDR reviews become auditable. Handoffs between SEs are seamless.
+**Key outcome:** The app remembers everything.
+
+### Pillar 2: External Intelligence (Sprints 4–6)
+**What:** Sumble provides firmographic + technographic enrichment (what tech do they run?). Perplexity provides web-grounded research (what are they doing strategically?). Both cache to Snowflake. Both track iteration history.
+**Why it matters independently:** Even without chat or Cortex, the SE Manager sees real-world context inside the TDR workflow instead of researching in browser tabs. The tech stack view alone transforms how competitive deals are prepared.
+**Key outcome:** The app knows the account.
+
+### Pillar 3: Inline Chat (Sprint 8)
+**What:** A conversational AI panel in the TDR Workspace. Multi-turn. Context-aware (knows the deal, the inputs, the intel). Can answer from stored data (Cortex) or search the web on-demand (Perplexity). Every message persisted.
+**Why it matters independently:** Even with minimal stored intel, the chat provides TDR methodology coaching, helps brainstorm positioning, and answers "what should I ask?" questions. With stored intel, it becomes a deal expert that cites its sources.
+**Key outcome:** The app answers your questions.
+
+### Pillar 4: Cortex AI Processing (Sprints 7, 9–11)
+**What:** Snowflake Cortex processes stored data in-database. Generates TDR briefs (AI_COMPLETE). Classifies findings (AI_CLASSIFY). Extracts entities (AI_EXTRACT). Finds similar deals (AI_EMBED). Analyzes portfolio patterns (AI_AGG). Enables natural language SQL (Analyst). Full-text + semantic search (Search).
+**Why it matters independently:** Even without external intelligence, Cortex can analyze patterns across historical TDR sessions, find deals that stalled at similar stages, and surface insights from the team's own notes. With external intelligence, it becomes a strategic advisor.
+**Key outcome:** The app thinks about the data.
+
+### Pillar 5: Enriched Scoring (Sprint 10)
+**What:** TDR scores incorporate real-world signals. New critical factors (tech stack overlap, strategic momentum) fire based on external intelligence. The Domo AI prompt includes cached intel, making its recommendations grounded in reality rather than just SFDC fields.
+**Why it matters independently:** Even if a manager never opens the TDR Workspace, the deals table shows better priorities. The "Why TDR?" pills tell a richer story. The AI recommends more actionable next steps.
+**Key outcome:** The app prioritizes smarter.
+
+### The Flywheel
+
+```
+                    ┌──────────────────────┐
+                    │  Better Priorities   │
+                    │  (Enriched Scoring)  │
+                    └──────────┬───────────┘
+                               │
+                    Manager reviews the RIGHT deals
+                               │
+                               ▼
+┌──────────────┐    ┌──────────────────────┐
+│  Smarter AI  │◄───│  Richer TDR Reviews  │
+│  (Cortex)    │    │  (Chat + Intel)      │
+└──────┬───────┘    └──────────┬───────────┘
+       │                       │
+       │            More data flows into Snowflake
+       │                       │
+       ▼                       ▼
+┌──────────────────────────────────────────┐
+│       Deeper Persistent Memory           │
+│  (Sessions, Inputs, Chat, Intel, Cortex) │
+└──────────────────────────────────────────┘
+       │
+       └──── Feeds back into Cortex analysis,
+             chat context, and scoring signals
+```
+
+### What This Means Practically
+
+| If you build only... | The app becomes... |
+|----------------------|-------------------|
+| Pillar 1 (Persistence) | A reliable, auditable TDR system with history |
+| Pillars 1 + 2 (+ Intelligence) | A context-rich TDR tool that knows the account |
+| Pillars 1 + 2 + 3 (+ Chat) | An AI-assisted TDR workflow where you never leave the app |
+| Pillars 1–4 (+ Cortex) | A strategic platform that generates insights across all deals |
+| All 5 Pillars | A self-improving deal intelligence system that gets smarter with every review |
+
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful.
 
 ---
 
