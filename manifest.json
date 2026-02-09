@@ -117,7 +117,7 @@
         { "alias": "fieldId", "type": "string", "nullable": false, "isList": false, "children": null },
         { "alias": "fieldLabel", "type": "string", "nullable": true, "isList": false, "children": null },
         { "alias": "fieldValue", "type": "string", "nullable": false, "isList": false, "children": null },
-        { "alias": "stepOrder", "type": "integer", "nullable": true, "isList": false, "children": null },
+        { "alias": "stepOrder", "type": "string", "nullable": true, "isList": false, "children": null },
         { "alias": "savedBy", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
