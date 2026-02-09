@@ -7,7 +7,7 @@ import { TDRChat } from '@/components/TDRChat';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User, Loader2, Save } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
@@ -188,15 +188,17 @@ export default function TDRWorkspace() {
             <TabsList className="shrink-0 mx-3 mt-3 bg-[#2a2540] border border-[#3a3460]">
               <TabsTrigger
                 value="intel"
-                className="data-[state=active]:bg-[#332d50] data-[state=active]:text-white text-slate-400 text-xs"
+                className="gap-1.5 data-[state=active]:bg-[#332d50] data-[state=active]:text-white text-slate-400 text-xs"
               >
-                🧠 Intelligence
+                <Brain className="h-3 w-3" />
+                Intelligence
               </TabsTrigger>
               <TabsTrigger
                 value="chat"
-                className="data-[state=active]:bg-[#332d50] data-[state=active]:text-white text-slate-400 text-xs"
+                className="gap-1.5 data-[state=active]:bg-[#332d50] data-[state=active]:text-white text-slate-400 text-xs"
               >
-                💬 Chat
+                <MessageSquare className="h-3 w-3" />
+                Chat
               </TabsTrigger>
             </TabsList>
             <TabsContent value="intel" className="flex-1 overflow-y-auto mt-0">

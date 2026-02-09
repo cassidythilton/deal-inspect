@@ -15,10 +15,13 @@ export interface LLMModel {
   costTier?: 'low' | 'medium' | 'high';
 }
 
+/** Icon key — mapped to Lucide components in the UI layer */
+export type ProviderIconKey = 'snowflake' | 'search' | 'cpu';
+
 export interface LLMProvider {
   key: ProviderKey;
   label: string;
-  icon: string;
+  icon: ProviderIconKey;
   description: string;
   models: LLMModel[];
   defaultModelId: string;
@@ -30,7 +33,7 @@ export const LLM_PROVIDERS: Record<ProviderKey, LLMProvider> = {
   cortex: {
     key: 'cortex',
     label: 'Snowflake Cortex',
-    icon: '❄️',
+    icon: 'snowflake',
     description: 'Snowflake-hosted models via AI_COMPLETE',
     serverSide: true,
     defaultModelId: 'llama3.3-70b',
@@ -45,7 +48,7 @@ export const LLM_PROVIDERS: Record<ProviderKey, LLMProvider> = {
   perplexity: {
     key: 'perplexity',
     label: 'Perplexity',
-    icon: '🔍',
+    icon: 'search',
     description: 'Web-grounded answers with citations',
     serverSide: true,
     defaultModelId: 'sonar',
@@ -57,7 +60,7 @@ export const LLM_PROVIDERS: Record<ProviderKey, LLMProvider> = {
   domo: {
     key: 'domo',
     label: 'Domo AI',
-    icon: '🤖',
+    icon: 'cpu',
     description: "Domo's native AI — no Code Engine needed",
     serverSide: false,
     defaultModelId: 'default',

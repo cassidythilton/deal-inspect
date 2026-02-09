@@ -5,6 +5,8 @@
  * workspace. Supports Cortex (5 models), Perplexity (2 models), and
  * Domo AI (native). Context-aware: assembles system prompts from deal
  * info, TDR inputs, cached intel, and the current TDR step.
+ *
+ * Typography matches the TDR Brief renderer (text-xs, slate-400, leading-relaxed).
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -17,6 +19,9 @@ import {
   Sparkles,
   MessageSquare,
   AlertCircle,
+  Snowflake,
+  Search,
+  Cpu,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +33,7 @@ import {
   LLM_PROVIDERS,
   PROVIDER_LIST,
   type ProviderKey,
+  type ProviderIconKey,
 } from '@/config/llmProviders';
 import type { Deal, TDRStep } from '@/types/tdr';
 
@@ -37,6 +43,25 @@ interface TDRChatProps {
   deal: Deal;
   sessionId?: string;
   activeStep?: TDRStep;
+}
+
+// ─── Icon mapping ────────────────────────────────────────────────────────────
+
+const ICON_MAP: Record<ProviderIconKey, React.FC<{ className?: string }>> = {
+  snowflake: Snowflake,
+  search: Search,
+  cpu: Cpu,
+};
+
+function ProviderIcon({
+  iconKey,
+  className = 'h-3.5 w-3.5',
+}: {
+  iconKey: ProviderIconKey;
+  className?: string;
+}) {
+  const Icon = ICON_MAP[iconKey] || Bot;
+  return <Icon className={className} />;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -68,21 +93,143 @@ const PROVIDER_COLORS: Record<
   { bg: string; text: string; border: string }
 > = {
   cortex: {
-    bg: 'bg-cyan-500/15',
-    text: 'text-cyan-300',
-    border: 'border-cyan-500/30',
+    bg: 'bg-cyan-500/10',
+    text: 'text-cyan-400',
+    border: 'border-cyan-500/20',
   },
   perplexity: {
-    bg: 'bg-violet-500/15',
-    text: 'text-violet-300',
-    border: 'border-violet-500/30',
+    bg: 'bg-violet-500/10',
+    text: 'text-violet-400',
+    border: 'border-violet-500/20',
   },
   domo: {
-    bg: 'bg-amber-500/15',
-    text: 'text-amber-300',
-    border: 'border-amber-500/30',
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-400',
+    border: 'border-amber-500/20',
   },
 };
+
+// ─── Markdown renderer (matches TDR Brief) ───────────────────────────────────
+
+function renderInline(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)/g;
+  let lastIndex = 0;
+  let m: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > lastIndex) parts.push(text.slice(lastIndex, m.index));
+    if (m[2]) {
+      parts.push(
+        <strong key={`b${idx++}`} className="font-semibold text-slate-200">
+          {m[2]}
+        </strong>,
+      );
+    } else if (m[3]) {
+      parts.push(
+        <em key={`i${idx++}`} className="italic text-slate-300">
+          {m[3]}
+        </em>,
+      );
+    } else if (m[4]) {
+      parts.push(
+        <code
+          key={`c${idx++}`}
+          className="px-1 py-0.5 rounded bg-[#2a2540] text-violet-300 text-[10px]"
+        >
+          {m[4]}
+        </code>,
+      );
+    }
+    lastIndex = m.index + m[0].length;
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+  return parts.length > 0 ? <>{parts}</> : text;
+}
+
+function renderMarkdown(text: string, keyPrefix = 'md'): React.ReactNode {
+  if (!text) return null;
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let listBuffer: string[] = [];
+  let paraBuffer: string[] = [];
+
+  const flushPara = () => {
+    if (paraBuffer.length === 0) return;
+    const raw = paraBuffer.join(' ');
+    elements.push(
+      <p key={`${keyPrefix}-p${elements.length}`} className="mb-1.5 last:mb-0">
+        {renderInline(raw)}
+      </p>,
+    );
+    paraBuffer = [];
+  };
+
+  const flushList = () => {
+    if (listBuffer.length === 0) return;
+    elements.push(
+      <ul
+        key={`${keyPrefix}-ul${elements.length}`}
+        className="mb-1.5 list-disc pl-4 space-y-0.5 last:mb-0"
+      >
+        {listBuffer.map((item, j) => (
+          <li key={j}>{renderInline(item)}</li>
+        ))}
+      </ul>,
+    );
+    listBuffer = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Heading: ### or **Section Title** at start of line alone
+    const headingMatch = trimmed.match(/^#{1,4}\s+(.+)$/);
+    if (headingMatch) {
+      flushList();
+      flushPara();
+      elements.push(
+        <h4
+          key={`${keyPrefix}-h${elements.length}`}
+          className="text-[11px] font-semibold text-slate-200 mt-2 mb-1 border-b border-[#322b4d] pb-1 first:mt-0"
+        >
+          {renderInline(headingMatch[1].replace(/\*+/g, '').trim())}
+        </h4>,
+      );
+      continue;
+    }
+
+    // Numbered list: 1. item
+    const numMatch = trimmed.match(/^(\d+)\.\s+(.+)$/);
+    if (numMatch) {
+      flushPara();
+      listBuffer.push(numMatch[2]);
+      continue;
+    }
+
+    // Bullet: - item or * item or • item
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.*)$/);
+    if (bulletMatch) {
+      flushPara();
+      listBuffer.push(bulletMatch[1]);
+      continue;
+    }
+
+    if (trimmed === '') {
+      flushList();
+      flushPara();
+      continue;
+    }
+
+    flushList();
+    paraBuffer.push(trimmed);
+  }
+
+  flushList();
+  flushPara();
+  return <>{elements}</>;
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -167,7 +314,6 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
       setError(null);
       setIsLoading(true);
 
-      // Optimistic: add user bubble
       const userMsg: ChatMessage = {
         messageId: `pending-user-${Date.now()}`,
         sessionId,
@@ -254,86 +400,43 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
       <span
         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${colors.bg} ${colors.text} border ${colors.border}`}
       >
-        {pConfig?.icon || '🤖'}{' '}
+        <ProviderIcon iconKey={pConfig?.icon || 'cpu'} className="h-2.5 w-2.5" />
         {modelUsed || pConfig?.label || providerKey}
       </span>
     );
-  };
-
-  const renderMessageContent = (content: string) => {
-    const lines = content.split('\n');
-    return lines.map((line, i) => {
-      // Bold: **text**
-      const parts = line.split(/(\*\*[^*]+\*\*)/g);
-      const rendered = parts.map((part, j) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
-            <strong key={j} className="font-semibold text-slate-100">
-              {part.slice(2, -2)}
-            </strong>
-          );
-        }
-        return <span key={j}>{part}</span>;
-      });
-
-      // Bullet
-      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-        return (
-          <div key={i} className="flex gap-2 ml-2">
-            <span className="text-slate-500 mt-0.5">•</span>
-            <span>{rendered}</span>
-          </div>
-        );
-      }
-      // Numbered
-      const numMatch = line.trim().match(/^(\d+)\.\s/);
-      if (numMatch) {
-        return (
-          <div key={i} className="flex gap-2 ml-2">
-            <span className="text-slate-400 font-medium min-w-[1rem] text-right">
-              {numMatch[1]}.
-            </span>
-            <span>{rendered}</span>
-          </div>
-        );
-      }
-      // Empty
-      if (line.trim() === '') return <div key={i} className="h-2" />;
-      return <div key={i}>{rendered}</div>;
-    });
   };
 
   // ── Render ──
   return (
     <div className="flex flex-col h-full">
       {/* ── Provider / Model Selector ── */}
-      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[#2a2540]">
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-[#2a2540]">
         {/* Provider dropdown */}
         <div className="relative" ref={providerMenuRef}>
           <button
             onClick={() => setShowProviderMenu(!showProviderMenu)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#2a2540] hover:bg-[#332d50] text-sm text-slate-200 transition-colors"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#2a2540] hover:bg-[#332d50] text-xs text-slate-300 transition-colors"
           >
-            <span>{currentProvider.icon}</span>
+            <ProviderIcon iconKey={currentProvider.icon} className="h-3 w-3" />
             <span>{currentProvider.label}</span>
-            <ChevronDown className="h-3 w-3 text-slate-400" />
+            <ChevronDown className="h-2.5 w-2.5 text-slate-500" />
           </button>
           {showProviderMenu && (
-            <div className="absolute top-full left-0 mt-1 w-56 rounded-lg bg-[#2a2540] border border-[#3a3460] shadow-xl z-50">
+            <div className="absolute top-full left-0 mt-1 w-52 rounded-lg bg-[#221D38] border border-[#3a3460] shadow-xl z-50">
               {PROVIDER_LIST.map((p) => (
                 <button
                   key={p.key}
                   onClick={() => handleProviderChange(p.key)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-[#332d50] transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                  className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-[#2a2540] transition-colors first:rounded-t-lg last:rounded-b-lg ${
                     provider === p.key
-                      ? 'bg-[#332d50] text-white'
-                      : 'text-slate-300'
+                      ? 'bg-[#2a2540] text-white'
+                      : 'text-slate-400'
                   }`}
                 >
-                  <span>{p.icon}</span>
+                  <ProviderIcon iconKey={p.icon} className="h-3 w-3 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium">{p.label}</div>
-                    <div className="text-xs text-slate-500 truncate">
+                    <div className="text-xs font-medium">{p.label}</div>
+                    <div className="text-[10px] text-slate-600 truncate">
                       {p.description}
                     </div>
                   </div>
@@ -348,37 +451,37 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
           <div className="relative" ref={modelMenuRef}>
             <button
               onClick={() => setShowModelMenu(!showModelMenu)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-[#2a2540] hover:bg-[#332d50] text-sm text-slate-300 transition-colors"
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-[#2a2540] hover:bg-[#332d50] text-xs text-slate-400 transition-colors"
             >
               <span>{currentModel.label}</span>
-              <ChevronDown className="h-3 w-3 text-slate-400" />
+              <ChevronDown className="h-2.5 w-2.5 text-slate-500" />
             </button>
             {showModelMenu && (
-              <div className="absolute top-full left-0 mt-1 w-56 rounded-lg bg-[#2a2540] border border-[#3a3460] shadow-xl z-50">
+              <div className="absolute top-full left-0 mt-1 w-52 rounded-lg bg-[#221D38] border border-[#3a3460] shadow-xl z-50">
                 {currentProvider.models.map((m) => (
                   <button
                     key={m.id}
                     onClick={() => handleModelChange(m.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-[#332d50] transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                    className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-[#2a2540] transition-colors first:rounded-t-lg last:rounded-b-lg ${
                       modelId === m.id
-                        ? 'bg-[#332d50] text-white'
-                        : 'text-slate-300'
+                        ? 'bg-[#2a2540] text-white'
+                        : 'text-slate-400'
                     }`}
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium">{m.label}</div>
-                      <div className="text-xs text-slate-500 truncate">
+                      <div className="text-xs font-medium">{m.label}</div>
+                      <div className="text-[10px] text-slate-600 truncate">
                         {m.description}
                       </div>
                     </div>
                     {m.costTier && (
                       <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded ${
+                        className={`text-[9px] px-1 py-px rounded ${
                           m.costTier === 'low'
-                            ? 'bg-emerald-500/15 text-emerald-400'
+                            ? 'bg-emerald-500/10 text-emerald-500'
                             : m.costTier === 'medium'
-                              ? 'bg-amber-500/15 text-amber-400'
-                              : 'bg-red-500/15 text-red-400'
+                              ? 'bg-amber-500/10 text-amber-500'
+                              : 'bg-red-500/10 text-red-400'
                         }`}
                       >
                         {m.costTier}
@@ -392,8 +495,8 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
         )}
 
         {/* Token counter */}
-        <div className="ml-auto flex items-center gap-1 text-[10px] text-slate-500">
-          <Sparkles className="h-3 w-3" />
+        <div className="ml-auto flex items-center gap-1 text-[10px] text-slate-600">
+          <Sparkles className="h-2.5 w-2.5" />
           <span>
             {(totalTokens.in + totalTokens.out).toLocaleString()} tokens
           </span>
@@ -404,27 +507,26 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
         {/* Empty state */}
         {messages.length === 0 && !isLoading && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-            <div className="rounded-full bg-[#2a2540] p-3">
-              <MessageSquare className="h-6 w-6 text-slate-400" />
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center">
+            <div className="rounded-full bg-[#221D38] p-2.5 border border-[#2a2540]">
+              <MessageSquare className="h-5 w-5 text-slate-500" />
             </div>
             <div>
-              <h3 className="text-sm font-medium text-slate-200">
+              <h3 className="text-xs font-medium text-slate-300">
                 TDR Chat
               </h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-xs">
+              <p className="text-[11px] text-slate-500 mt-0.5 max-w-[260px] leading-relaxed">
                 Ask questions about this deal using AI. Context from your
-                TDR inputs and account intelligence is automatically
-                included.
+                TDR inputs and account intelligence is included automatically.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 max-w-sm justify-center mt-2">
+            <div className="flex flex-wrap gap-1.5 max-w-sm justify-center mt-1">
               {SUGGESTION_CHIPS.map((chip) => (
                 <button
                   key={chip.label}
                   onClick={() => handleSend(chip.prompt)}
                   disabled={!sessionId}
-                  className="px-3 py-1.5 rounded-full bg-[#2a2540] border border-[#3a3460] text-xs text-slate-300 hover:bg-[#332d50] hover:text-white transition-colors disabled:opacity-40"
+                  className="px-2.5 py-1 rounded-full bg-[#221D38] border border-[#2a2540] text-[10px] text-slate-400 hover:bg-[#2a2540] hover:text-slate-200 transition-colors disabled:opacity-30"
                 >
                   {chip.label}
                 </button>
@@ -437,29 +539,38 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
         {messages.map((msg) => (
           <div
             key={msg.messageId}
-            className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.role === 'assistant' && (
-              <div className="shrink-0 mt-0.5">
-                <div className="h-6 w-6 rounded-full bg-[#2a2540] flex items-center justify-center">
-                  <Bot className="h-3.5 w-3.5 text-slate-400" />
+              <div className="shrink-0 mt-px">
+                <div className="h-5 w-5 rounded-full bg-[#221D38] border border-[#2a2540] flex items-center justify-center">
+                  <Bot className="h-3 w-3 text-slate-500" />
                 </div>
               </div>
             )}
             <div
-              className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${
+              className={`max-w-[85%] rounded-lg px-2.5 py-2 ${
                 msg.role === 'user'
-                  ? 'bg-violet-600/30 text-slate-100 border border-violet-500/20'
-                  : 'bg-[#221D38] text-slate-300 border border-[#2a2540]'
+                  ? 'bg-violet-600/20 border border-violet-500/15'
+                  : 'bg-[#221D38] border border-[#2a2540]'
               }`}
             >
               {msg.role === 'assistant' && msg.provider && (
-                <div className="mb-1.5">
+                <div className="mb-1">
                   {renderProviderBadge(msg.provider, msg.modelUsed)}
                 </div>
               )}
-              <div className="whitespace-pre-wrap">
-                {renderMessageContent(msg.content)}
+              {/* Content — matches TDR Brief typography */}
+              <div
+                className={`text-xs leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'text-slate-200'
+                    : 'text-slate-400'
+                }`}
+              >
+                {msg.role === 'assistant'
+                  ? renderMarkdown(msg.content, msg.messageId)
+                  : msg.content}
               </div>
               {/* Citations */}
               {msg.citedSources &&
@@ -467,9 +578,9 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
                   msg.citedSources.length > 0) ||
                   (typeof msg.citedSources === 'string' &&
                     msg.citedSources !== '[]')) && (
-                  <div className="mt-2 pt-2 border-t border-[#2a2540]">
-                    <div className="text-[10px] text-slate-500 mb-1">
-                      Sources:
+                  <div className="mt-1.5 pt-1.5 border-t border-[#2a2540]">
+                    <div className="text-[9px] text-slate-600 mb-0.5 font-medium uppercase tracking-wide">
+                      Sources
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {(typeof msg.citedSources === 'string'
@@ -481,7 +592,7 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[10px] text-violet-400 hover:text-violet-300 underline truncate max-w-[200px]"
+                          className="text-[10px] text-violet-400 hover:text-violet-300 underline underline-offset-2"
                         >
                           [{i + 1}]
                         </a>
@@ -491,9 +602,9 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
                 )}
             </div>
             {msg.role === 'user' && (
-              <div className="shrink-0 mt-0.5">
-                <div className="h-6 w-6 rounded-full bg-violet-600/30 flex items-center justify-center">
-                  <User className="h-3.5 w-3.5 text-violet-300" />
+              <div className="shrink-0 mt-px">
+                <div className="h-5 w-5 rounded-full bg-violet-600/20 border border-violet-500/15 flex items-center justify-center">
+                  <User className="h-3 w-3 text-violet-400" />
                 </div>
               </div>
             )}
@@ -502,16 +613,16 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
 
         {/* Loading */}
         {isLoading && (
-          <div className="flex gap-2.5">
-            <div className="shrink-0 mt-0.5">
-              <div className="h-6 w-6 rounded-full bg-[#2a2540] flex items-center justify-center">
-                <Bot className="h-3.5 w-3.5 text-slate-400" />
+          <div className="flex gap-2">
+            <div className="shrink-0 mt-px">
+              <div className="h-5 w-5 rounded-full bg-[#221D38] border border-[#2a2540] flex items-center justify-center">
+                <Bot className="h-3 w-3 text-slate-500" />
               </div>
             </div>
-            <div className="bg-[#221D38] border border-[#2a2540] rounded-xl px-3 py-2 text-sm">
-              <div className="flex items-center gap-2 text-slate-400">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                <span>Thinking...</span>
+            <div className="bg-[#221D38] border border-[#2a2540] rounded-lg px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5 text-slate-500">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span className="text-[11px]">Thinking...</span>
               </div>
             </div>
           </div>
@@ -519,8 +630,8 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
-            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-500/8 border border-red-500/15 text-[11px] text-red-400">
+            <AlertCircle className="h-3 w-3 shrink-0" />
             <span className="truncate">{error}</span>
           </div>
         )}
@@ -529,8 +640,8 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
       </div>
 
       {/* ── Input ── */}
-      <div className="px-3 py-2.5 border-t border-[#2a2540]">
-        <div className="flex gap-2 items-end">
+      <div className="px-3 py-2 border-t border-[#2a2540]">
+        <div className="flex gap-1.5 items-end">
           <textarea
             ref={inputRef}
             value={inputValue}
@@ -543,34 +654,34 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
                 : 'Start a TDR session to chat'
             }
             rows={1}
-            className="flex-1 resize-none rounded-lg bg-[#2a2540] border border-[#3a3460] px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500/50 focus:border-violet-500/50 disabled:opacity-50 min-h-[36px] max-h-[120px]"
+            className="flex-1 resize-none rounded-md bg-[#221D38] border border-[#2a2540] px-2.5 py-1.5 text-xs text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 disabled:opacity-40 min-h-[32px] max-h-[100px]"
             style={{ height: 'auto' }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
               target.style.height = 'auto';
               target.style.height =
-                Math.min(target.scrollHeight, 120) + 'px';
+                Math.min(target.scrollHeight, 100) + 'px';
             }}
           />
           <Button
             size="sm"
             disabled={!inputValue.trim() || isLoading || !sessionId}
             onClick={() => handleSend()}
-            className="h-9 w-9 shrink-0 rounded-lg bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-40"
+            className="h-8 w-8 shrink-0 rounded-md bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-30 p-0"
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-3.5 w-3.5" />
             )}
           </Button>
         </div>
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="text-[10px] text-slate-600">
+        <div className="flex items-center justify-between mt-1">
+          <span className="text-[9px] text-slate-600">
             Shift+Enter for new line
           </span>
           {activeStep && (
-            <span className="text-[10px] text-slate-600">
+            <span className="text-[9px] text-slate-600">
               Context: {activeStep.title}
             </span>
           )}
@@ -579,4 +690,3 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
     </div>
   );
 }
-
