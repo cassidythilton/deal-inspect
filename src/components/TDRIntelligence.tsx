@@ -46,12 +46,14 @@ interface TDRIntelligenceProps {
 
 // ── Tech category icons & colors ──
 const TECH_CATEGORY_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  BI:    { label: 'BI/Analytics',    bg: 'bg-blue-100 dark:bg-blue-900/30',    text: 'text-blue-700 dark:text-blue-300' },
-  DW:    { label: 'Data Warehouse',  bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300' },
-  ETL:   { label: 'ETL/Pipeline',    bg: 'bg-amber-100 dark:bg-amber-900/30',  text: 'text-amber-700 dark:text-amber-300' },
-  Cloud: { label: 'Cloud',           bg: 'bg-cyan-100 dark:bg-cyan-900/30',    text: 'text-cyan-700 dark:text-cyan-300' },
-  ML:    { label: 'AI/ML',           bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
-  Other: { label: 'Other',           bg: 'bg-slate-100 dark:bg-slate-800',     text: 'text-slate-600 dark:text-slate-300' },
+  CRM:    { label: 'CRM',             bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300' },
+  BI:     { label: 'BI/Analytics',     bg: 'bg-blue-100 dark:bg-blue-900/30',    text: 'text-blue-700 dark:text-blue-300' },
+  DW:     { label: 'Data Warehouse',   bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300' },
+  ETL:    { label: 'Data Engineering', bg: 'bg-amber-100 dark:bg-amber-900/30',  text: 'text-amber-700 dark:text-amber-300' },
+  Cloud:  { label: 'Cloud',            bg: 'bg-cyan-100 dark:bg-cyan-900/30',    text: 'text-cyan-700 dark:text-cyan-300' },
+  ML:     { label: 'AI/ML',            bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
+  DevOps: { label: 'DevOps',           bg: 'bg-rose-100 dark:bg-rose-900/30',    text: 'text-rose-700 dark:text-rose-300' },
+  Other:  { label: 'Other',            bg: 'bg-slate-100 dark:bg-slate-800',     text: 'text-slate-600 dark:text-slate-300' },
 };
 
 export function TDRIntelligence({
@@ -227,45 +229,43 @@ export function TDRIntelligence({
             <div className="space-y-2 mb-3">
               <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1">
                 <SumbleIcon className="h-3.5 w-3.5" />
-                FIRMOGRAPHICS
+                TECHNOGRAPHIC SIGNALS
                 <span className="ml-auto text-2xs text-muted-foreground/60">
                   {sumbleData.pulledAt ? new Date(sumbleData.pulledAt).toLocaleDateString() : ''}
                 </span>
               </p>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-                {sumbleData.industry && (
-                  <>
-                    <span className="text-muted-foreground">Industry</span>
-                    <span className="font-medium">{sumbleData.industry}</span>
-                  </>
-                )}
-                {sumbleData.employeeCount && (
-                  <>
-                    <span className="text-muted-foreground">Employees</span>
-                    <span className="font-medium">{sumbleData.employeeCount.toLocaleString()}</span>
-                  </>
-                )}
-                {sumbleData.revenue && (
-                  <>
-                    <span className="text-muted-foreground">Revenue</span>
-                    <span className="font-medium">
-                      ${sumbleData.revenue >= 1e9
-                        ? `${(sumbleData.revenue / 1e9).toFixed(1)}B`
-                        : `${(sumbleData.revenue / 1e6).toFixed(0)}M`}
-                    </span>
-                  </>
-                )}
-                {sumbleData.headquarters && (
-                  <>
-                    <span className="text-muted-foreground">HQ</span>
-                    <span className="font-medium">{sumbleData.headquarters}</span>
-                  </>
-                )}
-              </div>
+
+              {/* Organization identity + summary */}
+              {sumbleData.orgName && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="font-medium">{sumbleData.orgName}</span>
+                  {sumbleData.sourceDataUrl && (
+                    <a
+                      href={sumbleData.sourceDataUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 hover:text-blue-600 flex items-center gap-0.5"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      <span className="text-2xs">Sumble</span>
+                    </a>
+                  )}
+                  <span className="ml-auto text-2xs text-muted-foreground">
+                    {sumbleData.technologiesCount ?? 0} techs found
+                  </span>
+                </div>
+              )}
+
+              {/* No techs found message */}
+              {sumbleData.technologiesCount === 0 && (
+                <p className="text-xs text-muted-foreground italic">
+                  No technology signals found for this company in Sumble.
+                </p>
+              )}
 
               {/* Tech Stack Badges */}
               {sumbleData.techCategories && Object.entries(sumbleData.techCategories).some(([, techs]) => techs.length > 0) && (
-                <div className="mt-2">
+                <div>
                   <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
                     <Layers className="h-3 w-3" />
                     TECH STACK
@@ -277,7 +277,7 @@ export function TDRIntelligence({
                         const style = TECH_CATEGORY_STYLES[category] || TECH_CATEGORY_STYLES.Other;
                         return (
                           <div key={category} className="flex flex-wrap items-center gap-1">
-                            <span className="text-2xs text-muted-foreground w-12">{style.label}</span>
+                            <span className="text-2xs text-muted-foreground w-16 shrink-0">{style.label}</span>
                             {techs.map((tech) => (
                               <span
                                 key={tech}
@@ -293,6 +293,31 @@ export function TDRIntelligence({
                           </div>
                         );
                       })}
+                  </div>
+                </div>
+              )}
+
+              {/* Tech detail signals (jobs/people/teams) for top techs */}
+              {sumbleData.techDetails && sumbleData.techDetails.length > 0 && (
+                <div className="mt-1.5">
+                  <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                    <Cpu className="h-3 w-3" />
+                    HIRING SIGNALS
+                  </p>
+                  <div className="space-y-1">
+                    {sumbleData.techDetails
+                      .filter(t => t.jobs_count > 0 || t.people_count > 0)
+                      .slice(0, 8)
+                      .map((tech) => (
+                        <div key={tech.name} className="flex items-center justify-between text-2xs">
+                          <span className="font-medium text-foreground">{tech.name}</span>
+                          <div className="flex gap-2 text-muted-foreground">
+                            {tech.jobs_count > 0 && <span>{tech.jobs_count} jobs</span>}
+                            {tech.people_count > 0 && <span>{tech.people_count} people</span>}
+                            {tech.teams_count > 0 && <span>{tech.teams_count} teams</span>}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}

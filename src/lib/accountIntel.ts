@@ -12,18 +12,41 @@ import { isDomoEnvironment } from './domo';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export interface SumbleTechDetail {
+  name: string;
+  last_job_post: string | null;
+  jobs_count: number;
+  jobs_data_url: string;
+  people_count: number;
+  people_data_url: string;
+  teams_count: number;
+  teams_data_url: string;
+}
+
 export interface SumbleEnrichment {
   success: boolean;
   pullId?: string;
+  // Organization identity (from Sumble)
+  orgName?: string;
+  orgDomain?: string;
+  orgId?: number;
+  // Technology signals
+  technologiesFound?: string;
+  technologiesCount?: number;
+  sourceDataUrl?: string;
+  creditsUsed?: number;
+  creditsRemaining?: number;
+  technologies?: string[];
+  techDetails?: SumbleTechDetail[];
+  techCategories?: Record<string, string[]>;
+  pulledAt?: string;
+  error?: string;
+  // Legacy firmographic fields (not returned by Sumble enrich endpoint)
   industry?: string;
   subIndustry?: string;
   employeeCount?: number;
   revenue?: number;
   headquarters?: string;
-  technologies?: string[];
-  techCategories?: Record<string, string[]>;
-  pulledAt?: string;
-  error?: string;
 }
 
 export interface PerplexityResearch {
@@ -111,19 +134,33 @@ function extractResult(raw: unknown): Record<string, unknown> {
 const MOCK_SUMBLE: SumbleEnrichment = {
   success: true,
   pullId: 'mock-sumble-001',
-  industry: 'Technology',
-  subIndustry: 'Enterprise Software',
-  employeeCount: 5000,
-  revenue: 800000000,
-  headquarters: 'San Francisco, CA',
-  technologies: ['Snowflake', 'Tableau', 'AWS', 'Kafka', 'dbt', 'Salesforce', 'Databricks'],
+  orgName: 'Acme Corp',
+  orgDomain: 'acme.com',
+  orgId: 12345,
+  technologiesFound: 'AWS, Snowflake, Salesforce, Tableau, dbt, Kafka, Databricks',
+  technologiesCount: 7,
+  sourceDataUrl: 'https://sumble.com/l/org/mock',
+  creditsUsed: 35,
+  creditsRemaining: 465,
+  technologies: ['AWS', 'Snowflake', 'Salesforce', 'Tableau', 'dbt', 'Kafka', 'Databricks'],
+  techDetails: [
+    { name: 'AWS', last_job_post: '2026-02-01', jobs_count: 120, people_count: 340, teams_count: 45, jobs_data_url: '#', people_data_url: '#', teams_data_url: '#' },
+    { name: 'Snowflake', last_job_post: '2026-01-28', jobs_count: 45, people_count: 80, teams_count: 12, jobs_data_url: '#', people_data_url: '#', teams_data_url: '#' },
+    { name: 'Salesforce', last_job_post: '2026-02-05', jobs_count: 60, people_count: 150, teams_count: 20, jobs_data_url: '#', people_data_url: '#', teams_data_url: '#' },
+    { name: 'Tableau', last_job_post: '2025-11-15', jobs_count: 15, people_count: 50, teams_count: 8, jobs_data_url: '#', people_data_url: '#', teams_data_url: '#' },
+    { name: 'dbt', last_job_post: '2026-01-20', jobs_count: 10, people_count: 20, teams_count: 5, jobs_data_url: '#', people_data_url: '#', teams_data_url: '#' },
+    { name: 'Kafka', last_job_post: '2025-12-10', jobs_count: 8, people_count: 15, teams_count: 3, jobs_data_url: '#', people_data_url: '#', teams_data_url: '#' },
+    { name: 'Databricks', last_job_post: '2026-01-30', jobs_count: 25, people_count: 40, teams_count: 10, jobs_data_url: '#', people_data_url: '#', teams_data_url: '#' },
+  ],
   techCategories: {
+    CRM: ['Salesforce'],
     BI: ['Tableau'],
     DW: ['Snowflake', 'Databricks'],
-    ETL: ['dbt'],
+    ETL: ['dbt', 'Kafka'],
     Cloud: ['AWS'],
     ML: [],
-    Other: ['Kafka', 'Salesforce'],
+    DevOps: [],
+    Other: [],
   },
   pulledAt: new Date().toISOString(),
 };
@@ -185,7 +222,7 @@ export const accountIntel = {
       calledBy,
     });
 
-    const result = extractResult(raw) as SumbleEnrichment;
+    const result = extractResult(raw) as unknown as SumbleEnrichment;
     return result;
   },
 
@@ -211,7 +248,7 @@ export const accountIntel = {
       calledBy,
     });
 
-    const result = extractResult(raw) as PerplexityResearch;
+    const result = extractResult(raw) as unknown as PerplexityResearch;
     return result;
   },
 
