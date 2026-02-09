@@ -139,6 +139,43 @@ export const CRITICAL_FACTORS: Record<string, CriticalFactor> = {
     color: 'violet',         // backup: "greenfield" → violet
   },
 
+  upsellExpansion: {
+    id: 'upsellExpansion',
+    label: 'Upsell Expansion',
+    shortLabel: 'Upsell',
+    tier: 2,
+    points: 6,
+    description: 'Existing customer expanding — validate partner alignment and architecture fit for new scope.',
+    strategy: 'Leverage the existing relationship and usage data. Focus on validating that the expanded use case fits the current architecture and that partner alignment is maintained.',
+    tdrPrep: [
+      'Review current usage patterns — where is the expansion opportunity?',
+      'Validate that existing architecture supports the new use case without rework',
+      'Re-confirm partner alignment for the expanded scope (§6)',
+      'Identify expansion champions — are they the same as the original buyer?',
+      'Assess whether the upsell creates new integration or governance requirements',
+    ],
+    icon: 'ArrowUpRight',
+    color: 'blue',
+  },
+  newLogoRisk: {
+    id: 'newLogoRisk',
+    label: 'New Logo at Risk',
+    shortLabel: 'New logo risk',
+    tier: 1,
+    points: 8,
+    description: 'New logo facing competitive pressure or extended timeline — early TDR intervention needed.',
+    strategy: 'This new relationship is already facing headwinds. Engage immediately with architectural differentiation and executive alignment before the evaluation locks in.',
+    tdrPrep: [
+      'Assess: is the competitive pressure architectural (feature gap) or commercial (pricing)?',
+      'If stale: identify the technical blocker preventing progression',
+      'Prepare differentiated architecture story for greenfield deployment',
+      'Engage executive sponsor to re-establish Domo positioning',
+      'Consider partner co-sell acceleration if applicable',
+    ],
+    icon: 'AlertTriangle',
+    color: 'amber',
+  },
+
   // TIER 2 — Complexity indicators
   partnerCoSell: {
     id: 'partnerCoSell',
@@ -338,14 +375,25 @@ export function calculateTDRScore(deal: Deal): number {
   if (numComp >= 2) score += 10;
   else if (numComp === 1) score += 5;
 
-  // ── 5. Deal Type Signal (0-10) ──────────────────────────────────────────
-  //    New logos need full architecture review; upsells less so
+  // ── 5. Deal Type Signal (0-23 max) ─────────────────────────────────────
+  //    Aligned to TDR Framework: New logos need full architecture review,
+  //    Upsells focus on expansion validation and partner re-alignment.
   if (dealType.includes('new logo') || dealType.includes('new business')) {
-    score += 10;
+    score += 10; // Base: greenfield architecture review
+    // Bonus: New Logo + Competitive — need architectural differentiation (§8)
+    if (numComp > 0) score += 3;
+    // Bonus: New Logo + Early Stage — peak shaping window for greenfield (§3/§4)
+    if (stageNum <= 2) score += 2;
+    // Bonus: New Logo Risk — facing hurdles early, needs intervention
+    if (numComp >= 1 || stageAge > 60) score += 8;
   } else if (dealType.includes('acquisition')) {
     score += 8;
   } else if (dealType.includes('upsell') || dealType.includes('expansion')) {
-    score += 3;
+    // Adjusted: Upsell + High ACV = material expansion worth full TDR
+    if (acv >= 100000) score += 6;
+    else score += 3; // Base upsell
+    // Bonus: Upsell + Partner Alignment — re-validate for expanded scope (§6)
+    if (hasCloudPartner) score += 2;
   }
   // Renewal: 0
 
@@ -415,6 +463,14 @@ export function detectCriticalFactors(deal: Deal): CriticalFactor[] {
 
   if (dealType.includes('new logo') || dealType.includes('new business')) {
     factors.push(CRITICAL_FACTORS.newLogoDeal);
+    // New Logo Risk: facing competitive pressure or stalling
+    if (numComp >= 1 || stageAge > 60) {
+      factors.push(CRITICAL_FACTORS.newLogoRisk);
+    }
+  }
+
+  if (dealType.includes('upsell') || dealType.includes('expansion')) {
+    factors.push(CRITICAL_FACTORS.upsellExpansion);
   }
 
   // TIER 2

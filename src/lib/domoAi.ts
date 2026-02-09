@@ -72,7 +72,14 @@ A TDR exists to PROTECT DEAL INTEGRITY, ACCOUNT EXPANSION, and PARTNER ALIGNMENT
 6. Forecast Momentum: Category suggests deal progression (Probable, Commit with reasonable timeline)
 
 ### TIER 2 - COMPLEXITY INDICATORS (15 pts each):
-7. Deal Type: New Business (greenfield) or major Upsell
+7. **Deal Type — New Logo vs Upsell** (critical dimension):
+   - **New Logo**: Full architecture review required — no existing footprint. Score HIGHER when combined with Competitive or Early Stage.
+     - New Logo + Competitive = need architectural differentiation urgently
+     - New Logo + Early Stage = peak greenfield shaping window
+     - New Logo + Stale = high-risk, needs immediate intervention
+   - **Upsell/Expansion**: Existing customer expanding. Focus on validating new use cases fit current architecture. Score HIGHER when ACV ≥ $100K or Partner platform involved.
+     - Upsell + High ACV = material expansion worth full TDR
+     - Upsell + Partner = re-validate alignment for expanded scope
 8. Partner Alignment: Partner Influence = Yes OR Premium/Select tier
 9. Vertical Depth: Financial Services, Healthcare, Manufacturing, Technology
 10. Architecture Decision Window: Early stage + partner platform = critical timing
@@ -99,6 +106,9 @@ A TDR exists to PROTECT DEAL INTEGRITY, ACCOUNT EXPANSION, and PARTNER ALIGNMENT
 - Favor early-stage deals with strong ACV/Partner signals over late-stage rescues
 - For late-stage deals, flag as "Late-stage risk - technical strategy may be set" in riskFlags
 - Highlight the SHAPING OPPORTUNITY in reasons: what can the SME influence?
+- For New Logo deals: emphasize greenfield opportunity and architecture shaping potential
+- For Upsell deals: emphasize expansion validation and partner re-alignment needs
+- Include the deal type ("New Logo" or "Upsell") in your reasons when it's a scoring factor
 
 Identify the TOP 5 TDR candidates prioritizing early-stage intervention opportunities.`;
 
@@ -183,7 +193,8 @@ export async function generateTDRRecommendations(
       partnersInvolved: opp['Partners Involved'],
       partnerInfluence: opp['Partner Influence'],
       numCompetitors: opp['Number of Competitors'] || 0,
-      type: opp['Type'],
+      type: opp['Type'],                      // Raw type field
+      dealType: opp['Type'] || 'Unknown',     // Explicit deal type for AI scoring
       stage: opp['Stage'],
       stageAge: opp['Stage Age'] || 0,
       forecastCategory: opp['Domo Forecast Category'],

@@ -265,6 +265,17 @@ function getDynamicFactorLabel(factor: CriticalFactor, deal: Deal): string {
       if (p) return `Co-sell: ${p.length > 15 ? p.substring(0, 15) + '…' : p}`;
       return factor.shortLabel;
     }
+    case 'upsellExpansion': {
+      if (deal.acv >= 100000) return 'Material upsell';
+      return 'Upsell';
+    }
+    case 'newLogoRisk': {
+      const comp = deal.numCompetitors ?? 0;
+      const age = deal.stageAge ?? 0;
+      if (comp >= 1 && age > 60) return 'New logo at risk';
+      if (comp >= 1) return 'New + competitive';
+      return `New + ${age}d stale`;
+    }
     default:
       return factor.shortLabel;
   }
@@ -345,6 +356,26 @@ function getDynamicFactorDescription(factor: CriticalFactor, deal: Deal): string
     }
     case 'lateStageRisk': {
       return 'Stage 4+ \u2014 technical strategy is likely already committed. TDR focus should shift from shaping to risk validation: is the committed architecture sound? Are there hidden risks before contracts close?';
+    }
+    case 'upsellExpansion': {
+      const formatted = deal.acv >= 100000
+        ? `$${Math.round(deal.acv / 1000)}K`
+        : `$${Math.round(deal.acv / 1000)}K`;
+      if (deal.acv >= 100000) {
+        return `Material upsell (${formatted} ACV) with an existing customer. TDR should validate that the expanded scope fits current architecture and re-confirm partner alignment for the broader deployment.`;
+      }
+      return 'Existing customer expansion \u2014 TDR should focus on validating new use cases fit the current architecture, reviewing current usage patterns, and ensuring partner alignment for expanded scope.';
+    }
+    case 'newLogoRisk': {
+      const comp = deal.numCompetitors ?? 0;
+      const age = deal.stageAge ?? 0;
+      if (comp >= 1 && age > 60) {
+        return `New logo facing ${comp} competitor${comp > 1 ? 's' : ''} and ${age} days in stage \u2014 high-risk greenfield. TDR should immediately engage with architectural differentiation and executive alignment.`;
+      }
+      if (comp >= 1) {
+        return `New logo in competitive evaluation (${comp} competitor${comp > 1 ? 's' : ''}). TDR should prepare differentiated architecture story and engage partner SA for joint positioning.`;
+      }
+      return `New logo stalling (${age} days in stage). TDR should investigate blockers and determine whether a technical reset or champion re-engagement is needed.`;
     }
     default:
       return factor.description;

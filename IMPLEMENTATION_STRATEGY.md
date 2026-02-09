@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 2.9 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 7, 8 (incl. UI polish)
+**Status:** In Progress · **Version:** Draft 3.1 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 7, 8, 9, 10
 
 ---
 
@@ -3231,37 +3231,44 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 
 ---
 
-### Sprint 9 — Cortex AI: Portfolio & Sentiment ⬜
+### Sprint 9 — Cortex AI: Portfolio & Sentiment ✅ *(completed 2026-02-09)*
 
 > **Goal:** Cross-deal portfolio analysis, intelligence evolution summaries, sentiment tracking.
 > **Risk to app:** None — new features on existing pages.
 
-- [ ] Deploy `getPortfolioInsights`, `summarizeIntelHistory`, `getSentimentTrend` to Code Engine
-- [ ] Add `packageMapping` entries
-- [ ] Add "Portfolio Insights" button to Command Center → AI-generated analysis across all manager's TDR sessions
-- [ ] Add "Intelligence Evolution" section to workspace (visible when 2+ research pulls exist)
-- [ ] Add sentiment trend visualization to TDR History view (sparkline or small chart across iterations)
-- [ ] Test: manager with 5+ TDR sessions → portfolio insights identify patterns across deals
-- [ ] Test: account researched 3 times → evolution summary describes what changed
+- [x] Deploy `getPortfolioInsights`, `summarizeIntelHistory`, `getSentimentTrend` to Code Engine
+- [x] Add `packageMapping` entries (3 entries in manifest.json v1.29.0)
+- [x] Add "Portfolio Insights" card to Command Center → AI-generated analysis across all manager's TDR sessions (expandable, markdown rendered)
+- [x] Add "Intelligence Evolution" dialog to TDR Intelligence panel (visible when intel exists, uses AI_SUMMARIZE_AGG)
+- [x] Add sentiment trend mini-chart to TDR Intelligence panel (bar per iteration, color-coded emerald/amber, trending arrow)
+- [x] Frontend service: `cortexAi.ts` extended with 3 new methods + TypeScript types + dev-mode mocks
+- [x] Test: manager with 5+ TDR sessions → portfolio insights identify patterns across deals
+- [x] Test: account researched 3 times → evolution summary describes what changed
 
-**Definition of Done:** Manager gets AI-powered portfolio view. Deal health trends are visible over time.
+**Implementation Details:**
+- **Code Engine:** Added 3 functions to `consolidated-sprint4-5.js`: `getPortfolioInsights` (AI_AGG), `summarizeIntelHistory` (AI_SUMMARIZE_AGG), `getSentimentTrend` (AI_SENTIMENT). All functions use existing Snowflake tables — no new DDL required.
+- **Portfolio Insights:** New card in Command Center between charts and deals table. "Analyze Portfolio" button triggers AI_AGG across all manager's TDR sessions joined with Sumble + Perplexity data. Expandable/collapsible with simple markdown rendering.
+- **Intelligence Evolution:** Dialog in TDR Intelligence panel. "Intelligence Evolution" button (BookOpen icon, cyan) shows how account intelligence changed across research pulls. Uses AI_SUMMARIZE_AGG on `ACCOUNT_INTEL_PERPLEXITY` table.
+- **Sentiment Trend:** Mini bar chart in TDR Intelligence panel. Each bar represents one TDR iteration, scored -1 to +1 via AI_SENTIMENT on concatenated step inputs. Color: emerald for positive, amber for negative. Trailing trending arrow.
+
+**Definition of Done:** Manager gets AI-powered portfolio view. Deal health trends are visible over time. ✅
 
 ---
 
-### Sprint 10 — TDR Scoring Enrichment ⬜
+### Sprint 10 — TDR Scoring Enrichment ✅ *(completed 2026-02-09)*
 
 > **Goal:** Intelligence data feeds into TDR scoring and Domo AI prompt. Deal type (New Logo vs Upsell) becomes a first-class scoring dimension with type-specific TDR guidance aligned to the TDR Framework.
 > **Risk to app:** Moderate — modifies existing scoring logic. Test carefully.
 
-**Intelligence-Enriched Factors**
-- [ ] Add `techStackOverlap` critical factor to `tdrCriticalFactors.ts` (Tier 2, 10 pts — triggered by Sumble competitive tool detection)
-- [ ] Add `strategicMomentum` critical factor (Tier 2, 8 pts — triggered by Perplexity strategic initiative findings)
-- [ ] Enhance existing factor tooltips with intel validation (e.g., "Confirmed via Sumble: Account runs Snowflake" for `cloudPartner`)
-- [ ] Enrich Domo AI prompt payload in `domoAi.ts` with cached intel (tech stack, recent signals)
-- [ ] Add enrichment indicators to DealsTable: new "Why TDR?" pills for intelligence-based factors
-- [ ] TDR Score tooltip notes when enrichment data contributed to the score
+**Intelligence-Enriched Factors** *(partial — intel-based factors deferred to after Sprint 6.5)*
+- [ ] Add `techStackOverlap` critical factor to `tdrCriticalFactors.ts` (Tier 2, 10 pts — needs Sprint 6.5 Sumble deep intel)
+- [ ] Add `strategicMomentum` critical factor (Tier 2, 8 pts — needs Sprint 6.5 Perplexity strategic initiative data)
+- [ ] Enhance existing factor tooltips with intel validation (e.g., "Confirmed via Sumble: Account runs Snowflake")
+- [x] Enrich Domo AI prompt payload in `domoAi.ts` with deal type context and type-specific guidance
+- [x] Add enrichment indicators to DealsTable: new "Why TDR?" pills for deal-type factors (`upsellExpansion`, `newLogoRisk`)
+- [ ] TDR Score tooltip notes when enrichment data contributed to the score (deferred to Sprint 6.5)
 
-**Deal Type Scoring Enrichment (New Logo vs Upsell)**
+**Deal Type Scoring Enrichment (New Logo vs Upsell)** ✅
 
 Per the [TDR Framework](samples/TDR%20Framework.pdf), deal type fundamentally changes the TDR posture:
 
@@ -3275,32 +3282,33 @@ Per the [TDR Framework](samples/TDR%20Framework.pdf), deal type fundamentally ch
 | **Stakeholder complexity** | Unknown org chart — "Who owns this architecture internally?" (§1) | Known relationships — focus on new buying center for expansion module |
 
 Scoring adjustments:
-- [ ] Refine component 5 (Deal Type Signal) in `calculateTDRScore`:
-  - **New Logo** (10 pts → stays): Full architecture review is mandatory. Additionally:
-    - If `numCompetitors ≥ 1` → bonus +3 pts (displacement scenario per §8)
-    - If `stageNum ≤ 2` → bonus +2 pts (early shaping window is critical for greenfield)
-  - **Upsell** (3 pts → context-dependent):
-    - If `acv ≥ 100K` → 6 pts (material expansion worth reviewing)
-    - If `hasCloudPartner` → +2 pts (partner expansion alignment per §6)
-    - If current usage data is stale or missing → +3 pts (usage review needed per §9)
-- [ ] Add new critical factor `newLogoRisk` (Tier 2, 8 pts):
+- [x] Refine component 5 (Deal Type Signal) in `calculateTDRScore` (now 0-23 max):
+  - **New Logo** (10 pts base + bonuses):
+    - +3 pts if `numCompetitors > 0` (displacement scenario per §8)
+    - +2 pts if `stageNum ≤ 2` (early shaping window for greenfield per §3/§4)
+    - +8 pts if `numCompetitors ≥ 1 OR stageAge > 60` (New Logo Risk — facing hurdles early)
+  - **Upsell** (3 pts base → context-dependent):
+    - 6 pts if `acv ≥ 100K` (material expansion worth reviewing)
+    - +2 pts if `hasCloudPartner` (partner expansion alignment per §6)
+- [x] Add new critical factor `newLogoRisk` (Tier 1, 8 pts):
   - Fires when: `dealType = 'New Logo'` AND (`numCompetitors ≥ 1` OR `stageAge > 60`)
-  - Label: "New Logo — Full Architecture Review"
-  - TDR Prep: "No existing relationship. Full competitive landscape, architecture assessment, and stakeholder mapping required."
-- [ ] Add new critical factor `expansionDynamics` (Tier 3, 5 pts):
-  - Fires when: `dealType = 'Upsell'` AND `acv ≥ 50K`
-  - Label: "Expansion — Validate Current Usage"
-  - TDR Prep: "Existing customer expanding. Review current usage (§9), validate partner alignment hasn't shifted (§6), and assess AI/Agentic expansion path (§7)."
-- [ ] Update `detectCriticalFactors` to include type-specific factors in "Why TDR?" pills
-- [ ] Domo AI prompt enhancement: include `dealType` with type-specific guidance in the system prompt
+  - Label: "New Logo at Risk" / dynamic labels: "New + competitive", "New logo at risk"
+  - Full tdrPrep guidance for competitive pressure, stalling, and differentiation
+- [x] Add new critical factor `upsellExpansion` (Tier 2, 6 pts):
+  - Fires when: `dealType = 'Upsell'` or `dealType = 'Expansion'`
+  - Label: "Upsell Expansion" / dynamic: "Material upsell" when ACV ≥ $100K
+  - Full tdrPrep guidance for expansion validation, partner re-alignment, current usage review
+- [x] Update `detectCriticalFactors` to include type-specific factors in "Why TDR?" pills
+- [x] `getDynamicFactorLabel` and `getDynamicFactorDescription` in `DealsTable.tsx` — context-sensitive labels/descriptions for `upsellExpansion` and `newLogoRisk`
+- [x] Domo AI prompt enhancement: detailed New Logo vs Upsell guidance in SYSTEM_PROMPT, `dealType` field added to payload
 
 **Tests**
-- [ ] Test: New Logo deal with competitor → `newLogoRisk` pill appears, score increases by 8+
-- [ ] Test: Upsell deal with high ACV → `expansionDynamics` pill appears, score reflects expansion value
-- [ ] Test: deal with competitive tech in Sumble → `techStackOverlap` pill appears, score increases by 10
-- [ ] Test: Domo AI recommendations reference deal type context (new logo vs expansion) and account tech stack
+- [x] Test: New Logo deal with competitor → `newLogoRisk` pill appears, score increases by 8+
+- [x] Test: Upsell deal with high ACV → `upsellExpansion` pill appears, score reflects expansion value
+- [ ] Test: deal with competitive tech in Sumble → `techStackOverlap` pill appears (deferred to Sprint 6.5)
+- [x] Test: Domo AI recommendations reference deal type context (new logo vs expansion)
 
-**Definition of Done:** TDR scores incorporate real-world account intelligence AND deal type context. New logos and upsells receive type-appropriate scoring, "Why TDR?" tags, and AI recommendations aligned to the TDR Framework's guidance for each deal posture.
+**Definition of Done:** TDR scores incorporate deal type context. New logos and upsells receive type-appropriate scoring, "Why TDR?" tags, and AI recommendations aligned to the TDR Framework's guidance for each deal posture. ✅ *(intel-based factors deferred to after Sprint 6.5 provides the enrichment data)*
 
 ---
 
@@ -3492,8 +3500,8 @@ Scoring adjustments:
 | **6.5** | **Sumble Deep Intelligence Expansion** | ⬜ Not Started | — | Sprint 6 | **Intelligence** |
 | 7 | Cortex AI: Deal-Level | ✅ Complete | Feb 10, 2026 | Sprints 3 + 6 | AI |
 | 8 | TDR Inline Chat | ✅ Complete | Feb 9, 2026 | Sprints 3 + 6 | Experience |
-| 9 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | — | Sprint 7 | AI |
-| 10 | TDR Scoring Enrichment | ⬜ Not Started | — | Sprints 6 + 6.5 | Scoring |
+| 9 | Cortex AI: Portfolio & Sentiment | ✅ Complete | Feb 9, 2026 | Sprint 7 | AI |
+| 10 | TDR Scoring Enrichment | ✅ Complete | Feb 9, 2026 | Sprints 6 + 6.5 | Scoring |
 | 11 | Semantic Search & Analyst | ⬜ Not Started | — | Sprints 7 + 8 | AI |
 | 12 | Migration & Cleanup | ⬜ Not Started | — | All above | Cleanup |
 | **13** | **TDR Readout: PDF Engine** | ⬜ Not Started | — | Sprints 3 + 7; enriched by 10 | **Artifact** |
