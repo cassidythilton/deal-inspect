@@ -32,6 +32,8 @@ import {
   Layers,
 } from 'lucide-react';
 import { TDRSummaryModal } from './TDRSummaryModal';
+import { SumbleIcon } from '@/components/icons/SumbleIcon';
+import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 import { accountIntel } from '@/lib/accountIntel';
 import type { SumbleEnrichment, PerplexityResearch } from '@/lib/accountIntel';
 
@@ -200,7 +202,7 @@ export function TDRIntelligence({
               {sumbleLoading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Database className="h-3 w-3" />
+                <SumbleIcon className="h-3.5 w-3.5" />
               )}
               {sumbleData ? 'Refresh' : 'Enrich'}
             </Button>
@@ -214,7 +216,7 @@ export function TDRIntelligence({
               {perplexityLoading ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Search className="h-3 w-3" />
+                <PerplexityIcon className="h-3.5 w-3.5" />
               )}
               {perplexityData ? 'Re-research' : 'Research'}
             </Button>
@@ -224,7 +226,7 @@ export function TDRIntelligence({
           {sumbleData && sumbleData.success && (
             <div className="space-y-2 mb-3">
               <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1">
-                <Database className="h-3 w-3" />
+                <SumbleIcon className="h-3.5 w-3.5" />
                 FIRMOGRAPHICS
                 <span className="ml-auto text-2xs text-muted-foreground/60">
                   {sumbleData.pulledAt ? new Date(sumbleData.pulledAt).toLocaleDateString() : ''}
@@ -301,7 +303,7 @@ export function TDRIntelligence({
           {perplexityData && perplexityData.success && (
             <div className="space-y-2">
               <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1">
-                <Globe className="h-3 w-3" />
+                <PerplexityIcon className="h-3.5 w-3.5" />
                 WEB RESEARCH
                 <span className="ml-auto text-2xs text-muted-foreground/60">
                   {perplexityData.pulledAt ? new Date(perplexityData.pulledAt).toLocaleDateString() : ''}

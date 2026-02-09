@@ -85,20 +85,21 @@ async function callCodeEngine<T>(fnName: string, args: Record<string, unknown> =
 /**
  * Extract the actual result from potentially SDK-wrapped responses.
  * The SDK's packageMapping wraps returns as { [outputAlias]: returnValue }
+ * e.g., { result: { success: true, ... } } or { intel: { sumble: null, ... } }
  */
 function extractResult(raw: unknown): Record<string, unknown> {
   if (typeof raw === 'object' && raw !== null) {
-    const keys = Object.keys(raw);
-    // If it's a wrapper with a single key (e.g., { result: { success: true, ... } })
-    if (keys.length === 1) {
-      const inner = (raw as Record<string, unknown>)[keys[0]];
-      if (typeof inner === 'object' && inner !== null && 'success' in inner) {
-        return inner as Record<string, unknown>;
-      }
-    }
-    // If it has 'success' directly, return as-is
+    // If it has 'success' directly, return as-is (already unwrapped)
     if ('success' in raw) {
       return raw as Record<string, unknown>;
+    }
+    const keys = Object.keys(raw);
+    // Single-key wrapper from SDK packageMapping — always unwrap
+    if (keys.length === 1) {
+      const inner = (raw as Record<string, unknown>)[keys[0]];
+      if (typeof inner === 'object' && inner !== null) {
+        return inner as Record<string, unknown>;
+      }
     }
   }
   console.warn('[AccountIntel] Unexpected response shape:', raw);
