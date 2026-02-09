@@ -2,12 +2,13 @@
  * Cortex AI — Front-end service for Snowflake Cortex AI functions
  *
  * Calls Code Engine functions that execute Snowflake Cortex SQL
- * (AI_COMPLETE, AI_CLASSIFY, AI_EXTRACT) against stored TDR and
- * account intelligence data.
+ * (AI_COMPLETE, AI_CLASSIFY, AI_EXTRACT, AI_AGG, AI_SUMMARIZE_AGG, AI_SENTIMENT)
+ * against stored TDR and account intelligence data.
  *
  * Sprint 7: generateTDRBrief, classifyFindings, extractEntities
+ * Sprint 9: getPortfolioInsights, summarizeIntelHistory, getSentimentTrend
  *
- * @see IMPLEMENTATION_STRATEGY.md Section 7 (Sprint 7)
+ * @see IMPLEMENTATION_STRATEGY.md Section 7 (Sprint 7) & Sprint 9
  */
 
 import { isDomoEnvironment } from './domo';
@@ -40,6 +41,33 @@ export interface ExtractedEntities {
   executives: string[];
   budgets: string[];
   timelines: string[];
+  error?: string;
+}
+
+// Sprint 9 types
+export interface PortfolioInsightsResult {
+  success: boolean;
+  insights: string;
+  dealCount: number;
+  error?: string;
+}
+
+export interface IntelEvolutionResult {
+  success: boolean;
+  evolution: string;
+  pullCount: number;
+  error?: string;
+}
+
+export interface SentimentDataPoint {
+  iteration: number;
+  sentiment: number;   // -1 to +1
+  createdAt: string;
+}
+
+export interface SentimentTrendResult {
+  success: boolean;
+  trend: SentimentDataPoint[];
   error?: string;
 }
 
@@ -206,6 +234,50 @@ const MOCK_ENTITIES: ExtractedEntities = {
   timelines: ['ThoughtSpot POC Q1 2026', 'BI consolidation FY2026'],
 };
 
+// Sprint 9 mocks
+const MOCK_PORTFOLIO: PortfolioInsightsResult = {
+  success: true,
+  insights: `**Portfolio Analysis — 5 Active TDR Sessions**
+
+**1. Technology Patterns**
+Three of five deals involve Snowflake as the primary cloud data platform. Two deals have active Databricks evaluations running in parallel. All five accounts use some form of legacy BI (Tableau: 3, Power BI: 2) indicating strong replacement opportunity for Domo.
+
+**2. Competitive Landscape**
+Tableau is the dominant incumbent across the portfolio (60% of deals). ThoughtSpot appeared in 2 competitive evaluations — both in the Discovery/Validation stage, suggesting they're entering earlier in the cycle. Power BI is present in 2 accounts but not actively evaluated as a replacement.
+
+**3. Architecture Patterns**
+Common theme: accounts are modernizing from on-prem data warehouses to cloud-native stacks. The "Snowflake + dbt + BI Layer" pattern is most common. Domo's positioning should emphasize the unified platform advantage over the fragmented stack approach.
+
+**4. Strategic Recommendations**
+- **Accelerate Snowflake co-sell** — 3 of 5 deals have active Snowflake relationships. Leverage partner alignment.
+- **Build ThoughtSpot counter-narrative** — Create competitive positioning deck for the 2 deals facing TS evaluation.
+- **Consolidation story** — The "single platform" message resonates with accounts moving away from tool sprawl.`,
+  dealCount: 5,
+};
+
+const MOCK_EVOLUTION: IntelEvolutionResult = {
+  success: true,
+  evolution: `Intelligence for this account has evolved across 3 research pulls over the past 30 days:
+
+**Pull 1 (Jan 10):** Initial enrichment identified Snowflake, Tableau, and AWS as core technologies. No competitive signals detected. Account appeared stable with no active transformation initiatives.
+
+**Pull 2 (Jan 24):** Perplexity research revealed a newly posted VP of Data Engineering role and 3 data platform engineer positions — indicating a major data infrastructure investment. CTO published a blog post about "democratizing data access" — strong alignment with Domo's messaging.
+
+**Pull 3 (Feb 5):** Latest pull detected ThoughtSpot evaluation (competitive alert). Also found a Snowflake partnership announcement, confirming deepening cloud data commitment. Hiring velocity increased (5 new data roles posted).
+
+**Key Trend:** Account is accelerating its data modernization. Competitive window is narrowing — ThoughtSpot is now in play. Recommend immediate architectural engagement.`,
+  pullCount: 3,
+};
+
+const MOCK_SENTIMENT: SentimentTrendResult = {
+  success: true,
+  trend: [
+    { iteration: 1, sentiment: 0.35, createdAt: new Date(Date.now() - 14 * 86400000).toISOString() },
+    { iteration: 2, sentiment: 0.55, createdAt: new Date(Date.now() - 7 * 86400000).toISOString() },
+    { iteration: 3, sentiment: 0.72, createdAt: new Date().toISOString() },
+  ],
+};
+
 // ─── Brief Section Parser ────────────────────────────────────────────────────
 
 export interface BriefSection {
@@ -343,6 +415,68 @@ export const cortexAi = {
     const raw = await callCodeEngine<unknown>('extractEntities', { pullId });
     const result = extractResult(raw) as unknown as ExtractedEntities;
     return result;
+  },
+
+  // ─── Sprint 9: Portfolio & Sentiment ─────────────────────────────────
+
+  /**
+   * Get AI-generated portfolio insights across all manager's TDR sessions.
+   * Uses Snowflake AI_AGG to aggregate and analyze deal patterns.
+   */
+  async getPortfolioInsights(manager: string): Promise<PortfolioInsightsResult> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning mock portfolio insights');
+      return { ...MOCK_PORTFOLIO };
+    }
+
+    try {
+      const raw = await callCodeEngine<unknown>('getPortfolioInsights', { manager });
+      const result = extractResult(raw) as unknown as PortfolioInsightsResult;
+      return result;
+    } catch (err: unknown) {
+      console.error('[CortexAI] getPortfolioInsights failed:', err);
+      return { success: false, insights: '', dealCount: 0, error: String(err) };
+    }
+  },
+
+  /**
+   * Get intelligence evolution summary across multiple research pulls.
+   * Uses Snowflake AI_SUMMARIZE_AGG to narrate how intel changed over time.
+   */
+  async summarizeIntelHistory(opportunityId: string): Promise<IntelEvolutionResult> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning mock intel evolution');
+      return { ...MOCK_EVOLUTION };
+    }
+
+    try {
+      const raw = await callCodeEngine<unknown>('summarizeIntelHistory', { opportunityId });
+      const result = extractResult(raw) as unknown as IntelEvolutionResult;
+      return result;
+    } catch (err: unknown) {
+      console.error('[CortexAI] summarizeIntelHistory failed:', err);
+      return { success: false, evolution: '', pullCount: 0, error: String(err) };
+    }
+  },
+
+  /**
+   * Get sentiment trend of TDR notes across session iterations.
+   * Uses Snowflake AI_SENTIMENT to score each iteration's notes.
+   */
+  async getSentimentTrend(opportunityId: string): Promise<SentimentTrendResult> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning mock sentiment trend');
+      return { ...MOCK_SENTIMENT };
+    }
+
+    try {
+      const raw = await callCodeEngine<unknown>('getSentimentTrend', { opportunityId });
+      const result = extractResult(raw) as unknown as SentimentTrendResult;
+      return result;
+    } catch (err: unknown) {
+      console.error('[CortexAI] getSentimentTrend failed:', err);
+      return { success: false, trend: [], error: String(err) };
+    }
   },
 };
 

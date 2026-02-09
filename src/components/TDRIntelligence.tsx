@@ -41,6 +41,10 @@ import {
   History,
   Briefcase,
   Tag,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  BookOpen,
 } from 'lucide-react';
 import { TDRSummaryModal } from './TDRSummaryModal';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
@@ -48,7 +52,7 @@ import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 import { accountIntel } from '@/lib/accountIntel';
 import type { SumbleEnrichment, PerplexityResearch } from '@/lib/accountIntel';
 import { cortexAi, parseBriefSections, FINDING_CATEGORY_STYLES } from '@/lib/cortexAi';
-import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection } from '@/lib/cortexAi';
+import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, SentimentDataPoint } from '@/lib/cortexAi';
 
 interface TDRIntelligenceProps {
   deal?: Deal;
@@ -209,6 +213,14 @@ export function TDRIntelligence({
   const [classifiedFindings, setClassifiedFindings] = useState<ClassifiedFinding[]>([]);
   const [extractedEntities, setExtractedEntities] = useState<ExtractedEntities | null>(null);
   const [cortexProcessing, setCortexProcessing] = useState(false);
+
+  // ── Sprint 9: Intelligence Evolution & Sentiment ──
+  const [evolutionText, setEvolutionText] = useState<string>('');
+  const [evolutionPullCount, setEvolutionPullCount] = useState(0);
+  const [evolutionLoading, setEvolutionLoading] = useState(false);
+  const [evolutionOpen, setEvolutionOpen] = useState(false);
+  const [sentimentTrend, setSentimentTrend] = useState<SentimentDataPoint[]>([]);
+  const [sentimentLoading, setSentimentLoading] = useState(false);
 
   // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
   useEffect(() => {
@@ -372,6 +384,42 @@ export function TDRIntelligence({
     }
     setHistoryLoading(false);
   }, [deal, historyData.length]);
+
+  // ── Sprint 9: Intelligence Evolution ──
+  const handleLoadEvolution = useCallback(async () => {
+    if (!deal?.id) return;
+    setEvolutionOpen(true);
+    if (evolutionText) return; // already loaded
+    setEvolutionLoading(true);
+    try {
+      const result = await cortexAi.summarizeIntelHistory(deal.id);
+      if (result.success) {
+        setEvolutionText(result.evolution);
+        setEvolutionPullCount(result.pullCount);
+      } else {
+        setEvolutionText('Unable to generate evolution summary.');
+      }
+    } catch (err) {
+      console.warn('[TDRIntelligence] Failed to load intel evolution:', err);
+      setEvolutionText('Error loading evolution summary.');
+    }
+    setEvolutionLoading(false);
+  }, [deal?.id, evolutionText]);
+
+  // ── Sprint 9: Sentiment Trend ──
+  const handleLoadSentiment = useCallback(async () => {
+    if (!deal?.id) return;
+    setSentimentLoading(true);
+    try {
+      const result = await cortexAi.getSentimentTrend(deal.id);
+      if (result.success) {
+        setSentimentTrend(result.trend);
+      }
+    } catch (err) {
+      console.warn('[TDRIntelligence] Failed to load sentiment trend:', err);
+    }
+    setSentimentLoading(false);
+  }, [deal?.id]);
 
   // Get short stage name
   const getShortStage = (stage: string) => {
@@ -935,6 +983,108 @@ export function TDRIntelligence({
             <p className="text-xs text-slate-600 italic">
               Click Enrich or Research to pull account intelligence.
             </p>
+          )}
+
+          {/* ── Sprint 9: Intelligence Evolution (visible when intel exists) ── */}
+          {(sumbleData || perplexityData) && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d]">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5 text-xs h-8 border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200"
+                onClick={handleLoadEvolution}
+                disabled={evolutionLoading}
+              >
+                {evolutionLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <BookOpen className="h-3 w-3" />}
+                Intelligence Evolution
+              </Button>
+
+              {/* Evolution Dialog */}
+              <Dialog open={evolutionOpen} onOpenChange={setEvolutionOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#1e1a30] border-[#362f50] text-white">
+                  <DialogHeader>
+                    <DialogTitle className="text-white flex items-center gap-2">
+                      <BookOpen className="h-4 w-4 text-cyan-400" />
+                      Intelligence Evolution
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-500">
+                      AI-generated summary of how account intelligence has changed across {evolutionPullCount} research {evolutionPullCount === 1 ? 'pull' : 'pulls'}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {evolutionLoading ? (
+                    <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
+                      <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+                      <p className="text-sm">Analyzing research history...</p>
+                    </div>
+                  ) : evolutionText ? (
+                    <div className="space-y-3 py-2">
+                      {evolutionText.split('\n\n').map((block, i) => (
+                        <div key={i}>
+                          {renderMarkdownBlock(block, i)}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 py-6 text-center">No evolution data available yet. Research the account at least twice to see how intelligence changes.</p>
+                  )}
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+
+          {/* ── Sprint 9: Sentiment Trend (visible when sessions exist) ── */}
+          {sessionId && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d]">
+              <div className="flex items-center justify-between">
+                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">TDR Sentiment</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-2xs text-slate-500 hover:text-slate-300 hover:bg-[#221d38]"
+                  onClick={handleLoadSentiment}
+                  disabled={sentimentLoading}
+                >
+                  {sentimentLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <BarChart3 className="h-3 w-3" />}
+                </Button>
+              </div>
+
+              {sentimentTrend.length > 0 ? (
+                <div className="mt-2 space-y-1.5">
+                  {sentimentTrend.map((pt, i) => {
+                    const pct = Math.round((pt.sentiment + 1) * 50); // -1..+1 → 0..100
+                    const isPositive = pt.sentiment >= 0;
+                    return (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-2xs text-slate-600 w-12 shrink-0">TDR {pt.iteration}</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all',
+                              isPositive ? 'bg-emerald-500/70' : 'bg-amber-500/70'
+                            )}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className={cn(
+                          'text-2xs font-medium w-8 text-right tabular-nums',
+                          isPositive ? 'text-emerald-400' : 'text-amber-400'
+                        )}>
+                          {pt.sentiment > 0 ? '+' : ''}{pt.sentiment.toFixed(2)}
+                        </span>
+                        {i === sentimentTrend.length - 1 && (
+                          isPositive
+                            ? <TrendingUp className="h-3 w-3 text-emerald-400" />
+                            : <TrendingDown className="h-3 w-3 text-amber-400" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : !sentimentLoading && (
+                <p className="mt-1 text-2xs text-slate-600 italic">Click the chart icon to analyze sentiment</p>
+              )}
+            </div>
           )}
         </div>
       )}

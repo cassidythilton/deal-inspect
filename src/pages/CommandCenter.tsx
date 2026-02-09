@@ -9,8 +9,10 @@ import { mockDeals } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
 import { MAX_STAGE_AGE_DAYS, TDR_PRIORITY_THRESHOLDS, ALLOWED_MANAGERS } from '@/lib/constants';
 import { Deal } from '@/types/tdr';
-import { Info } from 'lucide-react';
+import { Info, Brain, Loader2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { calculateTDRScore, getTopFactors, STAGE_TIMING } from '@/lib/tdrCriticalFactors';
+import { cortexAi } from '@/lib/cortexAi';
 
 // Default manager on load
 const DEFAULT_MANAGER = ALLOWED_MANAGERS[0]; // Andrew Rich
@@ -34,6 +36,12 @@ export default function CommandCenter() {
     selectedPriority: null,
     includeCurrentQuarter: true,
   });
+
+  // Sprint 9: Portfolio Insights
+  const [portfolioInsights, setPortfolioInsights] = useState('');
+  const [portfolioLoading, setPortfolioLoading] = useState(false);
+  const [portfolioExpanded, setPortfolioExpanded] = useState(false);
+  const [portfolioDealCount, setPortfolioDealCount] = useState(0);
   
   // Fetch deals from Domo (pre-filtered for stage age > 365 days)
   const {
@@ -212,6 +220,26 @@ export default function CommandCenter() {
     });
   };
 
+  // Sprint 9: Portfolio Insights handler
+  const handlePortfolioInsights = useCallback(async () => {
+    const manager = seFilters.selectedManager || DEFAULT_MANAGER;
+    setPortfolioLoading(true);
+    setPortfolioExpanded(true);
+    try {
+      const result = await cortexAi.getPortfolioInsights(manager);
+      if (result.success) {
+        setPortfolioInsights(result.insights);
+        setPortfolioDealCount(result.dealCount);
+      } else {
+        setPortfolioInsights('Unable to generate portfolio insights. Ensure you have active TDR sessions.');
+      }
+    } catch (err) {
+      console.error('[CommandCenter] Portfolio insights error:', err);
+      setPortfolioInsights('Error generating portfolio insights.');
+    }
+    setPortfolioLoading(false);
+  }, [seFilters.selectedManager]);
+
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar 
@@ -297,12 +325,96 @@ export default function CommandCenter() {
             </div>
           </section>
 
-          {/* Zone 3: Deals Table */}
+          {/* Zone 3: Portfolio Insights (Sprint 9) */}
+          <section className="panel overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-violet-500" />
+                <h3 className="text-sm font-semibold">Portfolio Insights</h3>
+                {portfolioDealCount > 0 && (
+                  <span className="text-2xs text-muted-foreground">
+                    · {portfolioDealCount} TDR {portfolioDealCount === 1 ? 'session' : 'sessions'} analyzed
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs"
+                  onClick={handlePortfolioInsights}
+                  disabled={portfolioLoading}
+                >
+                  {portfolioLoading ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3 w-3" />
+                  )}
+                  {portfolioInsights ? 'Refresh' : 'Analyze Portfolio'}
+                </Button>
+                {portfolioInsights && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => setPortfolioExpanded(!portfolioExpanded)}
+                  >
+                    {portfolioExpanded ? (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {portfolioExpanded && (
+              <div className="border-t border-border px-4 py-3">
+                {portfolioLoading ? (
+                  <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
+                    <p className="text-xs">Analyzing portfolio with Snowflake Cortex AI...</p>
+                    <p className="text-2xs text-muted-foreground/60">Aggregating TDR sessions, tech stacks, and competitive signals</p>
+                  </div>
+                ) : portfolioInsights ? (
+                  <div className="prose prose-sm max-w-none text-sm text-foreground/80 leading-relaxed">
+                    {portfolioInsights.split('\n\n').map((block, i) => {
+                      // Simple markdown: bold headers, bullet lists
+                      if (block.startsWith('**') && block.endsWith('**')) {
+                        return <h4 key={i} className="text-xs font-semibold text-foreground mt-3 mb-1">{block.replace(/\*\*/g, '')}</h4>;
+                      }
+                      if (block.includes('\n- ')) {
+                        const [heading, ...items] = block.split('\n');
+                        return (
+                          <div key={i} className="mt-2">
+                            {heading && <p className="text-xs font-semibold text-foreground mb-1">{heading.replace(/\*\*/g, '')}</p>}
+                            <ul className="space-y-0.5 ml-3">
+                              {items.filter(l => l.startsWith('- ')).map((item, j) => (
+                                <li key={j} className="text-xs text-muted-foreground list-disc">{item.slice(2).replace(/\*\*/g, '')}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      }
+                      return <p key={i} className="text-xs text-muted-foreground mt-1">{block.replace(/\*\*/g, '')}</p>;
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Click &quot;Analyze Portfolio&quot; to generate AI-powered cross-deal insights for {seFilters.selectedManager || DEFAULT_MANAGER}.
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+
+          {/* Zone 4: Deals Table */}
           <section>
             <DealsTable deals={filteredDeals} onPinDeal={handlePinDeal} />
           </section>
 
-          {/* Zone 4: Agenda */}
+          {/* Zone 5: Agenda */}
           <section>
             <AgendaSection
               pinnedDeals={pinnedDeals}
