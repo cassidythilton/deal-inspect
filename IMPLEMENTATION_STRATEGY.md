@@ -1369,7 +1369,7 @@ Perplexity Sonar returns markdown-style text with inline citations. The Code Eng
 | Trigger | Makes API Call? | Rationale |
 |---------|----------------|-----------|
 | Page load / deals list | **No** | Never batch-research |
-| User opens TDR Workspace for a deal | **Maybe** | Checks Snowflake for cached intel first. Only calls if no data or stale (> cache TTL) |
+| User opens TDR Workspace for a deal | **No** | Loads previously saved intel from Snowflake (if any). Never makes a new API call automatically |
 | User clicks "Research Account" button | **Yes** | Explicit user intent. New row appended to Snowflake |
 | User clicks "Refresh Research" button | **Yes** | Explicit re-pull. Previous data preserved for comparison |
 | Tooltip hover | **No** | Tooltips show cached/scored data only |
@@ -2190,9 +2190,7 @@ New card in `Settings.tsx` — "Account Intelligence":
 
 | Setting | Type | Default | Purpose |
 |---------|------|---------|---------|
-| **Enable Account Research** | boolean | `true` | Master toggle |
-| **Auto-Enrich on TDR Start** | boolean | `true` | Auto-fetch intel when opening workspace |
-| **Cache Duration (hours)** | number | `24` | TTL for cached intelligence |
+| **Enable Account Research** | boolean | `true` | Master toggle — hides Enrich/Research buttons when disabled |
 | **Monthly API Calls** | read-only | — | Current month Perplexity + Sumble call count (from `API_USAGE_LOG`) |
 
 API keys are NOT in the Settings page — they live as Domo Account secrets accessed only by Code Engine.
@@ -2300,9 +2298,9 @@ The Domo AI 17-factor prompt in `domoAi.ts` can be enriched with cached intel:
 
 ### Cost Control Mechanisms
 
-1. **User-triggered only** — Perplexity and Sumble are NEVER called automatically on page load or batch. Only when a user explicitly opens a TDR or clicks "Research."
+1. **User-triggered only** — Perplexity and Sumble are NEVER called automatically. No auto-enrich on page load, workspace open, or any other event. The user must explicitly click "Enrich" or "Research."
 
-2. **Cache-first architecture** — Every call checks Snowflake for cached results before making an API call. Default TTL: 24 hours.
+2. **Persistent results** — Results from each click are saved to Snowflake and displayed on subsequent workspace opens without making new API calls. There is no cache TTL or auto-refresh — saved data is shown as-is with its pull timestamp until the user explicitly clicks again.
 
 3. **Domain-level deduplication** — If two opportunities share the same account, one Sumble call covers both. Sumble results are keyed by domain, not opportunity ID.
 
@@ -2566,7 +2564,7 @@ cortex
 - [ ] Add "Account Research" step to TDR Workspace (Step 2)
 - [ ] Add "Account Intelligence" section to `TDRIntelligence.tsx`
 - [ ] Implement domain resolution logic
-- [ ] Implement cache-first architecture with configurable TTL
+- [x] ~~Implement cache-first architecture with configurable TTL~~ → Removed. All API calls are user-initiated only (click-to-enrich). No auto-fetch or TTL.
 
 ### Phase 4 — Cortex AI (Phase A — Deal-Level)
 
@@ -2797,22 +2795,21 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
-### Sprint 6 — Caching, Settings & Usage Tracking ⬜
+### Sprint 6 — Usage Tracking, Intel History & Indicators ⬜
 
-> **Goal:** Add cache-first reads, configurable TTL, and API usage visibility. Prevent unnecessary API calls.
-> **Risk to app:** None — new Settings card, no existing behavior changes.
+> **Goal:** Add API usage visibility, intel pull history, and enrichment indicators to the deals table. No auto-enrichment — all API calls remain user-initiated (click-to-enrich only).
+> **Risk to app:** None — new Settings card and visual indicators, no existing behavior changes.
+>
+> **Design principle:** Intelligence is **never fetched automatically**. The user clicks "Enrich" or "Research" explicitly. Snowflake stores the results. On subsequent workspace opens, saved results are loaded and displayed with their pull timestamps — but no new API calls are made. There is no cache TTL or auto-refresh.
 
 - [ ] Deploy `getUsageStats` function to Code Engine
-- [ ] Implement cache-first logic in `accountIntel.ts`: check `getLatestIntel` before calling APIs
-- [ ] Add configurable cache TTL to `AppSettings` interface (default 24 hours)
-- [ ] Add "Account Intelligence" card to Settings page: enable/disable toggle, auto-enrich on TDR start toggle, cache duration slider
-- [ ] Add monthly API usage counter to Settings page (calls `getUsageStats`)
-- [ ] Implement `getIntelHistory` UI: "View Research History" button showing timestamped pulls with diff highlights
-- [ ] Add 🔍 icon to DealsTable account name column when cached intel exists
-- [ ] Test: open workspace for a previously-enriched deal → intel loads from cache (no API call)
-- [ ] Test: Settings page shows accurate call counts
+- [ ] Add "Account Intelligence" card to Settings page: enable/disable master toggle, monthly API usage counters (Sumble calls, Perplexity calls, total)
+- [ ] Implement `getIntelHistory` UI: "View Research History" button showing all timestamped pulls for an account with key data points from each pull
+- [ ] Add 🔍 icon to DealsTable account name column when the account has saved intel in Snowflake
+- [ ] Test: Settings page shows accurate monthly call counts
+- [ ] Test: "View Research History" shows multiple pulls with timestamps and key differences
 
-**Definition of Done:** API calls only happen when cache is stale or user explicitly requests refresh. Usage is visible.
+**Definition of Done:** API usage is visible in Settings. Research history is reviewable per account. Deals table shows which accounts have intel. All API calls remain explicitly user-triggered — no auto-enrich, no TTL, no staleness logic.
 
 ---
 
