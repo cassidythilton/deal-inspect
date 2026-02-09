@@ -78,7 +78,7 @@
       ]
     }
   ],
-  "proxyId": "tdr-codeengine",
+  "proxyId": "tdrcodeengine",
   "packageMapping": [
     {
       "alias": "createSession",

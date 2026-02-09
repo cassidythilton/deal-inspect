@@ -88,7 +88,7 @@ function getDomo(): DomoSDK | null {
 }
 
 const CE_BASE = '/domo/codeengine/v2/packages';
-const PACKAGE_NAME = 'tdr-codeengine';
+const PACKAGE_NAME = 'tdrcodeengine';
 
 /**
  * Call a Code Engine function.
