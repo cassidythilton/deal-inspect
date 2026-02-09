@@ -78,6 +78,74 @@
       ]
     }
   ],
+  "proxyId": "tdrcodeengine",
+  "packageMapping": [
+    {
+      "alias": "createSession",
+      "parameters": [
+        { "alias": "session", "type": "object", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "updateSession",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "updates", "type": "object", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getSessionsByOpp",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "sessions", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "getAllSessions",
+      "parameters": [],
+      "output": { "alias": "sessions", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "saveStepInput",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepLabel", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "fieldId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "fieldLabel", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "fieldValue", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepOrder", "type": "integer", "nullable": true, "isList": false, "children": null },
+        { "alias": "savedBy", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getLatestInputs",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "inputs", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "getInputHistory",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "fieldId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "inputs", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "deleteSession",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    }
+  ],
   "size": {
     "width": 1,
     "height": 1
