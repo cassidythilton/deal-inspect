@@ -111,6 +111,7 @@ async function callCodeEngine<T>(fnName: string, args: Record<string, unknown> =
 
   try {
     const result = await domo.post(url, args);
+    console.log(`[SnowflakeStore] Code Engine raw response for ${fnName}:`, JSON.stringify(result));
     return result as T;
   } catch (err) {
     console.error(`[SnowflakeStore] Code Engine call failed: ${fnName}`, err);
@@ -125,6 +126,38 @@ const LS_INPUTS_KEY = 'tdr_snowflake_inputs';
 
 function generateDevId(): string {
   return `dev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+// ─── Response Helpers ────────────────────────────────────────────────────────
+
+/**
+ * Defensively extract a sessions array from a Code Engine response.
+ * The Domo SDK + packageMapping may return:
+ *   - The raw CE object: { success: true, sessions: [...] }
+ *   - Just the array: [...]
+ *   - An object with alias key: { sessions: [...] }
+ *   - Something else entirely
+ * Reference: github-appstudio-app/app.js handles all shapes.
+ */
+function extractSessionsArray(raw: unknown): SnowflakeSession[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, unknown>;
+    if (Array.isArray(obj.sessions)) return obj.sessions as SnowflakeSession[];
+    if (Array.isArray(obj.data)) return obj.data as SnowflakeSession[];
+    if (Array.isArray(obj.items)) return obj.items as SnowflakeSession[];
+    if (Array.isArray(obj.output)) return obj.output as SnowflakeSession[];
+  }
+  console.warn('[SnowflakeStore] Unexpected getAllSessions response shape:', raw);
+  return [];
+}
+
+/**
+ * Defensively extract a single session or result from a Code Engine response.
+ */
+function extractResult<T>(raw: unknown): T {
+  if (raw && typeof raw === 'object') return raw as T;
+  return { success: false } as T;
 }
 
 // ─── Snowflake Store Service ─────────────────────────────────────────────────
@@ -157,16 +190,14 @@ export const snowflakeStore = {
       return session;
     }
 
-    const result = await callCodeEngine<{ success: boolean; session: SnowflakeSession }>(
-      'createSession',
-      { session: input }
-    );
+    const raw = await callCodeEngine<unknown>('createSession', { session: input });
+    const result = extractResult<{ success?: boolean; session?: SnowflakeSession }>(raw);
 
-    if (!result.success) {
+    if (!result.success && !result.session) {
       throw new Error('[SnowflakeStore] createSession failed');
     }
 
-    return result.session;
+    return result.session!;
   },
 
   /**
@@ -183,12 +214,10 @@ export const snowflakeStore = {
       return sessions[idx];
     }
 
-    const result = await callCodeEngine<{ success: boolean; session: SnowflakeSession }>(
-      'updateSession',
-      { sessionId, updates }
-    );
+    const raw = await callCodeEngine<unknown>('updateSession', { sessionId, updates });
+    const result = extractResult<{ success?: boolean; session?: SnowflakeSession }>(raw);
 
-    return result.success ? result.session : null;
+    return result.session || null;
   },
 
   /**
@@ -202,28 +231,25 @@ export const snowflakeStore = {
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     }
 
-    const result = await callCodeEngine<{ success: boolean; sessions: SnowflakeSession[] }>(
-      'getSessionsByOpp',
-      { opportunityId }
-    );
-
-    return result.sessions || [];
+    const result = await callCodeEngine<unknown>('getSessionsByOpp', { opportunityId });
+    return extractSessionsArray(result);
   },
 
   /**
    * Get ALL sessions across all deals.
    * Used for the deals table TDR status column.
+   *
+   * Defensive: Domo SDK may return the raw CE response `{ success, sessions }`,
+   * or the packageMapping output extraction may return just the array,
+   * or wrap it differently. Handle all shapes.
    */
   async getAllSessions(): Promise<SnowflakeSession[]> {
     if (!isDomoEnvironment()) {
       return this._devGetSessions();
     }
 
-    const result = await callCodeEngine<{ success: boolean; sessions: SnowflakeSession[] }>(
-      'getAllSessions'
-    );
-
-    return result.sessions || [];
+    const result = await callCodeEngine<unknown>('getAllSessions');
+    return extractSessionsArray(result);
   },
 
   /**
@@ -236,8 +262,9 @@ export const snowflakeStore = {
       return true;
     }
 
-    const result = await callCodeEngine<{ success: boolean }>('deleteSession', { sessionId });
-    return result.success;
+    const raw = await callCodeEngine<unknown>('deleteSession', { sessionId });
+    const result = extractResult<{ success?: boolean }>(raw);
+    return !!result.success;
   },
 
   /**
@@ -286,16 +313,14 @@ export const snowflakeStore = {
       return input;
     }
 
-    const result = await callCodeEngine<{ success: boolean; input: StepInput }>(
-      'saveStepInput',
-      args
-    );
+    const raw = await callCodeEngine<unknown>('saveStepInput', args);
+    const result = extractResult<{ success?: boolean; input?: StepInput }>(raw);
 
-    if (!result.success) {
+    if (!result.success && !result.input) {
       throw new Error('[SnowflakeStore] saveStepInput failed');
     }
 
-    return result.input;
+    return result.input!;
   },
 
   /**
@@ -313,12 +338,12 @@ export const snowflakeStore = {
       return Array.from(latest.values());
     }
 
-    const result = await callCodeEngine<{ success: boolean; inputs: StepInput[] }>(
-      'getLatestInputs',
-      { sessionId }
-    );
+    const raw = await callCodeEngine<unknown>('getLatestInputs', { sessionId });
+    const result = extractResult<{ success?: boolean; inputs?: StepInput[] }>(raw);
 
-    return result.inputs || [];
+    if (Array.isArray(result.inputs)) return result.inputs;
+    if (Array.isArray(raw)) return raw as StepInput[];
+    return [];
   },
 
   /**
@@ -331,12 +356,12 @@ export const snowflakeStore = {
       ).sort((a, b) => a.savedAt.localeCompare(b.savedAt));
     }
 
-    const result = await callCodeEngine<{ success: boolean; inputs: StepInput[] }>(
-      'getInputHistory',
-      { sessionId, stepId, fieldId }
-    );
+    const raw = await callCodeEngine<unknown>('getInputHistory', { sessionId, stepId, fieldId });
+    const result = extractResult<{ success?: boolean; inputs?: StepInput[] }>(raw);
 
-    return result.inputs || [];
+    if (Array.isArray(result.inputs)) return result.inputs;
+    if (Array.isArray(raw)) return raw as StepInput[];
+    return [];
   },
 
   // =====================================================================
