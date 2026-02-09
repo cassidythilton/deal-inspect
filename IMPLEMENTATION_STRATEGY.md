@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** Planning · **Version:** Draft 2.0 · **Date:** February 8, 2026
+**Status:** In Progress · **Version:** Draft 2.1 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2
 
 ---
 
@@ -2634,38 +2634,56 @@ cortex
 
 Each sprint is a focused work session (2–4 hours). The app remains fully functional after every sprint — no sprint leaves the app in a broken state. Sprints are ordered by dependency: each builds on the one before it.
 
-### Sprint 1 — Snowflake Foundation ⬜
+### Sprint 1 — Snowflake Foundation ✅ COMPLETE
 
 > **Goal:** Stand up the Snowflake environment. Zero app changes.
 > **Risk to app:** None — purely infrastructure.
+> **Completed:** February 9, 2026
 
-- [ ] Run bootstrap DDL: create `TDR_APP` database, `TDR_DATA` schema, `TDR_APP_WH` warehouse (XS, auto-suspend 60s), `TDR_APP_ROLE` role
-- [ ] Run table DDL: create all 9 tables (`TDR_SESSIONS`, `TDR_STEP_INPUTS`, `TDR_STEP_DEFINITIONS`, `TDR_CHAT_MESSAGES`, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `API_USAGE_LOG`, `CORTEX_ANALYSIS_RESULTS`)
-- [ ] Seed `TDR_STEP_DEFINITIONS` with v1 process (9 steps: context → usage)
-- [ ] Grant permissions: `TDR_APP_ROLE` gets USAGE + ALL on schema/tables/warehouse + `CORTEX_USER` database role
-- [ ] Deploy `snowflakeAuth.js` shared infrastructure to Code Engine (JWT auth + `executeSql` + `mapRows`)
-- [ ] Validate: run a test SQL (`SELECT CURRENT_TIMESTAMP()`) from Code Engine → confirm it returns successfully
-- [ ] Verify: `INSERT` + `SELECT` on `TDR_SESSIONS` from Code Engine → confirm round-trip works
+- [x] Run bootstrap DDL: create `TDR_APP` database, `TDR_DATA` schema, `TDR_APP_WH` warehouse (XS, auto-suspend 60s), `TDR_APP_ROLE` role
+- [x] Run table DDL: create all 9 tables (`TDR_SESSIONS`, `TDR_STEP_INPUTS`, `TDR_STEP_DEFINITIONS`, `TDR_CHAT_MESSAGES`, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `API_USAGE_LOG`, `CORTEX_ANALYSIS_RESULTS`)
+- [x] Seed `TDR_STEP_DEFINITIONS` with v1 process (9 steps: context → usage)
+- [x] Grant permissions: `TDR_APP_ROLE` gets USAGE + ALL on schema/tables/warehouse + `CORTEX_USER` database role
+- [x] Deploy `snowflakeAuth.js` shared infrastructure to Code Engine (JWT auth + `executeSql` + `mapRows`)
+- [x] Validate: run a test SQL (`SELECT CURRENT_TIMESTAMP()`) from Code Engine → confirm it returns successfully
+- [x] Verify: `INSERT` + `SELECT` on `TDR_SESSIONS` from Code Engine → confirm round-trip works
 
 **Definition of Done:** Code Engine can authenticate to Snowflake and execute SQL against all 6 tables.
 
+**Learnings & Decisions:**
+- Used hardcoded keypair auth (PKCS#8 private key + `DOMOINC-DOMOPARTNER` account locator + `CHILTON` user) matching the `cortexAnalystCodeEngine.js` pattern — `sdk.getAccount()` was unreliable (500 errors).
+- Built a `testConnection` function to diagnose Snowflake connectivity step-by-step (config → JWT → SQL → table access → seed verification).
+- Consolidated all persistence functions into a single `consolidated-sprint1.js` for direct paste into the Domo Code Engine IDE.
+- Bootstrap DDL executed via Cortex CLI (`cortex`).
+- Code Engine package ID: `8f01e509-429a-474e-a1c8-6a912e363000`.
+
 ---
 
-### Sprint 2 — Session Persistence (Dual-Write) ⬜
+### Sprint 2 — Session Persistence (Dual-Write) ✅ COMPLETE
 
 > **Goal:** TDR sessions save to Snowflake AND AppDB. Reads prefer Snowflake, fall back to AppDB.
 > **Risk to app:** Low — dual-write means AppDB is still the safety net.
+> **Completed:** February 9, 2026
 
-- [ ] Deploy persistence functions to Code Engine: `createSession`, `updateSession`, `getSessionsByOpp`, `getAllSessions`, `deleteSession`
-- [ ] Add `packageMapping` entries for the 5 session functions to `manifest.json`
-- [ ] Create `src/lib/snowflakeStore.ts` — front-end service wrapping Code Engine calls
-- [ ] Capture user identity: call `/domo/users/v1/me` on app init, store in React context
-- [ ] Wire `TDRWorkspace.tsx`: session create/update → `snowflakeStore` (with AppDB dual-write)
-- [ ] Wire `useDomo.ts`: session fetch → try Snowflake first, fall back to AppDB
-- [ ] Test: create a TDR session in the app → verify row appears in Snowflake AND AppDB
-- [ ] Test: load deals table → verify TDR status column still populates correctly
+- [x] Deploy persistence functions to Code Engine: `createSession`, `updateSession`, `getSessionsByOpp`, `getAllSessions`, `deleteSession`, `saveStepInput`, `getLatestInputs`, `getInputHistory` (deployed all 8 at once)
+- [x] Add `packageMapping` entries for all 8 persistence functions to `manifest.json`
+- [x] Create `src/lib/snowflakeStore.ts` — front-end service wrapping Code Engine calls
+- [ ] ~~Capture user identity: call `/domo/users/v1/me` on app init, store in React context~~ (deferred — using deal owner for now)
+- [x] Wire `TDRWorkspace.tsx`: session auto-creation on workspace mount via `useTDRSession` hook
+- [x] Wire `useDomo.ts`: session fetch → try Snowflake first, fall back to AppDB
+- [x] Add `enableSnowflake` toggle to Settings page (default: true)
+- [x] Wire `TDRInputs.tsx`: controlled inputs with save-on-blur, saved-field indicators
+- [x] Test: load deals table → Snowflake `getAllSessions` returns clean `[]` → TDR status column works
+- [x] Test: open deal in TDR Workspace → session auto-created, step inputs rendered
 
 **Definition of Done:** Sessions persist to both Snowflake and AppDB. Users see no difference in behavior.
+
+**Learnings & Decisions:**
+- **URL pattern:** The Domo SDK Code Engine proxy does NOT include the `proxyId` in the URL path. Correct: `/domo/codeengine/v2/packages/{functionAlias}`. The `proxyId` in `manifest.json` tells Domo which CE package to resolve to, but is invisible in the URL. (Reference: `github-appstudio-app/app.js`)
+- **SDK output wrapping:** Domo SDK wraps CE return values inside `{ [outputAlias]: returnValue }`. For `getAllSessions` with output alias `"sessions"`, the response is `{ sessions: { success: true, sessions: [] } }`. The `extractSessionsArray()` helper unwraps this nested structure.
+- **Defensive response parsing:** Following the reference app's pattern, all CE response consumers handle multiple shapes (direct array, raw CE object, SDK-wrapped object).
+- **Code Engine version:** v1.0.4 deployed. `stepOrder` declared as `"type": "string"` in `packageMapping` to align with Domo CE IDE limitations (integer type not available in IDE configuration).
+- **Vite build:** `public/manifest.json` must mirror root `manifest.json` — Vite copies `public/manifest.json` → `dist/manifest.json` during build.
 
 ---
 
@@ -2884,20 +2902,20 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ### Progress Dashboard
 
-| Sprint | Name | Status | Dependencies | Scope |
-|--------|------|--------|-------------|-------|
-| 1 | Snowflake Foundation | ⬜ Not Started | None | Infrastructure |
-| 2 | Session Persistence (Dual-Write) | ⬜ Not Started | Sprint 1 | Persistence |
-| 3 | Step Input Persistence | ⬜ Not Started | Sprint 2 | Persistence |
-| 4 | Sumble Account Enrichment | ⬜ Not Started | Sprint 1 | Intelligence |
-| 5 | Perplexity Web Research | ⬜ Not Started | Sprint 1 | Intelligence |
-| 6 | Caching, Settings & Usage | ⬜ Not Started | Sprints 4 + 5 | Intelligence |
-| 7 | Cortex AI: Deal-Level | ⬜ Not Started | Sprints 3 + 6 | AI |
-| **8** | **TDR Inline Chat** | ⬜ Not Started | Sprints 3 + 6 | **Experience** |
-| 9 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | Sprint 7 | AI |
-| 10 | TDR Scoring Enrichment | ⬜ Not Started | Sprint 6 | Scoring |
-| 11 | Semantic Search & Analyst | ⬜ Not Started | Sprints 7 + 8 | AI |
-| 12 | Migration & Cleanup | ⬜ Not Started | All above | Cleanup |
+| Sprint | Name | Status | Completed | Dependencies | Scope |
+|--------|------|--------|-----------|-------------|-------|
+| 1 | Snowflake Foundation | ✅ Complete | Feb 9, 2026 | None | Infrastructure |
+| 2 | Session Persistence (Dual-Write) | ✅ Complete | Feb 9, 2026 | Sprint 1 | Persistence |
+| 3 | Step Input Persistence | ⬜ Not Started | — | Sprint 2 | Persistence |
+| 4 | Sumble Account Enrichment | ⬜ Not Started | — | Sprint 1 | Intelligence |
+| 5 | Perplexity Web Research | ⬜ Not Started | — | Sprint 1 | Intelligence |
+| 6 | Caching, Settings & Usage | ⬜ Not Started | — | Sprints 4 + 5 | Intelligence |
+| 7 | Cortex AI: Deal-Level | ⬜ Not Started | — | Sprints 3 + 6 | AI |
+| **8** | **TDR Inline Chat** | ⬜ Not Started | — | Sprints 3 + 6 | **Experience** |
+| 9 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | — | Sprint 7 | AI |
+| 10 | TDR Scoring Enrichment | ⬜ Not Started | — | Sprint 6 | Scoring |
+| 11 | Semantic Search & Analyst | ⬜ Not Started | — | Sprints 7 + 8 | AI |
+| 12 | Migration & Cleanup | ⬜ Not Started | — | All above | Cleanup |
 
 **Parallel tracks:** Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6. Sprints 7 and 8 (Cortex deal-level and inline chat) can also run in parallel — both depend on persistence + intelligence but not on each other. They converge again at Sprint 11 (search & analyst).
 
