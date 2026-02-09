@@ -44,17 +44,17 @@ interface TDRIntelligenceProps {
   riskFlags: string[];
 }
 
-// ── Tech category icons & colors ──
+// ── Tech category badge colors (dark-native, vibrant on dark bg) ──
 const TECH_CATEGORY_STYLES: Record<string, { label: string; bg: string; text: string }> = {
-  CRM:    { label: 'CRM',             bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300' },
-  BI:     { label: 'BI/Analytics',     bg: 'bg-blue-100 dark:bg-blue-900/30',    text: 'text-blue-700 dark:text-blue-300' },
-  DW:     { label: 'Data Warehouse',   bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300' },
-  ETL:    { label: 'Data Engineering', bg: 'bg-amber-100 dark:bg-amber-900/30',  text: 'text-amber-700 dark:text-amber-300' },
-  Cloud:  { label: 'Cloud',            bg: 'bg-cyan-100 dark:bg-cyan-900/30',    text: 'text-cyan-700 dark:text-cyan-300' },
-  ML:     { label: 'AI/ML',            bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
-  ERP:    { label: 'ERP',              bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-300' },
-  DevOps: { label: 'DevOps',           bg: 'bg-rose-100 dark:bg-rose-900/30',    text: 'text-rose-700 dark:text-rose-300' },
-  Other:  { label: 'Other',            bg: 'bg-slate-100 dark:bg-slate-800',     text: 'text-slate-600 dark:text-slate-300' },
+  CRM:    { label: 'CRM',             bg: 'bg-orange-500/15', text: 'text-orange-300' },
+  BI:     { label: 'BI/Analytics',     bg: 'bg-blue-500/15',   text: 'text-blue-300' },
+  DW:     { label: 'Data Warehouse',   bg: 'bg-violet-500/15', text: 'text-violet-300' },
+  ETL:    { label: 'Data Engineering', bg: 'bg-amber-500/15',  text: 'text-amber-300' },
+  Cloud:  { label: 'Cloud',            bg: 'bg-cyan-500/15',   text: 'text-cyan-300' },
+  ML:     { label: 'AI/ML',            bg: 'bg-emerald-500/15', text: 'text-emerald-300' },
+  ERP:    { label: 'ERP',              bg: 'bg-indigo-500/15', text: 'text-indigo-300' },
+  DevOps: { label: 'DevOps',           bg: 'bg-rose-500/15',   text: 'text-rose-300' },
+  Other:  { label: 'Other',            bg: 'bg-slate-500/15',  text: 'text-slate-400' },
 };
 
 /** Safely format a date string — handles ISO, epoch-seconds, and Snowflake timestamp formats */
@@ -62,10 +62,9 @@ function formatDate(value: string | number | null | undefined): string {
   if (!value) return '';
   let d: Date;
   if (typeof value === 'number') {
-    d = new Date(value > 1e12 ? value : value * 1000); // epoch ms or epoch seconds
+    d = new Date(value > 1e12 ? value : value * 1000);
   } else {
     d = new Date(value);
-    // If invalid, try parsing as epoch seconds (Snowflake TIMESTAMP_LTZ format)
     if (isNaN(d.getTime())) {
       const epoch = parseFloat(value);
       if (!isNaN(epoch)) d = new Date(epoch * 1000);
@@ -93,7 +92,6 @@ export function TDRIntelligence({
   // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
   useEffect(() => {
     if (deal?.websiteDomain) {
-      // Clean the domain: strip protocol/path, lowercase
       const raw = deal.websiteDomain.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
       setDomain(raw || accountIntel.guessDomain(deal.account));
     } else if (deal?.account) {
@@ -177,24 +175,28 @@ export function TDRIntelligence({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Deal Info Header */}
+      {/* ────────────────────────────────────────────────────────────
+          Deal Info Header
+          ──────────────────────────────────────────────────────────── */}
       {deal && (
-        <div className="border-b border-border/60 p-4">
-          <h3 className="text-base font-semibold">{deal.account}</h3>
-          <p className="text-sm text-muted-foreground">{deal.dealName}</p>
-          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="font-medium tabular-nums">${(deal.acv / 1000).toFixed(0)}K ACV</span>
-            <span>·</span>
-            <span>{getShortStage(deal.stage)}</span>
+        <div className="border-b border-slate-800 px-5 py-4">
+          <h3 className="text-base font-semibold text-white">{deal.account}</h3>
+          <p className="text-sm text-slate-400">{deal.dealName}</p>
+          <div className="mt-1.5 flex items-center gap-2 text-sm">
+            <span className="font-medium tabular-nums text-slate-300">
+              ${(deal.acv / 1000).toFixed(0)}K ACV
+            </span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400">{getShortStage(deal.stage)}</span>
           </div>
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          ACCOUNT INTELLIGENCE — Sumble + Perplexity (dark card)
-          ═══════════════════════════════════════════════════════════ */}
+      {/* ────────────────────────────────────────────────────────────
+          ACCOUNT INTELLIGENCE — elevated inner card
+          ──────────────────────────────────────────────────────────── */}
       {deal && (
-        <div className="m-2 rounded-xl bg-slate-900 p-4 ring-1 ring-white/10 shadow-lg">
+        <div className="mx-3 my-3 rounded-lg bg-white/[0.04] p-4 ring-1 ring-white/[0.06]">
           <p className="mb-3 text-2xs font-semibold uppercase tracking-widest text-slate-400">
             Account Intelligence
           </p>
@@ -202,22 +204,20 @@ export function TDRIntelligence({
           {/* Domain Input */}
           <div className="mb-3 space-y-1">
             <Label className="text-2xs text-slate-500">Account Domain</Label>
-            <div className="flex gap-1.5">
-              <Input
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                placeholder="acme.com"
-                className="h-8 flex-1 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-slate-600"
-              />
-            </div>
+            <Input
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              placeholder="acme.com"
+              className="h-8 text-xs bg-slate-800/80 border-slate-700/60 text-white placeholder:text-slate-500 focus-visible:ring-slate-600"
+            />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-1.5 mb-3">
+          <div className="flex gap-2 mb-4">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-1.5 text-xs h-8 border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white"
+              className="flex-1 gap-1.5 text-xs h-8 border-slate-700/60 bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-40"
               onClick={handleEnrichSumble}
               disabled={sumbleLoading || !domain.trim()}
             >
@@ -231,7 +231,7 @@ export function TDRIntelligence({
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-1.5 text-xs h-8 border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white"
+              className="flex-1 gap-1.5 text-xs h-8 border-slate-700/60 bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-40"
               onClick={handleResearchPerplexity}
               disabled={perplexityLoading}
             >
@@ -246,19 +246,21 @@ export function TDRIntelligence({
 
           {/* ── Sumble Results ── */}
           {sumbleData && sumbleData.success && (
-            <div className="space-y-2 mb-3">
-              <p className="text-2xs font-medium text-slate-400 flex items-center gap-1">
-                <SumbleIcon className="h-3.5 w-3.5" />
-                TECHNOGRAPHIC SIGNALS
+            <div className="space-y-2.5 mb-3">
+              <div className="flex items-center gap-1.5">
+                <SumbleIcon className="h-3.5 w-3.5 text-slate-500" />
+                <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                  Technographic Signals
+                </span>
                 <span className="ml-auto text-2xs text-slate-600">
                   {formatDate(sumbleData.pulledAt)}
                 </span>
-              </p>
+              </div>
 
-              {/* Organization identity + summary */}
+              {/* Organization identity */}
               {sumbleData.orgName && (
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="font-medium text-slate-100">{sumbleData.orgName}</span>
+                  <span className="font-medium text-white">{sumbleData.orgName}</span>
                   {sumbleData.sourceDataUrl && (
                     <a
                       href={sumbleData.sourceDataUrl}
@@ -276,33 +278,35 @@ export function TDRIntelligence({
                 </div>
               )}
 
-              {/* No techs found message */}
+              {/* No techs found */}
               {sumbleData.technologiesCount === 0 && (
                 <p className="text-xs text-slate-500 italic">
-                  No technology signals found for this company in Sumble.
+                  No technology signals found for this company.
                 </p>
               )}
 
               {/* Tech Stack Badges */}
               {sumbleData.techCategories && Object.entries(sumbleData.techCategories).some(([, techs]) => techs.length > 0) && (
                 <div>
-                  <p className="text-2xs font-medium text-slate-400 flex items-center gap-1 mb-1.5">
-                    <Layers className="h-3 w-3" />
-                    TECH STACK
-                  </p>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Layers className="h-3 w-3 text-slate-500" />
+                    <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                      Tech Stack
+                    </span>
+                  </div>
                   <div className="space-y-1.5">
                     {Object.entries(sumbleData.techCategories)
                       .filter(([, techs]) => techs.length > 0)
                       .map(([category, techs]) => {
                         const style = TECH_CATEGORY_STYLES[category] || TECH_CATEGORY_STYLES.Other;
                         return (
-                          <div key={category} className="flex flex-wrap items-center gap-1">
+                          <div key={category} className="flex flex-wrap items-center gap-1.5">
                             <span className="text-2xs text-slate-500 w-16 shrink-0">{style.label}</span>
                             {techs.map((tech) => (
                               <span
                                 key={tech}
                                 className={cn(
-                                  'rounded px-1.5 py-0.5 text-2xs font-medium',
+                                  'rounded-md px-2 py-0.5 text-2xs font-medium',
                                   style.bg,
                                   style.text
                                 )}
@@ -317,13 +321,15 @@ export function TDRIntelligence({
                 </div>
               )}
 
-              {/* Tech detail signals (jobs/people/teams) for top techs */}
+              {/* Hiring signals */}
               {sumbleData.techDetails && sumbleData.techDetails.length > 0 && (
-                <div className="mt-1.5">
-                  <p className="text-2xs font-medium text-slate-400 flex items-center gap-1 mb-1">
-                    <Cpu className="h-3 w-3" />
-                    HIRING SIGNALS
-                  </p>
+                <div className="mt-2">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <Cpu className="h-3 w-3 text-slate-500" />
+                    <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                      Hiring Signals
+                    </span>
+                  </div>
                   <div className="space-y-1">
                     {sumbleData.techDetails
                       .filter(t => t.jobs_count > 0 || t.people_count > 0)
@@ -331,7 +337,7 @@ export function TDRIntelligence({
                       .map((tech) => (
                         <div key={tech.name} className="flex items-center justify-between text-2xs">
                           <span className="font-medium text-slate-200">{tech.name}</span>
-                          <div className="flex gap-2 text-slate-500">
+                          <div className="flex gap-3 text-slate-500">
                             {tech.jobs_count > 0 && <span>{tech.jobs_count} jobs</span>}
                             {tech.people_count > 0 && <span>{tech.people_count} people</span>}
                             {tech.teams_count > 0 && <span>{tech.teams_count} teams</span>}
@@ -344,21 +350,23 @@ export function TDRIntelligence({
             </div>
           )}
 
-          {/* Divider between Sumble and Perplexity when both present */}
+          {/* Divider between Sumble and Perplexity */}
           {sumbleData?.success && perplexityData?.success && (
-            <div className="my-3 border-t border-slate-700/60" />
+            <div className="my-3 border-t border-white/[0.06]" />
           )}
 
           {/* ── Perplexity Results ── */}
           {perplexityData && perplexityData.success && (
-            <div className="space-y-2">
-              <p className="text-2xs font-medium text-slate-400 flex items-center gap-1">
-                <PerplexityIcon className="h-3.5 w-3.5" />
-                WEB RESEARCH
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-1.5">
+                <PerplexityIcon className="h-3.5 w-3.5 text-slate-500" />
+                <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                  Web Research
+                </span>
                 <span className="ml-auto text-2xs text-slate-600">
                   {formatDate(perplexityData.pulledAt)}
                 </span>
-              </p>
+              </div>
 
               {perplexityData.summary && (
                 <p className="text-xs text-slate-300 leading-relaxed">
@@ -368,7 +376,7 @@ export function TDRIntelligence({
 
               {perplexityData.technologySignals && perplexityData.technologySignals.length > 0 && (
                 <div>
-                  <p className="text-2xs font-medium text-slate-400 mb-1">Technology Signals</p>
+                  <p className="text-2xs font-medium text-slate-500 mb-1">Technology Signals</p>
                   <ul className="space-y-1">
                     {perplexityData.technologySignals.map((signal, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-xs">
@@ -382,7 +390,7 @@ export function TDRIntelligence({
 
               {perplexityData.competitiveLandscape && perplexityData.competitiveLandscape.length > 0 && (
                 <div>
-                  <p className="text-2xs font-medium text-slate-400 mb-1">Competitive Landscape</p>
+                  <p className="text-2xs font-medium text-slate-500 mb-1">Competitive Landscape</p>
                   <ul className="space-y-1">
                     {perplexityData.competitiveLandscape.map((item, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-xs">
@@ -396,7 +404,7 @@ export function TDRIntelligence({
 
               {perplexityData.keyInsights && perplexityData.keyInsights.length > 0 && (
                 <div>
-                  <p className="text-2xs font-medium text-slate-400 mb-1">Key Insights</p>
+                  <p className="text-2xs font-medium text-slate-500 mb-1">Key Insights</p>
                   <ul className="space-y-1">
                     {perplexityData.keyInsights.map((insight, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-xs">
@@ -410,7 +418,7 @@ export function TDRIntelligence({
 
               {perplexityData.citations && perplexityData.citations.length > 0 && (
                 <div>
-                  <p className="text-2xs font-medium text-slate-400 mb-1">Sources</p>
+                  <p className="text-2xs font-medium text-slate-500 mb-1">Sources</p>
                   <div className="space-y-0.5">
                     {perplexityData.citations.map((url, i) => (
                       <a
@@ -439,51 +447,59 @@ export function TDRIntelligence({
         </div>
       )}
 
-      {/* Deal Team Section */}
+      {/* ────────────────────────────────────────────────────────────
+          DEAL TEAM
+          ──────────────────────────────────────────────────────────── */}
       {deal && (
-        <div className="border-b border-border/60 p-4">
-          <p className="section-header mb-3">DEAL TEAM</p>
+        <div className="border-b border-slate-800 px-5 py-4">
+          <p className="mb-3 text-2xs font-semibold uppercase tracking-wider text-slate-500">
+            Deal Team
+          </p>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
-                <Building2 className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800">
+                <Building2 className="h-3.5 w-3.5 text-slate-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Account Executive</p>
-                <p className="text-sm font-medium">{deal.owner || 'Not assigned'}</p>
+                <p className="text-2xs text-slate-500">Account Executive</p>
+                <p className="text-sm font-medium text-slate-200">{deal.owner || 'Not assigned'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900/30">
-                <Users className="h-4 w-4 text-teal-600 dark:text-teal-400" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-500/10">
+                <Users className="h-3.5 w-3.5 text-teal-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">SE Manager</p>
-                <p className="text-sm font-medium">{deal.seManager || 'Not assigned'}</p>
+                <p className="text-2xs text-slate-500">SE Manager</p>
+                <p className="text-sm font-medium text-slate-200">{deal.seManager || 'Not assigned'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 dark:bg-violet-900/30">
-                <User className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-500/10">
+                <User className="h-3.5 w-3.5 text-violet-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Sales Consultant (SE)</p>
-                <p className="text-sm font-medium">{deal.salesConsultant || 'Not assigned'}</p>
+                <p className="text-2xs text-slate-500">Sales Consultant (SE)</p>
+                <p className="text-sm font-medium text-slate-200">{deal.salesConsultant || 'Not assigned'}</p>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Readiness Score */}
-      <div className="border-b border-border/60 p-4">
-        <p className="section-header mb-2">READINESS SCORE</p>
+      {/* ────────────────────────────────────────────────────────────
+          READINESS SCORE
+          ──────────────────────────────────────────────────────────── */}
+      <div className="border-b border-slate-800 px-5 py-4">
+        <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
+          Readiness Score
+        </p>
         <div
           className={cn(
-            'inline-flex items-center gap-2 rounded-md border px-3 py-2',
-            readinessLevel === 'green' && 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400',
-            readinessLevel === 'yellow' && 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400',
-            readinessLevel === 'red' && 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-900/20 dark:text-rose-400'
+            'inline-flex items-center gap-2 rounded-md border px-3 py-1.5',
+            readinessLevel === 'green' && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+            readinessLevel === 'yellow' && 'border-amber-500/30 bg-amber-500/10 text-amber-400',
+            readinessLevel === 'red' && 'border-rose-500/30 bg-rose-500/10 text-rose-400'
           )}
         >
           {readinessLevel === 'green' ? (
@@ -495,66 +511,82 @@ export function TDRIntelligence({
         </div>
       </div>
 
-      {/* Risk Flags */}
-      <div className="border-b border-border/60 p-4">
-        <p className="section-header mb-2">RISK FLAGS</p>
+      {/* ────────────────────────────────────────────────────────────
+          RISK FLAGS
+          ──────────────────────────────────────────────────────────── */}
+      <div className="border-b border-slate-800 px-5 py-4">
+        <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
+          Risk Flags
+        </p>
         {riskFlags.length > 0 ? (
           <ul className="space-y-1.5">
             {riskFlags.map((flag, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
-                <span className="text-muted-foreground">{flag}</span>
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+                <span className="text-slate-400">{flag}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Info className="h-3.5 w-3.5 text-muted-foreground/60" />
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Info className="h-3.5 w-3.5 text-slate-600" />
             <span>No significant risks identified</span>
           </div>
         )}
       </div>
 
-      {/* Missing Information */}
-      <div className="border-b border-border/60 p-4">
-        <p className="section-header mb-2">MISSING INFORMATION</p>
+      {/* ────────────────────────────────────────────────────────────
+          MISSING INFORMATION
+          ──────────────────────────────────────────────────────────── */}
+      <div className="border-b border-slate-800 px-5 py-4">
+        <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
+          Missing Information
+        </p>
         {missingInfo.length > 0 ? (
           <ul className="space-y-1.5">
             {missingInfo.map((info, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
-                <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
-                <span className="text-muted-foreground">{info}</span>
+                <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-400" />
+                <span className="text-slate-400">{info}</span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">All required information collected</p>
+          <p className="text-sm text-slate-500">All required information collected</p>
         )}
       </div>
 
-      {/* Evidence Links */}
-      <div className="border-b border-border/60 p-4">
-        <p className="section-header mb-2">EVIDENCE</p>
-        <div className="space-y-1">
-          <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+      {/* ────────────────────────────────────────────────────────────
+          EVIDENCE
+          ──────────────────────────────────────────────────────────── */}
+      <div className="border-b border-slate-800 px-5 py-4">
+        <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
+          Evidence
+        </p>
+        <div className="space-y-0.5">
+          <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200">
             <Link className="h-3.5 w-3.5" />
             <span>Opportunity in CRM</span>
           </button>
-          <button className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+          <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200">
             <FileText className="h-3.5 w-3.5" />
             <span>Technical Assessment</span>
           </button>
         </div>
       </div>
 
-      {/* Outcome Selector */}
-      <div className="border-b border-border/60 p-4">
-        <p className="section-header mb-2">FINAL OUTCOME</p>
+      {/* ────────────────────────────────────────────────────────────
+          FINAL OUTCOME
+          ──────────────────────────────────────────────────────────── */}
+      <div className="border-b border-slate-800 px-5 py-4">
+        <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
+          Final Outcome
+        </p>
         <Select>
-          <SelectTrigger className="h-10 text-sm">
+          <SelectTrigger className="h-9 text-sm bg-slate-800 border-slate-700/60 text-slate-200 focus:ring-slate-600 [&>svg]:text-slate-400">
             <SelectValue placeholder="Select outcome..." />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-slate-800 border-slate-700 text-slate-200">
             <SelectItem value="approved">Approved for Forecast</SelectItem>
             <SelectItem value="needs-work">Needs More Work</SelectItem>
             <SelectItem value="deferred">Deferred</SelectItem>
@@ -563,18 +595,32 @@ export function TDRIntelligence({
         </Select>
       </div>
 
-      {/* Action Buttons */}
-      <div className="mt-auto p-4">
+      {/* ────────────────────────────────────────────────────────────
+          ACTION BUTTONS
+          ──────────────────────────────────────────────────────────── */}
+      <div className="mt-auto px-5 py-4">
         <div className="space-y-2">
-          <Button variant="outline" className="w-full gap-2" size="sm">
+          <Button
+            variant="outline"
+            className="w-full gap-2 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+            size="sm"
+          >
             <Save className="h-3.5 w-3.5" />
             Save Draft
           </Button>
-          <Button variant="outline" className="w-full gap-2" size="sm">
+          <Button
+            variant="outline"
+            className="w-full gap-2 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+            size="sm"
+          >
             <CheckCircle className="h-3.5 w-3.5" />
             Finalize TDR
           </Button>
-          <Button className="w-full gap-2" size="sm" onClick={() => setShowSummary(true)}>
+          <Button
+            className="w-full gap-2 bg-blue-600 text-white hover:bg-blue-500"
+            size="sm"
+            onClick={() => setShowSummary(true)}
+          >
             <Sparkles className="h-3.5 w-3.5" />
             Generate Summary
           </Button>
