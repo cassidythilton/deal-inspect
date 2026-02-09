@@ -1,7 +1,7 @@
 import type { SVGProps } from 'react';
 
 /**
- * Perplexity logo — official vector mark.
+ * Perplexity logo — official vector mark (updated colors).
  */
 export function PerplexityIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -15,9 +15,8 @@ export function PerplexityIcon(props: SVGProps<SVGSVGElement>) {
         fillRule="evenodd"
         clipRule="evenodd"
         d="M37.008 0L126.99 82.905V82.886V0.191299H144.506V83.276L234.891 0V94.524H272V230.866H235.005V315.035L144.506 235.525V315.948H126.99V236.836L37.11 316V230.866H0V94.524H37.008V0ZM113.785 111.826H17.5159V213.564H37.088V181.472L113.785 111.826ZM54.625 189.149V277.392L126.99 213.655V123.421L54.625 189.149ZM145.01 212.812V123.336L217.396 189.068V230.866H217.489V276.491L145.01 212.812ZM235.005 213.564H254.484V111.826H158.932L235.005 180.751V213.564ZM217.375 94.524V39.7983L157.977 94.524H217.375ZM113.921 94.524H54.524V39.7983L113.921 94.524Z"
-        fill="currentColor"
+        fill="#4C4C4C"
       />
     </svg>
   );
 }
-
