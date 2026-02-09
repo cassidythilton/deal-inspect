@@ -79,6 +79,7 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
   'DomoForecastCategory': 'Domo Forecast Category',
   'NumberOfCompetitors': 'Number of Competitors',
   'DealCode': 'Deal Code',
+  'WebisteDomain': 'Webiste Domain',
 };
 
 /**

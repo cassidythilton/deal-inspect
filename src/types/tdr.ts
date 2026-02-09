@@ -35,6 +35,7 @@ export interface Deal {
   partnerInfluence?: string;    // "Yes" or "No"
   snowflakeTeam?: string;       // Snowflake Team Picklist
   dealCode?: string;
+  websiteDomain?: string;       // From "Webiste Domain" column (account website URL)
   // Forecast fields
   forecastCategory?: string;    // Domo Forecast Category
   dealType?: string;            // Type: "New Logo", "Upsell", etc.

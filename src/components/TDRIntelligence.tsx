@@ -68,12 +68,16 @@ export function TDRIntelligence({
   const [perplexityLoading, setPerplexityLoading] = useState(false);
   const [intelLoaded, setIntelLoaded] = useState(false);
 
-  // Pre-fill domain from account name
+  // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
   useEffect(() => {
-    if (deal?.account) {
+    if (deal?.websiteDomain) {
+      // Clean the domain: strip protocol/path, lowercase
+      const raw = deal.websiteDomain.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim();
+      setDomain(raw || accountIntel.guessDomain(deal.account));
+    } else if (deal?.account) {
       setDomain(accountIntel.guessDomain(deal.account));
     }
-  }, [deal?.account]);
+  }, [deal?.websiteDomain, deal?.account]);
 
   // Load cached intel on mount
   useEffect(() => {

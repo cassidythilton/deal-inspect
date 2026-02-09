@@ -120,6 +120,7 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
     partnerInfluence: get('Partner Influence', 'PartnerInfluence') || undefined,
     snowflakeTeam: get('Snowflake Team Picklist', 'SnowflakeTeamPicklist') || undefined,
     dealCode: get('Deal Code', 'DealCode') || undefined,
+    websiteDomain: get('Webiste Domain', 'WebisteDomain') || undefined,
     forecastCategory: get('Domo Forecast Category', 'DomoForecastCategory') || undefined,
     dealType: dealType || undefined,
     numCompetitors,
