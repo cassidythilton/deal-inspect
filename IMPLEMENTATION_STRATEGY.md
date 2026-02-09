@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 2.2 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3
+**Status:** In Progress · **Version:** Draft 2.3 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5
 
 ---
 
@@ -2714,42 +2714,58 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
-### Sprint 4 — Sumble Account Enrichment ⬜
+### Sprint 4 — Sumble Account Enrichment ✅
 
 > **Goal:** Enrich accounts with firmographic + technographic data from Sumble.
 > **Risk to app:** None — new feature, no existing behavior changes.
+> **Completed:** February 9, 2026
 
-- [ ] Create Domo Account for Sumble API key (store `apiKey` property)
-- [ ] Deploy `enrichSumble`, `getLatestIntel`, `getIntelHistory` functions to Code Engine
-- [ ] Add `packageMapping` entries
-- [ ] Create `src/lib/accountIntel.ts` — front-end orchestration service
-- [ ] Add domain input field to TDR Workspace (editable, with heuristic pre-fill from account name)
-- [ ] Add "Enrich Account" button → calls `enrichSumble` → displays tech stack as categorized badges
-- [ ] Add "Account Intelligence" section to `TDRIntelligence.tsx` — industry, revenue, employee count, tech stack
-- [ ] Test: click "Enrich Account" for a real deal → see Sumble data in workspace AND in Snowflake table
-- [ ] Test: click again → see 2 pulls in `ACCOUNT_INTEL_SUMBLE`
+- [x] ~~Create Domo Account for Sumble API key~~ → Hardcoded in consolidated CE file (same pattern as Snowflake credentials)
+- [x] Deploy `enrichSumble`, `getLatestIntel`, `getIntelHistory`, `getUsageStats` functions to Code Engine
+- [x] Add `packageMapping` entries for all 5 account intel functions (+ `getUsageStats`)
+- [x] Create `src/lib/accountIntel.ts` — front-end orchestration service with mock data for dev mode
+- [x] Add domain input field to TDR Intelligence panel (editable, with heuristic pre-fill from account name via `guessDomain`)
+- [x] Add "Enrich" button → calls `enrichSumble` → displays firmographics + tech stack as categorized color-coded badges
+- [x] Add "Account Intelligence" section to `TDRIntelligence.tsx` — industry, revenue, employee count, headquarters, categorized tech stack
+- [ ] Test: click "Enrich Account" for a real deal → see Sumble data in workspace AND in Snowflake table (user validation)
+- [ ] Test: click again → see 2 pulls in `ACCOUNT_INTEL_SUMBLE` (user validation)
 
 **Definition of Done:** SE Manager can enrich an account with one click. Tech stack displays in workspace. Data persists with timestamps.
 
+**Learnings & Decisions:**
+- API keys hardcoded in consolidated CE file (`consolidated-sprint4-5.js`) — `sdk.getAccount()` doesn't work in this CE package (learned in Sprint 1).
+- Sumble free tier has limited credits — UI buttons clearly show "Enrich" vs "Refresh" to make the user aware of when they're making API calls.
+- Tech stack is categorized into BI, DW, ETL, Cloud, ML, Other — each with color-coded badges for quick visual scanning.
+- Domain is auto-derived from account name via heuristic (`guessDomain`) but editable by the user.
+- `accountIntel.ts` includes mock data for dev mode so the UI can be developed without hitting external APIs.
+
 ---
 
-### Sprint 5 — Perplexity Web Research ⬜
+### Sprint 5 — Perplexity Web Research ✅
 
 > **Goal:** Research accounts via web to surface strategic context, competitive landscape, and technology signals.
 > **Risk to app:** None — new feature, no existing behavior changes.
+> **Completed:** February 9, 2026
 
-- [ ] Create Domo Account for Perplexity API key (store `apiKey` property)
-- [ ] Deploy `researchPerplexity` function to Code Engine
-- [ ] Add `packageMapping` entry
-- [ ] Add "Account Research" step to TDR Workspace (new Step 2 between Deal Context and Business Decision)
-- [ ] Research view: summary, recent initiatives, technology signals, competitive landscape, key insights, citations
-- [ ] "Research Account" button → calls `researchPerplexity` with deal context
-- [ ] "Refresh Research" button → appends new row (doesn't overwrite)
-- [ ] Show citation URLs as clickable links
-- [ ] Test: research a well-known company → see structured findings with sources
-- [ ] Test: research twice → both pulls visible in history
+- [x] ~~Create Domo Account for Perplexity API key~~ → Hardcoded in consolidated CE file
+- [x] Deploy `researchPerplexity` function to Code Engine
+- [x] Add `packageMapping` entry
+- [x] Research integrated into TDR Intelligence panel (right sidebar) — not a separate TDR step
+- [x] Research view: summary, technology signals, competitive landscape, key insights, citation URLs
+- [x] "Research" button → calls `researchPerplexity` with deal context (acv, stage, partners)
+- [x] "Re-research" button → appends new row (doesn't overwrite) — button label changes after first pull
+- [x] Show citation URLs as clickable links (truncated to domain name)
+- [ ] Test: research a well-known company → see structured findings with sources (user validation)
+- [ ] Test: research twice → both pulls visible in `ACCOUNT_INTEL_PERPLEXITY` (user validation)
 
 **Definition of Done:** SE Manager can research any account from the workspace. Findings are structured, sourced, and persisted.
+
+**Learnings & Decisions:**
+- Research placed in TDR Intelligence panel (right sidebar) alongside Sumble data, not as a separate TDR step — keeps the workspace simpler and intelligence contextually visible at all times.
+- Perplexity prompt is TDR-aware: includes ACV, stage, and partner context to get more relevant results.
+- JSON parsing has a fallback: if Perplexity returns non-JSON, the raw text becomes the summary.
+- Citations are displayed as truncated domain names with external link icons.
+- Perplexity usage is token-tracked in `API_USAGE_LOG` (tokens_in, tokens_out) for cost monitoring.
 
 ---
 
@@ -2917,8 +2933,8 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 | 1 | Snowflake Foundation | ✅ Complete | Feb 9, 2026 | None | Infrastructure |
 | 2 | Session Persistence (Dual-Write) | ✅ Complete | Feb 9, 2026 | Sprint 1 | Persistence |
 | 3 | Step Input Persistence | ✅ Complete | Feb 9, 2026 | Sprint 2 | Persistence |
-| 4 | Sumble Account Enrichment | ⬜ Not Started | — | Sprint 1 | Intelligence |
-| 5 | Perplexity Web Research | ⬜ Not Started | — | Sprint 1 | Intelligence |
+| 4 | Sumble Account Enrichment | ✅ Complete | Feb 9, 2026 | Sprint 1 | Intelligence |
+| 5 | Perplexity Web Research | ✅ Complete | Feb 9, 2026 | Sprint 1 | Intelligence |
 | 6 | Caching, Settings & Usage | ⬜ Not Started | — | Sprints 4 + 5 | Intelligence |
 | 7 | Cortex AI: Deal-Level | ⬜ Not Started | — | Sprints 3 + 6 | AI |
 | **8** | **TDR Inline Chat** | ⬜ Not Started | — | Sprints 3 + 6 | **Experience** |

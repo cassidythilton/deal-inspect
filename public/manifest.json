@@ -1,7 +1,7 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.24.0",
+  "version": "1.25.0",
   "datasetsMapping": [
     {
       "dataSetId": "79b2d8a2-2b91-41db-b1d2-532fc008f14c",
@@ -144,6 +144,47 @@
         { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "enrichSumble",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "domain", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "researchPerplexity",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "dealContext", "type": "object", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getLatestIntel",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "intel", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getIntelHistory",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "history", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "getUsageStats",
+      "parameters": [
+        { "alias": "month", "type": "string", "nullable": true, "isList": false, "children": null }
+      ],
+      "output": { "alias": "stats", "type": "object", "isList": false, "children": null }
     }
   ],
   "size": {
