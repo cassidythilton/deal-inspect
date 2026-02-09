@@ -18,7 +18,7 @@ import {
   Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2,
   TrendingUp, Sparkles, AlertTriangle, Layers, GitMerge, Server,
   Briefcase, ArrowUpRight, AlertOctagon, CheckCircle2, RefreshCcw,
-  Search,
+  Search, Tag,
   LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -561,9 +561,22 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                             </Tooltip>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {deal.dealName}
-                        </p>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-xs text-muted-foreground truncate">
+                            {deal.dealName}
+                          </p>
+                          {deal.dealType && (
+                            <span className={cn(
+                              'inline-flex items-center gap-0.5 shrink-0 rounded px-1 py-0 text-[10px] font-medium leading-tight',
+                              deal.dealType.toLowerCase().includes('new logo')
+                                ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+                                : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+                            )}>
+                              <Tag className="h-2.5 w-2.5" />
+                              {deal.dealType.toLowerCase().includes('new logo') ? 'New' : 'Upsell'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
 
