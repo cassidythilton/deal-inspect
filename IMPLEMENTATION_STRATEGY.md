@@ -3317,6 +3317,8 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
   - `ACCOUNT_INTEL_PERPLEXITY` → latest research, citations, competitive landscape
   - `CORTEX_ANALYSIS_RESULTS` → TDR brief, classified findings, extracted entities
   - `TDR_CHAT_MESSAGES` → AI-selected "highlight" exchanges (top 5 by relevance)
+  - TDR scoring engine output → overall score, tier-by-tier factor breakdown, intel-validated factors, `techStackOverlap` + `strategicMomentum` enrichment scores, "Why TDR?" pills with source attribution
+  - Domo AI recommendations → grounded in account intelligence (tech stack, strategic signals)
   - Deal metadata from SFDC (ACV, stage, owner, partner info)
 - [ ] Add `packageMapping` entry for `assembleTDRReadout` (input: `sessionId` string → output: object)
 - [ ] Function returns a `ReadoutPayload` object with all sections pre-structured
@@ -3332,9 +3334,10 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
   - **§3 Current Architecture & Proposed Solution** — From TDR step inputs, with tech stack visual table
   - **§4 Competitive Landscape** — From Perplexity intel + user-entered competitive analysis
   - **§5 Risk Assessment** — Classified findings (from `AI_CLASSIFY`), risk matrix table, extracted entities
-  - **§6 Technical Evaluation** — PoC plan, success criteria, resource requirements (from TDR steps)
-  - **§7 Decision & Recommendations** — Decision rationale, go/no-go recommendation, next steps, owner assignments
-  - **§8 Appendix** — Chat highlights, scoring breakdown, raw citation URLs, generation metadata
+  - **§6 TDR Score & Intelligence-Enriched Factors** — Full TDR score breakdown with tier-by-tier factor table, intel-validated critical factors (e.g., "✓ Confirmed via Sumble: runs Snowflake"), `techStackOverlap` and `strategicMomentum` scores, "Why TDR?" pills with sourcing, Domo AI recommendations grounded in account intel
+  - **§7 Technical Evaluation** — PoC plan, success criteria, resource requirements (from TDR steps)
+  - **§8 Decision & Recommendations** — Decision rationale, go/no-go recommendation, next steps, owner assignments
+  - **§9 Appendix** — Chat highlights, raw citation URLs, API usage summary, generation metadata
 - [ ] Implement branded theming system:
   - Configurable color palette (default: Domo purple `#6929C4` / deep navy `#1B1630`)
   - Company logo placement (configurable via settings or asset upload)
@@ -3455,10 +3458,10 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 | 10 | TDR Scoring Enrichment | ⬜ Not Started | — | Sprints 6 + 6.5 | Scoring |
 | 11 | Semantic Search & Analyst | ⬜ Not Started | — | Sprints 7 + 8 | AI |
 | 12 | Migration & Cleanup | ⬜ Not Started | — | All above | Cleanup |
-| **13** | **TDR Readout: PDF Engine** | ⬜ Not Started | — | Sprints 3 + 7 | **Artifact** |
+| **13** | **TDR Readout: PDF Engine** | ⬜ Not Started | — | Sprints 3 + 7; enriched by 10 | **Artifact** |
 | **14** | **TDR Readout: Distribution** | ⬜ Not Started | — | Sprint 13 | **Distribution** |
 
-**Parallel tracks:** Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6. Sprint 6.5 (Sumble deep intelligence) extends the intelligence track and feeds Sprint 10 (scoring enrichment). Sprints 7 and 8 (Cortex deal-level and inline chat) can also run in parallel — both depend on persistence + intelligence but not on each other. They converge again at Sprint 11 (search & analyst). Sprint 6.5 can run in parallel with 7/8. **Sprints 13–14 (TDR Readout)** can begin immediately — they depend only on Sprints 3 + 7 (both complete). The richer the data (intel, chat, scoring), the richer the PDF, but the engine works with whatever is available. Sprint 12 (migration) remains last.
+**Parallel tracks:** Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6. Sprint 6.5 (Sumble deep intelligence) extends the intelligence track and feeds Sprint 10 (scoring enrichment). Sprints 7 and 8 (Cortex deal-level and inline chat) can also run in parallel — both depend on persistence + intelligence but not on each other. They converge again at Sprint 11 (search & analyst). Sprint 6.5 can run in parallel with 7/8. **Sprints 13–14 (TDR Readout)** have a hard dependency on Sprints 3 + 7 (both complete) and a soft enrichment dependency on Sprint 10 (scoring enrichment). The PDF engine can start immediately with graceful degradation for missing scoring data, but the §6 scoring section reaches full fidelity only after Sprint 10. Sprint 12 (migration) remains last.
 
 ```
 Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┬── Sprint 7 ── Sprint 9 ──┐
@@ -3467,14 +3470,13 @@ Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┬── Sprint 7 ─�
             │               ├── Sprint 6 ┤                          │
             └── Sprint 5 ──┘      │      ├── Sprint 8 ─────────────┘
                                   │      │
-                                  │      ├── Sprint 6.5 ── Sprint 10
-                                  │      │
-                                  │      └── Sprint 10
+                                  │      └── Sprint 6.5 ── Sprint 10
+                                  │                              │
+                                  │                    (enriches ▼)
+                                  │      Sprint 3 + 7 ── Sprint 13 ── Sprint 14
+                                  │                       (PDF Engine)  (Slack)
                                   │
-                                  └──────────────────── Sprint 12
-                                                            │
-            Sprint 3 + 7 ── Sprint 13 ── Sprint 14 ────────┘
-                             (PDF Engine)  (Slack Distro)
+                                  └──────────────────── Sprint 12 (last)
 ```
 
 ---
@@ -3513,7 +3515,8 @@ A TDR Readout must satisfy three audiences simultaneously:
 |----------|-------|-----------------|
 | **VP / Executive** | 30-second skim: what's the deal, what's the risk, what's the ask | Cover + Executive Summary |
 | **SE Manager / Reviewer** | Full context: inputs, intelligence, competitive landscape, decision rationale | §1–§7 (main body) |
-| **Future SE / Archivist** | Everything: raw data, chat excerpts, scoring breakdown, citations | §8 Appendix |
+| **SE Manager / Deal Desk** | Scoring rationale: why this deal was prioritized, which factors fired, what intel confirmed | §6 TDR Score & Enriched Factors |
+| **Future SE / Archivist** | Everything: raw data, chat excerpts, citations, API usage | §9 Appendix |
 
 The PDF is designed to be read top-to-bottom as a narrative arc: **Context → Intelligence → Analysis → Decision**. Every section cites its data source (Sumble, Perplexity, user input, Cortex AI) so the reader knows what's human-authored vs. AI-generated.
 
@@ -3550,7 +3553,8 @@ The PDF is designed to be read top-to-bottom as a narrative arc: **Context → I
 │  │ Cover Page │  │ Exec Summary │  │ §1-§7 Body Sections │ │
 │  └────────────┘  └──────────────┘  └─────────────────────┘ │
 │  ┌──────────────────────────────────────────────────────┐   │
-│  │ §8 Appendix (chat, scoring, citations, metadata)    │   │
+│  │ §6 TDR Score & Enriched Factors                     │   │
+│  │ §9 Appendix (chat, citations, API usage, metadata)  │   │
 │  └──────────────────────────────────────────────────────┘   │
 │                           │                                 │
 │                      PDF Blob                               │
@@ -3575,9 +3579,10 @@ The PDF is designed to be read top-to-bottom as a narrative arc: **Context → I
 | **§3 Architecture** | `TDR_STEP_INPUTS` (current-arch, proposed-solution) | Current state, proposed solution, integration points, migration considerations |
 | **§4 Competitive Landscape** | `ACCOUNT_INTEL_PERPLEXITY`, `TDR_STEP_INPUTS` | Competitive tools detected, displacement strategy, positioning narrative |
 | **§5 Risk Assessment** | `CORTEX_ANALYSIS_RESULTS` (classify, extract) | Risk matrix table (risk × severity × mitigation), classified findings, extracted key entities |
-| **§6 Technical Evaluation** | `TDR_STEP_INPUTS` (poc-plan, resources) | PoC plan, success criteria, resource requirements, timeline, dependencies |
-| **§7 Decision & Recommendations** | `TDR_STEP_INPUTS` (readiness, action) | Go/no-go recommendation, decision rationale, next steps with owners and dates |
-| **§8 Appendix** | `TDR_CHAT_MESSAGES`, scoring, `API_USAGE_LOG` | Top 5 chat exchanges, TDR score breakdown, raw citations, generation metadata (model, timestamp, data freshness) |
+| **§6 TDR Score & Enriched Factors** | TDR scoring engine output, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `CORTEX_ANALYSIS_RESULTS` | Overall TDR score (gauge chart), tier-by-tier factor breakdown table (Tier 1/2/3, factor name, points, status, source), intel-validated factors with confirmation badges ("✓ Confirmed via Sumble"), `techStackOverlap` score with detected competitive tools, `strategicMomentum` score with cited initiatives, "Why TDR?" pill summary, Domo AI recommendations grounded in account intelligence |
+| **§7 Technical Evaluation** | `TDR_STEP_INPUTS` (poc-plan, resources) | PoC plan, success criteria, resource requirements, timeline, dependencies |
+| **§8 Decision & Recommendations** | `TDR_STEP_INPUTS` (readiness, action) | Go/no-go recommendation, decision rationale, next steps with owners and dates |
+| **§9 Appendix** | `TDR_CHAT_MESSAGES`, `API_USAGE_LOG` | Top 5 chat exchanges, raw citation URLs, API usage summary, generation metadata (model, timestamp, data freshness) |
 
 ### 21.4 Branded Theming System
 
@@ -3617,9 +3622,11 @@ Charts cannot be rendered natively in `@react-pdf/renderer`. Strategy:
 4. Charts are rendered at 2× resolution for crisp print quality (retina-equivalent)
 
 Specific charts planned:
-- **TDR Score gauge** — circular gauge with score out of 100 + risk color
+- **TDR Score gauge** — circular gauge with score out of 100 + risk color (green/yellow/red)
+- **Factor breakdown bar chart** — horizontal stacked bars showing Tier 1/2/3 point contributions, with enrichment-sourced factors highlighted in a distinct accent color
 - **Risk matrix** — 2×2 grid (impact × likelihood) with positioned findings
-- **Tech stack distribution** — horizontal bar chart of technology categories
+- **Tech stack distribution** — horizontal bar chart of technology categories from Sumble
+- **Enrichment impact visual** — before/after TDR score comparison showing point delta from `techStackOverlap` + `strategicMomentum` factors (demonstrates intelligence ROI)
 - **Sentiment trend** — sparkline across TDR iterations (when Sprint 9 data available)
 
 ### 21.6 Slack Distribution
