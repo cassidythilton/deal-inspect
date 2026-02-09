@@ -14,6 +14,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -288,6 +289,9 @@ export function TDRIntelligence({
                 <DialogContent className="max-w-lg bg-[#1e1a30] border-[#362f50] text-white">
                   <DialogHeader>
                     <DialogTitle className="text-white">Research History — {deal?.account}</DialogTitle>
+                    <DialogDescription className="text-slate-500">
+                      All Sumble and Perplexity pulls for this account, newest first.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
                     {historyLoading ? (

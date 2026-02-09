@@ -290,6 +290,16 @@ export const accountIntel = {
     try {
       const raw = await callCodeEngine<unknown>('getIntelHistory', { opportunityId });
       if (Array.isArray(raw)) return raw as Record<string, unknown>[];
+
+      // SDK wraps as { history: [...] } or { history: null }
+      if (raw && typeof raw === 'object') {
+        const obj = raw as Record<string, unknown>;
+        // Direct .history (SDK alias)
+        if (Array.isArray(obj.history)) return obj.history as Record<string, unknown>[];
+        // Null/empty from Snowflake = no history
+        if (obj.history === null || obj.history === undefined) return [];
+      }
+
       const result = extractResult(raw);
       if (Array.isArray(result)) return result;
       return [];
