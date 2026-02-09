@@ -3134,20 +3134,28 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 
 ---
 
-### Sprint 7 — Cortex AI: Deal-Level Intelligence ⬜
+### Sprint 7 — Cortex AI: Deal-Level Intelligence ✅ *(completed 2026-02-09)*
 
 > **Goal:** AI-generated TDR briefs, auto-classified findings, entity extraction.
 > **Risk to app:** None — new features behind buttons.
 
-- [ ] Deploy `generateTDRBrief`, `classifyFindings`, `extractEntities` to Code Engine
-- [ ] Add `packageMapping` entries
-- [ ] Create `src/lib/cortexAi.ts` front-end service
-- [ ] Add "Generate TDR Brief" button to TDR Workspace → renders structured brief (executive summary, risks, recommendations)
-- [ ] Auto-classify Perplexity findings after each research pull → color-coded category tags in UI
-- [ ] Auto-extract entities after each research pull → competitor names populate "Competitive Signals" section, technologies supplement Sumble data
-- [ ] Store all Cortex outputs in `CORTEX_ANALYSIS_RESULTS`
+- [x] Deploy `generateTDRBrief`, `classifyFindings`, `extractEntities` to Code Engine (`codeengine/consolidated-sprint4-5.js`)
+- [x] Add `packageMapping` entries to `manifest.json` (3 new entries: `generateTDRBrief`, `classifyFindings`, `extractEntities`)
+- [x] Create `src/lib/cortexAi.ts` front-end service with dev-mode mocks
+- [x] Add "Generate TDR Brief" button to TDR Intelligence panel → renders structured brief (executive summary, risks, recommendations)
+- [x] Auto-classify Perplexity findings after each research pull → color-coded category badges in UI
+- [x] Auto-extract entities after each research pull → competitor names, technologies, and executives displayed
+- [x] Store all Cortex outputs in `CORTEX_ANALYSIS_RESULTS` via Code Engine
+- [x] Pass `sessionId` from `TDRWorkspace.tsx` → `TDRIntelligence.tsx` for Cortex calls
+- [x] Sync `dist/manifest.json` and production build
 - [ ] Test: complete a TDR session with enrichment → generate brief → verify it references Sumble tech stack and Perplexity findings
 - [ ] Test: classified findings show distinct categories (competitive threat vs. strategic initiative vs. expansion opportunity)
+
+**Implementation Details:**
+- **Code Engine:** Added `generateTDRBrief` (AI_COMPLETE joining sessions + inputs + intel), `classifyFindings` (AI_CLASSIFY on Perplexity KEY_INSIGHTS), `extractEntities` (AI_EXTRACT on Perplexity prose) — all with `CORTEX_ANALYSIS_RESULTS` persistence.
+- **Also added (future sprints):** `getPortfolioInsights` (AI_AGG), `summarizeIntelHistory` (AI_SUMMARIZE_AGG), `findSimilarDeals` (AI_EMBED + AI_SIMILARITY), `getSentimentTrend` (AI_SENTIMENT), `askAnalyst` (Cortex Analyst).
+- **Frontend service:** `cortexAi.ts` wraps Code Engine calls with dev-mode mock data for local development.
+- **UI:** Three new collapsible sections in Intelligence panel — AI Brief (markdown-rendered), Classified Findings (category badges), Extracted Entities (pills for competitors, technologies, executives).
 
 **Definition of Done:** AI generates actionable TDR briefs grounded in real account intelligence. Findings are automatically categorized and entities extracted.
 

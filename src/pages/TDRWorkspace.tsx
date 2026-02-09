@@ -187,6 +187,7 @@ export default function TDRWorkspace() {
             readinessLevel={deal.riskLevel}
             missingInfo={missingInfo}
             riskFlags={riskFlags}
+            sessionId={session?.sessionId}
           />
         </aside>
       </div>

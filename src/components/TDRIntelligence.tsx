@@ -45,12 +45,15 @@ import { SumbleIcon } from '@/components/icons/SumbleIcon';
 import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 import { accountIntel } from '@/lib/accountIntel';
 import type { SumbleEnrichment, PerplexityResearch } from '@/lib/accountIntel';
+import { cortexAi, parseBriefSections, FINDING_CATEGORY_STYLES } from '@/lib/cortexAi';
+import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection } from '@/lib/cortexAi';
 
 interface TDRIntelligenceProps {
   deal?: Deal;
   readinessLevel: ReadinessLevel;
   missingInfo: string[];
   riskFlags: string[];
+  sessionId?: string;
 }
 
 // ── Tech category badge colors (dark-native, vibrant on dark bg) ──
@@ -87,6 +90,7 @@ export function TDRIntelligence({
   readinessLevel,
   missingInfo,
   riskFlags,
+  sessionId,
 }: TDRIntelligenceProps) {
   const [showSummary, setShowSummary] = useState(false);
 
@@ -102,6 +106,15 @@ export function TDRIntelligence({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState<Record<string, unknown>[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // ── Cortex AI State (Sprint 7) ──
+  const [briefData, setBriefData] = useState<TDRBrief | null>(null);
+  const [briefSections, setBriefSections] = useState<BriefSection[]>([]);
+  const [briefLoading, setBriefLoading] = useState(false);
+  const [briefOpen, setBriefOpen] = useState(false);
+  const [classifiedFindings, setClassifiedFindings] = useState<ClassifiedFinding[]>([]);
+  const [extractedEntities, setExtractedEntities] = useState<ExtractedEntities | null>(null);
+  const [cortexProcessing, setCortexProcessing] = useState(false);
 
   // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
   useEffect(() => {
@@ -152,7 +165,7 @@ export function TDRIntelligence({
     setSumbleLoading(false);
   }, [deal, domain]);
 
-  // ── Perplexity Research ──
+  // ── Perplexity Research (auto-triggers Cortex classify + extract) ──
   const handleResearchPerplexity = useCallback(async () => {
     if (!deal) return;
     setPerplexityLoading(true);
@@ -168,6 +181,34 @@ export function TDRIntelligence({
       );
       if (result.success) {
         setPerplexityData(result);
+
+        // Auto-trigger Cortex AI classification + entity extraction (Sprint 7)
+        if (result.pullId) {
+          setCortexProcessing(true);
+          try {
+            const [classifyResult, extractResult] = await Promise.allSettled([
+              cortexAi.classifyFindings(result.pullId),
+              cortexAi.extractEntities(result.pullId),
+            ]);
+
+            if (classifyResult.status === 'fulfilled' && classifyResult.value.success) {
+              setClassifiedFindings(classifyResult.value.findings);
+              console.log('[TDRIntelligence] Classified', classifyResult.value.findings.length, 'findings');
+            } else {
+              console.warn('[TDRIntelligence] Classify findings failed:', classifyResult);
+            }
+
+            if (extractResult.status === 'fulfilled' && extractResult.value.success) {
+              setExtractedEntities(extractResult.value);
+              console.log('[TDRIntelligence] Extracted entities:', extractResult.value);
+            } else {
+              console.warn('[TDRIntelligence] Extract entities failed:', extractResult);
+            }
+          } catch (cortexErr) {
+            console.warn('[TDRIntelligence] Cortex AI post-processing error:', cortexErr);
+          }
+          setCortexProcessing(false);
+        }
       } else {
         console.error('[TDRIntelligence] Perplexity research failed:', result.error);
       }
@@ -176,6 +217,24 @@ export function TDRIntelligence({
     }
     setPerplexityLoading(false);
   }, [deal]);
+
+  // ── Generate TDR Brief (Sprint 7) ──
+  const handleGenerateBrief = useCallback(async () => {
+    if (!sessionId) return;
+    setBriefLoading(true);
+    setBriefOpen(true);
+    try {
+      const result = await cortexAi.generateTDRBrief(sessionId);
+      setBriefData(result);
+      if (result.success && result.brief) {
+        setBriefSections(parseBriefSections(result.brief));
+      }
+    } catch (err) {
+      console.error('[TDRIntelligence] Generate TDR Brief error:', err);
+      setBriefData({ success: false, error: String(err) });
+    }
+    setBriefLoading(false);
+  }, [sessionId]);
 
   // ── Intel History ──
   const handleViewHistory = useCallback(async () => {
@@ -537,6 +596,172 @@ export function TDRIntelligence({
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Classified Findings (Sprint 7 — auto after Perplexity) ── */}
+          {classifiedFindings.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d]">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Sparkles className="h-3 w-3 text-violet-400" />
+                <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                  AI-Classified Insights
+                </span>
+                {cortexProcessing && <Loader2 className="h-3 w-3 animate-spin text-slate-500 ml-auto" />}
+              </div>
+              <div className="space-y-1.5">
+                {classifiedFindings.map((cf, i) => {
+                  const style = FINDING_CATEGORY_STYLES[cf.category] || {
+                    label: cf.category,
+                    bg: 'bg-slate-500/15',
+                    text: 'text-slate-400',
+                    border: 'border-slate-500/20',
+                  };
+                  return (
+                    <div key={i} className="flex items-start gap-2 text-xs">
+                      <span
+                        className={cn(
+                          'mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-2xs font-medium',
+                          style.bg,
+                          style.text
+                        )}
+                      >
+                        {style.label}
+                      </span>
+                      <span className="text-slate-400 leading-relaxed">{cf.finding}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Extracted Entities (Sprint 7 — auto after Perplexity) ── */}
+          {extractedEntities && extractedEntities.success && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d]">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Search className="h-3 w-3 text-cyan-400" />
+                <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                  Extracted Entities
+                </span>
+              </div>
+              <div className="space-y-2">
+                {extractedEntities.competitors.length > 0 && (
+                  <div>
+                    <p className="text-2xs text-slate-600 mb-0.5">Competitors</p>
+                    <div className="flex flex-wrap gap-1">
+                      {extractedEntities.competitors.map((c, i) => (
+                        <span key={i} className="rounded-md bg-red-500/10 px-2 py-0.5 text-2xs font-medium text-red-300">
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {extractedEntities.technologies.length > 0 && (
+                  <div>
+                    <p className="text-2xs text-slate-600 mb-0.5">Technologies</p>
+                    <div className="flex flex-wrap gap-1">
+                      {extractedEntities.technologies.map((t, i) => (
+                        <span key={i} className="rounded-md bg-blue-500/10 px-2 py-0.5 text-2xs font-medium text-blue-300">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {extractedEntities.executives.length > 0 && (
+                  <div>
+                    <p className="text-2xs text-slate-600 mb-0.5">Key People</p>
+                    <div className="flex flex-wrap gap-1">
+                      {extractedEntities.executives.map((e, i) => (
+                        <span key={i} className="rounded-md bg-purple-500/10 px-2 py-0.5 text-2xs font-medium text-purple-300">
+                          {e}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {extractedEntities.timelines.length > 0 && (
+                  <div>
+                    <p className="text-2xs text-slate-600 mb-0.5">Timelines</p>
+                    <div className="flex flex-wrap gap-1">
+                      {extractedEntities.timelines.map((t, i) => (
+                        <span key={i} className="rounded-md bg-amber-500/10 px-2 py-0.5 text-2xs font-medium text-amber-300">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Generate TDR Brief Button (Sprint 7) ── */}
+          {(sumbleData || perplexityData) && sessionId && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d]">
+              <Dialog open={briefOpen} onOpenChange={setBriefOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full gap-1.5 text-xs h-8 border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200"
+                    onClick={handleGenerateBrief}
+                    disabled={briefLoading}
+                  >
+                    {briefLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    {briefData ? 'Regenerate TDR Brief' : 'Generate TDR Brief'}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#1e1a30] border-[#362f50] text-white">
+                  <DialogHeader>
+                    <DialogTitle className="text-white flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-violet-400" />
+                      AI-Generated TDR Brief
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-500">
+                      {briefData?.modelUsed
+                        ? `Generated by Snowflake Cortex · ${briefData.modelUsed}`
+                        : 'Generating brief using Snowflake Cortex AI...'}
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  {briefLoading ? (
+                    <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
+                      <Loader2 className="h-6 w-6 animate-spin text-violet-400" />
+                      <p className="text-sm">Analyzing session data, tech stack, and research...</p>
+                      <p className="text-2xs text-slate-600">This may take 15–30 seconds</p>
+                    </div>
+                  ) : briefData && !briefData.success ? (
+                    <div className="rounded-md bg-red-500/10 border border-red-500/20 p-4">
+                      <p className="text-sm text-red-300">Brief generation failed</p>
+                      <p className="text-xs text-red-400/70 mt-1">{briefData.error}</p>
+                    </div>
+                  ) : briefSections.length > 0 ? (
+                    <div className="space-y-4">
+                      {briefSections.map((section, i) => (
+                        <div key={i}>
+                          <h4 className="text-sm font-semibold text-slate-200 mb-1.5">
+                            {section.heading}
+                          </h4>
+                          <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap">
+                            {section.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : briefData?.brief ? (
+                    <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap">
+                      {briefData.brief}
+                    </div>
+                  ) : null}
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 

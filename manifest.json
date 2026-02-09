@@ -191,6 +191,27 @@
       "alias": "getDealsWithIntel",
       "parameters": [],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "generateTDRBrief",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "classifyFindings",
+      "parameters": [
+        { "alias": "pullId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "extractEntities",
+      "parameters": [
+        { "alias": "pullId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],
   "size": {
