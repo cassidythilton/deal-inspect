@@ -208,6 +208,38 @@ CREATE TABLE IF NOT EXISTS DEAL_EMBEDDINGS (
   CREATED_AT          TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
 
+-- Table 10: TDR_READOUTS — tracks every generated PDF readout (Sprint 13)
+CREATE TABLE IF NOT EXISTS TDR_READOUTS (
+  READOUT_ID          VARCHAR(36) PRIMARY KEY,
+  SESSION_ID          VARCHAR(36) NOT NULL,     -- FK → TDR_SESSIONS
+  OPPORTUNITY_ID      VARCHAR(18) NOT NULL,
+  ACCOUNT_NAME        VARCHAR(255),
+  SECTIONS_INCLUDED   VARIANT,                  -- JSON array of section IDs that had data
+  SECTIONS_EMPTY      VARIANT,                  -- JSON array of section IDs with no data
+  EXECUTIVE_SUMMARY   VARCHAR,                  -- Cached AI summary
+  TOTAL_PAGES         INTEGER,
+  FILE_SIZE_BYTES     INTEGER,
+  FILE_HASH           VARCHAR(64),              -- SHA-256 for integrity verification
+  THEME_CONFIG        VARIANT,                  -- JSON of theme settings used
+  GENERATED_AT        TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  GENERATED_BY        VARCHAR(100)
+);
+
+-- Table 11: TDR_DISTRIBUTIONS — tracks distribution events (Sprint 14)
+CREATE TABLE IF NOT EXISTS TDR_DISTRIBUTIONS (
+  DISTRIBUTION_ID     VARCHAR(36) PRIMARY KEY,
+  READOUT_ID          VARCHAR(36) NOT NULL,     -- FK → TDR_READOUTS
+  SESSION_ID          VARCHAR(36) NOT NULL,
+  METHOD              VARCHAR(20) NOT NULL,     -- 'download' | 'slack' | 'email'
+  CHANNEL             VARCHAR(255),             -- Slack channel name/ID, email address, or 'local'
+  RECIPIENT           VARCHAR(255),             -- Who received it
+  SUMMARY_SENT        VARCHAR,                  -- The executive summary that was sent
+  STATUS              VARCHAR(20),              -- 'success' | 'failed' | 'pending'
+  ERROR_MESSAGE       VARCHAR,
+  DISTRIBUTED_AT      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  DISTRIBUTED_BY      VARCHAR(100)
+);
+
 -- ─── 7. Grant on existing tables ─────────────────────────────────────────────
 
 GRANT ALL ON ALL TABLES IN SCHEMA TDR_APP.TDR_DATA TO ROLE TDR_APP_ROLE;
