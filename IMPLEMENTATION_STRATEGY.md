@@ -435,8 +435,8 @@ CREATE TABLE IF NOT EXISTS TDR_CHAT_MESSAGES (
     ROLE                VARCHAR(10) NOT NULL,         -- 'user' | 'assistant'
     CONTENT             VARCHAR NOT NULL,             -- Message text
     CONTEXT_STEP        VARCHAR(50),                  -- TDR step user was on when asking
-    BACKEND             VARCHAR(20),                  -- 'cortex' | 'perplexity' | 'domo_ai'
-    MODEL_USED          VARCHAR(50),                  -- e.g. 'mistral-large2' | 'sonar-pro'
+    PROVIDER            VARCHAR(30),                  -- 'cortex' | 'perplexity' | 'domo' | future providers
+    MODEL_USED          VARCHAR(50),                  -- e.g. 'claude-3.5-sonnet' | 'sonar-pro' | 'domo-default'
     TOKENS_IN           INTEGER,                      -- For cost tracking
     TOKENS_OUT          INTEGER,
     CITED_SOURCES       VARIANT,                      -- JSON array of citation URLs
@@ -445,10 +445,13 @@ CREATE TABLE IF NOT EXISTS TDR_CHAT_MESSAGES (
 );
 ```
 
+**Why `PROVIDER` + `MODEL_USED` as VARCHAR?** New providers and models are added without schema changes. Query by provider to compare usage: `SELECT PROVIDER, COUNT(*) FROM TDR_CHAT_MESSAGES GROUP BY PROVIDER`.
+
 **Why a flat table instead of a `VARIANT` column on sessions?** Chat history can grow unbounded. A dedicated table lets us:
 - Query across all sessions: *"What questions are SE Managers most commonly asking?"*
-- Track Perplexity vs. Cortex usage and costs separately
+- Track per-provider usage and costs: *"How many Perplexity vs. Cortex vs. Domo calls this month?"*
 - Cortex can analyze chat patterns via `AI_AGG` across all rows
+- Compare response quality across providers for the same question type
 - No risk of hitting Snowflake's per-row size limits on large conversations
 
 ---
@@ -758,7 +761,8 @@ The output specifies the return shape with the same type system.
         { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
         { "alias": "question", "type": "string", "nullable": false, "isList": false, "children": null },
         { "alias": "context", "type": "object", "nullable": false, "isList": false, "children": null },
-        { "alias": "backend", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "provider", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "model", "type": "string", "nullable": true, "isList": false, "children": null },
         { "alias": "step", "type": "string", "nullable": true, "isList": false, "children": null },
         { "alias": "userId", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
@@ -1180,22 +1184,23 @@ See [Section 8](#8-snowflake-cortex-integration) for full SQL examples.
 
 #### Group D: Inline Chat (2 functions)
 
-These handle the conversational AI experience in the TDR Workspace. Source: `codeengine/chat.js`
+These handle the multi-provider conversational AI experience in the TDR Workspace. Source: `codeengine/chat.js`
 
 ##### `sendChatMessage`
 
 | | |
 |---|---|
-| **Purpose** | Route a user question to the appropriate AI backend, persist the exchange, and return the response |
-| **Domo Input** | Object: `{ sessionId, opportunityId, accountName, question, context, backend, step, userId }` |
+| **Purpose** | Route a user question to the user-selected LLM provider, persist the exchange, and return the response |
+| **Domo Input** | Object: `{ sessionId, opportunityId, accountName, question, context, provider, model, step, userId }` |
 | **Domo Output** | Object |
 
 **Logic flow:**
 1. Validate inputs; generate UUIDs for user message and assistant message
-2. Based on `backend` parameter:
-   - **`"cortex"`**: Assemble system prompt from `context` object (deal info, TDR inputs, cached intel, TDR framework). Call Snowflake SQL API: `SELECT AI_COMPLETE('mistral-large2', [system_prompt, user_question])`. Parse response.
-   - **`"perplexity"`**: Call Perplexity chat completions API (`sonar-pro` model) with the question + context as system prompt. Include `return_citations: true`. Extract response + citations.
-3. INSERT two rows into `TDR_CHAT_MESSAGES`: one for `role='user'`, one for `role='assistant'` (with token counts, backend, model, citations)
+2. Based on `provider` parameter:
+   - **`"cortex"`**: Assemble system prompt from `context` object. Call Snowflake SQL API: `SELECT AI_COMPLETE(:model, [system_prompt, user_question])` where `:model` is the user-selected Cortex model (e.g., `'claude-3.5-sonnet'`, `'llama3.1-405b'`, etc.)
+   - **`"perplexity"`**: Call Perplexity chat completions API with `model` parameter (`'sonar-pro'` or `'sonar'`). Include context as system prompt. Set `return_citations: true`. Extract response + citations.
+   - **`"domo"`**: Call `/domo/ai/v1/text/chat` (existing endpoint). Context assembled as system prompt. Model is Domo-managed (ignore `model` param).
+3. INSERT two rows into `TDR_CHAT_MESSAGES`: one for `role='user'`, one for `role='assistant'` (with `PROVIDER`, `MODEL_USED`, token counts, citations)
 4. INSERT one row into `API_USAGE_LOG` for cost tracking
 5. Return response object
 
@@ -1205,7 +1210,8 @@ These handle the conversational AI experience in the TDR Workspace. Source: `cod
 - `accountName` (string): `"Acme Corp"`
 - `question` (string): `"What BI tools does Acme use?"`
 - `context` (object): `{ deal: {...}, tdrInputs: {...}, techStack: {...}, webResearch: {...}, currentStep: "Current Architecture" }`
-- `backend` (string): `"cortex"` or `"perplexity"`
+- `provider` (string): `"cortex"`, `"perplexity"`, or `"domo"`
+- `model` (string, nullable): `"claude-3.5-sonnet"`, `"sonar-pro"`, etc. NULL for Domo.
 - `step` (string, nullable): `"Current Architecture"`
 - `userId` (string, nullable): `"john.smith@company.com"`
 
@@ -1215,8 +1221,8 @@ These handle the conversational AI experience in the TDR Workspace. Source: `cod
   "success": true,
   "messageId": "msg-xyz789",
   "content": "Based on Sumble enrichment (Feb 7): Acme Corp uses Tableau (primary BI), Power BI (departmental), and Excel (ad-hoc reporting). Perplexity research (Feb 5) also noted an active Looker evaluation for embedded analytics use cases.",
-  "backend": "cortex",
-  "model": "mistral-large2",
+  "provider": "cortex",
+  "model": "claude-3.5-sonnet",
   "citations": null,
   "tokensIn": 1200,
   "tokensOut": 85
@@ -1246,7 +1252,7 @@ These handle the conversational AI experience in the TDR Workspace. Source: `cod
       "role": "user",
       "content": "What BI tools does Acme use?",
       "contextStep": "Current Architecture",
-      "backend": null,
+      "provider": null,
       "createdAt": "2026-02-08T14:30:00Z"
     },
     {
@@ -1254,8 +1260,8 @@ These handle the conversational AI experience in the TDR Workspace. Source: `cod
       "role": "assistant",
       "content": "Based on Sumble enrichment (Feb 7): ...",
       "contextStep": "Current Architecture",
-      "backend": "cortex",
-      "model": "mistral-large2",
+      "provider": "cortex",
+      "model": "claude-3.5-sonnet",
       "citations": null,
       "tokensIn": 1200,
       "tokensOut": 85,
@@ -1739,46 +1745,113 @@ A **context-aware conversational AI panel** that lives inside the TDR Workspace.
 - **Historical context** — previous TDR sessions for this deal, edit history
 - **The TDR framework itself** — the 17-factor methodology, so it can coach the process
 
-### 10.3 Smart Routing
+### 10.3 LLM Provider Architecture
 
-Not every question should go to the same AI backend. The chat routes automatically:
+The user explicitly selects which LLM provider to use. The architecture is a **provider registry** — a pluggable abstraction that makes it trivial to add new providers in the future without touching the chat UI, persistence layer, or context assembly.
+
+#### Provider Registry
+
+```typescript
+interface LLMProvider {
+  id: string;                      // 'cortex' | 'perplexity' | 'domo' | future providers
+  label: string;                   // Display name
+  description: string;             // One-liner for tooltip
+  models: LLMModel[];              // Available models for this provider
+  defaultModel: string;            // Which model to select by default
+  supportsStreaming: boolean;       // For future streaming support
+  supportsCitations: boolean;      // Does the provider return source URLs?
+  requiresApiKey: boolean;         // Does this need a Domo Account secret?
+  costTier: 'low' | 'medium' | 'high'; // For cost-awareness in UI
+}
+
+interface LLMModel {
+  id: string;                      // Model identifier sent to the backend
+  label: string;                   // Display name
+  description: string;             // Capability summary
+  contextWindow: number;           // Max tokens
+  isDefault: boolean;
+}
+```
+
+#### Three Launch Providers
+
+**1. Snowflake Cortex** — Best for questions about stored data, TDR methodology, and deal analysis. Runs inside Snowflake, has direct access to all persisted data.
+
+| Model ID | Display Name | Context Window | Best For |
+|----------|-------------|---------------|----------|
+| `claude-3.5-sonnet` | Claude 3.5 Sonnet | 200K | Complex reasoning, nuanced strategy advice |
+| `llama3.1-405b` | Llama 3.1 405B | 128K | Broad knowledge, detailed analysis |
+| `llama3.1-70b` | Llama 3.1 70B | 128K | Fast, good balance of quality/speed |
+| `mistral-large2` | Mistral Large 2 | 128K | Concise answers, code generation |
+| `deepseek-r1` | DeepSeek R1 | 64K | Reasoning-heavy queries, step-by-step analysis |
+
+> **Note:** Cortex model availability varies by Snowflake region and evolves over time. The model list should be configurable in Settings (or ideally queried dynamically via `SHOW CORTEX_MODELS`). The five listed above represent the most capable options at time of writing.
+
+**2. Perplexity** — Best for real-time web research, current events, and questions requiring live data. Returns citations.
+
+| Model ID | Display Name | Context Window | Best For |
+|----------|-------------|---------------|----------|
+| `sonar-pro` | Sonar Pro | 200K | Deep research, multi-step reasoning with web sources |
+| `sonar` | Sonar | 128K | Quick web lookups, faster responses |
+
+**3. Domo AI** — Already integrated (`/domo/ai/v1/text/chat`). Familiar, no additional setup. Good default for teams not yet on Snowflake Cortex.
+
+| Model ID | Display Name | Context Window | Best For |
+|----------|-------------|---------------|----------|
+| `domo-default` | Domo AI | Managed | General questions, TDR methodology, quick answers |
+
+#### Provider Comparison
+
+| Capability | Cortex | Perplexity | Domo AI |
+|-----------|--------|-----------|---------|
+| Stored deal data in context | ✅ Direct SQL joins | ⚠️ Via assembled prompt | ⚠️ Via assembled prompt |
+| Real-time web search | ❌ | ✅ Native | ❌ |
+| Citations/sources | ❌ | ✅ | ❌ |
+| Model selection | ✅ 5 models | ✅ 2 models | ❌ Fixed |
+| Cost | Snowflake credits | Per API call | Included with Domo |
+| Data residency | Your Snowflake account | Perplexity cloud | Domo cloud |
+| Setup required | Snowflake + Code Engine | API key | None (already works) |
+
+#### How the Flow Works
 
 ```
-User types question
+User selects provider (dropdown)           User selects model (if applicable)
+        │                                          │
+        ▼                                          ▼
+┌──────────────────────────────────────────────────────────┐
+│                    Chat Input Bar                         │
+│                                                          │
+│  [🧊 Cortex ▾] [claude-3.5-sonnet ▾]  [Ask...]  [Send] │
+│                                                          │
+│  💡 "What BI tools does Acme use?"                       │
+│  💡 "What should I ask about their data governance?"     │
+└──────────────────────────────────────────────────────────┘
         │
         ▼
-┌─────────────────────┐
-│  Intent Classifier   │  (Cortex AI_CLASSIFY or keyword-based)
-│                      │
-│  Categories:         │
-│  • stored_data       │ → Cortex AI_COMPLETE (queries Snowflake data)
-│  • real_time_web     │ → Perplexity Sonar (live web search)
-│  • methodology       │ → Cortex AI_COMPLETE (TDR framework prompt)
-│  • similar_deals     │ → Cortex AI_EMBED + AI_SIMILARITY
-│  • general           │ → Cortex AI_COMPLETE (with full context)
-└──────────┬──────────┘
-           │
-           ▼
-   Route to appropriate backend
-           │
-           ▼
-   Persist Q&A to TDR_CHAT_MESSAGES
-           │
-           ▼
+   sendChatMessage(provider, model, question, context)
+        │
+        ▼
+   Code Engine routes to selected provider:
+   ├── provider = 'cortex'    → SQL API: AI_COMPLETE(model, [system_prompt, question])
+   ├── provider = 'perplexity' → Perplexity API: chat completions with return_citations
+   └── provider = 'domo'      → Domo AI: /domo/ai/v1/text/chat (existing endpoint)
+        │
+        ▼
+   Persist Q&A to TDR_CHAT_MESSAGES (with provider + model recorded)
+        │
+        ▼
    Return response to UI
 ```
 
-**Routing examples:**
+#### Adding a New Provider (Future)
 
-| Question | Route | Why |
-|----------|-------|-----|
-| "What BI tools does Acme use?" | **Cortex** (stored data) | Answer is in cached Sumble enrichment |
-| "What's the latest news about Acme's cloud migration?" | **Perplexity** (web) | Needs real-time web context |
-| "What should I ask about their data governance?" | **Cortex** (methodology) | TDR framework guidance |
-| "Have we seen similar deals to this one?" | **Cortex** (similar deals) | Needs embedding similarity search |
-| "Summarize what we know about this account" | **Cortex** (general) | Combines stored intel + inputs |
+Adding a new LLM provider requires:
+1. **Add provider definition** to the provider registry config (front-end)
+2. **Add handler** in `sendChatMessage` Code Engine function (one `else if` branch)
+3. **(If external API)** Create a Domo Account to store the API key
+4. **No schema changes** — `BACKEND` and `MODEL_USED` are VARCHAR, any string works
 
-**Simplified v1 approach:** Start without automated routing. Default all questions to Cortex AI_COMPLETE with full deal context assembled as the system prompt. Add a toggle/button for "Search the web" that explicitly routes to Perplexity. This keeps the initial implementation simple while still being contextually powerful.
+Examples of future providers: OpenAI GPT, Anthropic direct, Google Gemini, Groq, Cohere, etc. The registry pattern means any of these is a ~30-minute addition.
 
 ### 10.4 Context Assembly
 
@@ -1869,8 +1942,8 @@ CREATE TABLE IF NOT EXISTS TDR_CHAT_MESSAGES (
     ROLE                VARCHAR(10) NOT NULL,        -- 'user' | 'assistant'
     CONTENT             VARCHAR NOT NULL,            -- Message text
     CONTEXT_STEP        VARCHAR(50),                 -- TDR step active when question was asked
-    BACKEND             VARCHAR(20),                 -- 'cortex' | 'perplexity' | 'domo_ai'
-    MODEL_USED          VARCHAR(50),                 -- e.g., 'mistral-large2' | 'sonar-pro'
+    PROVIDER            VARCHAR(30),                 -- 'cortex' | 'perplexity' | 'domo' | future providers
+    MODEL_USED          VARCHAR(50),                 -- e.g., 'claude-3.5-sonnet' | 'sonar-pro' | 'domo-default'
     TOKENS_IN           INTEGER,                     -- For cost tracking
     TOKENS_OUT          INTEGER,
     CITED_SOURCES       VARIANT,                     -- JSON array of citation URLs (Perplexity)
@@ -1879,20 +1952,23 @@ CREATE TABLE IF NOT EXISTS TDR_CHAT_MESSAGES (
 );
 ```
 
+> **Note:** `PROVIDER` and `MODEL_USED` are both free-form VARCHAR. Adding a new provider or model never requires a schema change.
+
 ### 10.6 Code Engine Functions for Chat
 
 Two new Code Engine functions:
 
-**`sendChatMessage`** — Receives the question + assembled context, routes to the appropriate backend, persists both the question and the response, returns the response.
+**`sendChatMessage`** — Receives the question + provider + model + assembled context, routes to the selected provider, persists both the question and the response, returns the response.
 
 | Property | Value |
 |----------|-------|
-| **Input** | `{ sessionId, opportunityId, accountName, question, context, backend, step, userId }` |
+| **Input** | `{ sessionId, opportunityId, accountName, question, context, provider, model, step, userId }` |
 | **Domo I/O** | Input: Object, Output: Object |
-| **Backend = "cortex"** | Assembles system prompt from context, calls `AI_COMPLETE` via SQL API |
-| **Backend = "perplexity"** | Calls Perplexity chat completion API, includes `return_citations: true` |
-| **Persist** | INSERTs user message row + assistant message row into `TDR_CHAT_MESSAGES` |
-| **Returns** | `{ messageId, content, backend, citations?, tokensUsed }` |
+| **provider = "cortex"** | Assembles system prompt from context, calls Snowflake SQL API: `SELECT AI_COMPLETE(:model, [...])` |
+| **provider = "perplexity"** | Calls Perplexity chat completions API with selected model, includes `return_citations: true` |
+| **provider = "domo"** | Calls `/domo/ai/v1/text/chat` (existing Domo AI endpoint), no model selection needed |
+| **Persist** | INSERTs user message row + assistant message row into `TDR_CHAT_MESSAGES` (with `PROVIDER` and `MODEL_USED`) |
+| **Returns** | `{ messageId, content, provider, model, citations?, tokensIn, tokensOut }` |
 
 **`getChatHistory`** — Returns all messages for a session, ordered chronologically.
 
@@ -1901,53 +1977,75 @@ Two new Code Engine functions:
 | **Input** | `{ sessionId }` |
 | **Domo I/O** | Input: Text, Output: Object |
 | **SQL** | `SELECT * FROM TDR_CHAT_MESSAGES WHERE SESSION_ID = ? ORDER BY CREATED_AT ASC` |
-| **Returns** | `{ messages: ChatMessage[] }` |
+| **Returns** | `{ messages: ChatMessage[] }` (each message includes `provider` and `model` for display) |
 
 ### 10.7 UI Design
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  TDR Workspace                                                       │
-│  ┌──────────────────────────────────┐  ┌──────────────────────────┐ │
-│  │  TDR Steps (left panel)          │  │  Intelligence + Chat     │ │
-│  │                                  │  │  (right panel)           │ │
-│  │  ┌────────────────────────────┐  │  │                          │ │
-│  │  │ Step 4: Current            │  │  │  [Intel] [Chat] [Brief]  │ │
-│  │  │ Architecture               │  │  │        ▼ active tab      │ │
-│  │  │                            │  │  │  ┌──────────────────────┐│ │
-│  │  │ What BI tools?             │  │  │  │ You (2 min ago)     ││ │
-│  │  │ [________________]         │  │  │  │ What BI tools does   ││ │
-│  │  │                            │  │  │  │ Acme use?            ││ │
-│  │  │ Current data platform?     │  │  │  ├──────────────────────┤│ │
-│  │  │ [________________]         │  │  │  │ TDR Assistant        ││ │
-│  │  │                            │  │  │  │ Based on Sumble      ││ │
-│  │  │ Pain points?               │  │  │  │ (enriched Feb 7):    ││ │
-│  │  │ [________________]         │  │  │  │                      ││ │
-│  │  │                            │  │  │  │ • Tableau (primary)  ││ │
-│  │  │                            │  │  │  │ • Power BI (dept.)   ││ │
-│  │  │                            │  │  │  │ • Excel (ad-hoc)     ││ │
-│  │  │                            │  │  │  │                      ││ │
-│  │  │                            │  │  │  │ Perplexity (Feb 5)   ││ │
-│  │  │                            │  │  │  │ also noted Looker    ││ │
-│  │  │                            │  │  │  │ eval for embedded.   ││ │
-│  │  └────────────────────────────┘  │  │  └──────────────────────┘│ │
-│  │                                  │  │                          │ │
-│  │  [◀ Prev]  Step 4 of 10  [Next ▶]│  │  ┌──────────────────────┐│ │
-│  │                                  │  │  │ 🔍 Ask about this    ││ │
-│  │                                  │  │  │ deal...              ││ │
-│  │                                  │  │  │       [Web 🌐] [Send]││ │
-│  │                                  │  │  └──────────────────────┘│ │
-│  └──────────────────────────────────┘  └──────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│  TDR Workspace                                                           │
+│  ┌──────────────────────────────────┐  ┌──────────────────────────────┐ │
+│  │  TDR Steps (left panel)          │  │  Intelligence + Chat         │ │
+│  │                                  │  │  (right panel)               │ │
+│  │  ┌────────────────────────────┐  │  │                              │ │
+│  │  │ Step 4: Current            │  │  │  [Intel] [Chat] [Brief]      │ │
+│  │  │ Architecture               │  │  │        ▼ active tab          │ │
+│  │  │                            │  │  │                              │ │
+│  │  │ What BI tools?             │  │  │  ┌──────────────────────────┐│ │
+│  │  │ [________________]         │  │  │  │ You (2 min ago)         ││ │
+│  │  │                            │  │  │  │ What BI tools does Acme ││ │
+│  │  │ Current data platform?     │  │  │  │ use?                    ││ │
+│  │  │ [________________]         │  │  │  ├──────────────────────────┤│ │
+│  │  │                            │  │  │  │ 🧊 Cortex · claude-3.5  ││ │
+│  │  │ Pain points?               │  │  │  │                         ││ │
+│  │  │ [________________]         │  │  │  │ Based on Sumble         ││ │
+│  │  │                            │  │  │  │ (enriched Feb 7):       ││ │
+│  │  │                            │  │  │  │ • Tableau (primary)     ││ │
+│  │  │                            │  │  │  │ • Power BI (dept.)      ││ │
+│  │  │                            │  │  │  │ • Excel (ad-hoc)        ││ │
+│  │  │                            │  │  │  │                         ││ │
+│  │  │                            │  │  │  │ Perplexity (Feb 5) also ││ │
+│  │  │                            │  │  │  │ noted Looker eval for   ││ │
+│  │  │                            │  │  │  │ embedded analytics.     ││ │
+│  │  └────────────────────────────┘  │  │  └──────────────────────────┘│ │
+│  │                                  │  │                              │ │
+│  │  [◀ Prev]  Step 4 of 10  [Next ▶]│  │  ┌──────────────────────────┐│ │
+│  │                                  │  │  │ [🧊 Cortex ▾]            ││ │
+│  │                                  │  │  │ [claude-3.5-sonnet ▾]    ││ │
+│  │                                  │  │  │                          ││ │
+│  │                                  │  │  │ 🔍 Ask about their      ││ │
+│  │                                  │  │  │ architecture...          ││ │
+│  │                                  │  │  │                   [Send] ││ │
+│  │                                  │  │  │                          ││ │
+│  │                                  │  │  │ 💡 Suggestions:          ││ │
+│  │                                  │  │  │ "What BI tools?"         ││ │
+│  │                                  │  │  │ "Current data platform?" ││ │
+│  │                                  │  │  │ 8/30 msgs · $0.02 today ││ │
+│  │                                  │  │  └──────────────────────────┘│ │
+│  └──────────────────────────────────┘  └──────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Key UX decisions:**
 
 - **Tab-based right panel:** Three tabs — Intel (Sumble/Perplexity data), Chat (conversation), Brief (generated TDR brief). All share the same panel real estate.
-- **"Web 🌐" toggle:** When enabled, the next message routes to Perplexity instead of Cortex. Auto-disables after one message to prevent accidental API burns.
+- **Provider selector dropdown:** Compact dropdown in the chat input area showing the active provider (🧊 Cortex, 🔍 Perplexity, 🟦 Domo). Remembers last selection per session.
+- **Model selector dropdown:** Appears below the provider dropdown when the selected provider supports multiple models. Hidden for Domo AI (no model choice). Shows model name + brief description in the dropdown.
+- **Provider badge on messages:** Each assistant response shows a small badge indicating which provider + model generated it (e.g., "🧊 Cortex · claude-3.5" or "🔍 Perplexity · sonar-pro"). This gives visibility when reviewing chat history where different providers may have been used.
 - **Step awareness:** The chat input placeholder changes based on the current step: *"Ask about their architecture..."* on Step 4, *"Ask about competitive positioning..."* on Step 6.
-- **Citations:** Perplexity responses show clickable source URLs below the message.
-- **Suggestion chips:** Below the input, 2–3 contextual suggestions based on the current step: *"What BI tools does {account} use?" "What competitors are in this account?" "How should I position against {competitor}?"*
+- **Citations:** Perplexity responses show clickable source URLs below the message. Cortex and Domo responses do not (they cite stored data sources inline instead).
+- **Suggestion chips:** Below the input, 2–3 contextual suggestions based on the current step and selected provider. For Perplexity, suggestions lean toward web research queries. For Cortex, suggestions lean toward stored data and methodology.
+- **Cost footer:** Shows message count + estimated cost for the session: *"8/30 msgs · $0.02 today"*
+
+#### Provider-Specific Behaviors
+
+| Behavior | Cortex | Perplexity | Domo AI |
+|----------|--------|-----------|---------|
+| System prompt includes | Full deal context + stored intel via SQL joins | Full deal context (assembled) | Full deal context (assembled) |
+| Response style | Data-grounded, cites Sumble/Perplexity sources | Web-grounded, always includes citation URLs | General-purpose, TDR methodology aware |
+| Model picker | ✅ 5 models shown | ✅ 2 models shown | ❌ Hidden (single model) |
+| Token limits | Configurable per model | 1,500 output tokens | Domo-managed |
+| Input placeholder hint | *"Ask about stored data, strategy..."* | *"Search the web for..."* | *"Ask anything about this deal..."* |
 
 ### 10.8 Interaction Patterns
 
@@ -1968,13 +2066,36 @@ Two new Code Engine functions:
 
 ### 10.9 Cost Controls
 
-Chat can generate significant API usage. Controls:
+Chat can generate significant API usage. Each provider has different cost characteristics:
 
-- **Rate limiting:** Max 30 messages per session per day (configurable in Settings)
-- **Token budget:** Each Cortex call capped at 2,000 output tokens; Perplexity capped at 1,500
-- **Usage display:** Message count shown in chat footer: "12/30 messages today"
-- **Cache hit:** If a question has been asked before in this session, return the cached answer (exact match check)
-- **Web toggle friction:** "Search Web" requires an explicit toggle press — prevents accidental Perplexity API calls
+| Provider | Cost Model | Relative Cost |
+|----------|-----------|---------------|
+| **Cortex** | Snowflake credits (per token) | Low–Medium (depends on model size) |
+| **Perplexity** | Per API call + tokens | Medium–High (web search overhead) |
+| **Domo AI** | Included with Domo subscription | Free (already paid) |
+
+**Controls:**
+
+- **Rate limiting:** Max 30 messages per session per day (configurable in Settings, applies across all providers)
+- **Per-provider limits:** Optional separate limits per provider (e.g., 30 Cortex, 10 Perplexity, unlimited Domo)
+- **Token budget:** Cortex capped at 2,000 output tokens; Perplexity capped at 1,500; Domo managed internally
+- **Usage display:** Chat footer shows: *"8/30 msgs · $0.02 today"* — cost estimated from token counts
+- **Cache hit:** If a question has been asked before in this session with the same provider+model, return the cached answer (exact match check)
+- **Cost awareness in UI:** Perplexity shows a subtle cost indicator (💰) in the provider dropdown to signal it's the most expensive option. Domo shows a ✨ to indicate it's included.
+- **Default to lowest cost:** New sessions default to Domo AI (free) or Cortex with the smallest capable model. Users opt-in to higher-cost options explicitly.
+
+### 10.10 Settings Integration
+
+New settings for the chat experience (added to Settings page):
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `chatDefaultProvider` | Dropdown | `'domo'` | Default provider for new chat sessions |
+| `chatDefaultCortexModel` | Dropdown | `'llama3.1-70b'` | Default Cortex model (when Cortex is selected) |
+| `chatDailyMessageLimit` | Slider | `30` | Max messages per session per day |
+| `chatPerplexityDailyLimit` | Slider | `10` | Max Perplexity messages per day (cost control) |
+| `chatEnabledProviders` | Multi-select | All enabled | Which providers appear in the dropdown |
+| `chatShowCostEstimates` | Toggle | `true` | Show estimated cost in chat footer |
 
 ---
 
@@ -2539,31 +2660,47 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ### Sprint 8 — TDR Inline Chat ⬜
 
-> **Goal:** Embed a context-aware conversational AI in the TDR Workspace. The manager can ask questions about the deal, the account, the TDR methodology, or the web — without leaving the review.
+> **Goal:** Embed a multi-provider, context-aware conversational AI in the TDR Workspace. The manager picks their preferred LLM (Cortex, Perplexity, or Domo) and model, asks questions about the deal — and the AI answers with full context.
 > **Risk to app:** None — new panel in existing workspace. All existing functionality untouched.
 
-- [ ] Deploy `sendChatMessage`, `getChatHistory` Code Engine functions
+**Provider & Model Infrastructure:**
+- [ ] Deploy `sendChatMessage`, `getChatHistory` Code Engine functions with multi-provider routing (Cortex, Perplexity, Domo)
 - [ ] Add `packageMapping` entries for both functions
-- [ ] Create `codeengine/chat.js` reference file
-- [ ] Create `src/lib/tdrChat.ts` — front-end service for chat orchestration + context assembly
-- [ ] Build `src/components/TDRChat.tsx` — chat panel component (message list, input, send button)
-- [ ] Integrate chat panel as a tab in the TDR Workspace right panel: [Intel] [**Chat**] [Brief]
-- [ ] Implement context assembly: gather deal info, TDR inputs, cached Sumble/Perplexity intel, current step → system prompt
-- [ ] Default routing: all messages → Cortex AI_COMPLETE with assembled context
-- [ ] Add "Search Web 🌐" toggle button: when active, next message routes to Perplexity (auto-disables after send)
-- [ ] Persist all messages to `TDR_CHAT_MESSAGES` (user + assistant rows)
-- [ ] Load chat history on session open via `getChatHistory`
-- [ ] Step-aware input placeholder: *"Ask about their architecture..."* when on Step 4, etc.
-- [ ] Add 2–3 contextual suggestion chips below input based on current step
-- [ ] Add message count display in footer: "8/30 messages today"
-- [ ] Add rate limit: max 30 messages per session per day (configurable)
-- [ ] Perplexity responses show clickable citation URLs
-- [ ] Test: open TDR session → ask "What BI tools does this account use?" → get answer citing Sumble data
-- [ ] Test: toggle "Search Web" → ask about current events → get Perplexity response with citations
-- [ ] Test: close workspace, reopen → chat history persists
-- [ ] Test: hit 30 message limit → graceful "limit reached" message
+- [ ] Create `codeengine/chat.js` reference file with provider handler abstraction
+- [ ] Define `LLMProvider` and `LLMModel` registry in `src/config/llmProviders.ts` (3 providers, extensible)
+- [ ] Cortex: 5 models (claude-3.5-sonnet, llama3.1-405b, llama3.1-70b, mistral-large2, deepseek-r1)
+- [ ] Perplexity: 2 models (sonar-pro, sonar)
+- [ ] Domo AI: 1 model (domo-default, no selection needed)
 
-**Definition of Done:** SE Manager can have a multi-turn, context-aware conversation with AI while reviewing a deal. Chat persists. Web search available on-demand.
+**Front-End Chat UI:**
+- [ ] Create `src/lib/tdrChat.ts` — front-end service for chat orchestration + context assembly
+- [ ] Build `src/components/TDRChat.tsx` — chat panel component (message list, input, provider/model dropdowns, send button)
+- [ ] Integrate chat panel as a tab in the TDR Workspace right panel: [Intel] [**Chat**] [Brief]
+- [ ] Provider selector dropdown: 🧊 Cortex | 🔍 Perplexity | 🟦 Domo — remembers last selection
+- [ ] Model selector dropdown: appears below provider, shows available models for selected provider. Hidden for Domo.
+- [ ] Provider badge on each assistant message: "🧊 Cortex · claude-3.5" or "🔍 Perplexity · sonar-pro"
+
+**Context & Behavior:**
+- [ ] Implement context assembly: gather deal info, TDR inputs, cached Sumble/Perplexity intel, current step → system prompt
+- [ ] Persist all messages to `TDR_CHAT_MESSAGES` with `PROVIDER` + `MODEL_USED`
+- [ ] Load chat history on session open via `getChatHistory`; display provider badges on historical messages
+- [ ] Step-aware input placeholder: varies by provider + step
+- [ ] Contextual suggestion chips: vary by selected provider (web research for Perplexity, stored data for Cortex)
+- [ ] Perplexity responses show clickable citation URLs
+- [ ] Cost footer: message count + estimated cost: *"8/30 msgs · $0.02 today"*
+- [ ] Rate limit: 30 msgs/day overall, 10/day for Perplexity (configurable)
+
+**Settings:**
+- [ ] Add chat settings to Settings page: default provider, default Cortex model, daily limits, enabled providers
+
+**Testing:**
+- [ ] Test: select Cortex + claude-3.5 → ask "What BI tools does this account use?" → get answer citing Sumble data
+- [ ] Test: switch to Perplexity + sonar-pro → ask about current events → get response with citations
+- [ ] Test: switch to Domo → ask about TDR methodology → get methodology guidance
+- [ ] Test: close workspace, reopen → chat history persists with provider badges
+- [ ] Test: hit daily limit → graceful "limit reached" message with suggestion to try a different provider
+
+**Definition of Done:** SE Manager can have a multi-turn, context-aware conversation with their choice of 3 LLM providers and 8 models. Chat persists with full provider/model attribution. Adding a new provider in the future is a ~30-minute task.
 
 ---
 
