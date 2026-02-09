@@ -1,7 +1,7 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.23.0",
+  "version": "1.24.0",
   "datasetsMapping": [
     {
       "dataSetId": "79b2d8a2-2b91-41db-b1d2-532fc008f14c",
@@ -76,6 +76,74 @@
         { "alias": "se", "columnName": "se" },
         { "alias": "seManager", "columnName": "se_manager" }
       ]
+    }
+  ],
+  "proxyId": "tdr-codeengine",
+  "packageMapping": [
+    {
+      "alias": "createSession",
+      "parameters": [
+        { "alias": "session", "type": "object", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "updateSession",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "updates", "type": "object", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getSessionsByOpp",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "sessions", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "getAllSessions",
+      "parameters": [],
+      "output": { "alias": "sessions", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "saveStepInput",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepLabel", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "fieldId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "fieldLabel", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "fieldValue", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepOrder", "type": "integer", "nullable": true, "isList": false, "children": null },
+        { "alias": "savedBy", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getLatestInputs",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "inputs", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "getInputHistory",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "fieldId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "inputs", "type": "object", "isList": true, "children": null }
+    },
+    {
+      "alias": "deleteSession",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],
   "size": {

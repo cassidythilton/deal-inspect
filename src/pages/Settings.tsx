@@ -255,6 +255,18 @@ export default function Settings() {
                   onCheckedChange={(v) => updateSetting('enableAppDB', v)}
                 />
               </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Snowflake Persistence</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Use Snowflake (via Code Engine) as primary TDR data store. Falls back to AppDB if unavailable.
+                  </p>
+                </div>
+                <Switch
+                  checked={settings.enableSnowflake}
+                  onCheckedChange={(v) => updateSetting('enableSnowflake', v)}
+                />
+              </div>
             </CardContent>
           </Card>
 

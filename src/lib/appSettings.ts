@@ -15,6 +15,7 @@ export interface AppSettings {
   excludedForecastCategories: string[];
   enableAIRecommendations: boolean;
   enableAppDB: boolean;
+  enableSnowflake: boolean;           // Use Snowflake via Code Engine for TDR persistence
   defaultManager: string;
 }
 
@@ -38,6 +39,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   excludedForecastCategories: ['6.Omitted', 'Closed Won', 'Closed Lost'],
   enableAIRecommendations: true,
   enableAppDB: true,
+  enableSnowflake: true,
   defaultManager: 'Andrew Rich',
 };
 
