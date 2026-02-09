@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 2.6 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6
+**Status:** In Progress · **Version:** Draft 2.7 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 7, 8
 
 ---
 
@@ -3170,47 +3170,55 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 
 ---
 
-### Sprint 8 — TDR Inline Chat ⬜
+### Sprint 8 — TDR Inline Chat ✅
 
 > **Goal:** Embed a multi-provider, context-aware conversational AI in the TDR Workspace. The manager picks their preferred LLM (Cortex, Perplexity, or Domo) and model, asks questions about the deal — and the AI answers with full context.
 > **Risk to app:** None — new panel in existing workspace. All existing functionality untouched.
 
 **Provider & Model Infrastructure:**
-- [ ] Deploy `sendChatMessage`, `getChatHistory` Code Engine functions with multi-provider routing (Cortex, Perplexity, Domo)
-- [ ] Add `packageMapping` entries for both functions
-- [ ] Create `codeengine/chat.js` reference file with provider handler abstraction
-- [ ] Define `LLMProvider` and `LLMModel` registry in `src/config/llmProviders.ts` (3 providers, extensible)
-- [ ] Cortex: 5 models (claude-sonnet-4-5, claude-4-sonnet, claude-opus-4-5, llama3.1-405b, mistral-large2)
-- [ ] Perplexity: 2 models (sonar-pro, sonar)
-- [ ] Domo AI: 1 model (domo-default, no selection needed)
+- [x] Deploy `sendChatMessage`, `getChatHistory` Code Engine functions with multi-provider routing (Cortex, Perplexity, Domo) — consolidated into `codeengine/consolidated-sprint4-5.js`
+- [x] Add `packageMapping` entries for both functions in `manifest.json` (v1.28.0)
+- [x] Chat functions consolidated into `codeengine/consolidated-sprint4-5.js` (no separate `chat.js` needed)
+- [x] Define `LLMProvider` and `LLMModel` registry in `src/config/llmProviders.ts` (3 providers, extensible)
+- [x] Cortex: 5 models (llama3.3-70b, llama3.1-405b, mistral-large2, claude-3-5-sonnet, snowflake-arctic)
+- [x] Perplexity: 2 models (sonar-pro, sonar)
+- [x] Domo AI: 1 model (domo-default, no selection needed)
 
 **Front-End Chat UI:**
-- [ ] Create `src/lib/tdrChat.ts` — front-end service for chat orchestration + context assembly
-- [ ] Build `src/components/TDRChat.tsx` — chat panel component (message list, input, provider/model dropdowns, send button)
-- [ ] Integrate chat panel as a tab in the TDR Workspace right panel: [Intel] [**Chat**] [Brief]
-- [ ] Provider selector dropdown: 🧊 Cortex | 🔍 Perplexity | 🟦 Domo — remembers last selection
-- [ ] Model selector dropdown: appears below provider, shows available models for selected provider. Hidden for Domo.
-- [ ] Provider badge on each assistant message: "🧊 Cortex · sonnet-4.5" or "🔍 Perplexity · sonar-pro"
+- [x] Create `src/lib/tdrChat.ts` — front-end service for chat orchestration + context assembly (multi-provider routing, Domo AI direct frontend call, Cortex/Perplexity via Code Engine)
+- [x] Build `src/components/TDRChat.tsx` — chat panel component (message list, auto-resize input, provider/model dropdowns, send button, suggestion chips, markdown rendering, citation links)
+- [x] Integrate chat panel as a tab in the TDR Workspace right panel: [🧠 Intelligence] [💬 Chat]
+- [x] Provider selector dropdown: ❄️ Cortex | 🔍 Perplexity | 🤖 Domo — remembers last selection
+- [x] Model selector dropdown: appears next to provider, shows available models with cost tier badges. Hidden for Domo (single model).
+- [x] Provider badge on each assistant message with color-coded styling (cyan for Cortex, violet for Perplexity, amber for Domo)
 
 **Context & Behavior:**
-- [ ] Implement context assembly: gather deal info, TDR inputs, cached Sumble/Perplexity intel, current step → system prompt
-- [ ] Persist all messages to `TDR_CHAT_MESSAGES` with `PROVIDER` + `MODEL_USED`
-- [ ] Load chat history on session open via `getChatHistory`; display provider badges on historical messages
-- [ ] Step-aware input placeholder: varies by provider + step
-- [ ] Contextual suggestion chips: vary by selected provider (web research for Perplexity, stored data for Cortex)
-- [ ] Perplexity responses show clickable citation URLs
-- [ ] Cost footer: message count + estimated cost: *"8/30 msgs · $0.02 today"*
-- [ ] Rate limit: 30 msgs/day overall, 10/day for Perplexity (configurable)
+- [x] Implement context assembly in Code Engine: gathers deal info, TDR inputs, cached Sumble/Perplexity intel, current step → system prompt
+- [x] Persist all messages to `TDR_CHAT_MESSAGES` with `PROVIDER` + `MODEL_USED` + `TOKENS_IN/OUT` + `CITED_SOURCES`
+- [x] Load chat history on session open via `getChatHistory`; display provider badges on historical messages
+- [x] Step-aware input placeholder: varies by provider + shows current context step
+- [x] Contextual suggestion chips: "Summarize deal risks", "Competitive positioning", "Technical fit analysis", "Next steps"
+- [x] Perplexity responses show clickable citation URLs (numbered source links)
+- [x] Token usage counter in header: running total of tokens consumed in session
+- [ ] Rate limit: 30 msgs/day overall, 10/day for Perplexity (configurable) — deferred to Sprint 9
 
 **Settings:**
-- [ ] Add chat settings to Settings page: default provider, default Cortex model, daily limits, enabled providers
+- [ ] Add chat settings to Settings page: default provider, default Cortex model, daily limits, enabled providers — deferred to Sprint 9
 
 **Testing:**
-- [ ] Test: select Cortex + sonnet-4.5 → ask "What BI tools does this account use?" → get answer citing Sumble data
+- [ ] Test: select Cortex + llama3.3-70b → ask "What BI tools does this account use?" → get answer citing Sumble data
 - [ ] Test: switch to Perplexity + sonar-pro → ask about current events → get response with citations
 - [ ] Test: switch to Domo → ask about TDR methodology → get methodology guidance
 - [ ] Test: close workspace, reopen → chat history persists with provider badges
-- [ ] Test: hit daily limit → graceful "limit reached" message with suggestion to try a different provider
+
+**Files Created/Modified:**
+- `src/config/llmProviders.ts` — Provider & model registry (3 providers, 8 models, cost tiers)
+- `src/lib/tdrChat.ts` — Frontend chat service (multi-provider routing, mock dev mode, Code Engine integration)
+- `src/components/TDRChat.tsx` — Full chat UI (messages, input, dropdowns, suggestion chips, markdown, citations, token counter)
+- `src/pages/TDRWorkspace.tsx` — Added Tabs component for Intelligence/Chat switching
+- `codeengine/consolidated-sprint4-5.js` — Added `sendChatMessage` + `getChatHistory` + `mapChatMessageRow`
+- `manifest.json` — Added `sendChatMessage` (9 params) + `getChatHistory` (1 param) package mappings
+- `sql/bootstrap.sql` — `TDR_CHAT_MESSAGES` table (already present from schema design)
 
 **Definition of Done:** SE Manager can have a multi-turn, context-aware conversation with their choice of 3 LLM providers and 8 models. Chat persists with full provider/model attribution. Adding a new provider in the future is a ~30-minute task.
 

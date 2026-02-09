@@ -1,7 +1,7 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.25.0",
+  "version": "1.28.0",
   "datasetsMapping": [
     {
       "dataSetId": "79b2d8a2-2b91-41db-b1d2-532fc008f14c",
@@ -217,6 +217,28 @@
       "alias": "extractEntities",
       "parameters": [
         { "alias": "pullId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "sendChatMessage",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "userMessage", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "provider", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "model", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "contextStep", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "createdBy", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "assistantContent", "type": "string", "nullable": true, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getChatHistory",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }

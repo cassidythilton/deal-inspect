@@ -3,6 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import { TDRSteps } from '@/components/TDRSteps';
 import { TDRInputs } from '@/components/TDRInputs';
 import { TDRIntelligence } from '@/components/TDRIntelligence';
+import { TDRChat } from '@/components/TDRChat';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
 import { ChevronLeft, Users, User, Loader2, Save } from 'lucide-react';
@@ -180,15 +182,40 @@ export default function TDRWorkspace() {
           />
         </main>
 
-        {/* Right Panel - Intelligence (dark purple, echoes left nav) */}
-        <aside className="w-[42rem] shrink-0 border-l border-[#2a2540] bg-[#1B1630] overflow-y-auto">
-          <TDRIntelligence
-            deal={deal}
-            readinessLevel={deal.riskLevel}
-            missingInfo={missingInfo}
-            riskFlags={riskFlags}
-            sessionId={session?.sessionId}
-          />
+        {/* Right Panel - Intelligence + Chat (tabbed, dark purple) */}
+        <aside className="w-[42rem] shrink-0 border-l border-[#2a2540] bg-[#1B1630] overflow-hidden flex flex-col">
+          <Tabs defaultValue="intel" className="flex flex-col h-full">
+            <TabsList className="shrink-0 mx-3 mt-3 bg-[#2a2540] border border-[#3a3460]">
+              <TabsTrigger
+                value="intel"
+                className="data-[state=active]:bg-[#332d50] data-[state=active]:text-white text-slate-400 text-xs"
+              >
+                🧠 Intelligence
+              </TabsTrigger>
+              <TabsTrigger
+                value="chat"
+                className="data-[state=active]:bg-[#332d50] data-[state=active]:text-white text-slate-400 text-xs"
+              >
+                💬 Chat
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="intel" className="flex-1 overflow-y-auto mt-0">
+              <TDRIntelligence
+                deal={deal}
+                readinessLevel={deal.riskLevel}
+                missingInfo={missingInfo}
+                riskFlags={riskFlags}
+                sessionId={session?.sessionId}
+              />
+            </TabsContent>
+            <TabsContent value="chat" className="flex-1 overflow-hidden mt-0">
+              <TDRChat
+                deal={deal}
+                sessionId={session?.sessionId}
+                activeStep={activeStep}
+              />
+            </TabsContent>
+          </Tabs>
         </aside>
       </div>
     </div>
