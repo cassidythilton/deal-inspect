@@ -88,10 +88,13 @@ function getDomo(): DomoSDK | null {
 }
 
 const CE_BASE = '/domo/codeengine/v2/packages';
-const PACKAGE_NAME = 'tdrcodeengine';
 
 /**
  * Call a Code Engine function.
+ *
+ * The URL pattern is `/domo/codeengine/v2/packages/{functionAlias}`.
+ * The proxyId in manifest.json tells Domo which Code Engine package to route to —
+ * it is NOT part of the URL path (reference: github-appstudio-app/app.js).
  *
  * @param fnName - The function alias (e.g., 'createSession')
  * @param args   - Named arguments matching the packageMapping parameters
@@ -103,7 +106,7 @@ async function callCodeEngine<T>(fnName: string, args: Record<string, unknown> =
     throw new Error(`[SnowflakeStore] Code Engine not available — no Domo SDK. Function: ${fnName}`);
   }
 
-  const url = `${CE_BASE}/${PACKAGE_NAME}/${fnName}`;
+  const url = `${CE_BASE}/${fnName}`;
   console.log(`[SnowflakeStore] Calling Code Engine: ${fnName}`, Object.keys(args));
 
   try {
