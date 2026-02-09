@@ -159,6 +159,7 @@ const MOCK_SUMBLE: SumbleEnrichment = {
     ETL: ['dbt', 'Kafka'],
     Cloud: ['AWS'],
     ML: [],
+    ERP: [],
     DevOps: [],
     Other: [],
   },

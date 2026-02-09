@@ -52,9 +52,27 @@ const TECH_CATEGORY_STYLES: Record<string, { label: string; bg: string; text: st
   ETL:    { label: 'Data Engineering', bg: 'bg-amber-100 dark:bg-amber-900/30',  text: 'text-amber-700 dark:text-amber-300' },
   Cloud:  { label: 'Cloud',            bg: 'bg-cyan-100 dark:bg-cyan-900/30',    text: 'text-cyan-700 dark:text-cyan-300' },
   ML:     { label: 'AI/ML',            bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300' },
+  ERP:    { label: 'ERP',              bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-300' },
   DevOps: { label: 'DevOps',           bg: 'bg-rose-100 dark:bg-rose-900/30',    text: 'text-rose-700 dark:text-rose-300' },
   Other:  { label: 'Other',            bg: 'bg-slate-100 dark:bg-slate-800',     text: 'text-slate-600 dark:text-slate-300' },
 };
+
+/** Safely format a date string — handles ISO, epoch-seconds, and Snowflake timestamp formats */
+function formatDate(value: string | number | null | undefined): string {
+  if (!value) return '';
+  let d: Date;
+  if (typeof value === 'number') {
+    d = new Date(value > 1e12 ? value : value * 1000); // epoch ms or epoch seconds
+  } else {
+    d = new Date(value);
+    // If invalid, try parsing as epoch seconds (Snowflake TIMESTAMP_LTZ format)
+    if (isNaN(d.getTime())) {
+      const epoch = parseFloat(value);
+      if (!isNaN(epoch)) d = new Date(epoch * 1000);
+    }
+  }
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
+}
 
 export function TDRIntelligence({
   deal,
@@ -231,7 +249,7 @@ export function TDRIntelligence({
                 <SumbleIcon className="h-3.5 w-3.5" />
                 TECHNOGRAPHIC SIGNALS
                 <span className="ml-auto text-2xs text-muted-foreground/60">
-                  {sumbleData.pulledAt ? new Date(sumbleData.pulledAt).toLocaleDateString() : ''}
+                  {formatDate(sumbleData.pulledAt)}
                 </span>
               </p>
 
@@ -331,7 +349,7 @@ export function TDRIntelligence({
                 <PerplexityIcon className="h-3.5 w-3.5" />
                 WEB RESEARCH
                 <span className="ml-auto text-2xs text-muted-foreground/60">
-                  {perplexityData.pulledAt ? new Date(perplexityData.pulledAt).toLocaleDateString() : ''}
+                  {formatDate(perplexityData.pulledAt)}
                 </span>
               </p>
 
