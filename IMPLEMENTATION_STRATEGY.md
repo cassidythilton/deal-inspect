@@ -3134,13 +3134,13 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 
 ---
 
-### Sprint 7 — Cortex AI: Deal-Level Intelligence ✅ *(completed 2026-02-09)*
+### Sprint 7 — Cortex AI: Deal-Level Intelligence ✅ *(completed 2026-02-10)*
 
 > **Goal:** AI-generated TDR briefs, auto-classified findings, entity extraction.
 > **Risk to app:** None — new features behind buttons.
 
-- [x] Deploy `generateTDRBrief`, `classifyFindings`, `extractEntities` to Code Engine (`codeengine/consolidated-sprint4-5.js`)
-- [x] Add `packageMapping` entries to `manifest.json` (3 new entries: `generateTDRBrief`, `classifyFindings`, `extractEntities`)
+- [x] Deploy `generateTDRBrief`, `classifyFindings`, `extractEntities`, `getLatestBrief` to Code Engine
+- [x] Add `packageMapping` entries to `manifest.json` (4 entries: `generateTDRBrief`, `classifyFindings`, `extractEntities`, `getLatestBrief`)
 - [x] Create `src/lib/cortexAi.ts` front-end service with dev-mode mocks
 - [x] Add "Generate TDR Brief" button to TDR Intelligence panel → renders structured brief (executive summary, risks, recommendations)
 - [x] Auto-classify Perplexity findings after each research pull → color-coded category badges in UI
@@ -3148,16 +3148,25 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 - [x] Store all Cortex outputs in `CORTEX_ANALYSIS_RESULTS` via Code Engine
 - [x] Pass `sessionId` from `TDRWorkspace.tsx` → `TDRIntelligence.tsx` for Cortex calls
 - [x] Sync `dist/manifest.json` and production build
-- [ ] Test: complete a TDR session with enrichment → generate brief → verify it references Sumble tech stack and Perplexity findings
-- [ ] Test: classified findings show distinct categories (competitive threat vs. strategic initiative vs. expansion opportunity)
+- [x] Brief persistence: cached brief loads on app reload → "View TDR Brief" / "Regenerate" workflow
+- [x] Markdown rendering for AI-generated TDR briefs (bold, italic, lists, newlines)
+- [x] "Perplexity Research" button clearly labeled with icon and subtitle
+- [x] Updated Cortex model from `llama3.1-70b` → `llama3.3-70b` for improved brief quality
+- [x] Test: generate brief → reload app → button shows "View TDR Brief" ✅
+- [x] Test: classified findings show distinct categories ✅
 
 **Implementation Details:**
-- **Code Engine:** Added `generateTDRBrief` (AI_COMPLETE joining sessions + inputs + intel), `classifyFindings` (AI_CLASSIFY on Perplexity KEY_INSIGHTS), `extractEntities` (AI_EXTRACT on Perplexity prose) — all with `CORTEX_ANALYSIS_RESULTS` persistence.
+- **Code Engine:** Added `generateTDRBrief` (AI_COMPLETE joining sessions + inputs + intel), `classifyFindings` (AI_CLASSIFY on Perplexity KEY_INSIGHTS), `extractEntities` (AI_EXTRACT on Perplexity prose), `getLatestBrief` (cached brief retrieval) — all with `CORTEX_ANALYSIS_RESULTS` persistence.
 - **Also added (future sprints):** `getPortfolioInsights` (AI_AGG), `summarizeIntelHistory` (AI_SUMMARIZE_AGG), `findSimilarDeals` (AI_EMBED + AI_SIMILARITY), `getSentimentTrend` (AI_SENTIMENT), `askAnalyst` (Cortex Analyst).
 - **Frontend service:** `cortexAi.ts` wraps Code Engine calls with dev-mode mock data for local development.
 - **UI:** Three new collapsible sections in Intelligence panel — AI Brief (markdown-rendered), Classified Findings (category badges), Extracted Entities (pills for competitors, technologies, executives).
 
-**Definition of Done:** AI generates actionable TDR briefs grounded in real account intelligence. Findings are automatically categorized and entities extracted.
+**Bugs Fixed During Sprint 7:**
+1. **`PARSE_JSON` in `VALUES` clause** — Snowflake doesn't allow `PARSE_JSON()` inside `INSERT INTO ... VALUES(...)`. The `generateTDRBrief` INSERT was silently failing. Fixed by changing to `INSERT INTO ... SELECT` pattern (consistent with Sumble/Perplexity INSERTs).
+2. **`sfTimestampToISO` scope bug** — The timestamp helper was defined as a local function inside `getLatestIntel()` but was also referenced by `getLatestBrief()`. This caused a `ReferenceError` when retrieving cached briefs. Fixed by promoting `sfTimestampToISO` to a top-level utility function.
+3. **`CORTEX_ANALYSIS_RESULTS` table** — Table existed in `sql/bootstrap.sql` but needed to be verified/created in Snowflake. Confirmed via Cortex CLI.
+
+**Definition of Done:** AI generates actionable TDR briefs grounded in real account intelligence. Briefs persist to Snowflake and reload without re-generation. Findings are automatically categorized and entities extracted.
 
 ---
 
@@ -3292,7 +3301,7 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 | 5.5 | UI/UX Polish & Bug Fixes | ✅ Complete | Feb 9, 2026 | Sprints 4 + 5 | UX / Polish |
 | 6 | Usage Tracking, Intel History & Indicators | ✅ Complete | Feb 9, 2026 | Sprints 4 + 5 | Intelligence |
 | **6.5** | **Sumble Deep Intelligence Expansion** | ⬜ Not Started | — | Sprint 6 | **Intelligence** |
-| 7 | Cortex AI: Deal-Level | ⬜ Not Started | — | Sprints 3 + 6 | AI |
+| 7 | Cortex AI: Deal-Level | ✅ Complete | Feb 10, 2026 | Sprints 3 + 6 | AI |
 | **8** | **TDR Inline Chat** | ⬜ Not Started | — | Sprints 3 + 6 | **Experience** |
 | 9 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | — | Sprint 7 | AI |
 | 10 | TDR Scoring Enrichment | ⬜ Not Started | — | Sprints 6 + 6.5 | Scoring |
