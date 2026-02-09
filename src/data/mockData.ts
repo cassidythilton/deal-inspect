@@ -13,6 +13,8 @@ export const mockDeals: Deal[] = [
     riskLevel: 'green',
     reasons: ['Executive sponsor', 'Budget approved'],
     owner: 'Sarah Chen',
+    accountExecutive: 'David Park',
+    dealType: 'Upsell',
     isPinned: true,
     agendaStatus: 'ready',
   },
@@ -28,6 +30,8 @@ export const mockDeals: Deal[] = [
     riskLevel: 'yellow',
     reasons: ['Competitive deal', 'Timeline pressure'],
     owner: 'Michael Torres',
+    accountExecutive: 'Lisa Tran',
+    dealType: 'New Logo',
     isPinned: true,
     agendaStatus: 'draft',
   },
@@ -43,6 +47,8 @@ export const mockDeals: Deal[] = [
     riskLevel: 'green',
     reasons: ['Renewal expansion', 'Strong usage'],
     owner: 'Sarah Chen',
+    accountExecutive: 'Rachel Kim',
+    dealType: 'Upsell',
   },
   {
     id: '4',
@@ -56,6 +62,8 @@ export const mockDeals: Deal[] = [
     riskLevel: 'red',
     reasons: ['No champion identified', 'Stalled'],
     owner: 'James Wilson',
+    accountExecutive: 'Tom Briggs',
+    dealType: 'New Logo',
   },
   {
     id: '5',
@@ -69,6 +77,8 @@ export const mockDeals: Deal[] = [
     riskLevel: 'green',
     reasons: ['Multi-year', 'Exec alignment'],
     owner: 'Michael Torres',
+    accountExecutive: 'Jennifer Cole',
+    dealType: 'New Logo',
     isPinned: true,
     agendaStatus: 'reviewed',
   },
@@ -84,6 +94,8 @@ export const mockDeals: Deal[] = [
     riskLevel: 'yellow',
     reasons: ['Complex integration', 'Multiple stakeholders'],
     owner: 'Sarah Chen',
+    accountExecutive: 'Mark Rivera',
+    dealType: 'Upsell',
   },
   {
     id: '7',
@@ -97,6 +109,8 @@ export const mockDeals: Deal[] = [
     riskLevel: 'green',
     reasons: ['Fast-tracked', 'CFO sponsor'],
     owner: 'James Wilson',
+    accountExecutive: 'Amanda Foster',
+    dealType: 'New Logo',
   },
 ];
 

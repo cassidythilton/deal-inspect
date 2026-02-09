@@ -39,6 +39,8 @@ import {
   Database,
   Layers,
   History,
+  Briefcase,
+  Tag,
 } from 'lucide-react';
 import { TDRSummaryModal } from './TDRSummaryModal';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
@@ -945,13 +947,34 @@ export function TDRIntelligence({
           <p className="mb-3 text-2xs font-semibold uppercase tracking-wider text-slate-500">
             Deal Team
           </p>
+          {/* Deal Type badge */}
+          {deal.dealType && (
+            <div className={`mb-3 inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ${
+              deal.dealType.toLowerCase().includes('new logo')
+                ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25'
+                : 'bg-amber-500/15 text-amber-300 border border-amber-500/25'
+            }`}>
+              <Tag className="h-3 w-3" />
+              {deal.dealType}
+            </div>
+          )}
+
           <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/10">
+                <Briefcase className="h-3.5 w-3.5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xs text-slate-500">Account Executive</p>
+                <p className="text-sm font-medium text-slate-200">{deal.accountExecutive || deal.owner || 'Not assigned'}</p>
+              </div>
+            </div>
             <div className="flex items-center gap-3">
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#221d38]">
                 <Building2 className="h-3.5 w-3.5 text-slate-400" />
               </div>
               <div>
-                <p className="text-2xs text-slate-500">Account Executive</p>
+                <p className="text-2xs text-slate-500">Forecast Manager</p>
                 <p className="text-sm font-medium text-slate-200">{deal.owner || 'Not assigned'}</p>
               </div>
             </div>
@@ -961,7 +984,7 @@ export function TDRIntelligence({
               </div>
               <div>
                 <p className="text-2xs text-slate-500">SE Manager</p>
-                <p className="text-sm font-medium text-slate-200">{deal.seManager || 'Not assigned'}</p>
+                <p className="text-sm font-medium text-slate-200">{deal.seManager || 'TBD'}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">

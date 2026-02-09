@@ -95,7 +95,8 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
     else if (sl.includes('clos')) stageNumber = 5;
   }
 
-  const owner = get('Mgr Forecast Name', 'MgrForecastName') || get('Domo Opportunity Owner', 'DomoOpportunityOwner') || 'Unassigned';
+  const accountExecutive = get('Domo Opportunity Owner', 'DomoOpportunityOwner') || undefined;
+  const owner = get('Mgr Forecast Name', 'MgrForecastName') || accountExecutive || 'Unassigned';
   const salesConsultant = get('Sales Consultant', 'SalesConsultant') || undefined;
   const pocSalesConsultant = get('PoC Sales Consultant', 'PocSalesConsultant') || undefined;
 
@@ -113,6 +114,7 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
     riskLevel,
     reasons: reasons.slice(0, 3),
     owner,
+    accountExecutive,
     salesConsultant,
     pocSalesConsultant,
     seManager: undefined, // set by SE mapping join

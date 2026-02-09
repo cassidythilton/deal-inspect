@@ -7,7 +7,7 @@ import { TDRChat } from '@/components/TDRChat';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
@@ -113,6 +113,16 @@ export default function TDRWorkspace() {
             <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
               {sessionStatusLabel}
             </span>
+            {deal.dealType && (
+              <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${
+                deal.dealType.toLowerCase().includes('new logo')
+                  ? 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400 border border-blue-500/20'
+                  : 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400 border border-amber-500/20'
+              }`}>
+                <Tag className="h-3 w-3" />
+                {deal.dealType}
+              </span>
+            )}
             {isSaving && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground animate-pulse">
                 <Save className="h-3 w-3" />
@@ -122,8 +132,15 @@ export default function TDRWorkspace() {
           </div>
         </div>
         
-        {/* Manager, SE Manager, and SE pills */}
+        {/* Deal team pills */}
         <div className="flex items-center gap-2">
+          {deal.accountExecutive && (
+            <div className="flex items-center gap-2 rounded-full bg-blue-50 border border-blue-200 px-3 py-1.5 dark:bg-blue-950/30 dark:border-blue-800">
+              <Briefcase className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="text-xs text-blue-600 dark:text-blue-400">AE:</span>
+              <span className="text-xs font-medium text-blue-800 dark:text-blue-300">{deal.accountExecutive}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Manager:</span>

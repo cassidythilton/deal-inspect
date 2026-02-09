@@ -3250,19 +3250,57 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 
 ### Sprint 10 — TDR Scoring Enrichment ⬜
 
-> **Goal:** Intelligence data feeds into TDR scoring and Domo AI prompt.
+> **Goal:** Intelligence data feeds into TDR scoring and Domo AI prompt. Deal type (New Logo vs Upsell) becomes a first-class scoring dimension with type-specific TDR guidance aligned to the TDR Framework.
 > **Risk to app:** Moderate — modifies existing scoring logic. Test carefully.
 
+**Intelligence-Enriched Factors**
 - [ ] Add `techStackOverlap` critical factor to `tdrCriticalFactors.ts` (Tier 2, 10 pts — triggered by Sumble competitive tool detection)
 - [ ] Add `strategicMomentum` critical factor (Tier 2, 8 pts — triggered by Perplexity strategic initiative findings)
 - [ ] Enhance existing factor tooltips with intel validation (e.g., "Confirmed via Sumble: Account runs Snowflake" for `cloudPartner`)
 - [ ] Enrich Domo AI prompt payload in `domoAi.ts` with cached intel (tech stack, recent signals)
 - [ ] Add enrichment indicators to DealsTable: new "Why TDR?" pills for intelligence-based factors
 - [ ] TDR Score tooltip notes when enrichment data contributed to the score
-- [ ] Test: deal with competitive tech in Sumble → `techStackOverlap` pill appears, score increases by 10
-- [ ] Test: Domo AI recommendations reference account tech stack in their reasoning
 
-**Definition of Done:** TDR scores incorporate real-world account intelligence. AI recommendations are grounded in external data.
+**Deal Type Scoring Enrichment (New Logo vs Upsell)**
+
+Per the [TDR Framework](samples/TDR%20Framework.pdf), deal type fundamentally changes the TDR posture:
+
+| Dimension | New Logo | Upsell / Expansion |
+|-----------|----------|-------------------|
+| **Architecture review** | Full review required — no existing relationship or integration baseline | Incremental review — existing architecture known, focus on expansion delta |
+| **Competitive risk** | High — incumbent competitor has full relationship | Lower — Domo already in place, defend and expand |
+| **Partner alignment** | Must establish — "How would a Snowflake architect describe this?" (§6) | May already exist — validate partner posture hasn't shifted |
+| **Current usage** (§9) | N/A — no existing usage | Critical — connectors, products, adoption signals inform expansion strategy |
+| **AI/Agentic scope** (§7) | Greenfield opportunity — can position Agent Catalyst early | Expansion play — layer AI on existing data estate |
+| **Stakeholder complexity** | Unknown org chart — "Who owns this architecture internally?" (§1) | Known relationships — focus on new buying center for expansion module |
+
+Scoring adjustments:
+- [ ] Refine component 5 (Deal Type Signal) in `calculateTDRScore`:
+  - **New Logo** (10 pts → stays): Full architecture review is mandatory. Additionally:
+    - If `numCompetitors ≥ 1` → bonus +3 pts (displacement scenario per §8)
+    - If `stageNum ≤ 2` → bonus +2 pts (early shaping window is critical for greenfield)
+  - **Upsell** (3 pts → context-dependent):
+    - If `acv ≥ 100K` → 6 pts (material expansion worth reviewing)
+    - If `hasCloudPartner` → +2 pts (partner expansion alignment per §6)
+    - If current usage data is stale or missing → +3 pts (usage review needed per §9)
+- [ ] Add new critical factor `newLogoRisk` (Tier 2, 8 pts):
+  - Fires when: `dealType = 'New Logo'` AND (`numCompetitors ≥ 1` OR `stageAge > 60`)
+  - Label: "New Logo — Full Architecture Review"
+  - TDR Prep: "No existing relationship. Full competitive landscape, architecture assessment, and stakeholder mapping required."
+- [ ] Add new critical factor `expansionDynamics` (Tier 3, 5 pts):
+  - Fires when: `dealType = 'Upsell'` AND `acv ≥ 50K`
+  - Label: "Expansion — Validate Current Usage"
+  - TDR Prep: "Existing customer expanding. Review current usage (§9), validate partner alignment hasn't shifted (§6), and assess AI/Agentic expansion path (§7)."
+- [ ] Update `detectCriticalFactors` to include type-specific factors in "Why TDR?" pills
+- [ ] Domo AI prompt enhancement: include `dealType` with type-specific guidance in the system prompt
+
+**Tests**
+- [ ] Test: New Logo deal with competitor → `newLogoRisk` pill appears, score increases by 8+
+- [ ] Test: Upsell deal with high ACV → `expansionDynamics` pill appears, score reflects expansion value
+- [ ] Test: deal with competitive tech in Sumble → `techStackOverlap` pill appears, score increases by 10
+- [ ] Test: Domo AI recommendations reference deal type context (new logo vs expansion) and account tech stack
+
+**Definition of Done:** TDR scores incorporate real-world account intelligence AND deal type context. New logos and upsells receive type-appropriate scoring, "Why TDR?" tags, and AI recommendations aligned to the TDR Framework's guidance for each deal posture.
 
 ---
 

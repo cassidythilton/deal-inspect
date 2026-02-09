@@ -25,7 +25,8 @@ export interface Deal {
   owner: string;
   isPinned?: boolean;
   agendaStatus?: 'draft' | 'ready' | 'reviewed';
-  // SE Team fields (sourced from Opportunities dataset)
+  // Deal team fields (sourced from Opportunities dataset)
+  accountExecutive?: string;    // From "Domo Opportunity Owner" column — the AE who owns the deal
   salesConsultant?: string;     // From "Sales Consultant" column
   pocSalesConsultant?: string;  // From "PoC Sales Consultant" column
   seManager?: string;           // Looked up via SE mapping
