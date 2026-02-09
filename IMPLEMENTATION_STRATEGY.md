@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 2.7 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 7, 8
+**Status:** In Progress · **Version:** Draft 2.8 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 7, 8 (incl. UI polish)
 
 ---
 
@@ -3220,6 +3220,12 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 - `manifest.json` — Added `sendChatMessage` (9 params) + `getChatHistory` (1 param) package mappings
 - `sql/bootstrap.sql` — `TDR_CHAT_MESSAGES` table (already present from schema design)
 
+**UI Polish (completed Feb 9, 2026):**
+- Replaced all emoji icons (❄️🔍🤖🧠💬) with Lucide interface icons (`Snowflake`, `Search`, `Cpu`, `Brain`, `MessageSquare`)
+- Chat message rendering now matches TDR Brief typography: `text-xs`, `text-slate-400`, `leading-relaxed`, proper `<ul>/<li>` lists, heading support, inline code rendering
+- Tightened entire chat layout: compact dropdowns, smaller avatars, refined spacing
+- Provider badges use icon components with color-coded borders (cyan/violet/amber)
+
 **Definition of Done:** SE Manager can have a multi-turn, context-aware conversation with their choice of 3 LLM providers and 8 models. Chat persists with full provider/model attribution. Adding a new provider in the future is a ~30-minute task.
 
 ---
@@ -3310,7 +3316,7 @@ These map directly to TDR Framework sections: Deal Context (§1), Business Decis
 | 6 | Usage Tracking, Intel History & Indicators | ✅ Complete | Feb 9, 2026 | Sprints 4 + 5 | Intelligence |
 | **6.5** | **Sumble Deep Intelligence Expansion** | ⬜ Not Started | — | Sprint 6 | **Intelligence** |
 | 7 | Cortex AI: Deal-Level | ✅ Complete | Feb 10, 2026 | Sprints 3 + 6 | AI |
-| **8** | **TDR Inline Chat** | ⬜ Not Started | — | Sprints 3 + 6 | **Experience** |
+| 8 | TDR Inline Chat | ✅ Complete | Feb 9, 2026 | Sprints 3 + 6 | Experience |
 | 9 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | — | Sprint 7 | AI |
 | 10 | TDR Scoring Enrichment | ⬜ Not Started | — | Sprints 6 + 6.5 | Scoring |
 | 11 | Semantic Search & Analyst | ⬜ Not Started | — | Sprints 7 + 8 | AI |
