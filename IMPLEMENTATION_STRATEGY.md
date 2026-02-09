@@ -201,23 +201,29 @@ Replaces Domo AppDB `TDRSessions` collection.
 
 ```sql
 CREATE TABLE IF NOT EXISTS TDR_SESSIONS (
-  SESSION_ID         VARCHAR PRIMARY KEY,     -- UUID generated client-side
-  OPPORTUNITY_ID     VARCHAR NOT NULL,        -- SFDC Opportunity Id
-  OPPORTUNITY_NAME   VARCHAR,
-  ACCOUNT_NAME       VARCHAR,
-  ACV                NUMBER(12,2),
-  STAGE              VARCHAR,
-  STATUS             VARCHAR,                 -- 'in-progress' | 'completed'
-  OUTCOME            VARCHAR,                 -- 'approved' | 'needs-work' | 'deferred' | 'at-risk'
-  OWNER              VARCHAR,                 -- AE who owns the deal
-  CREATED_BY         VARCHAR,                 -- Domo user who initiated
-  ITERATION          INTEGER DEFAULT 1,       -- Which TDR pass (1st, 2nd, etc.)
-  CREATED_AT         TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
-  UPDATED_AT         TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+  SESSION_ID           VARCHAR PRIMARY KEY,     -- UUID generated client-side
+  OPPORTUNITY_ID       VARCHAR NOT NULL,        -- SFDC Opportunity Id
+  OPPORTUNITY_NAME     VARCHAR,
+  ACCOUNT_NAME         VARCHAR,
+  ACV                  NUMBER(12,2),
+  STAGE                VARCHAR,
+  STATUS               VARCHAR,                 -- 'in-progress' | 'completed'
+  OUTCOME              VARCHAR,                 -- 'approved' | 'needs-work' | 'deferred' | 'at-risk'
+  OWNER                VARCHAR,                 -- AE who owns the deal
+  CREATED_BY           VARCHAR,                 -- Domo user who initiated
+  ITERATION            INTEGER DEFAULT 1,       -- Which TDR pass (1st, 2nd, etc.)
+  STEP_SCHEMA_VERSION  VARCHAR DEFAULT 'v1',    -- Which TDR step definition was active
+  CREATED_AT           TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  UPDATED_AT           TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
 ```
 
 **Why `ITERATION`?** — When a deal goes through multiple TDR cycles (e.g., initial review, then a re-review after stalling), each cycle is a separate session with an incrementing iteration number. This lets you query "how did TDR findings change between the 1st and 3rd review?"
+
+**Why `STEP_SCHEMA_VERSION`?** — The TDR process (step count, step IDs, field IDs) will evolve over time. This column records which version of the step definitions was active when the session was created. This lets us:
+- Know whether a session was 5/9 complete (v1) or 5/12 complete (v2)
+- Join to `TDR_STEP_DEFINITIONS` to get the correct step labels and ordering for historical sessions
+- Avoid breaking old data when steps are renamed, reordered, added, or removed
 
 ### Table 2: `TDR_STEP_INPUTS`
 
@@ -229,12 +235,22 @@ CREATE TABLE IF NOT EXISTS TDR_STEP_INPUTS (
   SESSION_ID         VARCHAR NOT NULL,        -- FK → TDR_SESSIONS
   OPPORTUNITY_ID     VARCHAR NOT NULL,
   STEP_ID            VARCHAR NOT NULL,        -- 'context' | 'decision' | 'current-arch' | ...
+  STEP_LABEL         VARCHAR,                 -- 'Deal Context & Stakes' (human-readable, for Cortex/analytics)
   FIELD_ID           VARCHAR NOT NULL,        -- 'strategic-value' | 'business-impact' | ...
+  FIELD_LABEL        VARCHAR,                 -- 'Strategic Value' (human-readable, for Cortex/analytics)
   FIELD_VALUE        VARCHAR,                 -- The user's input
+  STEP_ORDER         INTEGER,                 -- Position of this step in the process (1-based)
   SAVED_AT           TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
   SAVED_BY           VARCHAR
 );
 ```
+
+**Why `STEP_LABEL` / `FIELD_LABEL`?** — The IDs (`'current-arch'`, `'strategic-value'`) are stable keys for joins and code. The labels are what humans (and Cortex AI) see. Storing both means:
+- Cortex `AI_COMPLETE` can build readable briefs: *"In the Current Architecture step, the manager noted..."* instead of *"current-arch.existing-systems = ..."*
+- Direct Snowflake queries and Cortex Analyst don't require a lookup table join for basic readability
+- If a step is renamed (label changes, ID stays), old rows retain the label that was current when the data was entered
+
+**Why `STEP_ORDER`?** — Steps may be reordered over time. Storing the position at write time lets us reconstruct the original process flow for historical sessions.
 
 **Querying the latest value per field:**
 
@@ -246,7 +262,8 @@ SELECT * FROM (
   ) AS rn
   FROM TDR_STEP_INPUTS
   WHERE SESSION_ID = :sid
-) WHERE rn = 1;
+) WHERE rn = 1
+ORDER BY STEP_ORDER;
 ```
 
 **Viewing edit history for a single field:**
@@ -258,7 +275,68 @@ WHERE SESSION_ID = :sid AND STEP_ID = 'current-arch' AND FIELD_ID = 'existing-sy
 ORDER BY SAVED_AT;
 ```
 
-### Table 3: `ACCOUNT_INTEL_SUMBLE`
+### Table 3: `TDR_STEP_DEFINITIONS`
+
+A slowly-changing dimension that captures the TDR process structure at each version. When steps are added, removed, renamed, or reordered, a new version is created. This table is the historical record of what the TDR process looked like at any point in time.
+
+```sql
+CREATE TABLE IF NOT EXISTS TDR_STEP_DEFINITIONS (
+  SCHEMA_VERSION     VARCHAR NOT NULL,        -- 'v1', 'v2', etc.
+  STEP_ID            VARCHAR NOT NULL,        -- 'context' | 'decision' | 'current-arch' | ...
+  STEP_TITLE         VARCHAR NOT NULL,        -- 'Deal Context & Stakes'
+  STEP_DESCRIPTION   VARCHAR,                 -- 'Strategic importance and business impact'
+  STEP_ORDER         INTEGER NOT NULL,        -- Position in the process (1-based)
+  FIELDS             VARIANT,                 -- JSON array of { id, label, type, required }
+  IS_ACTIVE          BOOLEAN DEFAULT TRUE,    -- FALSE if step was removed in this version
+  CREATED_AT         TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  PRIMARY KEY (SCHEMA_VERSION, STEP_ID)
+);
+```
+
+**Seed data for v1** (the current 9-step process):
+
+```sql
+INSERT INTO TDR_STEP_DEFINITIONS (SCHEMA_VERSION, STEP_ID, STEP_TITLE, STEP_DESCRIPTION, STEP_ORDER, FIELDS)
+VALUES
+  ('v1', 'context',     'Deal Context & Stakes',  'Strategic importance and business impact',      1, PARSE_JSON('[{"id":"strategic-value","label":"Strategic Value","type":"textarea"},{"id":"business-impact","label":"Business Impact","type":"textarea"}]')),
+  ('v1', 'decision',    'Business Decision',      'What is the customer trying to achieve?',       2, NULL),
+  ('v1', 'current-arch','Current Architecture',    'Existing systems and data landscape',           3, NULL),
+  ('v1', 'target-arch', 'Target Architecture',     'Proposed solution and integration points',      4, NULL),
+  ('v1', 'domo-role',   'Domo Role',               'How Domo fits in the solution',                 5, NULL),
+  ('v1', 'partner',     'Partner Alignment',       'SI/Partner involvement and commitment',         6, NULL),
+  ('v1', 'ai-strategy', 'AI Strategy',             'AI/ML use cases and data science needs',        7, NULL),
+  ('v1', 'risk',        'Technical Risk',          'Implementation risks and mitigations',          8, NULL),
+  ('v1', 'usage',       'Usage & Adoption',        'User adoption plan and success metrics',        9, NULL);
+```
+
+**When the process evolves (example — adding "Account Research" as Step 2 in v2):**
+
+```sql
+-- Copy all v1 steps to v2, incrementing order for steps that shift
+INSERT INTO TDR_STEP_DEFINITIONS (SCHEMA_VERSION, STEP_ID, STEP_TITLE, STEP_DESCRIPTION, STEP_ORDER, FIELDS)
+SELECT 'v2', STEP_ID, STEP_TITLE, STEP_DESCRIPTION,
+  CASE WHEN STEP_ORDER >= 2 THEN STEP_ORDER + 1 ELSE STEP_ORDER END,
+  FIELDS
+FROM TDR_STEP_DEFINITIONS WHERE SCHEMA_VERSION = 'v1';
+
+-- Insert the new step
+INSERT INTO TDR_STEP_DEFINITIONS (SCHEMA_VERSION, STEP_ID, STEP_TITLE, STEP_DESCRIPTION, STEP_ORDER)
+VALUES ('v2', 'account-research', 'Account Research', 'External intelligence and tech stack discovery', 2);
+```
+
+**Querying "what did the process look like for a specific session?":**
+
+```sql
+SELECT d.*
+FROM TDR_STEP_DEFINITIONS d
+JOIN TDR_SESSIONS s ON s.STEP_SCHEMA_VERSION = d.SCHEMA_VERSION
+WHERE s.SESSION_ID = :sid AND d.IS_ACTIVE = TRUE
+ORDER BY d.STEP_ORDER;
+```
+
+**Why a table instead of just the front-end code?** — The front-end defines the *current* process. The table preserves *all* historical processes. When Cortex AI generates a brief for a 6-month-old session, it needs to know what steps existed then, not what steps exist now. This also enables Cortex Analyst to answer questions like *"How has the TDR process changed over the last year?"*
+
+### Table 5: `ACCOUNT_INTEL_SUMBLE`
 
 Stores Sumble enrichment snapshots. Each row is one "pull" — multiple pulls per account over time.
 
@@ -281,7 +359,7 @@ CREATE TABLE IF NOT EXISTS ACCOUNT_INTEL_SUMBLE (
 );
 ```
 
-### Table 4: `ACCOUNT_INTEL_PERPLEXITY`
+### Table 6: `ACCOUNT_INTEL_PERPLEXITY`
 
 Stores Perplexity web research snapshots. Each row is one research "pull."
 
@@ -303,7 +381,7 @@ CREATE TABLE IF NOT EXISTS ACCOUNT_INTEL_PERPLEXITY (
 );
 ```
 
-### Table 5: `API_USAGE_LOG`
+### Table 7: `API_USAGE_LOG`
 
 Tracks every external API call for cost visibility.
 
@@ -324,7 +402,7 @@ CREATE TABLE IF NOT EXISTS API_USAGE_LOG (
 );
 ```
 
-### Table 6: `CORTEX_ANALYSIS_RESULTS`
+### Table 8: `CORTEX_ANALYSIS_RESULTS`
 
 Stores outputs from Cortex AI function calls (summaries, classifications, aggregations).
 
@@ -344,7 +422,7 @@ CREATE TABLE IF NOT EXISTS CORTEX_ANALYSIS_RESULTS (
 );
 ```
 
-### Table 7: `TDR_CHAT_MESSAGES`
+### Table 9: `TDR_CHAT_MESSAGES`
 
 Stores all inline chat messages (user questions + assistant responses) per TDR session.
 
@@ -525,8 +603,11 @@ The output specifies the return shape with the same type system.
         { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
         { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
         { "alias": "stepId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepLabel", "type": "string", "nullable": true, "isList": false, "children": null },
         { "alias": "fieldId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "fieldLabel", "type": "string", "nullable": true, "isList": false, "children": null },
         { "alias": "fieldValue", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepOrder", "type": "integer", "nullable": true, "isList": false, "children": null },
         { "alias": "savedBy", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
@@ -791,20 +872,23 @@ These replace `appDb.ts` entirely. Source: `codeengine/persistence.js`
 | | |
 |---|---|
 | **Purpose** | Save a single field value from a TDR step (append-only) |
-| **Domo I/O Type** | Input: 6× `string` → Output: `object` |
-| **SQL** | `INSERT INTO TDR_STEP_INPUTS (INPUT_ID, SESSION_ID, OPPORTUNITY_ID, STEP_ID, FIELD_ID, FIELD_VALUE, SAVED_BY)` |
+| **Domo I/O Type** | Input: 9× `string`/`integer` → Output: `object` |
+| **SQL** | `INSERT INTO TDR_STEP_INPUTS (INPUT_ID, SESSION_ID, OPPORTUNITY_ID, STEP_ID, STEP_LABEL, FIELD_ID, FIELD_LABEL, FIELD_VALUE, STEP_ORDER, SAVED_BY)` |
 
 **Input:**
 - `sessionId` (string)
 - `opportunityId` (string)
 - `stepId` (string): e.g. `"context"`, `"current-arch"`, `"target-arch"`
+- `stepLabel` (string, nullable): e.g. `"Current Architecture"` — human-readable name at time of save
 - `fieldId` (string): e.g. `"strategic-value"`, `"existing-systems"`
+- `fieldLabel` (string, nullable): e.g. `"Existing Systems"` — human-readable name at time of save
 - `fieldValue` (string): the user's input text
+- `stepOrder` (integer, nullable): position of this step in the current process (e.g., 3)
 - `savedBy` (string): Domo username
 
 **Output:** `{ "success": true, "inputId": "uuid" }`
 
-> **Key design:** This is **append-only**. Every save creates a new row. The latest value per field is determined by `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY SAVED_AT DESC)`.
+> **Key design:** This is **append-only**. Every save creates a new row. The latest value per field is determined by `ROW_NUMBER() OVER (PARTITION BY ... ORDER BY SAVED_AT DESC)`. Labels and order are denormalized at write time so historical data remains self-describing even after process changes.
 
 ##### `getLatestInputs`
 
@@ -816,7 +900,7 @@ These replace `appDb.ts` entirely. Source: `codeengine/persistence.js`
 
 **Input:** `sessionId` (string)
 
-**Output:** Array of `{ stepId, fieldId, fieldValue, savedAt, savedBy }`
+**Output:** Array of `{ stepId, stepLabel, stepOrder, fieldId, fieldLabel, fieldValue, savedAt, savedBy }`
 
 ##### `getInputHistory`
 
@@ -2187,6 +2271,37 @@ const currentUser = await domo.get('/domo/users/v1/me');
 | **Monitoring** | `API_USAGE_LOG` table covers all external calls. Snowflake query history covers Cortex usage. |
 | **Cost visibility** | Settings page shows monthly API call counts. Snowflake credit consumption visible in Snowflake UI. |
 
+### TDR Process Evolution Strategy
+
+The TDR process (steps, fields, ordering) **will** change. Steps may be added, removed, renamed, reordered, or split. The data model is designed to handle this gracefully without migrations or data loss.
+
+**Principles:**
+
+1. **Step IDs are immutable once used.** If `'current-arch'` exists in the data, that ID stays forever. To rename, change the label but keep the ID. To replace, create a new ID (e.g., `'architecture-review'`) and mark the old one as inactive.
+
+2. **Labels are denormalized at write time.** Every `TDR_STEP_INPUTS` row stores the `STEP_LABEL` and `FIELD_LABEL` that were current when the data was saved. This means old data is always human-readable, even if labels change.
+
+3. **Versions are explicit.** Each session records `STEP_SCHEMA_VERSION`. Each version's full step definition lives in `TDR_STEP_DEFINITIONS`. You can always reconstruct "what did the process look like when this session was created?"
+
+4. **The front-end is the authority for the current version.** Step definitions in `src/config/tdrSteps.ts` define what users see today. The Snowflake `TDR_STEP_DEFINITIONS` table preserves what they saw historically.
+
+**How to evolve:**
+
+| Change | What to do |
+|--------|-----------|
+| **Add a step** | Add to front-end config. Bump `STEP_SCHEMA_VERSION` (e.g., `'v1'` → `'v2'`). Insert new rows into `TDR_STEP_DEFINITIONS` for v2. Old sessions (v1) are unaffected — their data remains queryable with v1 definitions. |
+| **Remove a step** | Remove from front-end config. In `TDR_STEP_DEFINITIONS`, set `IS_ACTIVE = FALSE` for that step in the new version. Old sessions retain their data. New sessions simply won't have that step. |
+| **Rename a step** | Keep the `STEP_ID`. Change the `STEP_TITLE` in the front-end and in `TDR_STEP_DEFINITIONS` for the new version. Old `TDR_STEP_INPUTS` rows retain the old `STEP_LABEL` they were saved with. |
+| **Reorder steps** | Update `STEP_ORDER` in the front-end config and `TDR_STEP_DEFINITIONS`. Old `TDR_STEP_INPUTS` rows retain their original `STEP_ORDER`. |
+| **Add a field to a step** | Add to the step's `FIELDS` in the front-end config and `TDR_STEP_DEFINITIONS`. Old sessions simply won't have that field — `getLatestInputs` returns whatever fields exist for that session. |
+| **Remove a field** | Remove from front-end config. Old data remains in `TDR_STEP_INPUTS` — it just won't appear in new sessions. No deletion needed. |
+
+**What never happens:**
+- No `ALTER TABLE` DDL for process changes
+- No data migration when steps change
+- No old data becomes unreadable
+- No need to "backfill" new fields into old sessions
+
 ---
 
 ## 16. Implementation Phases
@@ -2299,7 +2414,8 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 > **Risk to app:** None — purely infrastructure.
 
 - [ ] Run bootstrap DDL: create `TDR_APP` database, `TDR_DATA` schema, `TDR_APP_WH` warehouse (XS, auto-suspend 60s), `TDR_APP_ROLE` role
-- [ ] Run table DDL: create all 7 tables (`TDR_SESSIONS`, `TDR_STEP_INPUTS`, `TDR_CHAT_MESSAGES`, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `API_USAGE_LOG`, `CORTEX_ANALYSIS_RESULTS`)
+- [ ] Run table DDL: create all 9 tables (`TDR_SESSIONS`, `TDR_STEP_INPUTS`, `TDR_STEP_DEFINITIONS`, `TDR_CHAT_MESSAGES`, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `API_USAGE_LOG`, `CORTEX_ANALYSIS_RESULTS`)
+- [ ] Seed `TDR_STEP_DEFINITIONS` with v1 process (9 steps: context → usage)
 - [ ] Grant permissions: `TDR_APP_ROLE` gets USAGE + ALL on schema/tables/warehouse + `CORTEX_USER` database role
 - [ ] Deploy `snowflakeAuth.js` shared infrastructure to Code Engine (JWT auth + `executeSql` + `mapRows`)
 - [ ] Validate: run a test SQL (`SELECT CURRENT_TIMESTAMP()`) from Code Engine → confirm it returns successfully
