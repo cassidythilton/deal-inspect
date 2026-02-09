@@ -45,12 +45,16 @@ import {
   TrendingDown,
   BarChart3,
   BookOpen,
+  MapPin,
+  Target,
+  UserCheck,
+  Linkedin,
 } from 'lucide-react';
 import { TDRSummaryModal } from './TDRSummaryModal';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
 import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 import { accountIntel } from '@/lib/accountIntel';
-import type { SumbleEnrichment, PerplexityResearch } from '@/lib/accountIntel';
+import type { SumbleEnrichment, PerplexityResearch, SumbleOrgData, SumbleJobData, SumblePeopleData } from '@/lib/accountIntel';
 import { cortexAi, parseBriefSections, FINDING_CATEGORY_STYLES } from '@/lib/cortexAi';
 import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, SentimentDataPoint } from '@/lib/cortexAi';
 
@@ -214,6 +218,14 @@ export function TDRIntelligence({
   const [extractedEntities, setExtractedEntities] = useState<ExtractedEntities | null>(null);
   const [cortexProcessing, setCortexProcessing] = useState(false);
 
+  // ── Sprint 6.5: Deep Intelligence State ──
+  const [sumbleOrgData, setSumbleOrgData] = useState<SumbleOrgData | null>(null);
+  const [sumbleJobData, setSumbleJobData] = useState<SumbleJobData | null>(null);
+  const [sumblePeopleData, setSumblePeopleData] = useState<SumblePeopleData | null>(null);
+  const [orgLoading, setOrgLoading] = useState(false);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [peopleLoading, setPeopleLoading] = useState(false);
+
   // ── Sprint 9: Intelligence Evolution & Sentiment ──
   const [evolutionText, setEvolutionText] = useState<string>('');
   const [evolutionPullCount, setEvolutionPullCount] = useState(0);
@@ -245,6 +257,16 @@ export function TDRIntelligence({
         }
         if (cached.hasPerplexity && cached.perplexity) {
           setPerplexityData(cached.perplexity);
+        }
+        // Sprint 6.5: Load cached deep intelligence
+        if (cached.hasSumbleOrg && cached.sumbleOrg) {
+          setSumbleOrgData(cached.sumbleOrg);
+        }
+        if (cached.hasSumbleJobs && cached.sumbleJobs) {
+          setSumbleJobData(cached.sumbleJobs);
+        }
+        if (cached.hasSumblePeople && cached.sumblePeople) {
+          setSumblePeopleData(cached.sumblePeople);
         }
       } catch (err) {
         console.warn('[TDRIntelligence] Failed to load cached intel:', err);
@@ -345,6 +367,55 @@ export function TDRIntelligence({
     }
     setPerplexityLoading(false);
   }, [deal]);
+
+  // ── Sprint 6.5: Deep Intelligence Handlers ──
+  const handleEnrichOrg = useCallback(async () => {
+    if (!deal || !domain.trim()) return;
+    setOrgLoading(true);
+    try {
+      const result = await accountIntel.enrichSumbleOrg(deal.id, deal.account, domain.trim());
+      if (result.success) {
+        setSumbleOrgData(result);
+      } else {
+        console.error('[TDRIntelligence] Sumble Org enrichment failed:', result.error);
+      }
+    } catch (err) {
+      console.error('[TDRIntelligence] Sumble Org enrichment error:', err);
+    }
+    setOrgLoading(false);
+  }, [deal, domain]);
+
+  const handleEnrichJobs = useCallback(async () => {
+    if (!deal || !domain.trim()) return;
+    setJobsLoading(true);
+    try {
+      const result = await accountIntel.enrichSumbleJobs(deal.id, deal.account, domain.trim());
+      if (result.success) {
+        setSumbleJobData(result);
+      } else {
+        console.error('[TDRIntelligence] Sumble Jobs enrichment failed:', result.error);
+      }
+    } catch (err) {
+      console.error('[TDRIntelligence] Sumble Jobs enrichment error:', err);
+    }
+    setJobsLoading(false);
+  }, [deal, domain]);
+
+  const handleEnrichPeople = useCallback(async () => {
+    if (!deal || !domain.trim()) return;
+    setPeopleLoading(true);
+    try {
+      const result = await accountIntel.enrichSumblePeople(deal.id, deal.account, domain.trim());
+      if (result.success) {
+        setSumblePeopleData(result);
+      } else {
+        console.error('[TDRIntelligence] Sumble People enrichment failed:', result.error);
+      }
+    } catch (err) {
+      console.error('[TDRIntelligence] Sumble People enrichment error:', err);
+    }
+    setPeopleLoading(false);
+  }, [deal, domain]);
 
   // ── Generate TDR Brief (Sprint 7) ──
   const handleGenerateBrief = useCallback(async () => {
@@ -691,6 +762,297 @@ export function TDRIntelligence({
                       ))}
                   </div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Sprint 6.5: Deep Intelligence Tier Buttons ── */}
+          {sumbleData?.success && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d]">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Target className="h-3 w-3 text-slate-500" />
+                <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                  Deep Intelligence
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-2xs h-7 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
+                  onClick={handleEnrichOrg}
+                  disabled={orgLoading || !domain.trim()}
+                >
+                  {orgLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Building2 className="h-2.5 w-2.5" />}
+                  <span>{sumbleOrgData ? 'Refresh' : 'Profile'}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-2xs h-7 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
+                  onClick={handleEnrichJobs}
+                  disabled={jobsLoading || !domain.trim()}
+                >
+                  {jobsLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Briefcase className="h-2.5 w-2.5" />}
+                  <span>{sumbleJobData ? 'Refresh' : 'Hiring'}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-2xs h-7 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
+                  onClick={handleEnrichPeople}
+                  disabled={peopleLoading || !domain.trim()}
+                >
+                  {peopleLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <UserCheck className="h-2.5 w-2.5" />}
+                  <span>{sumblePeopleData ? 'Refresh' : 'People'}</span>
+                </Button>
+              </div>
+              <p className="mt-1 text-2xs text-slate-600">
+                Tier 2–4 · Each call uses Sumble credits
+              </p>
+            </div>
+          )}
+
+          {/* ── Sprint 6.5: Organization Profile (Tier 2) ── */}
+          {sumbleOrgData?.success && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d] space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Building2 className="h-3 w-3 text-indigo-400" />
+                <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                  Organization Profile
+                </span>
+                <span className="ml-auto text-2xs text-slate-600">
+                  {formatDate(sumbleOrgData.pulledAt)}
+                </span>
+              </div>
+
+              {/* Key firmographic stats */}
+              <div className="grid grid-cols-2 gap-2">
+                {sumbleOrgData.industry && (
+                  <div className="rounded-md bg-[#1e1a30] px-2.5 py-1.5">
+                    <p className="text-2xs text-slate-600">Industry</p>
+                    <p className="text-xs font-medium text-slate-200">{sumbleOrgData.industry}</p>
+                  </div>
+                )}
+                {sumbleOrgData.totalEmployees && (
+                  <div className="rounded-md bg-[#1e1a30] px-2.5 py-1.5">
+                    <p className="text-2xs text-slate-600">Employees</p>
+                    <p className="text-xs font-medium text-slate-200">
+                      {sumbleOrgData.totalEmployees >= 1000
+                        ? `${(sumbleOrgData.totalEmployees / 1000).toFixed(1)}K`
+                        : sumbleOrgData.totalEmployees.toLocaleString()}
+                    </p>
+                  </div>
+                )}
+                {(sumbleOrgData.hqState || sumbleOrgData.hqCountry) && (
+                  <div className="rounded-md bg-[#1e1a30] px-2.5 py-1.5">
+                    <p className="text-2xs text-slate-600">Headquarters</p>
+                    <p className="text-xs font-medium text-slate-200 flex items-center gap-1">
+                      <MapPin className="h-2.5 w-2.5 text-slate-500" />
+                      {[sumbleOrgData.hqState, sumbleOrgData.hqCountry].filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                )}
+                {sumbleOrgData.linkedinUrl && (
+                  <div className="rounded-md bg-[#1e1a30] px-2.5 py-1.5">
+                    <p className="text-2xs text-slate-600">LinkedIn</p>
+                    <a
+                      href={sumbleOrgData.linkedinUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <Linkedin className="h-2.5 w-2.5" />
+                      View Profile
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Tech adoption depth */}
+              <div className="flex items-center gap-4 text-2xs text-slate-400">
+                <span><strong className="text-slate-200">{sumbleOrgData.matchingPeople || 0}</strong> people</span>
+                <span><strong className="text-slate-200">{sumbleOrgData.matchingTeams || 0}</strong> teams</span>
+                <span><strong className="text-slate-200">{sumbleOrgData.matchingJobs || 0}</strong> job posts</span>
+              </div>
+
+              {/* Matching entities (tech depth) */}
+              {sumbleOrgData.matchingEntities && sumbleOrgData.matchingEntities.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-2xs text-slate-600">Tech Adoption Depth</p>
+                  {sumbleOrgData.matchingEntities.slice(0, 6).map((entity, i) => (
+                    <div key={i} className="flex items-center justify-between text-2xs">
+                      <span className="font-medium text-slate-200">{entity.name}</span>
+                      <div className="flex gap-3 text-slate-500">
+                        {(entity.people_count ?? 0) > 0 && <span>{entity.people_count} people</span>}
+                        {(entity.team_count ?? 0) > 0 && <span>{entity.team_count} teams</span>}
+                        {(entity.job_post_count ?? 0) > 0 && <span>{entity.job_post_count} jobs</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Credit display */}
+              {sumbleOrgData.creditsUsed != null && (
+                <p className="text-2xs text-slate-600">
+                  Used {sumbleOrgData.creditsUsed} credits · {sumbleOrgData.creditsRemaining ?? '?'} remaining
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Sprint 6.5: Hiring Signals (Tier 3) ── */}
+          {sumbleJobData?.success && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d] space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Briefcase className="h-3 w-3 text-amber-400" />
+                <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                  Hiring Signals
+                </span>
+                <span className="ml-auto text-2xs text-slate-600">
+                  {formatDate(sumbleJobData.pulledAt)}
+                </span>
+              </div>
+
+              {/* Velocity indicator */}
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-2xs font-medium',
+                  sumbleJobData.hiringVelocity === 'high' && 'bg-emerald-500/15 text-emerald-300',
+                  sumbleJobData.hiringVelocity === 'moderate' && 'bg-amber-500/15 text-amber-300',
+                  sumbleJobData.hiringVelocity === 'low' && 'bg-slate-500/15 text-slate-400',
+                )}>
+                  <TrendingUp className="h-2.5 w-2.5" />
+                  {sumbleJobData.hiringVelocity === 'high' ? 'High Velocity' : sumbleJobData.hiringVelocity === 'moderate' ? 'Moderate' : 'Low'} 
+                </span>
+                <span className="text-2xs text-slate-500">
+                  {sumbleJobData.recentJobCount || 0} posts in last 90 days · {sumbleJobData.jobCount || 0} total
+                </span>
+              </div>
+
+              {/* Competitive and AI signals */}
+              {((sumbleJobData.competitiveTechPosts?.length ?? 0) > 0 || (sumbleJobData.aiPosts?.length ?? 0) > 0) && (
+                <div className="flex flex-wrap gap-1.5">
+                  {sumbleJobData.competitiveTechPosts?.map((tech, i) => (
+                    <span key={`comp-${i}`} className="rounded-md bg-red-500/10 px-2 py-0.5 text-2xs font-medium text-red-300">
+                      ⚠ {tech}
+                    </span>
+                  ))}
+                  {sumbleJobData.aiPosts?.map((tech, i) => (
+                    <span key={`ai-${i}`} className="rounded-md bg-emerald-500/10 px-2 py-0.5 text-2xs font-medium text-emerald-300">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Job listing summary */}
+              {sumbleJobData.jobsSummary && sumbleJobData.jobsSummary.length > 0 && (
+                <div className="space-y-1.5">
+                  {sumbleJobData.jobsSummary.slice(0, 5).map((job, i) => (
+                    <div key={i} className="rounded-md bg-[#1e1a30] px-2.5 py-1.5 space-y-0.5">
+                      <div className="flex items-start justify-between">
+                        <span className="text-xs font-medium text-slate-200">{job.title}</span>
+                        {job.location && (
+                          <span className="text-2xs text-slate-500 flex items-center gap-0.5 shrink-0 ml-2">
+                            <MapPin className="h-2 w-2" />
+                            {job.location}
+                          </span>
+                        )}
+                      </div>
+                      {job.function && (
+                        <p className="text-2xs text-slate-500">{job.function}</p>
+                      )}
+                      {job.technologies.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {job.technologies.map((tech, j) => (
+                            <span key={j} className="rounded px-1.5 py-0.5 text-2xs bg-violet-500/10 text-violet-300">
+                              {tech}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {job.projectDescription && (
+                        <p className="text-2xs text-slate-400 leading-relaxed">{job.projectDescription}</p>
+                      )}
+                    </div>
+                  ))}
+                  {(sumbleJobData.jobsSummary?.length ?? 0) > 5 && (
+                    <p className="text-2xs text-slate-600 italic">
+                      + {(sumbleJobData.jobsSummary?.length ?? 0) - 5} more positions
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {sumbleJobData.creditsUsed != null && (
+                <p className="text-2xs text-slate-600">
+                  Used {sumbleJobData.creditsUsed} credits · {sumbleJobData.creditsRemaining ?? '?'} remaining
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Sprint 6.5: Key People (Tier 4) ── */}
+          {sumblePeopleData?.success && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d] space-y-2">
+              <div className="flex items-center gap-1.5">
+                <UserCheck className="h-3 w-3 text-purple-400" />
+                <span className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                  Key People
+                </span>
+                <span className="ml-auto text-2xs text-slate-600">
+                  {sumblePeopleData.peopleCount || 0} matched · {formatDate(sumblePeopleData.pulledAt)}
+                </span>
+              </div>
+
+              {sumblePeopleData.peopleSummary && sumblePeopleData.peopleSummary.length > 0 && (
+                <div className="space-y-1.5">
+                  {sumblePeopleData.peopleSummary.slice(0, 8).map((person, i) => (
+                    <div key={i} className="flex items-start gap-2.5 rounded-md bg-[#1e1a30] px-2.5 py-1.5">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-purple-500/10 shrink-0 mt-0.5">
+                        <User className="h-3 w-3 text-purple-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium text-slate-200">{person.name}</span>
+                          {person.linkedinUrl && (
+                            <a
+                              href={person.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-400 hover:text-blue-300"
+                            >
+                              <Linkedin className="h-2.5 w-2.5" />
+                            </a>
+                          )}
+                        </div>
+                        {person.title && (
+                          <p className="text-2xs text-slate-400">{person.title}</p>
+                        )}
+                        {person.department && (
+                          <p className="text-2xs text-slate-500">{person.department}{person.seniority ? ` · ${person.seniority}` : ''}</p>
+                        )}
+                        {person.technologies.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {person.technologies.map((tech, j) => (
+                              <span key={j} className="rounded px-1 py-0.5 text-2xs bg-blue-500/10 text-blue-300">
+                                {tech}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {sumblePeopleData.creditsUsed != null && (
+                <p className="text-2xs text-slate-600">
+                  Used {sumblePeopleData.creditsUsed} credits · {sumblePeopleData.creditsRemaining ?? '?'} remaining
+                </p>
               )}
             </div>
           )}

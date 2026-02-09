@@ -62,11 +62,82 @@ export interface PerplexityResearch {
   error?: string;
 }
 
+// ── Sprint 6.5: Deep Intelligence Types ──
+
+export interface SumbleOrgData {
+  success: boolean;
+  industry?: string | null;
+  totalEmployees?: number | null;
+  hqCountry?: string | null;
+  hqState?: string | null;
+  linkedinUrl?: string | null;
+  matchingPeople?: number;
+  matchingTeams?: number;
+  matchingJobs?: number;
+  matchingEntities?: Array<{ name: string; people_count?: number; team_count?: number; job_post_count?: number }>;
+  creditsUsed?: number;
+  creditsRemaining?: number;
+  pulledAt?: string;
+  error?: string;
+}
+
+export interface SumbleJobSummary {
+  title: string;
+  function: string | null;
+  technologies: string[];
+  projects: string[];
+  projectDescription: string | null;
+  teams: string[];
+  location: string | null;
+  postedDate: string | null;
+  description: string;
+}
+
+export interface SumbleJobData {
+  success: boolean;
+  jobCount?: number;
+  jobsSummary?: SumbleJobSummary[];
+  hiringVelocity?: 'high' | 'moderate' | 'low';
+  recentJobCount?: number;
+  competitiveTechPosts?: string[];
+  aiPosts?: string[];
+  creditsUsed?: number;
+  creditsRemaining?: number;
+  pulledAt?: string;
+  error?: string;
+}
+
+export interface SumblePersonSummary {
+  name: string;
+  title: string | null;
+  department: string | null;
+  seniority: string | null;
+  technologies: string[];
+  linkedinUrl: string | null;
+}
+
+export interface SumblePeopleData {
+  success: boolean;
+  peopleCount?: number;
+  peopleSummary?: SumblePersonSummary[];
+  creditsUsed?: number;
+  creditsRemaining?: number;
+  pulledAt?: string;
+  error?: string;
+}
+
 export interface AccountIntelligence {
   sumble: SumbleEnrichment | null;
   perplexity: PerplexityResearch | null;
   hasSumble: boolean;
   hasPerplexity: boolean;
+  // Sprint 6.5: Deep Intelligence
+  sumbleOrg: SumbleOrgData | null;
+  sumbleJobs: SumbleJobData | null;
+  sumblePeople: SumblePeopleData | null;
+  hasSumbleOrg: boolean;
+  hasSumbleJobs: boolean;
+  hasSumblePeople: boolean;
 }
 
 // ─── Code Engine Calling ─────────────────────────────────────────────────────
@@ -198,6 +269,60 @@ const MOCK_PERPLEXITY: PerplexityResearch = {
   pulledAt: new Date().toISOString(),
 };
 
+// ─── Mock data for Sprint 6.5 deep intelligence ─────────────────────────────
+
+const MOCK_SUMBLE_ORG: SumbleOrgData = {
+  success: true,
+  industry: 'Technology',
+  totalEmployees: 8500,
+  hqCountry: 'United States',
+  hqState: 'California',
+  linkedinUrl: 'https://linkedin.com/company/acme-corp',
+  matchingPeople: 87,
+  matchingTeams: 12,
+  matchingJobs: 23,
+  matchingEntities: [
+    { name: 'Snowflake', people_count: 45, team_count: 8, job_post_count: 12 },
+    { name: 'Tableau', people_count: 30, team_count: 6, job_post_count: 5 },
+    { name: 'dbt', people_count: 15, team_count: 4, job_post_count: 8 },
+    { name: 'AWS', people_count: 60, team_count: 10, job_post_count: 15 },
+  ],
+  creditsUsed: 20,
+  creditsRemaining: 445,
+  pulledAt: new Date().toISOString(),
+};
+
+const MOCK_SUMBLE_JOBS: SumbleJobData = {
+  success: true,
+  jobCount: 15,
+  hiringVelocity: 'high',
+  recentJobCount: 12,
+  competitiveTechPosts: ['Tableau', 'Power BI'],
+  aiPosts: ['TensorFlow', 'SageMaker'],
+  jobsSummary: [
+    { title: 'Senior Data Engineer', function: 'Data Engineering', technologies: ['Snowflake', 'dbt', 'Airflow'], projects: ['Cloud Lakehouse'], projectDescription: 'Building modern data lakehouse on Snowflake', teams: ['Data Platform'], location: 'San Francisco, CA', postedDate: '2026-02-01', description: 'Join our data platform team to build scalable data pipelines...' },
+    { title: 'Analytics Lead', function: 'Analytics', technologies: ['Tableau', 'Snowflake'], projects: ['BI Consolidation'], projectDescription: 'Consolidating BI tools to single platform', teams: ['Analytics'], location: 'Remote', postedDate: '2026-01-28', description: 'Lead analytics team through BI platform consolidation...' },
+    { title: 'ML Platform Engineer', function: 'Machine Learning', technologies: ['TensorFlow', 'SageMaker', 'Databricks'], projects: ['AI Platform'], projectDescription: 'Building internal ML platform', teams: ['AI/ML'], location: 'New York, NY', postedDate: '2026-01-25', description: 'Design and build our machine learning platform...' },
+  ],
+  creditsUsed: 45,
+  creditsRemaining: 400,
+  pulledAt: new Date().toISOString(),
+};
+
+const MOCK_SUMBLE_PEOPLE: SumblePeopleData = {
+  success: true,
+  peopleCount: 8,
+  peopleSummary: [
+    { name: 'Sarah Chen', title: 'VP Data Engineering', department: 'Engineering', seniority: 'VP', technologies: ['Snowflake', 'dbt', 'Airflow'], linkedinUrl: 'https://linkedin.com/in/sarah-chen' },
+    { name: 'Marcus Johnson', title: 'Director of Analytics', department: 'Analytics', seniority: 'Director', technologies: ['Tableau', 'Power BI'], linkedinUrl: 'https://linkedin.com/in/marcus-johnson' },
+    { name: 'Emily Park', title: 'Senior Data Architect', department: 'Engineering', seniority: 'Senior', technologies: ['Snowflake', 'AWS', 'Databricks'], linkedinUrl: null },
+    { name: 'David Kim', title: 'Data Science Manager', department: 'Data Science', seniority: 'Manager', technologies: ['TensorFlow', 'Databricks'], linkedinUrl: null },
+  ],
+  creditsUsed: 30,
+  creditsRemaining: 370,
+  pulledAt: new Date().toISOString(),
+};
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export const accountIntel = {
@@ -260,7 +385,11 @@ export const accountIntel = {
   async getLatestIntel(opportunityId: string): Promise<AccountIntelligence> {
     if (!isDomoEnvironment()) {
       console.log('[AccountIntel] Dev mode: returning empty intel (no cache)');
-      return { sumble: null, perplexity: null, hasSumble: false, hasPerplexity: false };
+      return {
+        sumble: null, perplexity: null, hasSumble: false, hasPerplexity: false,
+        sumbleOrg: null, sumbleJobs: null, sumblePeople: null,
+        hasSumbleOrg: false, hasSumbleJobs: false, hasSumblePeople: false,
+      };
     }
 
     try {
@@ -272,10 +401,20 @@ export const accountIntel = {
         perplexity: (result.perplexity as PerplexityResearch) || null,
         hasSumble: !!result.hasSumble,
         hasPerplexity: !!result.hasPerplexity,
+        sumbleOrg: (result.sumbleOrg as SumbleOrgData) || null,
+        sumbleJobs: (result.sumbleJobs as SumbleJobData) || null,
+        sumblePeople: (result.sumblePeople as SumblePeopleData) || null,
+        hasSumbleOrg: !!result.hasSumbleOrg,
+        hasSumbleJobs: !!result.hasSumbleJobs,
+        hasSumblePeople: !!result.hasSumblePeople,
       };
     } catch (err) {
       console.warn('[AccountIntel] Failed to load cached intel:', err);
-      return { sumble: null, perplexity: null, hasSumble: false, hasPerplexity: false };
+      return {
+        sumble: null, perplexity: null, hasSumble: false, hasPerplexity: false,
+        sumbleOrg: null, sumbleJobs: null, sumblePeople: null,
+        hasSumbleOrg: false, hasSumbleJobs: false, hasSumblePeople: false,
+      };
     }
   },
 
@@ -350,6 +489,86 @@ export const accountIntel = {
       console.warn('[AccountIntel] Failed to load usage stats:', err);
       return { month: month || 'unknown', error: 'Failed to load' };
     }
+  },
+
+  // ── Sprint 6.5: Sumble Deep Intelligence ──
+
+  /**
+   * Tier 2: Organization firmographics via Sumble Organizations Find.
+   * Returns industry, employee count, HQ, tech adoption depth.
+   */
+  async enrichSumbleOrg(
+    opportunityId: string,
+    accountName: string,
+    domain: string,
+    calledBy: string = 'current-user'
+  ): Promise<SumbleOrgData> {
+    if (!isDomoEnvironment()) {
+      console.log('[AccountIntel] Dev mode: returning mock Sumble Org data');
+      return { ...MOCK_SUMBLE_ORG, pulledAt: new Date().toISOString() };
+    }
+
+    const raw = await callCodeEngine<unknown>('enrichSumbleOrg', {
+      opportunityId, accountName, domain, calledBy,
+    });
+
+    const result = extractResult(raw) as Record<string, unknown>;
+    if (result.orgData) {
+      return { success: true, ...(result.orgData as object), pulledAt: result.pulledAt as string } as SumbleOrgData;
+    }
+    return result as unknown as SumbleOrgData;
+  },
+
+  /**
+   * Tier 3: Job posting intelligence via Sumble Jobs Find.
+   * Returns hiring signals, competitive tech mentions, AI signals.
+   */
+  async enrichSumbleJobs(
+    opportunityId: string,
+    accountName: string,
+    domain: string,
+    calledBy: string = 'current-user'
+  ): Promise<SumbleJobData> {
+    if (!isDomoEnvironment()) {
+      console.log('[AccountIntel] Dev mode: returning mock Sumble Jobs data');
+      return { ...MOCK_SUMBLE_JOBS, pulledAt: new Date().toISOString() };
+    }
+
+    const raw = await callCodeEngine<unknown>('enrichSumbleJobs', {
+      opportunityId, accountName, domain, calledBy,
+    });
+
+    const result = extractResult(raw) as Record<string, unknown>;
+    if (result.jobData) {
+      return { success: true, ...(result.jobData as object), pulledAt: result.pulledAt as string } as SumbleJobData;
+    }
+    return result as unknown as SumbleJobData;
+  },
+
+  /**
+   * Tier 4: Key person identification via Sumble People Find.
+   * Returns technical champions, evaluators, decision-makers.
+   */
+  async enrichSumblePeople(
+    opportunityId: string,
+    accountName: string,
+    domain: string,
+    calledBy: string = 'current-user'
+  ): Promise<SumblePeopleData> {
+    if (!isDomoEnvironment()) {
+      console.log('[AccountIntel] Dev mode: returning mock Sumble People data');
+      return { ...MOCK_SUMBLE_PEOPLE, pulledAt: new Date().toISOString() };
+    }
+
+    const raw = await callCodeEngine<unknown>('enrichSumblePeople', {
+      opportunityId, accountName, domain, calledBy,
+    });
+
+    const result = extractResult(raw) as Record<string, unknown>;
+    if (result.peopleData) {
+      return { success: true, ...(result.peopleData as object), pulledAt: result.pulledAt as string } as SumblePeopleData;
+    }
+    return result as unknown as SumblePeopleData;
   },
 
   /**
