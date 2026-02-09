@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 2.5 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6
+**Status:** In Progress · **Version:** Draft 2.6 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6
 
 ---
 
@@ -1437,6 +1437,250 @@ Technologies outside these categories (e.g., WordPress, Salesforce CRM) are stor
 
 Same trigger model as Perplexity — user-initiated, cached, never batch. Sumble and Perplexity are called in parallel when the user requests enrichment.
 
+### 8.1 Sumble Expansion — Deep Intelligence (Planned: Sprint 6.5)
+
+**Current state:** We use only the **Enrich** endpoint (`POST /v3/organizations/enrich`) — it returns a list of detected technologies for a domain. This tells us *what* tech an account runs but nothing about *how deeply* they use it, *who* uses it, or *what they're building*.
+
+**Expansion:** Three additional Sumble endpoints provide intelligence that maps directly to TDR framework steps and scoring factors. Each endpoint is a separate "depth tier" — the SE Manager chooses how deep to go based on deal importance.
+
+#### Tier Model: Depth-on-Demand
+
+| Tier | Endpoint | What It Reveals | Credits/Call | When to Use |
+|------|----------|-----------------|--------------|-------------|
+| **1 (Current)** | `POST /v3/organizations/enrich` | Technologies detected | ~5/tech found (~25–50) | Every TDR deal |
+| **2 (New)** | `POST /v3/organizations/find` | Firmographics: industry, employees, HQ, tech adoption depth | ~5/filter/org (~15–25) | Material deals ($50K+) |
+| **3 (New)** | `POST /v3/jobs/find` | Hiring signals: what they're building, competitive landscape, team structure | ~3/job returned (~30–90) | High-priority deals ($100K+ or competitive) |
+| **4 (New)** | `POST /v3/people/find` | Key people: technical champions, evaluators, decision-makers | ~TBD/person (~TBD) | Strategic deals ($250K+ or new logo) |
+
+**Cost guard:** Combined Tier 1–3 deep dive ≈ 70–165 credits. Only Tier 1 fires by default. Tier 2–4 each have their own button so the manager controls spend.
+
+---
+
+#### 8.1.1 Organizations Find — Firmographic Context (Tier 2)
+
+**Endpoint:** `POST /v3/organizations/find`
+**Docs:** https://docs.sumble.com/api/organizations
+
+```json
+{
+  "filters": {
+    "technologies": ["snowflake", "domo", "tableau", "power bi"]
+  },
+  "limit": 1
+}
+```
+
+**What's new vs. Enrich:**
+
+| Field | TDR Value | Maps to TDR Step / Factor |
+|-------|-----------|--------------------------|
+| `industry` | Vertical depth scoring — Financial Services, Healthcare, Manufacturing, Technology are Tier 2 factors per the 17-factor AI prompt | **Step 1** (Deal Context), **Scoring** (`verticalDepth` — new factor) |
+| `total_employees` | Strategic account qualification — >5K employees = Tier 1 trigger per AI prompt ("Enterprise segment OR employees > 5K") | **Step 1** (Deal Context), **Scoring** (`strategicAccount` — new factor) |
+| `matching_people_count` | Technology adoption *depth* — "2 people use Snowflake" vs "200 people use Snowflake" is a fundamentally different TDR conversation | **Step 3** (Current Architecture), **Step 9** (Usage & Adoption) |
+| `matching_team_count` | Cross-functional adoption signal — tech in 1 team vs. 8 teams changes the integration scope | **Step 4** (Target Architecture), **Step 8** (Technical Risk) |
+| `matching_job_post_count` | Hiring velocity = investment signal — active hiring for a technology means it's strategic, not legacy | **Step 3** (Current Architecture) |
+| `matching_entities` | Granular tech signals with job/people/team counts per entity — the richest signal in the Sumble API | **Step 3**, **Step 8**, **Scoring** |
+| `headquarters_country/state` | Geographic context for regional team planning and field engagement | **Step 1** (Deal Context) |
+| `linkedin_organization_url` | Quick link for further manual research | **UI** (clickable link in Intel panel) |
+
+**New TDR Scoring Factors This Enables:**
+- `strategicAccount` (Tier 1, 15 pts): `total_employees >= 5000` or `industry` in high-value verticals
+- `verticalDepth` (Tier 2, 8 pts): `industry` matches Financial Services, Healthcare, Manufacturing, Technology
+- `deepTechAdoption` (Tier 2, 5 pts): `matching_people_count >= 50` for any Domo-competitive technology → well-entrenched incumbent, harder displacement
+
+---
+
+#### 8.1.2 Jobs Find — Hiring Signal Intelligence (Tier 3)
+
+**Endpoint:** `POST /v3/jobs/find`
+**Docs:** https://docs.sumble.com/api/jobs
+
+```json
+{
+  "organization": { "domain": "acme.com" },
+  "filters": {
+    "technology_categories": ["business-intelligence", "data-warehousing", "etl", "cloud-infrastructure", "machine-learning"]
+  },
+  "limit": 20
+}
+```
+
+**This is the richest Sumble endpoint for TDR.** Job postings are the most honest signal of what a company is actually investing in — they can't fake hiring.
+
+| Field | TDR Value | Maps to TDR Step / Factor |
+|-------|-----------|--------------------------|
+| `job_title` | Hiring signals reveal investment direction: "Senior Snowflake Data Engineer" = real platform commitment, not just a pilot | **Step 3** (Current Architecture), **Step 6** (Partner Alignment) |
+| `primary_job_function` | Which *departments* hire for these technologies — Data Engineering? Analytics? IT? Product? Changes the conversation. | **Step 2** (Business Decision), **Step 9** (Usage & Adoption) |
+| `matched_technologies` | Confirmed tech stack from actual job requirements — more honest than any web scraper or marketing page | **Step 3** (Current Architecture), **Scoring** (validates `cloudPartner`, `competitiveDisplacement`) |
+| `matched_projects` + `projects_description` | What they're actively *building* — "building modern data lakehouse" or "migrating legacy BI to cloud" reveals their strategic direction | **Step 2** (Business Decision), **Step 4** (Target Architecture) |
+| `teams` | Internal team names using the tech — reveals organizational structure and potential champions | **Step 9** (Usage & Adoption), champion identification |
+| `description` | Full job posting text — competitive intelligence gold mine. Often lists specific tools, architectures, and business problems being solved. | **Step 2**, **Step 3**, **Step 4**, **Step 7** (AI Strategy if AI/ML mentioned) |
+| `datetime_pulled` | Recency of the signal — job posted last week vs. 6 months ago tells a different story | Signal freshness weight |
+| `location` | Geographic hiring patterns — hiring a Snowflake engineer in the same city as the SE team = co-location opportunity | **Step 1** (Deal Context) |
+
+**TDR Impact — Concrete Examples:**
+
+1. **Competitive landscape confirmed:** Job posts requiring "Tableau" or "Power BI" = confirmed competitive presence. Today we only know competitor count from SFDC — now we know *which* competitors and *how deeply* they're embedded.
+2. **Partner validation:** Job posts for "Snowflake DBA" or "Databricks ML Engineer" = the partner alignment isn't theoretical — they're investing headcount.
+3. **Architecture direction signal:** "Migrating from on-prem to cloud data warehouse" in job descriptions = active transformation initiative → highest TDR value.
+4. **AI readiness signal:** Job posts for ML engineers, data scientists, or AI platform roles = real AI investment → maps directly to Step 7 (AI Strategy).
+5. **Hiring velocity:** 15 data engineering posts in the last 90 days vs. 1 = very different urgency and opportunity size.
+
+**New TDR Scoring Factors This Enables:**
+- `hiringMomentum` (Tier 2, 8 pts): ≥5 relevant job posts in last 90 days → account is actively investing in data infrastructure
+- `competitorConfirmed` (Tier 1 upgrade, +5 pts on `competitiveDisplacement`): job posts confirm specific competitor platforms in use
+- `aiInvestmentSignal` (Tier 2, 5 pts): ≥2 AI/ML job posts → real AI strategy, not just marketing
+
+---
+
+#### 8.1.3 People Find — Key Person Identification (Tier 4)
+
+**Endpoint:** `POST /v3/people/find`
+**Docs:** https://docs.sumble.com/api/people
+
+```json
+{
+  "organization": { "domain": "acme.com" },
+  "filters": {
+    "technology_categories": ["business-intelligence", "data-warehousing"]
+  },
+  "limit": 20
+}
+```
+
+**What it provides:**
+- People at the organization with specific technology associations
+- Titles, seniority levels, departments
+- Technology skills matched to the individual
+
+| Data Point | TDR Value | Maps to TDR Step / Factor |
+|------------|-----------|--------------------------|
+| Name + Title | Identify potential technical champions and evaluators before the first meeting | **Step 1** (Deal Context), champion mapping |
+| Department / Team | Understand organizational structure — who owns the data platform decision? | **Step 2** (Business Decision), stakeholder mapping |
+| Technology associations | Who are the SMEs for each technology? The person running their Snowflake deployment is the partner-alignment champion. | **Step 6** (Partner Alignment), **Step 3** (Current Architecture) |
+| Seniority | Director of Data Engineering vs. Junior Analyst → different engagement strategy | **Step 9** (Usage & Adoption) |
+
+**TDR Impact:**
+- **Champion identification:** Before the SE Manager even opens the TDR, they can see *who* at the account has the matching technology background.
+- **Engagement planning:** If the account has 3 Snowflake experts, the partner alignment conversation is very different than if they have 0.
+- **Adoption planning:** Understanding team size and seniority distribution helps plan realistic adoption strategies.
+
+**Privacy & Credit Consideration:** People data is the most sensitive and most expensive. This tier should only fire on explicit user request for strategic deals.
+
+---
+
+#### 8.1.4 Composite TDR Intelligence View
+
+When all tiers fire, the Intelligence panel transforms from a tech list to a **complete account profile**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 🏢 Acme Corp                                                │
+│ Industry: Financial Services · 12,500 employees · NYC       │
+│ LinkedIn: [→ View]                                          │
+├─────────────────────────────────────────────────────────────┤
+│ 🔧 Tech Stack (Tier 1 — Enrich)                             │
+│ BI: Tableau (8 teams, 43 people), Power BI (2 teams)       │
+│ DW: Snowflake (12 teams, 87 people), Redshift (3 teams)   │
+│ ETL: dbt (6 teams), Airflow (4 teams)                      │
+│ Cloud: AWS, Azure                                           │
+│ AI/ML: SageMaker (2 teams), DataRobot (1 team)            │
+│ ERP: NetSuite                                               │
+├─────────────────────────────────────────────────────────────┤
+│ 📊 Tech Adoption Depth (Tier 2 — Organizations)             │
+│ 87 people · 12 teams · 23 active job posts                 │
+│ Snowflake is the dominant DW (87 people vs Redshift 11)    │
+├─────────────────────────────────────────────────────────────┤
+│ 💼 Hiring Signals (Tier 3 — Jobs)                            │
+│ 🟢 15 data engineering posts in last 90 days (HIGH velocity)│
+│ 🔴 3 posts mention "Tableau migration" (competitive signal) │
+│ 🟡 2 posts for "ML Platform Engineer" (AI investment)       │
+│ Top roles: Sr. Data Engineer (7), Analytics Lead (4)        │
+│ Key project: "Cloud data lakehouse modernization"           │
+├─────────────────────────────────────────────────────────────┤
+│ 👥 Key People (Tier 4 — People)                              │
+│ Sarah Chen — VP Data Engineering (Snowflake, dbt, Airflow) │
+│ Marcus Johnson — Dir. Analytics (Tableau, Power BI)        │
+│ Emily Park — Sr. Data Architect (Snowflake, AWS)           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 8.1.5 Snowflake Storage for Expanded Data
+
+New tables (append-only, same pattern as existing intel tables):
+
+```sql
+-- Tier 2: Organization firmographic data
+CREATE TABLE IF NOT EXISTS ACCOUNT_INTEL_SUMBLE_ORG (
+  ID              VARCHAR(36) DEFAULT UUID_STRING(),
+  OPPORTUNITY_ID  VARCHAR(50) NOT NULL,
+  ACCOUNT_NAME    VARCHAR(255),
+  DOMAIN          VARCHAR(255),
+  INDUSTRY        VARCHAR(255),
+  TOTAL_EMPLOYEES INTEGER,
+  HQ_COUNTRY      VARCHAR(100),
+  HQ_STATE        VARCHAR(100),
+  LINKEDIN_URL    VARCHAR(500),
+  MATCHING_PEOPLE INTEGER,
+  MATCHING_TEAMS  INTEGER,
+  MATCHING_JOBS   INTEGER,
+  MATCHING_ENTITIES VARIANT,
+  RAW_RESPONSE    VARIANT,
+  CREDITS_USED    INTEGER,
+  PULLED_AT       TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(),
+  CALLED_BY       VARCHAR(100)
+);
+
+-- Tier 3: Job posting intelligence
+CREATE TABLE IF NOT EXISTS ACCOUNT_INTEL_SUMBLE_JOBS (
+  ID              VARCHAR(36) DEFAULT UUID_STRING(),
+  OPPORTUNITY_ID  VARCHAR(50) NOT NULL,
+  ACCOUNT_NAME    VARCHAR(255),
+  DOMAIN          VARCHAR(255),
+  JOB_COUNT       INTEGER,
+  JOBS_SUMMARY    VARIANT,       -- Array of { title, function, technologies, teams, location, postedDate }
+  RAW_RESPONSE    VARIANT,
+  CREDITS_USED    INTEGER,
+  PULLED_AT       TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(),
+  CALLED_BY       VARCHAR(100)
+);
+
+-- Tier 4: Key people data
+CREATE TABLE IF NOT EXISTS ACCOUNT_INTEL_SUMBLE_PEOPLE (
+  ID              VARCHAR(36) DEFAULT UUID_STRING(),
+  OPPORTUNITY_ID  VARCHAR(50) NOT NULL,
+  ACCOUNT_NAME    VARCHAR(255),
+  DOMAIN          VARCHAR(255),
+  PEOPLE_COUNT    INTEGER,
+  PEOPLE_SUMMARY  VARIANT,       -- Array of { name, title, department, technologies }
+  RAW_RESPONSE    VARIANT,
+  CREDITS_USED    INTEGER,
+  PULLED_AT       TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(),
+  CALLED_BY       VARCHAR(100)
+);
+```
+
+#### 8.1.6 Code Engine Functions (New)
+
+| Function | Input | Output | Sumble Endpoint |
+|----------|-------|--------|-----------------|
+| `enrichSumbleOrg` | `opportunityId`, `accountName`, `domain`, `calledBy` | `{ success, orgData, creditsUsed }` | `POST /v3/organizations/find` |
+| `enrichSumbleJobs` | `opportunityId`, `accountName`, `domain`, `calledBy` | `{ success, jobs[], creditsUsed }` | `POST /v3/jobs/find` |
+| `enrichSumblePeople` | `opportunityId`, `accountName`, `domain`, `calledBy` | `{ success, people[], creditsUsed }` | `POST /v3/people/find` |
+
+#### 8.1.7 Credit Cost Strategy
+
+| Deal Tier | Sumble Tiers Called | Estimated Credits | Trigger |
+|-----------|--------------------|--------------------|---------|
+| Standard TDR | Tier 1 only | ~25–50 | Click "Enrich" (current) |
+| Material ($50K+) | Tier 1 + 2 | ~40–75 | Click "Deep Profile" (new button) |
+| High-Priority ($100K+) | Tier 1 + 2 + 3 | ~70–165 | Click "Full Intelligence" (new button) |
+| Strategic ($250K+) | All 4 tiers | ~100–200+ | Click "Strategic Deep Dive" (new button) |
+
+All calls remain **user-initiated only**. No auto-fetching. Credits consumed are displayed after each call and tracked in `API_USAGE_LOG`.
+
 ---
 
 ## 9. Snowflake Cortex Integration
@@ -2835,6 +3079,61 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
+### Sprint 6.5 — Sumble Deep Intelligence Expansion ⬜
+
+> **Goal:** Expand Sumble integration from basic tech enrichment (Tier 1) to a multi-tiered intelligence model using Organizations Find, Jobs Find, and People Find endpoints. Each tier provides progressively deeper insight into the account, mapped directly to TDR framework steps and scoring factors.
+> **Risk to app:** None — new buttons in existing Intelligence panel. Existing enrich flow unchanged.
+> **Dependencies:** Sprint 6 (intel infrastructure)
+> **Credit sensitivity:** HIGH — each tier consumes Sumble credits. All calls user-initiated. Credit counters displayed.
+
+**Rationale — Why This Matters for TDR:**
+The current Enrich endpoint answers *"What technologies do they use?"* — but TDR requires deeper context:
+- **Organizations Find** answers *"How big are they, what industry, and how deeply do they use each technology?"*
+- **Jobs Find** answers *"What are they actively building, hiring for, and investing in?"* (the most honest signal of technology strategy)
+- **People Find** answers *"Who are the technical champions, evaluators, and decision-makers?"*
+
+These map directly to TDR Framework sections: Deal Context (§1), Business Decision (§2), Current Architecture (§3), Target Architecture (§4), Partner Alignment (§6), AI Strategy (§7), Technical Risk (§8), and Usage & Adoption (§9). See §8.1 for full mapping.
+
+**Snowflake DDL:**
+- [ ] Create `ACCOUNT_INTEL_SUMBLE_ORG` table (firmographic data)
+- [ ] Create `ACCOUNT_INTEL_SUMBLE_JOBS` table (job posting intelligence)
+- [ ] Create `ACCOUNT_INTEL_SUMBLE_PEOPLE` table (key person data)
+
+**Code Engine Functions:**
+- [ ] `enrichSumbleOrg(opportunityId, accountName, domain, calledBy)` → calls `POST /v3/organizations/find`, stores in `ACCOUNT_INTEL_SUMBLE_ORG`
+- [ ] `enrichSumbleJobs(opportunityId, accountName, domain, calledBy)` → calls `POST /v3/jobs/find` scoped to org domain, stores in `ACCOUNT_INTEL_SUMBLE_JOBS`
+- [ ] `enrichSumblePeople(opportunityId, accountName, domain, calledBy)` → calls `POST /v3/people/find` scoped to org domain, stores in `ACCOUNT_INTEL_SUMBLE_PEOPLE`
+- [ ] Update `getLatestIntel` to also return latest org, jobs, and people data
+- [ ] Update `getIntelHistory` to include org/jobs/people pull history
+- [ ] Add `packageMapping` entries for all 3 new functions in `manifest.json`
+
+**Frontend — Intelligence Panel Expansion:**
+- [ ] Add tiered enrichment buttons in TDRIntelligence panel:
+  - "Enrich Tech Stack" (existing Tier 1)
+  - "Deep Profile" → fires Tier 2 (org firmographics)
+  - "Hiring Signals" → fires Tier 3 (job postings)
+  - "Key People" → fires Tier 4 (people)
+- [ ] Organization Profile section: industry, employee count, HQ location, LinkedIn link, tech adoption depth (people/teams/jobs counts per technology)
+- [ ] Hiring Signals section: hiring velocity indicator (🟢 high / 🟡 moderate / 🔴 low), competitive technology job posts flagged in red, AI/ML job posts highlighted, top roles and key project descriptions
+- [ ] Key People section: list of matched individuals with title, department, and technology associations
+- [ ] Credit consumption displayed after each call: "Used 45 credits · 1,230 remaining"
+- [ ] Update "View Research History" dialog to include org/jobs/people pull history
+
+**TDR Scoring Integration (prep for Sprint 10):**
+- [ ] Define new scoring factors: `strategicAccount` (Tier 1, 15 pts), `verticalDepth` (Tier 2, 8 pts), `hiringMomentum` (Tier 2, 8 pts), `deepTechAdoption` (Tier 2, 5 pts), `competitorConfirmed` (+5 pts upgrade), `aiInvestmentSignal` (Tier 2, 5 pts)
+- [ ] Store computed factor values in Snowflake for Sprint 10 consumption (these factors will only be *wired into scoring* in Sprint 10, but the data is persisted now)
+
+**Testing:**
+- [ ] Test: Tier 2 (org) for a known company → verify industry, employee count, tech depth displayed correctly
+- [ ] Test: Tier 3 (jobs) for a company with active hiring → verify job count, competitive signals, hiring velocity indicator
+- [ ] Test: Tier 4 (people) for a company with known tech people → verify name, title, technologies displayed
+- [ ] Test: Credit counters update after each tier call
+- [ ] Test: All 3 new data types appear in Research History dialog with correct timestamps
+
+**Definition of Done:** The SE Manager can progressively drill into an account's firmographics, hiring patterns, and key people — all from within the TDR Intelligence panel. Each depth tier is an explicit user action. All results persist to Snowflake with full iteration history. Credit consumption is visible and tracked.
+
+---
+
 ### Sprint 7 — Cortex AI: Deal-Level Intelligence ⬜
 
 > **Goal:** AI-generated TDR briefs, auto-classified findings, entity extraction.
@@ -2984,14 +3283,15 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 | 5 | Perplexity Web Research | ✅ Complete | Feb 9, 2026 | Sprint 1 | Intelligence |
 | 5.5 | UI/UX Polish & Bug Fixes | ✅ Complete | Feb 9, 2026 | Sprints 4 + 5 | UX / Polish |
 | 6 | Usage Tracking, Intel History & Indicators | ✅ Complete | Feb 9, 2026 | Sprints 4 + 5 | Intelligence |
+| **6.5** | **Sumble Deep Intelligence Expansion** | ⬜ Not Started | — | Sprint 6 | **Intelligence** |
 | 7 | Cortex AI: Deal-Level | ⬜ Not Started | — | Sprints 3 + 6 | AI |
 | **8** | **TDR Inline Chat** | ⬜ Not Started | — | Sprints 3 + 6 | **Experience** |
 | 9 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | — | Sprint 7 | AI |
-| 10 | TDR Scoring Enrichment | ⬜ Not Started | — | Sprint 6 | Scoring |
+| 10 | TDR Scoring Enrichment | ⬜ Not Started | — | Sprints 6 + 6.5 | Scoring |
 | 11 | Semantic Search & Analyst | ⬜ Not Started | — | Sprints 7 + 8 | AI |
 | 12 | Migration & Cleanup | ⬜ Not Started | — | All above | Cleanup |
 
-**Parallel tracks:** Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6. Sprints 7 and 8 (Cortex deal-level and inline chat) can also run in parallel — both depend on persistence + intelligence but not on each other. They converge again at Sprint 11 (search & analyst).
+**Parallel tracks:** Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6. Sprint 6.5 (Sumble deep intelligence) extends the intelligence track and feeds Sprint 10 (scoring enrichment). Sprints 7 and 8 (Cortex deal-level and inline chat) can also run in parallel — both depend on persistence + intelligence but not on each other. They converge again at Sprint 11 (search & analyst). Sprint 6.5 can run in parallel with 7/8.
 
 ```
 Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┐
@@ -3000,6 +3300,8 @@ Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┐
             │               ├── Sprint 6 ┤                          ├── Sprint 11
             └── Sprint 5 ──┘      │      │                          │
                                   │      ├── Sprint 8 ─────────────┘
+                                  │      │
+                                  │      ├── Sprint 6.5 ── Sprint 10
                                   │      │
                                   │      └── Sprint 10
                                   │
@@ -3017,6 +3319,9 @@ Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┐
 | Cortex Cross-Region Inference | https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-cross-region-inference |
 | Perplexity API Docs | https://docs.perplexity.ai/docs/getting-started/overview |
 | Sumble API Docs | https://docs.sumble.com/api |
+| Sumble Organizations API | https://docs.sumble.com/api/organizations |
+| Sumble Jobs API | https://docs.sumble.com/api/jobs |
+| Sumble People API | https://docs.sumble.com/api/people |
 | Snowflake SQL API (Statements) | https://docs.snowflake.com/en/developer-guide/sql-api/reference |
 | Domo Code Engine | https://developer.domo.com/portal/8k7stcm6lubfh-code-engine-overview |
 | Domo AppDB API | https://developer.domo.com/portal/1l1fm2g0sfm69-app-db-api |
@@ -3036,10 +3341,10 @@ This is the "elevator pitch" view. The final solution is built on five distinct 
 **Why it matters independently:** Even without AI, the team gains posterity. "What did we know about this deal in October?" becomes answerable. TDR reviews become auditable. Handoffs between SEs are seamless.
 **Key outcome:** The app remembers everything.
 
-### Pillar 2: External Intelligence (Sprints 4–6)
-**What:** Sumble provides firmographic + technographic enrichment (what tech do they run?). Perplexity provides web-grounded research (what are they doing strategically?). Both cache to Snowflake. Both track iteration history.
-**Why it matters independently:** Even without chat or Cortex, the SE Manager sees real-world context inside the TDR workflow instead of researching in browser tabs. The tech stack view alone transforms how competitive deals are prepared.
-**Key outcome:** The app knows the account.
+### Pillar 2: External Intelligence (Sprints 4–6, 6.5)
+**What:** Sumble provides firmographic + technographic enrichment (what tech do they run?), with expansion to deep intelligence tiers: organization firmographics (industry, size, tech depth), hiring signal intelligence (what they're building, competitive landscape), and key person identification (champions, evaluators). Perplexity provides web-grounded research (what are they doing strategically?). Both cache to Snowflake. Both track iteration history. All calls are user-initiated with tiered depth controls.
+**Why it matters independently:** Even without chat or Cortex, the SE Manager sees real-world context inside the TDR workflow instead of researching in browser tabs. The tech stack view alone transforms how competitive deals are prepared. With deep intelligence, the manager knows not just *what* tech they use, but *how deeply*, *what they're building*, and *who* to engage.
+**Key outcome:** The app knows the account — deeply.
 
 ### Pillar 3: Inline Chat (Sprint 8)
 **What:** A conversational AI panel in the TDR Workspace. Multi-turn. Context-aware (knows the deal, the inputs, the intel). Can answer from stored data (Cortex) or search the web on-demand (Perplexity). Every message persisted.
