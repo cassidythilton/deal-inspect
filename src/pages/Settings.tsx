@@ -11,7 +11,7 @@
  * Persists via localStorage through appSettings helpers.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Settings as SettingsIcon,
   Users,
@@ -20,6 +20,10 @@ import {
   Sparkles,
   RotateCcw,
   Save,
+  Search,
+  Activity,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +47,9 @@ import {
   AppSettings,
   DEFAULT_APP_SETTINGS,
 } from '@/lib/appSettings';
+import { accountIntel } from '@/lib/accountIntel';
+import { SumbleIcon } from '@/components/icons/SumbleIcon';
+import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 
 export default function Settings() {
   // ─── State ──────────────────────────────────────────────────────────────────
@@ -50,9 +57,25 @@ export default function Settings() {
   const [managerText, setManagerText] = useState('');
   const [isDirty, setIsDirty] = useState(false);
 
-  // Sync manager text on mount
+  // ── Account Intelligence Usage ──
+  const [usageStats, setUsageStats] = useState<Record<string, unknown> | null>(null);
+  const [usageLoading, setUsageLoading] = useState(false);
+
+  const loadUsageStats = useCallback(async () => {
+    setUsageLoading(true);
+    try {
+      const stats = await accountIntel.getUsageStats();
+      setUsageStats(stats);
+    } catch (err) {
+      console.warn('[Settings] Failed to load usage stats:', err);
+    }
+    setUsageLoading(false);
+  }, []);
+
+  // Sync manager text on mount + load usage stats
   useEffect(() => {
     setManagerText(settings.allowedManagers.join('\n'));
+    loadUsageStats();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -270,7 +293,108 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* ── 5. Excluded Forecast Categories ──────────────────────────── */}
+          {/* ── 5. Account Intelligence ─────────────────────────────────── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Search className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Account Intelligence</CardTitle>
+              </div>
+              <CardDescription>
+                API usage for Sumble (technographics) and Perplexity (web research).
+                All API calls are user-initiated — no automatic fetching.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {usageLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading usage statistics…
+                </div>
+              ) : usageStats ? (
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Sumble Stats */}
+                  <div className="rounded-lg border p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <SumbleIcon className="h-4 w-4" />
+                      <span className="text-sm font-medium">Sumble</span>
+                    </div>
+                    {(() => {
+                      const s = usageStats.sumble as { calls?: number; errors?: number; avgDurationMs?: number } | undefined;
+                      return s ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Calls this month</span>
+                            <span className="font-medium tabular-nums">{s.calls ?? 0}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Errors</span>
+                            <span className={`font-medium tabular-nums ${(s.errors ?? 0) > 0 ? 'text-red-500' : ''}`}>
+                              {s.errors ?? 0}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Avg. response</span>
+                            <span className="font-medium tabular-nums text-muted-foreground">
+                              {s.avgDurationMs ? `${(s.avgDurationMs / 1000).toFixed(1)}s` : '—'}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No calls recorded</p>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Perplexity Stats */}
+                  <div className="rounded-lg border p-4 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <PerplexityIcon className="h-4 w-4" />
+                      <span className="text-sm font-medium">Perplexity</span>
+                    </div>
+                    {(() => {
+                      const p = usageStats.perplexity as { calls?: number; errors?: number; avgDurationMs?: number } | undefined;
+                      return p ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Calls this month</span>
+                            <span className="font-medium tabular-nums">{p.calls ?? 0}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Errors</span>
+                            <span className={`font-medium tabular-nums ${(p.errors ?? 0) > 0 ? 'text-red-500' : ''}`}>
+                              {p.errors ?? 0}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Avg. response</span>
+                            <span className="font-medium tabular-nums text-muted-foreground">
+                              {p.avgDurationMs ? `${(p.avgDurationMs / 1000).toFixed(1)}s` : '—'}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No calls recorded</p>
+                      );
+                    })()}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Usage statistics are only available when connected to Domo.
+                </p>
+              )}
+              <div className="flex items-start gap-2 text-xs text-muted-foreground mt-2 pt-2 border-t">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  Month: <strong>{(usageStats?.month as string) || new Date().toISOString().substring(0, 7)}</strong>.
+                  Both Sumble and Perplexity are called on-demand only — click "Enrich" or "Research" in the TDR workspace.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── 6. Excluded Forecast Categories ──────────────────────────── */}
           <Card>
             <CardHeader>
               <CardTitle>Excluded Forecast Categories</CardTitle>

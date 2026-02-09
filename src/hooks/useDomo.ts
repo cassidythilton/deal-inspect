@@ -24,6 +24,7 @@ import { snowflakeStore } from '@/lib/snowflakeStore';
 import type { SnowflakeSession } from '@/lib/snowflakeStore';
 import type { TDRSessionSummary } from '@/types/tdr';
 import { getAppSettings } from '@/lib/appSettings';
+import { accountIntel } from '@/lib/accountIntel';
 import { generateTDRRecommendations, isAIEnabled } from '@/lib/domoAi';
 import type { TDRRecommendation } from '@/lib/domoAi';
 
@@ -186,6 +187,25 @@ export function useDeals() {
     fetchTDRStatus();
   }, [fetchTDRStatus]);
 
+  // ── Account Intelligence: which deals have cached intel ──
+  const [dealsWithIntel, setDealsWithIntel] = useState<Set<string>>(new Set());
+
+  const fetchDealsWithIntel = useCallback(async () => {
+    try {
+      const ids = await accountIntel.getDealsWithIntel();
+      setDealsWithIntel(ids);
+      if (ids.size > 0) {
+        console.log(`[useDomo] ${ids.size} deals have cached account intelligence`);
+      }
+    } catch (err) {
+      console.warn('[useDomo] Failed to fetch deals with intel:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDealsWithIntel();
+  }, [fetchDealsWithIntel]);
+
   // ── SE Mapping: direct useEffect (bypasses React Query entirely) ──
   const [seMappingData, setSeMappingData] = useState<DomoSEMapping[]>([]);
   const [seMappingStatus, setSeMappingStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle');
@@ -286,6 +306,9 @@ export function useDeals() {
         deal.tdrSessions = [];
       }
 
+      // Enrich with intel indicator
+      deal.hasIntel = dealsWithIntel.has(deal.id);
+
       return deal;
     });
 
@@ -298,7 +321,7 @@ export function useDeals() {
     }
 
     return result;
-  }, [opportunities, seLookup, tdrSessionsByDeal]);
+  }, [opportunities, seLookup, tdrSessionsByDeal, dealsWithIntel]);
 
   // ── Filter options ──
   const filterOptions = useMemo(() => {

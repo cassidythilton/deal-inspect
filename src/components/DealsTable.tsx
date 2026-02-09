@@ -18,6 +18,7 @@ import {
   Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2,
   TrendingUp, Sparkles, AlertTriangle, Layers, GitMerge, Server,
   Briefcase, ArrowUpRight, AlertOctagon, CheckCircle2, RefreshCcw,
+  Search,
   LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -547,7 +548,19 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                     {/* Deal / Account */}
                     <td className="px-4 py-2.5">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{deal.account}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium truncate">{deal.account}</p>
+                          {deal.hasIntel && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Search className="h-3 w-3 shrink-0 text-violet-500" />
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                Account intelligence available
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground truncate">
                           {deal.dealName}
                         </p>

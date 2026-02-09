@@ -44,6 +44,8 @@ export interface Deal {
   tdrScore?: number; // 0-100 score
   // TDR session tracking (from AppDB) — a deal can have up to 5 TDRs
   tdrSessions?: TDRSessionSummary[];
+  // Account Intelligence indicator
+  hasIntel?: boolean;
   // Categorization tags
   isCompetitive?: boolean;
   isPartnerPlay?: boolean;

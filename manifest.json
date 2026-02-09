@@ -186,6 +186,11 @@
         { "alias": "month", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
       "output": { "alias": "stats", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getDealsWithIntel",
+      "parameters": [],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],
   "size": {

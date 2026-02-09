@@ -12,6 +12,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
   AlertCircle,
   CheckCircle,
   FileText,
@@ -30,6 +37,7 @@ import {
   Cpu,
   Database,
   Layers,
+  History,
 } from 'lucide-react';
 import { TDRSummaryModal } from './TDRSummaryModal';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
@@ -88,6 +96,11 @@ export function TDRIntelligence({
   const [sumbleLoading, setSumbleLoading] = useState(false);
   const [perplexityLoading, setPerplexityLoading] = useState(false);
   const [intelLoaded, setIntelLoaded] = useState(false);
+
+  // ── Intel History State ──
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyData, setHistoryData] = useState<Record<string, unknown>[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
   useEffect(() => {
@@ -162,6 +175,21 @@ export function TDRIntelligence({
     }
     setPerplexityLoading(false);
   }, [deal]);
+
+  // ── Intel History ──
+  const handleViewHistory = useCallback(async () => {
+    if (!deal) return;
+    setHistoryOpen(true);
+    if (historyData.length > 0) return; // already loaded
+    setHistoryLoading(true);
+    try {
+      const data = await accountIntel.getIntelHistory(deal.id);
+      setHistoryData(data);
+    } catch (err) {
+      console.warn('[TDRIntelligence] Failed to load intel history:', err);
+    }
+    setHistoryLoading(false);
+  }, [deal, historyData.length]);
 
   // Get short stage name
   const getShortStage = (stage: string) => {
@@ -243,6 +271,76 @@ export function TDRIntelligence({
               {perplexityData ? 'Re-research' : 'Research'}
             </Button>
           </div>
+
+          {/* View History button */}
+          {(sumbleData || perplexityData) && (
+            <div className="mb-3">
+              <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+                <DialogTrigger asChild>
+                  <button
+                    onClick={handleViewHistory}
+                    className="flex items-center gap-1.5 text-2xs text-slate-500 hover:text-slate-300 transition-colors"
+                  >
+                    <History className="h-3 w-3" />
+                    View Research History
+                  </button>
+                </DialogTrigger>
+                <DialogContent className="max-w-lg bg-[#1e1a30] border-[#362f50] text-white">
+                  <DialogHeader>
+                    <DialogTitle className="text-white">Research History — {deal?.account}</DialogTitle>
+                  </DialogHeader>
+                  <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
+                    {historyLoading ? (
+                      <div className="flex items-center gap-2 py-6 justify-center text-slate-400">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading history…
+                      </div>
+                    ) : historyData.length === 0 ? (
+                      <p className="text-sm text-slate-500 py-6 text-center">
+                        No research history found for this account.
+                      </p>
+                    ) : (
+                      historyData.map((entry, i) => {
+                        const source = (entry.SOURCE as string) || 'unknown';
+                        const pulledAt = formatDate(entry.PULLED_AT as string);
+                        const pulledBy = (entry.PULLED_BY as string) || '—';
+                        const accountName = (entry.ACCOUNT_NAME as string) || '—';
+                        const summary = source === 'perplexity'
+                          ? (entry.SUMMARY as string)?.substring(0, 150) + '…'
+                          : null;
+
+                        return (
+                          <div
+                            key={(entry.PULL_ID as string) || i}
+                            className="rounded-md border border-[#322b4d] bg-[#221d38] px-3 py-2.5 space-y-1"
+                          >
+                            <div className="flex items-center gap-2">
+                              {source === 'sumble' ? (
+                                <SumbleIcon className="h-3.5 w-3.5" />
+                              ) : (
+                                <PerplexityIcon className="h-3.5 w-3.5" />
+                              )}
+                              <span className="text-xs font-medium capitalize text-slate-200">
+                                {source === 'sumble' ? 'Sumble Enrichment' : 'Perplexity Research'}
+                              </span>
+                              <span className="ml-auto text-2xs text-slate-500">{pulledAt}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-2xs text-slate-500">
+                              <span>Account: {accountName}</span>
+                              <span>By: {pulledBy}</span>
+                            </div>
+                            {summary && (
+                              <p className="text-2xs text-slate-400 leading-relaxed">{summary}</p>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
 
           {/* ── Sumble Results ── */}
           {sumbleData && sumbleData.success && (

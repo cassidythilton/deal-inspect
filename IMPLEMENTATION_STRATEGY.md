@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 2.4 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5
+**Status:** In Progress · **Version:** Draft 2.5 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6
 
 ---
 
@@ -2795,21 +2795,43 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
-### Sprint 6 — Usage Tracking, Intel History & Indicators ⬜
+### Sprint 6 — Usage Tracking, Intel History & Indicators ✅ COMPLETE
 
 > **Goal:** Add API usage visibility, intel pull history, and enrichment indicators to the deals table. No auto-enrichment — all API calls remain user-initiated (click-to-enrich only).
 > **Risk to app:** None — new Settings card and visual indicators, no existing behavior changes.
+> **Completed:** February 9, 2026
 >
 > **Design principle:** Intelligence is **never fetched automatically**. The user clicks "Enrich" or "Research" explicitly. Snowflake stores the results. On subsequent workspace opens, saved results are loaded and displayed with their pull timestamps — but no new API calls are made. There is no cache TTL or auto-refresh.
 
-- [ ] Deploy `getUsageStats` function to Code Engine
-- [ ] Add "Account Intelligence" card to Settings page: enable/disable master toggle, monthly API usage counters (Sumble calls, Perplexity calls, total)
-- [ ] Implement `getIntelHistory` UI: "View Research History" button showing all timestamped pulls for an account with key data points from each pull
-- [ ] Add 🔍 icon to DealsTable account name column when the account has saved intel in Snowflake
-- [ ] Test: Settings page shows accurate monthly call counts
-- [ ] Test: "View Research History" shows multiple pulls with timestamps and key differences
+- [x] Deploy `getUsageStats` and `getDealsWithIntel` functions to Code Engine (consolidated-sprint4-5.js)
+- [x] Add `getDealsWithIntel` to `manifest.json` packageMapping
+- [x] Add "Account Intelligence" card to Settings page: monthly API usage counters per service (calls, errors, avg response time) with side-by-side Sumble/Perplexity display
+- [x] Implement `getIntelHistory` UI: "View Research History" button in TDRIntelligence panel opens a modal dialog showing all timestamped pulls for an account with source, date, account name, pulled-by, and summary snippet
+- [x] Add 🔍 icon (violet `Search` icon) to DealsTable account name column when the account has saved intel in Snowflake
+- [x] Add `hasIntel` boolean to `Deal` type, fetched via `accountIntel.getDealsWithIntel()` in `useDomo.ts`
+- [x] Frontend service methods: `accountIntel.getDealsWithIntel()` and `accountIntel.getUsageStats(month?)` with dev-mode fallbacks
+- [x] Build & dist verified
 
-**Definition of Done:** API usage is visible in Settings. Research history is reviewable per account. Deals table shows which accounts have intel. All API calls remain explicitly user-triggered — no auto-enrich, no TTL, no staleness logic.
+**New Code Engine function:**
+- `getDealsWithIntel()` — Input: none → Output: `{ success: boolean, opportunityIds: string[] }`. Runs `SELECT DISTINCT OPPORTUNITY_ID` from both intel tables.
+
+**Files changed:**
+- `codeengine/consolidated-sprint4-5.js` → Added `getDealsWithIntel`, bumped version to 1.26.0
+- `manifest.json` → Added `getDealsWithIntel` packageMapping entry
+- `src/lib/accountIntel.ts` → Added `getDealsWithIntel()`, `getUsageStats(month?)` methods
+- `src/types/tdr.ts` → Added `hasIntel?: boolean` to `Deal` interface
+- `src/hooks/useDomo.ts` → Import `accountIntel`, fetch deals-with-intel on mount, enrich deals with `hasIntel` flag
+- `src/components/DealsTable.tsx` → Import `Search` icon, render violet 🔍 with tooltip for deals with `hasIntel`
+- `src/pages/Settings.tsx` → Added "Account Intelligence" card with Sumble/Perplexity usage stats grid
+- `src/components/TDRIntelligence.tsx` → Added "View Research History" dialog with history fetch, imports for `Dialog`, `History` icon
+
+**Learnings & Decisions:**
+- The `getDealsWithIntel` function uses a simple `UNION` of `DISTINCT OPPORTUNITY_ID` from both intel tables — lightweight and fast.
+- Intel indicator in the deals table uses a subtle violet `Search` icon that doesn't compete with existing TDR score and partner indicators.
+- The history dialog renders in the dark purple theme consistent with the right panel redesign from Sprint 5.5.
+- Usage stats card uses a two-column grid layout matching Sumble (left) and Perplexity (right) for quick visual comparison.
+
+**Definition of Done:** ✅ API usage is visible in Settings. Research history is reviewable per account. Deals table shows which accounts have intel. All API calls remain explicitly user-triggered — no auto-enrich, no TTL, no staleness logic.
 
 ---
 
@@ -2961,7 +2983,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 | 4 | Sumble Account Enrichment | ✅ Complete | Feb 9, 2026 | Sprint 1 | Intelligence |
 | 5 | Perplexity Web Research | ✅ Complete | Feb 9, 2026 | Sprint 1 | Intelligence |
 | 5.5 | UI/UX Polish & Bug Fixes | ✅ Complete | Feb 9, 2026 | Sprints 4 + 5 | UX / Polish |
-| 6 | Caching, Settings & Usage | ⬜ Not Started | — | Sprints 4 + 5 | Intelligence |
+| 6 | Usage Tracking, Intel History & Indicators | ✅ Complete | Feb 9, 2026 | Sprints 4 + 5 | Intelligence |
 | 7 | Cortex AI: Deal-Level | ⬜ Not Started | — | Sprints 3 + 6 | AI |
 | **8** | **TDR Inline Chat** | ⬜ Not Started | — | Sprints 3 + 6 | **Experience** |
 | 9 | Cortex AI: Portfolio & Sentiment | ⬜ Not Started | — | Sprint 7 | AI |

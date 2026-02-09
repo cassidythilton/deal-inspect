@@ -300,6 +300,49 @@ export const accountIntel = {
   },
 
   /**
+   * Get all opportunity IDs that have cached intel (Sumble or Perplexity).
+   * Used for the deals table indicator icon.
+   */
+  async getDealsWithIntel(): Promise<Set<string>> {
+    if (!isDomoEnvironment()) {
+      return new Set();
+    }
+
+    try {
+      const raw = await callCodeEngine<unknown>('getDealsWithIntel');
+      const result = extractResult(raw);
+      const ids = (result.opportunityIds as string[]) || [];
+      return new Set(ids);
+    } catch (err) {
+      console.warn('[AccountIntel] Failed to load deals with intel:', err);
+      return new Set();
+    }
+  },
+
+  /**
+   * Get API usage stats for a given month (YYYY-MM format).
+   * Returns call counts, error counts, avg duration per service.
+   */
+  async getUsageStats(month?: string): Promise<Record<string, unknown>> {
+    if (!isDomoEnvironment()) {
+      return {
+        month: month || new Date().toISOString().substring(0, 7),
+        sumble: { calls: 3, errors: 0, avgDurationMs: 1200 },
+        perplexity: { calls: 5, errors: 1, avgDurationMs: 3400 },
+      };
+    }
+
+    try {
+      const raw = await callCodeEngine<unknown>('getUsageStats', { month: month || null });
+      const result = extractResult(raw);
+      return result;
+    } catch (err) {
+      console.warn('[AccountIntel] Failed to load usage stats:', err);
+      return { month: month || 'unknown', error: 'Failed to load' };
+    }
+  },
+
+  /**
    * Heuristic to derive a domain from an account name.
    * e.g., "Acme Corporation" → "acme.com"
    */
