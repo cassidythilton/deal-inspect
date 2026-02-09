@@ -23,9 +23,11 @@
 13. [API Cost & Rate Limit Strategy](#13-api-cost--rate-limit-strategy)
 14. [Migration Plan (AppDB → Snowflake)](#14-migration-plan-appdb--snowflake)
 15. [Risks & Considerations](#15-risks--considerations)
-16. [Implementation Phases](#16-implementation-phases)
-17. [Sprint Plan & Progress Tracker](#17-sprint-plan--progress-tracker)
-18. [Reference Links](#18-reference-links)
+16. [Development Tooling](#16-development-tooling)
+17. [Implementation Phases](#17-implementation-phases)
+18. [Sprint Plan & Progress Tracker](#18-sprint-plan--progress-tracker)
+19. [Reference Links](#19-reference-links)
+20. [Solution Strategy Summary — The Five Pillars](#20-solution-strategy-summary--the-five-pillars)
 
 ---
 
@@ -436,7 +438,7 @@ CREATE TABLE IF NOT EXISTS TDR_CHAT_MESSAGES (
     CONTENT             VARCHAR NOT NULL,             -- Message text
     CONTEXT_STEP        VARCHAR(50),                  -- TDR step user was on when asking
     PROVIDER            VARCHAR(30),                  -- 'cortex' | 'perplexity' | 'domo' | future providers
-    MODEL_USED          VARCHAR(50),                  -- e.g. 'claude-3.5-sonnet' | 'sonar-pro' | 'domo-default'
+    MODEL_USED          VARCHAR(50),                  -- e.g. 'claude-sonnet-4-5' | 'sonar-pro' | 'domo-default'
     TOKENS_IN           INTEGER,                      -- For cost tracking
     TOKENS_OUT          INTEGER,
     CITED_SOURCES       VARIANT,                      -- JSON array of citation URLs
@@ -1197,7 +1199,7 @@ These handle the multi-provider conversational AI experience in the TDR Workspac
 **Logic flow:**
 1. Validate inputs; generate UUIDs for user message and assistant message
 2. Based on `provider` parameter:
-   - **`"cortex"`**: Assemble system prompt from `context` object. Call Snowflake SQL API: `SELECT AI_COMPLETE(:model, [system_prompt, user_question])` where `:model` is the user-selected Cortex model (e.g., `'claude-3.5-sonnet'`, `'llama3.1-405b'`, etc.)
+   - **`"cortex"`**: Assemble system prompt from `context` object. Call Snowflake SQL API: `SELECT AI_COMPLETE(:model, [system_prompt, user_question])` where `:model` is the user-selected Cortex model (e.g., `'claude-sonnet-4-5'`, `'llama3.1-405b'`, etc.)
    - **`"perplexity"`**: Call Perplexity chat completions API with `model` parameter (`'sonar-pro'` or `'sonar'`). Include context as system prompt. Set `return_citations: true`. Extract response + citations.
    - **`"domo"`**: Call `/domo/ai/v1/text/chat` (existing endpoint). Context assembled as system prompt. Model is Domo-managed (ignore `model` param).
 3. INSERT two rows into `TDR_CHAT_MESSAGES`: one for `role='user'`, one for `role='assistant'` (with `PROVIDER`, `MODEL_USED`, token counts, citations)
@@ -1211,7 +1213,7 @@ These handle the multi-provider conversational AI experience in the TDR Workspac
 - `question` (string): `"What BI tools does Acme use?"`
 - `context` (object): `{ deal: {...}, tdrInputs: {...}, techStack: {...}, webResearch: {...}, currentStep: "Current Architecture" }`
 - `provider` (string): `"cortex"`, `"perplexity"`, or `"domo"`
-- `model` (string, nullable): `"claude-3.5-sonnet"`, `"sonar-pro"`, etc. NULL for Domo.
+- `model` (string, nullable): `"claude-sonnet-4-5"`, `"sonar-pro"`, etc. NULL for Domo.
 - `step` (string, nullable): `"Current Architecture"`
 - `userId` (string, nullable): `"john.smith@company.com"`
 
@@ -1222,7 +1224,7 @@ These handle the multi-provider conversational AI experience in the TDR Workspac
   "messageId": "msg-xyz789",
   "content": "Based on Sumble enrichment (Feb 7): Acme Corp uses Tableau (primary BI), Power BI (departmental), and Excel (ad-hoc reporting). Perplexity research (Feb 5) also noted an active Looker evaluation for embedded analytics use cases.",
   "provider": "cortex",
-  "model": "claude-3.5-sonnet",
+  "model": "claude-sonnet-4-5",
   "citations": null,
   "tokensIn": 1200,
   "tokensOut": 85
@@ -1261,7 +1263,7 @@ These handle the multi-provider conversational AI experience in the TDR Workspac
       "content": "Based on Sumble enrichment (Feb 7): ...",
       "contextStep": "Current Architecture",
       "provider": "cortex",
-      "model": "claude-3.5-sonnet",
+      "model": "claude-sonnet-4-5",
       "citations": null,
       "tokensIn": 1200,
       "tokensOut": 85,
@@ -1779,13 +1781,13 @@ interface LLMModel {
 
 | Model ID | Display Name | Context Window | Best For |
 |----------|-------------|---------------|----------|
-| `claude-3.5-sonnet` | Claude 3.5 Sonnet | 200K | Complex reasoning, nuanced strategy advice |
+| `claude-sonnet-4-5` | Claude Sonnet 4.5 | 200K | Highest quality reasoning, nuanced strategy advice |
+| `claude-4-sonnet` | Claude 4 Sonnet | 200K | Strong reasoning, balanced quality/speed |
+| `claude-opus-4-5` | Claude Opus 4.5 | 200K | Premium quality, complex multi-step analysis |
 | `llama3.1-405b` | Llama 3.1 405B | 128K | Broad knowledge, detailed analysis |
-| `llama3.1-70b` | Llama 3.1 70B | 128K | Fast, good balance of quality/speed |
-| `mistral-large2` | Mistral Large 2 | 128K | Concise answers, code generation |
-| `deepseek-r1` | DeepSeek R1 | 64K | Reasoning-heavy queries, step-by-step analysis |
+| `mistral-large2` | Mistral Large 2 | 128K | Concise answers, fast responses |
 
-> **Note:** Cortex model availability varies by Snowflake region and evolves over time. The model list should be configurable in Settings (or ideally queried dynamically via `SHOW CORTEX_MODELS`). The five listed above represent the most capable options at time of writing.
+> **Note:** Cortex model availability varies by Snowflake region and evolves over time. The model list should be configurable in Settings (or ideally queried dynamically). Cross-region inference may be required for some models — an `ACCOUNTADMIN` can enable it via `ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'AWS_US'` (see [Cortex cross-region inference](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-cross-region-inference)). The five listed above represent the most capable options per the [Cortex Code CLI docs](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli).
 
 **2. Perplexity** — Best for real-time web research, current events, and questions requiring live data. Returns citations.
 
@@ -1821,7 +1823,7 @@ User selects provider (dropdown)           User selects model (if applicable)
 ┌──────────────────────────────────────────────────────────┐
 │                    Chat Input Bar                         │
 │                                                          │
-│  [🧊 Cortex ▾] [claude-3.5-sonnet ▾]  [Ask...]  [Send] │
+│  [🧊 Cortex ▾] [claude-sonnet-4-5 ▾]  [Ask...]  [Send] │
 │                                                          │
 │  💡 "What BI tools does Acme use?"                       │
 │  💡 "What should I ask about their data governance?"     │
@@ -1943,7 +1945,7 @@ CREATE TABLE IF NOT EXISTS TDR_CHAT_MESSAGES (
     CONTENT             VARCHAR NOT NULL,            -- Message text
     CONTEXT_STEP        VARCHAR(50),                 -- TDR step active when question was asked
     PROVIDER            VARCHAR(30),                 -- 'cortex' | 'perplexity' | 'domo' | future providers
-    MODEL_USED          VARCHAR(50),                 -- e.g., 'claude-3.5-sonnet' | 'sonar-pro' | 'domo-default'
+    MODEL_USED          VARCHAR(50),                 -- e.g., 'claude-sonnet-4-5' | 'sonar-pro' | 'domo-default'
     TOKENS_IN           INTEGER,                     -- For cost tracking
     TOKENS_OUT          INTEGER,
     CITED_SOURCES       VARIANT,                     -- JSON array of citation URLs (Perplexity)
@@ -1996,7 +1998,7 @@ Two new Code Engine functions:
 │  │  │                            │  │  │  │ What BI tools does Acme ││ │
 │  │  │ Current data platform?     │  │  │  │ use?                    ││ │
 │  │  │ [________________]         │  │  │  ├──────────────────────────┤│ │
-│  │  │                            │  │  │  │ 🧊 Cortex · claude-3.5  ││ │
+│  │  │                            │  │  │  │ 🧊 Cortex · sonnet-4.5  ││ │
 │  │  │ Pain points?               │  │  │  │                         ││ │
 │  │  │ [________________]         │  │  │  │ Based on Sumble         ││ │
 │  │  │                            │  │  │  │ (enriched Feb 7):       ││ │
@@ -2011,7 +2013,7 @@ Two new Code Engine functions:
 │  │                                  │  │                              │ │
 │  │  [◀ Prev]  Step 4 of 10  [Next ▶]│  │  ┌──────────────────────────┐│ │
 │  │                                  │  │  │ [🧊 Cortex ▾]            ││ │
-│  │                                  │  │  │ [claude-3.5-sonnet ▾]    ││ │
+│  │                                  │  │  │ [claude-sonnet-4-5 ▾]    ││ │
 │  │                                  │  │  │                          ││ │
 │  │                                  │  │  │ 🔍 Ask about their      ││ │
 │  │                                  │  │  │ architecture...          ││ │
@@ -2031,7 +2033,7 @@ Two new Code Engine functions:
 - **Tab-based right panel:** Three tabs — Intel (Sumble/Perplexity data), Chat (conversation), Brief (generated TDR brief). All share the same panel real estate.
 - **Provider selector dropdown:** Compact dropdown in the chat input area showing the active provider (🧊 Cortex, 🔍 Perplexity, 🟦 Domo). Remembers last selection per session.
 - **Model selector dropdown:** Appears below the provider dropdown when the selected provider supports multiple models. Hidden for Domo AI (no model choice). Shows model name + brief description in the dropdown.
-- **Provider badge on messages:** Each assistant response shows a small badge indicating which provider + model generated it (e.g., "🧊 Cortex · claude-3.5" or "🔍 Perplexity · sonar-pro"). This gives visibility when reviewing chat history where different providers may have been used.
+- **Provider badge on messages:** Each assistant response shows a small badge indicating which provider + model generated it (e.g., "🧊 Cortex · sonnet-4.5" or "🔍 Perplexity · sonar-pro"). This gives visibility when reviewing chat history where different providers may have been used.
 - **Step awareness:** The chat input placeholder changes based on the current step: *"Ask about their architecture..."* on Step 4, *"Ask about competitive positioning..."* on Step 6.
 - **Citations:** Perplexity responses show clickable source URLs below the message. Cortex and Domo responses do not (they cite stored data sources inline instead).
 - **Suggestion chips:** Below the input, 2–3 contextual suggestions based on the current step and selected provider. For Perplexity, suggestions lean toward web research queries. For Cortex, suggestions lean toward stored data and methodology.
@@ -2091,7 +2093,7 @@ New settings for the chat experience (added to Settings page):
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `chatDefaultProvider` | Dropdown | `'domo'` | Default provider for new chat sessions |
-| `chatDefaultCortexModel` | Dropdown | `'llama3.1-70b'` | Default Cortex model (when Cortex is selected) |
+| `chatDefaultCortexModel` | Dropdown | `'claude-4-sonnet'` | Default Cortex model (when Cortex is selected) |
 | `chatDailyMessageLimit` | Slider | `30` | Max messages per session per day |
 | `chatPerplexityDailyLimit` | Slider | `10` | Max Perplexity messages per day (cost control) |
 | `chatEnabledProviders` | Multi-select | All enabled | Which providers appear in the dropdown |
@@ -2425,7 +2427,110 @@ The TDR process (steps, fields, ordering) **will** change. Steps may be added, r
 
 ---
 
-## 16. Implementation Phases
+## 16. Development Tooling
+
+### 16.1 Cortex Code CLI (Available Locally)
+
+The [Cortex Code CLI](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli) is installed and available on the development machine:
+
+```
+$ which cortex
+/Users/cassidy.hilton/.local/bin/cortex
+
+$ cortex --version
+Cortex Code v1.0.6
+```
+
+Cortex Code CLI is a natural-language terminal agent that can orchestrate Snowflake operations. It supports:
+
+- **Claude Sonnet 4.5** (`claude-sonnet-4-5`) — highest quality
+- **Claude 4 Sonnet** (`claude-4-sonnet`) — balanced
+- **Claude Opus 4.5** (`claude-opus-4-5`) — premium
+- **`auto`** mode — automatically selects the best available model
+
+> Cross-region inference may need to be enabled by an `ACCOUNTADMIN`:
+> `ALTER ACCOUNT SET CORTEX_ENABLED_CROSS_REGION = 'AWS_US';`
+
+### 16.2 Where to Use Cortex Code CLI During Development
+
+| Sprint | Use Case | Example Command |
+|--------|----------|-----------------|
+| **Sprint 1** | Create/validate Snowflake schema | *"Create the 9 TDR tables from the DDL in my implementation strategy"* |
+| **Sprint 1** | Verify table creation | *"List every table in the TDR_APP schema and describe their columns"* |
+| **Sprint 3** | Test Cortex AI functions | *"Run AI_COMPLETE with claude-sonnet-4-5 on a sample TDR prompt"* |
+| **Sprint 6** | Validate embeddings | *"Generate AI_EMBED vectors for these 3 test deals and check similarity"* |
+| **Sprint 8** | Test chat prompts | *"Use AI_COMPLETE to answer 'What BI tools does Acme use?' with this system prompt"* |
+| **Sprint 9** | Build batch analysis | *"Write a Snowflake Task that runs AI_AGG weekly on TDR_STEP_INPUTS"* |
+| **Any** | Debug queries | *"Explain why this query is slow and optimize it"* |
+| **Any** | Explore data | *"Show me the 10 most recent TDR sessions with their step inputs"* |
+| **Any** | Generate Streamlit | *"Build a Streamlit dashboard on TDR_SESSIONS showing completion rates by manager"* |
+
+### 16.3 Cortex Code CLI vs. Code Engine
+
+| Aspect | Cortex Code CLI | Code Engine Functions |
+|--------|----------------|----------------------|
+| **Where it runs** | Local terminal (dev machine) | Domo server (production) |
+| **Auth** | `~/.snowflake/connections.toml` | JWT keypair (Domo Account) |
+| **Purpose** | Interactive development, debugging, ad-hoc analysis | Programmatic API calls from the app |
+| **Models** | Claude 4.x family (`auto` mode) | Any model via `AI_COMPLETE` |
+| **When to use** | Schema creation, testing, exploration, one-off analysis | App runtime — every request from the UI |
+
+### 16.4 Development Workflow
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                     Development Workflow                          │
+│                                                                  │
+│   1. PLAN (Cursor + Strategy Doc)                                │
+│      │                                                           │
+│   2. SCHEMA (Cortex Code CLI)                                    │
+│      │  "Create table TDR_SESSIONS in TDR_APP schema..."         │
+│      │  "Describe the table and verify columns"                  │
+│      │                                                           │
+│   3. CODE ENGINE (Cursor → codeengine/*.js → Domo)               │
+│      │  Write functions locally, paste into Domo Code Engine     │
+│      │                                                           │
+│   4. TEST (Cortex Code CLI + App)                                │
+│      │  "Insert a test TDR session and verify it's queryable"    │
+│      │  "Run AI_COMPLETE on a test prompt"                       │
+│      │                                                           │
+│   5. FRONT-END (Cursor → npm run dev → test)                     │
+│      │                                                           │
+│   6. VALIDATE (Cortex Code CLI)                                  │
+│      │  "Show me the data that was just written by the app"      │
+│      │  "Summarize the TDR sessions created today"               │
+│                                                                  │
+│   Cortex Code CLI is available at every stage for inspection,    │
+│   debugging, ad-hoc queries, and AI-assisted development.        │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### 16.5 Quick Reference
+
+```bash
+# Start Cortex Code CLI
+cortex
+
+# Inside a session:
+# Switch models
+/model claude-sonnet-4-5
+
+# Example: create schema
+# "Create all 9 TDR tables in the TDR_APP.PUBLIC schema using the DDL from my implementation strategy"
+
+# Example: test AI_COMPLETE
+# "SELECT AI_COMPLETE('claude-4-sonnet', 'Summarize this deal: Acme Corp, $150K ACV, Stage 3')"
+
+# Example: inspect data
+# "What's in TDR_SESSIONS? Show me the latest 5 rows"
+
+# Example: build Streamlit
+# "Build a Streamlit app on TDR_CHAT_MESSAGES showing message counts by provider"
+```
+
+---
+
+## 17. Implementation Phases
 
 ### Phase 1 — Snowflake Foundation
 
@@ -2525,7 +2630,7 @@ The TDR process (steps, fields, ordering) **will** change. Steps may be added, r
 
 ---
 
-## 17. Sprint Plan & Progress Tracker
+## 18. Sprint Plan & Progress Tracker
 
 Each sprint is a focused work session (2–4 hours). The app remains fully functional after every sprint — no sprint leaves the app in a broken state. Sprints are ordered by dependency: each builds on the one before it.
 
@@ -2668,7 +2773,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 - [ ] Add `packageMapping` entries for both functions
 - [ ] Create `codeengine/chat.js` reference file with provider handler abstraction
 - [ ] Define `LLMProvider` and `LLMModel` registry in `src/config/llmProviders.ts` (3 providers, extensible)
-- [ ] Cortex: 5 models (claude-3.5-sonnet, llama3.1-405b, llama3.1-70b, mistral-large2, deepseek-r1)
+- [ ] Cortex: 5 models (claude-sonnet-4-5, claude-4-sonnet, claude-opus-4-5, llama3.1-405b, mistral-large2)
 - [ ] Perplexity: 2 models (sonar-pro, sonar)
 - [ ] Domo AI: 1 model (domo-default, no selection needed)
 
@@ -2678,7 +2783,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 - [ ] Integrate chat panel as a tab in the TDR Workspace right panel: [Intel] [**Chat**] [Brief]
 - [ ] Provider selector dropdown: 🧊 Cortex | 🔍 Perplexity | 🟦 Domo — remembers last selection
 - [ ] Model selector dropdown: appears below provider, shows available models for selected provider. Hidden for Domo.
-- [ ] Provider badge on each assistant message: "🧊 Cortex · claude-3.5" or "🔍 Perplexity · sonar-pro"
+- [ ] Provider badge on each assistant message: "🧊 Cortex · sonnet-4.5" or "🔍 Perplexity · sonar-pro"
 
 **Context & Behavior:**
 - [ ] Implement context assembly: gather deal info, TDR inputs, cached Sumble/Perplexity intel, current step → system prompt
@@ -2694,7 +2799,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 - [ ] Add chat settings to Settings page: default provider, default Cortex model, daily limits, enabled providers
 
 **Testing:**
-- [ ] Test: select Cortex + claude-3.5 → ask "What BI tools does this account use?" → get answer citing Sumble data
+- [ ] Test: select Cortex + sonnet-4.5 → ask "What BI tools does this account use?" → get answer citing Sumble data
 - [ ] Test: switch to Perplexity + sonar-pro → ask about current events → get response with citations
 - [ ] Test: switch to Domo → ask about TDR methodology → get methodology guidance
 - [ ] Test: close workspace, reopen → chat history persists with provider badges
@@ -2811,12 +2916,13 @@ Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┐
 
 ---
 
-## 18. Reference Links
+## 19. Reference Links
 
 | Resource | URL |
 |----------|-----|
 | Snowflake Cortex AI Functions | https://docs.snowflake.com/en/user-guide/snowflake-cortex/aisql |
 | Cortex Code CLI | https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli |
+| Cortex Cross-Region Inference | https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-cross-region-inference |
 | Perplexity API Docs | https://docs.perplexity.ai/docs/getting-started/overview |
 | Sumble API Docs | https://docs.sumble.com/api |
 | Snowflake SQL API (Statements) | https://docs.snowflake.com/en/developer-guide/sql-api/reference |
@@ -2829,7 +2935,7 @@ Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┐
 
 ---
 
-## 19. Solution Strategy Summary — The Five Pillars
+## 20. Solution Strategy Summary — The Five Pillars
 
 This is the "elevator pitch" view. The final solution is built on five distinct pillars. Each pillar is independently valuable, but together they create a compounding effect: more data makes the chat smarter, chat interactions surface insights that improve scoring, scoring drives better TDR prioritization, and better prioritization means more valuable data is collected. It's a flywheel.
 
