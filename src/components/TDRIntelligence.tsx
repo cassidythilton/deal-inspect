@@ -85,6 +85,96 @@ function formatDate(value: string | number | null | undefined): string {
   return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
 }
 
+// ── Lightweight Markdown renderer for TDR Brief ──────────────────────────────
+/**
+ * Renders a block of markdown-ish text to React elements.
+ * Handles: **bold**, *italic*, `- list items`, blank-line paragraph breaks.
+ */
+function renderMarkdownBlock(text: string, keyPrefix = 'md'): React.ReactNode {
+  if (!text) return null;
+
+  // Split into paragraphs (double-newline) or bullet clusters
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let listBuffer: string[] = [];
+  let paraBuffer: string[] = [];
+
+  const flushPara = () => {
+    if (paraBuffer.length === 0) return;
+    const raw = paraBuffer.join(' ');
+    elements.push(
+      <p key={`${keyPrefix}-p${elements.length}`} className="mb-2 last:mb-0">
+        {renderInline(raw)}
+      </p>
+    );
+    paraBuffer = [];
+  };
+
+  const flushList = () => {
+    if (listBuffer.length === 0) return;
+    elements.push(
+      <ul key={`${keyPrefix}-ul${elements.length}`} className="mb-2 list-disc pl-4 space-y-1 last:mb-0">
+        {listBuffer.map((item, j) => (
+          <li key={j}>{renderInline(item)}</li>
+        ))}
+      </ul>
+    );
+    listBuffer = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.*)$/);
+
+    if (bulletMatch) {
+      flushPara();
+      listBuffer.push(bulletMatch[1]);
+    } else if (trimmed === '') {
+      flushList();
+      flushPara();
+    } else {
+      flushList();
+      paraBuffer.push(trimmed);
+    }
+  }
+
+  flushList();
+  flushPara();
+
+  return <>{elements}</>;
+}
+
+/** Render inline markdown: **bold** and *italic* */
+function renderInline(text: string): React.ReactNode {
+  // Split on **bold** and *italic* markers
+  const parts: React.ReactNode[] = [];
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
+  let lastIndex = 0;
+  let m;
+  let idx = 0;
+
+  while ((m = regex.exec(text)) !== null) {
+    // Push text before match
+    if (m.index > lastIndex) {
+      parts.push(text.slice(lastIndex, m.index));
+    }
+    if (m[2]) {
+      // **bold**
+      parts.push(<strong key={`b${idx++}`} className="font-semibold text-slate-200">{m[2]}</strong>);
+    } else if (m[3]) {
+      // *italic*
+      parts.push(<em key={`i${idx++}`} className="italic text-slate-300">{m[3]}</em>);
+    }
+    lastIndex = m.index + m[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? <>{parts}</> : text;
+}
+
 export function TDRIntelligence({
   deal,
   readinessLevel,
@@ -112,6 +202,8 @@ export function TDRIntelligence({
   const [briefSections, setBriefSections] = useState<BriefSection[]>([]);
   const [briefLoading, setBriefLoading] = useState(false);
   const [briefOpen, setBriefOpen] = useState(false);
+  const [briefGeneratedAt, setBriefGeneratedAt] = useState<string>('');
+  const [briefCacheLoaded, setBriefCacheLoaded] = useState(false);
   const [classifiedFindings, setClassifiedFindings] = useState<ClassifiedFinding[]>([]);
   const [extractedEntities, setExtractedEntities] = useState<ExtractedEntities | null>(null);
   const [cortexProcessing, setCortexProcessing] = useState(false);
@@ -147,6 +239,28 @@ export function TDRIntelligence({
 
     loadCachedIntel();
   }, [deal?.id, intelLoaded]);
+
+  // Load cached TDR brief on mount (saves API tokens)
+  useEffect(() => {
+    if (!sessionId || briefCacheLoaded) return;
+    setBriefCacheLoaded(true);
+
+    const loadCachedBrief = async () => {
+      try {
+        const cached = await cortexAi.getLatestBrief(sessionId);
+        if (cached.hasBrief && cached.brief) {
+          setBriefData({ success: true, brief: cached.brief, modelUsed: cached.modelUsed, resultId: cached.resultId });
+          setBriefSections(parseBriefSections(cached.brief));
+          setBriefGeneratedAt(cached.createdAt || '');
+          console.log('[TDRIntelligence] Loaded cached TDR brief from', cached.createdAt);
+        }
+      } catch (err) {
+        console.warn('[TDRIntelligence] Failed to load cached brief:', err);
+      }
+    };
+
+    loadCachedBrief();
+  }, [sessionId, briefCacheLoaded]);
 
   // ── Sumble Enrichment ──
   const handleEnrichSumble = useCallback(async () => {
@@ -228,6 +342,7 @@ export function TDRIntelligence({
       setBriefData(result);
       if (result.success && result.brief) {
         setBriefSections(parseBriefSections(result.brief));
+        setBriefGeneratedAt(new Date().toISOString());
       }
     } catch (err) {
       console.error('[TDRIntelligence] Generate TDR Brief error:', err);
@@ -235,6 +350,11 @@ export function TDRIntelligence({
     }
     setBriefLoading(false);
   }, [sessionId]);
+
+  // ── Open cached brief (no API call) ──
+  const handleOpenCachedBrief = useCallback(() => {
+    setBriefOpen(true);
+  }, []);
 
   // ── Intel History ──
   const handleViewHistory = useCallback(async () => {
@@ -300,36 +420,50 @@ export function TDRIntelligence({
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2 mb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1.5 text-xs h-8 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
-              onClick={handleEnrichSumble}
-              disabled={sumbleLoading || !domain.trim()}
-            >
-              {sumbleLoading ? (
+          {/* Action Buttons — explicitly labeled */}
+          <div className="space-y-2 mb-4">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-9 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
+                onClick={handleEnrichSumble}
+                disabled={sumbleLoading || !domain.trim()}
+              >
+                {sumbleLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <SumbleIcon className="h-3.5 w-3.5" />
+                )}
+                <span className="flex flex-col items-start leading-none">
+                  <span className="font-medium">{sumbleData ? 'Refresh Sumble' : 'Sumble Enrich'}</span>
+                  <span className="text-2xs text-slate-500 font-normal">Tech stack & hiring</span>
+                </span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs h-9 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
+                onClick={handleResearchPerplexity}
+                disabled={perplexityLoading}
+              >
+                {perplexityLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <PerplexityIcon className="h-3.5 w-3.5" />
+                )}
+                <span className="flex flex-col items-start leading-none">
+                  <span className="font-medium">{perplexityData ? 'Re-research' : 'Perplexity Research'}</span>
+                  <span className="text-2xs text-slate-500 font-normal">Web intel & competition</span>
+                </span>
+              </Button>
+            </div>
+            {cortexProcessing && (
+              <div className="flex items-center gap-1.5 text-2xs text-violet-400">
                 <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <SumbleIcon className="h-3.5 w-3.5" />
-              )}
-              {sumbleData ? 'Refresh' : 'Enrich'}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1.5 text-xs h-8 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
-              onClick={handleResearchPerplexity}
-              disabled={perplexityLoading}
-            >
-              {perplexityLoading ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <PerplexityIcon className="h-3.5 w-3.5" />
-              )}
-              {perplexityData ? 'Re-research' : 'Research'}
-            </Button>
+                AI classifying findings &amp; extracting entities…
+              </div>
+            )}
           </div>
 
           {/* View History button */}
@@ -698,26 +832,55 @@ export function TDRIntelligence({
             </div>
           )}
 
-          {/* ── Generate TDR Brief Button (Sprint 7) ── */}
-          {(sumbleData || perplexityData) && sessionId && (
+          {/* ── TDR Brief Section (Sprint 7) — cached or generate ── */}
+          {sessionId && (
             <div className="mt-3 pt-3 border-t border-[#322b4d]">
-              <Dialog open={briefOpen} onOpenChange={setBriefOpen}>
-                <DialogTrigger asChild>
+              {/* Show "View Brief" if cached, else "Generate" */}
+              <div className="flex gap-2">
+                {briefData?.success ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs h-8 border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200"
+                      onClick={handleOpenCachedBrief}
+                    >
+                      <FileText className="h-3 w-3" />
+                      View TDR Brief
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs h-8 border-[#362f50] bg-[#1e1a30]/80 text-slate-400 hover:bg-[#2d2744] hover:text-white"
+                      onClick={handleGenerateBrief}
+                      disabled={briefLoading}
+                    >
+                      {briefLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                      Regenerate
+                    </Button>
+                  </>
+                ) : (
                   <Button
                     variant="outline"
                     size="sm"
                     className="w-full gap-1.5 text-xs h-8 border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200"
                     onClick={handleGenerateBrief}
-                    disabled={briefLoading}
+                    disabled={briefLoading || (!sumbleData && !perplexityData)}
                   >
-                    {briefLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3 w-3" />
-                    )}
-                    {briefData ? 'Regenerate TDR Brief' : 'Generate TDR Brief'}
+                    {briefLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    Generate TDR Brief
                   </Button>
-                </DialogTrigger>
+                )}
+              </div>
+              {briefGeneratedAt && (
+                <p className="mt-1 text-2xs text-slate-600">
+                  Last generated {formatDate(briefGeneratedAt)}
+                  {briefData?.modelUsed ? ` · ${briefData.modelUsed}` : ''}
+                </p>
+              )}
+
+              {/* Brief Dialog (controlled — no DialogTrigger needed) */}
+              <Dialog open={briefOpen} onOpenChange={setBriefOpen}>
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#1e1a30] border-[#362f50] text-white">
                   <DialogHeader>
                     <DialogTitle className="text-white flex items-center gap-2">
@@ -726,7 +889,7 @@ export function TDRIntelligence({
                     </DialogTitle>
                     <DialogDescription className="text-slate-500">
                       {briefData?.modelUsed
-                        ? `Generated by Snowflake Cortex · ${briefData.modelUsed}`
+                        ? `Generated by Snowflake Cortex · ${briefData.modelUsed}${briefGeneratedAt ? ` · ${formatDate(briefGeneratedAt)}` : ''}`
                         : 'Generating brief using Snowflake Cortex AI...'}
                     </DialogDescription>
                   </DialogHeader>
@@ -743,21 +906,21 @@ export function TDRIntelligence({
                       <p className="text-xs text-red-400/70 mt-1">{briefData.error}</p>
                     </div>
                   ) : briefSections.length > 0 ? (
-                    <div className="space-y-4">
+                    <div className="space-y-5">
                       {briefSections.map((section, i) => (
                         <div key={i}>
-                          <h4 className="text-sm font-semibold text-slate-200 mb-1.5">
+                          <h4 className="text-sm font-semibold text-slate-100 mb-2 border-b border-[#322b4d] pb-1.5">
                             {section.heading}
                           </h4>
-                          <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap">
-                            {section.content}
+                          <div className="text-xs text-slate-400 leading-relaxed">
+                            {renderMarkdownBlock(section.content, `s${i}`)}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : briefData?.brief ? (
-                    <div className="text-xs text-slate-400 leading-relaxed whitespace-pre-wrap">
-                      {briefData.brief}
+                    <div className="text-xs text-slate-400 leading-relaxed">
+                      {renderMarkdownBlock(briefData.brief, 'fallback')}
                     </div>
                   ) : null}
                 </DialogContent>

@@ -193,6 +193,13 @@
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
+      "alias": "getLatestBrief",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
       "alias": "generateTDRBrief",
       "parameters": [
         { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }

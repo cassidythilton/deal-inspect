@@ -214,31 +214,54 @@ export interface BriefSection {
 }
 
 /**
+ * Normalise a Cortex AI brief string before parsing.
+ * Handles: outer quotes, literal "\\n" escapes, curly-quote artefacts.
+ */
+function normalizeBrief(raw: string): string {
+  let s = raw;
+  // Strip outer double-quotes if present (Snowflake sometimes wraps in quotes)
+  if (s.startsWith('"') && s.endsWith('"')) {
+    s = s.slice(1, -1);
+  }
+  // Replace literal escaped newlines with real ones
+  s = s.replace(/\\n/g, '\n');
+  // Collapse 3+ newlines to 2
+  s = s.replace(/\n{3,}/g, '\n\n');
+  return s.trim();
+}
+
+/**
  * Parse a generated TDR brief into sections by numbered headers.
  * Expected format: "**1. Executive Summary**\n\n<content>\n\n**2. ..."
  */
-export function parseBriefSections(brief: string): BriefSection[] {
-  if (!brief) return [];
+export function parseBriefSections(raw: string): BriefSection[] {
+  if (!raw) return [];
+
+  const brief = normalizeBrief(raw);
 
   // Split on numbered section headers like "**1. ..." or "1. ..."
   const sectionRegex = /(?:^|\n)\s*\*{0,2}\s*(\d+)\.\s+(.+?)\s*\*{0,2}\s*\n/g;
   const sections: BriefSection[] = [];
-  const matches: { index: number; heading: string }[] = [];
+  const matches: { index: number; fullLen: number; heading: string }[] = [];
 
   let match;
   while ((match = sectionRegex.exec(brief)) !== null) {
-    matches.push({ index: match.index, heading: match[2].replace(/\*+/g, '').trim() });
+    matches.push({
+      index: match.index,
+      fullLen: match[0].length,
+      heading: match[2].replace(/\*+/g, '').trim(),
+    });
   }
 
   if (matches.length === 0) {
     // Couldn't parse sections — return as single block
-    return [{ heading: 'TDR Brief', content: brief.trim() }];
+    return [{ heading: 'TDR Brief', content: brief }];
   }
 
   for (let i = 0; i < matches.length; i++) {
-    const start = brief.indexOf('\n', matches[i].index) + 1;
-    const end = i + 1 < matches.length ? matches[i + 1].index : brief.length;
-    const content = brief.substring(start, end).trim();
+    const contentStart = matches[i].index + matches[i].fullLen;
+    const contentEnd = i + 1 < matches.length ? matches[i + 1].index : brief.length;
+    const content = brief.substring(contentStart, contentEnd).trim();
     sections.push({ heading: matches[i].heading, content });
   }
 
@@ -248,6 +271,35 @@ export function parseBriefSections(brief: string): BriefSection[] {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export const cortexAi = {
+  /**
+   * Load the most recently cached TDR brief for a session (no token cost).
+   */
+  async getLatestBrief(sessionId: string): Promise<TDRBrief & { hasBrief?: boolean; createdAt?: string }> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning cached mock TDR brief');
+      return { ...MOCK_BRIEF, hasBrief: true, createdAt: new Date().toISOString() };
+    }
+
+    try {
+      const raw = await callCodeEngine<unknown>('getLatestBrief', { sessionId });
+      const result = extractResult(raw) as Record<string, unknown>;
+      if (result.hasBrief === false) {
+        return { success: true, hasBrief: false };
+      }
+      return {
+        success: true,
+        hasBrief: true,
+        brief: (result.brief as string) || '',
+        modelUsed: (result.modelUsed as string) || '',
+        resultId: (result.resultId as string) || '',
+        createdAt: (result.createdAt as string) || '',
+      };
+    } catch (err: unknown) {
+      console.warn('[CortexAI] getLatestBrief failed:', err);
+      return { success: false, hasBrief: false };
+    }
+  },
+
   /**
    * Generate a structured TDR brief using Snowflake Cortex AI_COMPLETE.
    * Joins session inputs + Sumble tech stack + Perplexity research.
