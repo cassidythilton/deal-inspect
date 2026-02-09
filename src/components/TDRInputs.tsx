@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { TDRStep } from '@/types/tdr';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,14 +18,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Check, CheckCircle2, History, Loader2 } from 'lucide-react';
+import { Check, CheckCircle2, History, Loader2, CloudOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { snowflakeStore } from '@/lib/snowflakeStore';
 import type { StepInput } from '@/lib/snowflakeStore';
 
+/** Debounce interval for auto-save (ms) */
+const AUTOSAVE_DELAY_MS = 2000;
+/** sessionStorage key prefix for draft values */
+const DRAFT_KEY_PREFIX = 'tdr-draft-';
+
 interface TDRInputsProps {
   activeStep: TDRStep | undefined;
-  /** The current session ID (needed for history lookups) */
+  /** The current session ID (needed for history lookups and draft cache) */
   sessionId?: string;
   /** Map of `stepId::fieldId` → saved value */
   inputValues?: Map<string, string>;
@@ -112,6 +117,36 @@ const stepInputConfigs: Record<string, { fields: { id: string; label: string; ty
   },
 };
 
+// ── sessionStorage helpers ──────────────────────────────────────────
+function getDraftKey(sessionId: string): string {
+  return `${DRAFT_KEY_PREFIX}${sessionId}`;
+}
+
+function saveDraftToStorage(sessionId: string, drafts: Record<string, string>) {
+  try {
+    sessionStorage.setItem(getDraftKey(sessionId), JSON.stringify(drafts));
+  } catch {
+    // sessionStorage may not be available in some contexts — silently fail
+  }
+}
+
+function loadDraftFromStorage(sessionId: string): Record<string, string> {
+  try {
+    const raw = sessionStorage.getItem(getDraftKey(sessionId));
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function clearDraftFromStorage(sessionId: string) {
+  try {
+    sessionStorage.removeItem(getDraftKey(sessionId));
+  } catch {
+    // silent
+  }
+}
+
 export function TDRInputs({
   activeStep,
   sessionId,
@@ -125,6 +160,12 @@ export function TDRInputs({
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   // Track which fields have been touched (for save indicators)
   const [savedFields, setSavedFields] = useState<Set<string>>(new Set());
+  // Track fields that are dirty (changed locally but not yet saved to Snowflake)
+  const dirtyFieldsRef = useRef<Set<string>>(new Set());
+  // Debounce timer for auto-save
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Whether we recovered drafts from sessionStorage this mount
+  const [recoveredDrafts, setRecoveredDrafts] = useState(false);
 
   // ── Edit History Dialog ──
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -148,6 +189,123 @@ export function TDRInputs({
     setHistoryLoading(false);
   }, [sessionId]);
 
+  // ── Restore drafts from sessionStorage on mount / session change ────
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const drafts = loadDraftFromStorage(sessionId);
+    if (Object.keys(drafts).length > 0) {
+      console.log(`[TDRInputs] Recovered ${Object.keys(drafts).length} draft field(s) from sessionStorage`);
+      setLocalValues(prev => ({ ...prev, ...drafts }));
+
+      // Mark all recovered fields as dirty so they get auto-saved
+      for (const key of Object.keys(drafts)) {
+        dirtyFieldsRef.current.add(key);
+      }
+      setRecoveredDrafts(true);
+    }
+  }, [sessionId]);
+
+  // ── Auto-save recovered drafts to Snowflake ────────────────────────
+  useEffect(() => {
+    if (!recoveredDrafts || !onSaveInput || !sessionId || !allSteps) return;
+
+    // Flush all recovered dirty fields to Snowflake
+    const flushRecovered = async () => {
+      const dirty = Array.from(dirtyFieldsRef.current);
+      if (dirty.length === 0) return;
+
+      console.log(`[TDRInputs] Auto-saving ${dirty.length} recovered draft(s) to Snowflake...`);
+      for (const key of dirty) {
+        const [stepId, fieldId] = key.split('::');
+        if (!stepId || !fieldId) continue;
+
+        const value = localValues[key];
+        if (!value) continue;
+
+        const stepConfig = stepInputConfigs[stepId];
+        const fieldConfig = stepConfig?.fields.find(f => f.id === fieldId);
+        const stepIdx = allSteps.findIndex(s => s.id === stepId);
+        const step = allSteps[stepIdx];
+
+        try {
+          await onSaveInput({
+            stepId,
+            stepLabel: step?.title || stepId,
+            fieldId,
+            fieldLabel: fieldConfig?.label || fieldId,
+            fieldValue: value,
+            stepOrder: stepIdx >= 0 ? stepIdx : 0,
+          });
+          dirtyFieldsRef.current.delete(key);
+          setSavedFields(prev => new Set(prev).add(key));
+        } catch (err) {
+          console.error(`[TDRInputs] Failed to auto-save recovered draft ${key}:`, err);
+        }
+      }
+
+      // Clear drafts from sessionStorage if all saved
+      if (dirtyFieldsRef.current.size === 0) {
+        clearDraftFromStorage(sessionId);
+        setRecoveredDrafts(false);
+      }
+    };
+
+    flushRecovered();
+  }, [recoveredDrafts, onSaveInput, sessionId, allSteps, localValues]);
+
+  // ── Flush dirty fields to Snowflake (called by debounce timer) ─────
+  const flushDirtyFields = useCallback(async () => {
+    if (!onSaveInput || !allSteps) return;
+
+    const dirty = Array.from(dirtyFieldsRef.current);
+    if (dirty.length === 0) return;
+
+    for (const key of dirty) {
+      const [stepId, fieldId] = key.split('::');
+      if (!stepId || !fieldId) continue;
+
+      // Read from current local state via the ref-safe pattern
+      const value = localValues[key];
+      if (value === undefined) continue;
+
+      const stepConfig = stepInputConfigs[stepId];
+      const fieldConfig = stepConfig?.fields.find(f => f.id === fieldId);
+      const stepIdx = allSteps.findIndex(s => s.id === stepId);
+      const step = allSteps[stepIdx];
+
+      try {
+        await onSaveInput({
+          stepId,
+          stepLabel: step?.title || stepId,
+          fieldId,
+          fieldLabel: fieldConfig?.label || fieldId,
+          fieldValue: value,
+          stepOrder: stepIdx >= 0 ? stepIdx : 0,
+        });
+        dirtyFieldsRef.current.delete(key);
+        setSavedFields(prev => new Set(prev).add(key));
+        console.log(`[TDRInputs] Auto-saved: ${key}`);
+      } catch (err) {
+        console.error(`[TDRInputs] Auto-save failed for ${key}:`, err);
+      }
+    }
+
+    // Clear drafts from sessionStorage if all dirty fields flushed
+    if (sessionId && dirtyFieldsRef.current.size === 0) {
+      clearDraftFromStorage(sessionId);
+    }
+  }, [onSaveInput, allSteps, localValues, sessionId]);
+
+  // ── Cleanup timer on unmount ───────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, []);
+
   if (!activeStep) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -170,25 +328,50 @@ export function TDRInputs({
     return '';
   };
 
-  // Handle local change (controlled input)
+  // Handle local change (controlled input) — caches to sessionStorage + starts debounce timer
   const handleChange = (fieldId: string, value: string) => {
     const key = `${activeStep.id}::${fieldId}`;
-    setLocalValues(prev => ({ ...prev, [key]: value }));
+
+    setLocalValues(prev => {
+      const next = { ...prev, [key]: value };
+
+      // Immediately cache to sessionStorage (survives Domo data-refresh reloads)
+      if (sessionId) {
+        saveDraftToStorage(sessionId, next);
+      }
+
+      return next;
+    });
+
+    // Mark field as dirty
+    dirtyFieldsRef.current.add(key);
+
     // Clear saved indicator when editing
     setSavedFields(prev => {
       const next = new Set(prev);
       next.delete(key);
       return next;
     });
+
+    // Reset the auto-save debounce timer
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    autoSaveTimerRef.current = setTimeout(() => {
+      flushDirtyFields();
+    }, AUTOSAVE_DELAY_MS);
   };
 
-  // Handle blur — persist to Snowflake
+  // Handle blur — immediately flush this field to Snowflake
   const handleBlur = async (fieldId: string, fieldLabel: string) => {
     if (!onSaveInput || !activeStep) return;
 
     const key = `${activeStep.id}::${fieldId}`;
     const value = localValues[key];
     if (value === undefined) return; // Nothing was changed locally
+
+    // Cancel pending debounce for this field (we're saving now)
+    dirtyFieldsRef.current.delete(key);
 
     await onSaveInput({
       stepId: activeStep.id,
@@ -201,6 +384,11 @@ export function TDRInputs({
 
     // Show saved indicator
     setSavedFields(prev => new Set(prev).add(key));
+
+    // Clean up sessionStorage if no more dirty fields
+    if (sessionId && dirtyFieldsRef.current.size === 0) {
+      clearDraftFromStorage(sessionId);
+    }
   };
 
   // Handle select change — persist immediately
@@ -252,6 +440,15 @@ export function TDRInputs({
           </Button>
         )}
       </div>
+
+      {recoveredDrafts && (
+        <div className="mb-4 flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-800 dark:bg-amber-950/20">
+          <CloudOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+          <span className="text-xs text-amber-700 dark:text-amber-300">
+            Unsaved inputs recovered from your last session. Auto-saving to Snowflake...
+          </span>
+        </div>
+      )}
 
       <div className="space-y-5">
         {config.fields.map((field) => {

@@ -2707,6 +2707,10 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 - Most Sprint 3 work was pulled forward into Sprint 2 (all 8 persistence functions deployed at once, `TDRInputs` and `useTDRSession` wired from the start).
 - Edit history dialog uses `snowflakeStore.getInputHistory(sessionId, stepId, fieldId)` — returns all timestamped values newest-first.
 - History button only appears on fields that have a current value and a valid `sessionId` (not visible on empty/local sessions).
+- **Domo reload protection:** Domo reloads the app whenever any powering dataset updates. Added two layers of protection:
+  1. **Debounced auto-save (2s):** Every keystroke resets a 2-second timer. When it fires, all dirty fields are flushed to Snowflake — not just on blur.
+  2. **sessionStorage draft cache:** Every keystroke is immediately cached in `sessionStorage` (keyed by `sessionId`). On reload, drafts are recovered and auto-saved to Snowflake with a visible "Unsaved inputs recovered" banner.
+- This combination ensures no more than 2 seconds of typing can be lost, and even that is recoverable from `sessionStorage` on the next load.
 
 ---
 
