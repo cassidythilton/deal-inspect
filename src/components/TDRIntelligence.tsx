@@ -191,21 +191,23 @@ export function TDRIntelligence({
       )}
 
       {/* ═══════════════════════════════════════════════════════════
-          ACCOUNT INTELLIGENCE — Sumble + Perplexity
+          ACCOUNT INTELLIGENCE — Sumble + Perplexity (dark card)
           ═══════════════════════════════════════════════════════════ */}
       {deal && (
-        <div className="border-b border-border/60 p-4">
-          <p className="section-header mb-3">ACCOUNT INTELLIGENCE</p>
+        <div className="m-2 rounded-xl bg-slate-900 p-4 ring-1 ring-white/10 shadow-lg">
+          <p className="mb-3 text-2xs font-semibold uppercase tracking-widest text-slate-400">
+            Account Intelligence
+          </p>
 
           {/* Domain Input */}
           <div className="mb-3 space-y-1">
-            <Label className="text-2xs text-muted-foreground">Account Domain</Label>
+            <Label className="text-2xs text-slate-500">Account Domain</Label>
             <div className="flex gap-1.5">
               <Input
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder="acme.com"
-                className="h-8 flex-1 text-xs"
+                className="h-8 flex-1 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 focus-visible:ring-slate-600"
               />
             </div>
           </div>
@@ -215,7 +217,7 @@ export function TDRIntelligence({
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-1.5 text-xs h-8"
+              className="flex-1 gap-1.5 text-xs h-8 border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white"
               onClick={handleEnrichSumble}
               disabled={sumbleLoading || !domain.trim()}
             >
@@ -229,7 +231,7 @@ export function TDRIntelligence({
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-1.5 text-xs h-8"
+              className="flex-1 gap-1.5 text-xs h-8 border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:text-white"
               onClick={handleResearchPerplexity}
               disabled={perplexityLoading}
             >
@@ -245,10 +247,10 @@ export function TDRIntelligence({
           {/* ── Sumble Results ── */}
           {sumbleData && sumbleData.success && (
             <div className="space-y-2 mb-3">
-              <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1">
+              <p className="text-2xs font-medium text-slate-400 flex items-center gap-1">
                 <SumbleIcon className="h-3.5 w-3.5" />
                 TECHNOGRAPHIC SIGNALS
-                <span className="ml-auto text-2xs text-muted-foreground/60">
+                <span className="ml-auto text-2xs text-slate-600">
                   {formatDate(sumbleData.pulledAt)}
                 </span>
               </p>
@@ -256,19 +258,19 @@ export function TDRIntelligence({
               {/* Organization identity + summary */}
               {sumbleData.orgName && (
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="font-medium">{sumbleData.orgName}</span>
+                  <span className="font-medium text-slate-100">{sumbleData.orgName}</span>
                   {sumbleData.sourceDataUrl && (
                     <a
                       href={sumbleData.sourceDataUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-500 hover:text-blue-600 flex items-center gap-0.5"
+                      className="text-blue-400 hover:text-blue-300 flex items-center gap-0.5"
                     >
                       <ExternalLink className="h-3 w-3" />
                       <span className="text-2xs">Sumble</span>
                     </a>
                   )}
-                  <span className="ml-auto text-2xs text-muted-foreground">
+                  <span className="ml-auto text-2xs text-slate-500">
                     {sumbleData.technologiesCount ?? 0} techs found
                   </span>
                 </div>
@@ -276,7 +278,7 @@ export function TDRIntelligence({
 
               {/* No techs found message */}
               {sumbleData.technologiesCount === 0 && (
-                <p className="text-xs text-muted-foreground italic">
+                <p className="text-xs text-slate-500 italic">
                   No technology signals found for this company in Sumble.
                 </p>
               )}
@@ -284,7 +286,7 @@ export function TDRIntelligence({
               {/* Tech Stack Badges */}
               {sumbleData.techCategories && Object.entries(sumbleData.techCategories).some(([, techs]) => techs.length > 0) && (
                 <div>
-                  <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
+                  <p className="text-2xs font-medium text-slate-400 flex items-center gap-1 mb-1.5">
                     <Layers className="h-3 w-3" />
                     TECH STACK
                   </p>
@@ -295,7 +297,7 @@ export function TDRIntelligence({
                         const style = TECH_CATEGORY_STYLES[category] || TECH_CATEGORY_STYLES.Other;
                         return (
                           <div key={category} className="flex flex-wrap items-center gap-1">
-                            <span className="text-2xs text-muted-foreground w-16 shrink-0">{style.label}</span>
+                            <span className="text-2xs text-slate-500 w-16 shrink-0">{style.label}</span>
                             {techs.map((tech) => (
                               <span
                                 key={tech}
@@ -318,7 +320,7 @@ export function TDRIntelligence({
               {/* Tech detail signals (jobs/people/teams) for top techs */}
               {sumbleData.techDetails && sumbleData.techDetails.length > 0 && (
                 <div className="mt-1.5">
-                  <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                  <p className="text-2xs font-medium text-slate-400 flex items-center gap-1 mb-1">
                     <Cpu className="h-3 w-3" />
                     HIRING SIGNALS
                   </p>
@@ -328,8 +330,8 @@ export function TDRIntelligence({
                       .slice(0, 8)
                       .map((tech) => (
                         <div key={tech.name} className="flex items-center justify-between text-2xs">
-                          <span className="font-medium text-foreground">{tech.name}</span>
-                          <div className="flex gap-2 text-muted-foreground">
+                          <span className="font-medium text-slate-200">{tech.name}</span>
+                          <div className="flex gap-2 text-slate-500">
                             {tech.jobs_count > 0 && <span>{tech.jobs_count} jobs</span>}
                             {tech.people_count > 0 && <span>{tech.people_count} people</span>}
                             {tech.teams_count > 0 && <span>{tech.teams_count} teams</span>}
@@ -342,31 +344,36 @@ export function TDRIntelligence({
             </div>
           )}
 
+          {/* Divider between Sumble and Perplexity when both present */}
+          {sumbleData?.success && perplexityData?.success && (
+            <div className="my-3 border-t border-slate-700/60" />
+          )}
+
           {/* ── Perplexity Results ── */}
           {perplexityData && perplexityData.success && (
             <div className="space-y-2">
-              <p className="text-2xs font-medium text-muted-foreground flex items-center gap-1">
+              <p className="text-2xs font-medium text-slate-400 flex items-center gap-1">
                 <PerplexityIcon className="h-3.5 w-3.5" />
                 WEB RESEARCH
-                <span className="ml-auto text-2xs text-muted-foreground/60">
+                <span className="ml-auto text-2xs text-slate-600">
                   {formatDate(perplexityData.pulledAt)}
                 </span>
               </p>
 
               {perplexityData.summary && (
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="text-xs text-slate-300 leading-relaxed">
                   {perplexityData.summary}
                 </p>
               )}
 
               {perplexityData.technologySignals && perplexityData.technologySignals.length > 0 && (
                 <div>
-                  <p className="text-2xs font-medium text-muted-foreground mb-1">Technology Signals</p>
+                  <p className="text-2xs font-medium text-slate-400 mb-1">Technology Signals</p>
                   <ul className="space-y-1">
                     {perplexityData.technologySignals.map((signal, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-xs">
-                        <Cpu className="mt-0.5 h-3 w-3 shrink-0 text-violet-500" />
-                        <span className="text-muted-foreground">{signal}</span>
+                        <Cpu className="mt-0.5 h-3 w-3 shrink-0 text-violet-400" />
+                        <span className="text-slate-400">{signal}</span>
                       </li>
                     ))}
                   </ul>
@@ -375,12 +382,12 @@ export function TDRIntelligence({
 
               {perplexityData.competitiveLandscape && perplexityData.competitiveLandscape.length > 0 && (
                 <div>
-                  <p className="text-2xs font-medium text-muted-foreground mb-1">Competitive Landscape</p>
+                  <p className="text-2xs font-medium text-slate-400 mb-1">Competitive Landscape</p>
                   <ul className="space-y-1">
                     {perplexityData.competitiveLandscape.map((item, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-xs">
-                        <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-amber-500" />
-                        <span className="text-muted-foreground">{item}</span>
+                        <AlertCircle className="mt-0.5 h-3 w-3 shrink-0 text-amber-400" />
+                        <span className="text-slate-400">{item}</span>
                       </li>
                     ))}
                   </ul>
@@ -389,12 +396,12 @@ export function TDRIntelligence({
 
               {perplexityData.keyInsights && perplexityData.keyInsights.length > 0 && (
                 <div>
-                  <p className="text-2xs font-medium text-muted-foreground mb-1">Key Insights</p>
+                  <p className="text-2xs font-medium text-slate-400 mb-1">Key Insights</p>
                   <ul className="space-y-1">
                     {perplexityData.keyInsights.map((insight, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-xs">
-                        <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-blue-500" />
-                        <span className="text-muted-foreground">{insight}</span>
+                        <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-blue-400" />
+                        <span className="text-slate-400">{insight}</span>
                       </li>
                     ))}
                   </ul>
@@ -403,7 +410,7 @@ export function TDRIntelligence({
 
               {perplexityData.citations && perplexityData.citations.length > 0 && (
                 <div>
-                  <p className="text-2xs font-medium text-muted-foreground mb-1">Sources</p>
+                  <p className="text-2xs font-medium text-slate-400 mb-1">Sources</p>
                   <div className="space-y-0.5">
                     {perplexityData.citations.map((url, i) => (
                       <a
@@ -411,7 +418,7 @@ export function TDRIntelligence({
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-2xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 truncate"
+                        className="flex items-center gap-1 text-2xs text-blue-400 hover:text-blue-300 truncate"
                       >
                         <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                         <span className="truncate">{url.replace(/^https?:\/\//, '').split('/')[0]}</span>
@@ -425,7 +432,7 @@ export function TDRIntelligence({
 
           {/* Empty state */}
           {!sumbleData && !perplexityData && !sumbleLoading && !perplexityLoading && (
-            <p className="text-xs text-muted-foreground/60 italic">
+            <p className="text-xs text-slate-600 italic">
               Click Enrich or Research to pull account intelligence.
             </p>
           )}

@@ -181,7 +181,7 @@ export default function TDRWorkspace() {
         </main>
 
         {/* Right Panel - Intelligence */}
-        <aside className="w-80 shrink-0 border-l border-border bg-card overflow-y-auto">
+        <aside className="w-96 shrink-0 border-l border-border bg-card overflow-y-auto">
           <TDRIntelligence
             deal={deal}
             readinessLevel={deal.riskLevel}
