@@ -1,3 +1,4 @@
+import { useState, useCallback } from 'react';
 import { TDRStep } from '@/types/tdr';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,9 +10,29 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Check, CheckCircle2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface TDRInputsProps {
   activeStep: TDRStep | undefined;
+  /** Map of `stepId::fieldId` → saved value */
+  inputValues?: Map<string, string>;
+  /** Called on blur or select change to persist a field */
+  onSaveInput?: (args: {
+    stepId: string;
+    stepLabel: string;
+    fieldId: string;
+    fieldLabel: string;
+    fieldValue: string;
+    stepOrder: number;
+  }) => Promise<void>;
+  /** Toggle the active step complete/incomplete */
+  onToggleStepComplete?: (stepId: string) => void;
+  /** Whether the active step is currently marked complete */
+  isStepComplete?: boolean;
+  /** All steps (for step order lookup) */
+  allSteps?: TDRStep[];
 }
 
 const stepInputConfigs: Record<string, { fields: { id: string; label: string; type: 'text' | 'textarea' | 'select'; options?: string[]; placeholder?: string }[] }> = {
@@ -80,7 +101,19 @@ const stepInputConfigs: Record<string, { fields: { id: string; label: string; ty
   },
 };
 
-export function TDRInputs({ activeStep }: TDRInputsProps) {
+export function TDRInputs({
+  activeStep,
+  inputValues,
+  onSaveInput,
+  onToggleStepComplete,
+  isStepComplete,
+  allSteps,
+}: TDRInputsProps) {
+  // Track local field values for controlled inputs
+  const [localValues, setLocalValues] = useState<Record<string, string>>({});
+  // Track which fields have been touched (for save indicators)
+  const [savedFields, setSavedFields] = useState<Set<string>>(new Set());
+
   if (!activeStep) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -90,50 +123,161 @@ export function TDRInputs({ activeStep }: TDRInputsProps) {
   }
 
   const config = stepInputConfigs[activeStep.id] || { fields: [] };
+  const stepOrder = allSteps ? allSteps.findIndex(s => s.id === activeStep.id) : 0;
+
+  // Get the current value for a field: local draft > saved > empty
+  const getFieldValue = (fieldId: string): string => {
+    const localKey = `${activeStep.id}::${fieldId}`;
+    if (localValues[localKey] !== undefined) return localValues[localKey];
+    if (inputValues) {
+      const saved = inputValues.get(`${activeStep.id}::${fieldId}`);
+      if (saved) return saved;
+    }
+    return '';
+  };
+
+  // Handle local change (controlled input)
+  const handleChange = (fieldId: string, value: string) => {
+    const key = `${activeStep.id}::${fieldId}`;
+    setLocalValues(prev => ({ ...prev, [key]: value }));
+    // Clear saved indicator when editing
+    setSavedFields(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
+
+  // Handle blur — persist to Snowflake
+  const handleBlur = async (fieldId: string, fieldLabel: string) => {
+    if (!onSaveInput || !activeStep) return;
+
+    const key = `${activeStep.id}::${fieldId}`;
+    const value = localValues[key];
+    if (value === undefined) return; // Nothing was changed locally
+
+    await onSaveInput({
+      stepId: activeStep.id,
+      stepLabel: activeStep.title,
+      fieldId,
+      fieldLabel,
+      fieldValue: value,
+      stepOrder,
+    });
+
+    // Show saved indicator
+    setSavedFields(prev => new Set(prev).add(key));
+  };
+
+  // Handle select change — persist immediately
+  const handleSelectChange = async (fieldId: string, fieldLabel: string, value: string) => {
+    const key = `${activeStep.id}::${fieldId}`;
+    setLocalValues(prev => ({ ...prev, [key]: value }));
+
+    if (onSaveInput && activeStep) {
+      await onSaveInput({
+        stepId: activeStep.id,
+        stepLabel: activeStep.title,
+        fieldId,
+        fieldLabel,
+        fieldValue: value,
+        stepOrder,
+      });
+      setSavedFields(prev => new Set(prev).add(key));
+    }
+  };
 
   return (
     <div className="h-full overflow-y-auto p-6">
-      <div className="mb-6">
-        <h2 className="text-lg font-medium">{activeStep.title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{activeStep.description}</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h2 className="text-lg font-medium">{activeStep.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{activeStep.description}</p>
+        </div>
+        {onToggleStepComplete && (
+          <Button
+            variant={isStepComplete ? 'default' : 'outline'}
+            size="sm"
+            className={cn(
+              'gap-1.5 text-xs',
+              isStepComplete && 'bg-emerald-600 hover:bg-emerald-700'
+            )}
+            onClick={() => onToggleStepComplete(activeStep.id)}
+          >
+            {isStepComplete ? (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Completed
+              </>
+            ) : (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                Mark Complete
+              </>
+            )}
+          </Button>
+        )}
       </div>
 
       <div className="space-y-5">
-        {config.fields.map((field) => (
-          <div key={field.id} className="space-y-1.5">
-            <Label htmlFor={field.id} className="text-xs font-medium">
-              {field.label}
-            </Label>
-            {field.type === 'text' && (
-              <Input
-                id={field.id}
-                placeholder={field.placeholder}
-                className="h-9 text-sm"
-              />
-            )}
-            {field.type === 'textarea' && (
-              <Textarea
-                id={field.id}
-                placeholder={field.placeholder}
-                className="min-h-20 resize-none text-sm"
-              />
-            )}
-            {field.type === 'select' && (
-              <Select>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {field.options?.map((option) => (
-                    <SelectItem key={option} value={option.toLowerCase()} className="text-sm">
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        ))}
+        {config.fields.map((field) => {
+          const fieldKey = `${activeStep.id}::${field.id}`;
+          const isSaved = savedFields.has(fieldKey);
+          const currentValue = getFieldValue(field.id);
+
+          return (
+            <div key={field.id} className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Label htmlFor={field.id} className="text-xs font-medium">
+                  {field.label}
+                </Label>
+                {isSaved && (
+                  <span className="flex items-center gap-0.5 text-2xs text-emerald-600">
+                    <Check className="h-2.5 w-2.5" />
+                    saved
+                  </span>
+                )}
+              </div>
+              {field.type === 'text' && (
+                <Input
+                  id={field.id}
+                  placeholder={field.placeholder}
+                  className="h-9 text-sm"
+                  value={currentValue}
+                  onChange={(e) => handleChange(field.id, e.target.value)}
+                  onBlur={() => handleBlur(field.id, field.label)}
+                />
+              )}
+              {field.type === 'textarea' && (
+                <Textarea
+                  id={field.id}
+                  placeholder={field.placeholder}
+                  className="min-h-20 resize-none text-sm"
+                  value={currentValue}
+                  onChange={(e) => handleChange(field.id, e.target.value)}
+                  onBlur={() => handleBlur(field.id, field.label)}
+                />
+              )}
+              {field.type === 'select' && (
+                <Select
+                  value={currentValue || undefined}
+                  onValueChange={(v) => handleSelectChange(field.id, field.label, v)}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options?.map((option) => (
+                      <SelectItem key={option} value={option.toLowerCase()} className="text-sm">
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

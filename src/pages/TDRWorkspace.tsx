@@ -1,14 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TDRSteps } from '@/components/TDRSteps';
 import { TDRInputs } from '@/components/TDRInputs';
 import { TDRIntelligence } from '@/components/TDRIntelligence';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
+import { useTDRSession } from '@/hooks/useTDRSession';
 
 export default function TDRWorkspace() {
   const [searchParams] = useSearchParams();
@@ -25,9 +26,32 @@ export default function TDRWorkspace() {
     return mockDeals.find((d) => d.id === dealId) || mockDeals[0];
   }, [domoDeals, isDomoConnected, dealId]);
   
-  const [steps, setSteps] = useState<TDRStep[]>(tdrSteps);
+  // ── Session lifecycle (Snowflake persistence) ──
+  const {
+    session,
+    isLoading: sessionLoading,
+    inputValues,
+    completedSteps,
+    saveInput,
+    markStepComplete,
+    markStepIncomplete,
+    isSaving,
+  } = useTDRSession(deal);
+
+  // ── Step management ──
+  const [steps, setSteps] = useState<TDRStep[]>(
+    tdrSteps.map(s => ({ ...s, isComplete: false, isActive: s.id === 'context' }))
+  );
+
+  // Sync completed steps from session into step state
+  const stepsWithCompletion = useMemo(() => {
+    return steps.map(s => ({
+      ...s,
+      isComplete: completedSteps.has(s.id),
+    }));
+  }, [steps, completedSteps]);
   
-  const activeStep = steps.find((s) => s.isActive);
+  const activeStep = stepsWithCompletion.find((s) => s.isActive);
 
   const handleStepClick = (stepId: string) => {
     setSteps((prev) =>
@@ -37,6 +61,15 @@ export default function TDRWorkspace() {
       }))
     );
   };
+
+  // ── Step completion toggle ──
+  const handleToggleStepComplete = useCallback((stepId: string) => {
+    if (completedSteps.has(stepId)) {
+      markStepIncomplete(stepId);
+    } else {
+      markStepComplete(stepId);
+    }
+  }, [completedSteps, markStepComplete, markStepIncomplete]);
 
   // Mock intelligence data based on deal
   const missingInfo = deal.isPartnerPlay 
@@ -48,6 +81,15 @@ export default function TDRWorkspace() {
     : deal.riskLevel === 'yellow'
     ? ['Competitive pressure identified']
     : ['Critical timeline risk', 'Budget constraints'];
+
+  // Session status pill
+  const sessionStatusLabel = session
+    ? session.sessionId.startsWith('fallback-') || session.sessionId.startsWith('local-')
+      ? 'local'
+      : session.status === 'in-progress'
+      ? `TDR #${session.iteration || 1}`
+      : 'completed'
+    : 'loading';
 
   return (
     <div className="flex h-screen flex-col">
@@ -64,11 +106,17 @@ export default function TDRWorkspace() {
             <span className="text-xs">Back</span>
           </Button>
           <div className="h-4 w-px bg-border" />
-          <div>
+          <div className="flex items-center gap-2">
             <span className="text-sm font-medium">{deal.account}</span>
-            <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
-              draft
+            <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
+              {sessionStatusLabel}
             </span>
+            {isSaving && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground animate-pulse">
+                <Save className="h-3 w-3" />
+                saving...
+              </span>
+            )}
           </div>
         </div>
         
@@ -101,16 +149,34 @@ export default function TDRWorkspace() {
         </div>
       </header>
 
+      {/* Loading overlay */}
+      {sessionLoading && (
+        <div className="flex h-16 items-center justify-center border-b border-border bg-card/50">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Loading TDR session...</span>
+        </div>
+      )}
+
       {/* Three-panel layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Steps */}
         <aside className="w-64 shrink-0 border-r border-border bg-card">
-          <TDRSteps steps={steps} onStepClick={handleStepClick} />
+          <TDRSteps
+            steps={stepsWithCompletion}
+            onStepClick={handleStepClick}
+          />
         </aside>
 
         {/* Center Panel - Inputs */}
         <main className="flex-1 overflow-y-auto bg-background">
-          <TDRInputs activeStep={activeStep} />
+          <TDRInputs
+            activeStep={activeStep}
+            inputValues={inputValues}
+            onSaveInput={saveInput}
+            onToggleStepComplete={handleToggleStepComplete}
+            isStepComplete={activeStep ? completedSteps.has(activeStep.id) : false}
+            allSteps={stepsWithCompletion}
+          />
         </main>
 
         {/* Right Panel - Intelligence */}
