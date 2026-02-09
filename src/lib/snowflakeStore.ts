@@ -132,32 +132,68 @@ function generateDevId(): string {
 
 /**
  * Defensively extract a sessions array from a Code Engine response.
- * The Domo SDK + packageMapping may return:
- *   - The raw CE object: { success: true, sessions: [...] }
- *   - Just the array: [...]
- *   - An object with alias key: { sessions: [...] }
- *   - Something else entirely
- * Reference: github-appstudio-app/app.js handles all shapes.
+ *
+ * Domo SDK wraps CE return values inside { [outputAlias]: returnValue }.
+ * For getAllSessions with output alias "sessions", this produces:
+ *   { sessions: { success: true, sessions: [] } }
+ *
+ * So we may see:
+ *   - Direct array: [...]
+ *   - Raw CE object: { success: true, sessions: [...] }
+ *   - SDK-wrapped:   { sessions: { success: true, sessions: [...] } }
+ *   - SDK-wrapped with direct array: { sessions: [...] }
  */
 function extractSessionsArray(raw: unknown): SnowflakeSession[] {
   if (Array.isArray(raw)) return raw;
   if (raw && typeof raw === 'object') {
     const obj = raw as Record<string, unknown>;
+
+    // Direct .sessions as array (e.g. raw CE response or SDK alias)
     if (Array.isArray(obj.sessions)) return obj.sessions as SnowflakeSession[];
+
+    // SDK-wrapped: { sessions: { success, sessions: [...] } }
+    if (obj.sessions && typeof obj.sessions === 'object' && !Array.isArray(obj.sessions)) {
+      const inner = obj.sessions as Record<string, unknown>;
+      if (Array.isArray(inner.sessions)) return inner.sessions as SnowflakeSession[];
+      if (Array.isArray(inner.data)) return inner.data as SnowflakeSession[];
+    }
+
+    // Other fallbacks
     if (Array.isArray(obj.data)) return obj.data as SnowflakeSession[];
     if (Array.isArray(obj.items)) return obj.items as SnowflakeSession[];
     if (Array.isArray(obj.output)) return obj.output as SnowflakeSession[];
   }
-  console.warn('[SnowflakeStore] Unexpected getAllSessions response shape:', raw);
+  console.warn('[SnowflakeStore] Could not extract sessions array from:', raw);
   return [];
 }
 
 /**
- * Defensively extract a single session or result from a Code Engine response.
+ * Defensively extract a result object from a Code Engine response.
+ *
+ * Domo SDK wraps in { [outputAlias]: returnValue }. For functions with
+ * output alias "session" or "result", the shape is:
+ *   { session: { success: true, session: {...} } }
+ * or { result: { success: true } }
+ *
+ * We unwrap one level if the top-level object has a single key that
+ * maps to another object (the SDK wrapper pattern).
  */
 function extractResult<T>(raw: unknown): T {
-  if (raw && typeof raw === 'object') return raw as T;
-  return { success: false } as T;
+  if (!raw || typeof raw !== 'object') return { success: false } as T;
+
+  const obj = raw as Record<string, unknown>;
+  const keys = Object.keys(obj);
+
+  // If the object already has 'success', it's the raw CE response — use as-is
+  if ('success' in obj) return obj as T;
+
+  // SDK wrapper: single-key object whose value is the actual CE response
+  if (keys.length === 1) {
+    const inner = obj[keys[0]];
+    if (inner && typeof inner === 'object') return inner as T;
+  }
+
+  return obj as T;
 }
 
 // ─── Snowflake Store Service ─────────────────────────────────────────────────
