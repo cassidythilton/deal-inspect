@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 2.1 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2
+**Status:** In Progress · **Version:** Draft 2.2 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3
 
 ---
 
@@ -2687,20 +2687,26 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 
 ---
 
-### Sprint 3 — Step Input Persistence ⬜
+### Sprint 3 — Step Input Persistence ✅ COMPLETE
 
 > **Goal:** TDR step field values save to Snowflake (append-only). Edit history becomes available.
 > **Risk to app:** Low — additive only.
+> **Completed:** February 9, 2026
 
-- [ ] Deploy remaining persistence functions: `saveStepInput`, `getLatestInputs`, `getInputHistory`
-- [ ] Add `packageMapping` entries for the 3 input functions
-- [ ] Wire `TDRInputs.tsx`: on field blur/change → debounced `saveStepInput` call
-- [ ] Wire `TDRWorkspace.tsx`: on session open → `getLatestInputs` to populate fields
-- [ ] Add "View edit history" button per field → calls `getInputHistory`, shows modal with timestamped changes
-- [ ] Test: fill out TDR steps, close workspace, reopen → fields restore from Snowflake
-- [ ] Test: edit a field 3 times → "View history" shows all 3 values with timestamps
+- [x] Deploy remaining persistence functions: `saveStepInput`, `getLatestInputs`, `getInputHistory` (deployed in Sprint 2 alongside session functions)
+- [x] Add `packageMapping` entries for the 3 input functions (deployed in Sprint 2)
+- [x] Wire `TDRInputs.tsx`: on field blur/change → debounced `saveStepInput` call (built in Sprint 2)
+- [x] Wire `TDRWorkspace.tsx`: on session open → `getLatestInputs` to populate fields (built in Sprint 2 via `useTDRSession` hook)
+- [x] Add "View edit history" button per field → calls `getInputHistory`, shows dialog with timestamped changes
+- [ ] Test: fill out TDR steps, close workspace, reopen → fields restore from Snowflake (user validation)
+- [ ] Test: edit a field 3 times → "View history" shows all 3 values with timestamps (user validation)
 
 **Definition of Done:** All TDR step inputs persist to Snowflake with full edit history. Fields auto-populate on session open.
+
+**Learnings & Decisions:**
+- Most Sprint 3 work was pulled forward into Sprint 2 (all 8 persistence functions deployed at once, `TDRInputs` and `useTDRSession` wired from the start).
+- Edit history dialog uses `snowflakeStore.getInputHistory(sessionId, stepId, fieldId)` — returns all timestamped values newest-first.
+- History button only appears on fields that have a current value and a valid `sessionId` (not visible on empty/local sessions).
 
 ---
 
@@ -2906,7 +2912,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 |--------|------|--------|-----------|-------------|-------|
 | 1 | Snowflake Foundation | ✅ Complete | Feb 9, 2026 | None | Infrastructure |
 | 2 | Session Persistence (Dual-Write) | ✅ Complete | Feb 9, 2026 | Sprint 1 | Persistence |
-| 3 | Step Input Persistence | ⬜ Not Started | — | Sprint 2 | Persistence |
+| 3 | Step Input Persistence | ✅ Complete | Feb 9, 2026 | Sprint 2 | Persistence |
 | 4 | Sumble Account Enrichment | ⬜ Not Started | — | Sprint 1 | Intelligence |
 | 5 | Perplexity Web Research | ⬜ Not Started | — | Sprint 1 | Intelligence |
 | 6 | Caching, Settings & Usage | ⬜ Not Started | — | Sprints 4 + 5 | Intelligence |

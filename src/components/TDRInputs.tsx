@@ -11,11 +11,22 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Check, CheckCircle2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Check, CheckCircle2, History, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { snowflakeStore } from '@/lib/snowflakeStore';
+import type { StepInput } from '@/lib/snowflakeStore';
 
 interface TDRInputsProps {
   activeStep: TDRStep | undefined;
+  /** The current session ID (needed for history lookups) */
+  sessionId?: string;
   /** Map of `stepId::fieldId` → saved value */
   inputValues?: Map<string, string>;
   /** Called on blur or select change to persist a field */
@@ -103,6 +114,7 @@ const stepInputConfigs: Record<string, { fields: { id: string; label: string; ty
 
 export function TDRInputs({
   activeStep,
+  sessionId,
   inputValues,
   onSaveInput,
   onToggleStepComplete,
@@ -113,6 +125,28 @@ export function TDRInputs({
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   // Track which fields have been touched (for save indicators)
   const [savedFields, setSavedFields] = useState<Set<string>>(new Set());
+
+  // ── Edit History Dialog ──
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyField, setHistoryField] = useState<{ stepId: string; fieldId: string; fieldLabel: string } | null>(null);
+  const [historyItems, setHistoryItems] = useState<StepInput[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const openHistory = useCallback(async (stepId: string, fieldId: string, fieldLabel: string) => {
+    if (!sessionId) return;
+    setHistoryField({ stepId, fieldId, fieldLabel });
+    setHistoryOpen(true);
+    setHistoryLoading(true);
+    setHistoryItems([]);
+
+    try {
+      const items = await snowflakeStore.getInputHistory(sessionId, stepId, fieldId);
+      setHistoryItems(items);
+    } catch (err) {
+      console.error('[TDRInputs] Failed to load history:', err);
+    }
+    setHistoryLoading(false);
+  }, [sessionId]);
 
   if (!activeStep) {
     return (
@@ -237,6 +271,17 @@ export function TDRInputs({
                     saved
                   </span>
                 )}
+                {sessionId && currentValue && (
+                  <button
+                    type="button"
+                    className="ml-auto flex items-center gap-0.5 text-2xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => openHistory(activeStep.id, field.id, field.label)}
+                    title="View edit history"
+                  >
+                    <History className="h-3 w-3" />
+                    history
+                  </button>
+                )}
               </div>
               {field.type === 'text' && (
                 <Input
@@ -279,6 +324,65 @@ export function TDRInputs({
           );
         })}
       </div>
+
+      {/* Edit History Dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Edit History</DialogTitle>
+            <DialogDescription className="text-xs">
+              {historyField?.fieldLabel} — all saved values (newest first)
+            </DialogDescription>
+          </DialogHeader>
+
+          {historyLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : historyItems.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No edit history found for this field.
+            </p>
+          ) : (
+            <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+              {historyItems
+                .sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''))
+                .map((item, idx) => (
+                  <div
+                    key={item.inputId || idx}
+                    className={cn(
+                      'rounded-md border p-3',
+                      idx === 0 ? 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-950/20' : 'border-border'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-2xs text-muted-foreground">
+                        {item.savedAt
+                          ? new Date(item.savedAt).toLocaleString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })
+                          : 'Unknown date'}
+                      </span>
+                      {idx === 0 && (
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-2xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                          current
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1.5 whitespace-pre-wrap text-sm">{item.fieldValue}</p>
+                    {item.savedBy && (
+                      <p className="mt-1 text-2xs text-muted-foreground">by {item.savedBy}</p>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

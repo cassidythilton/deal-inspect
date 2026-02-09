@@ -171,6 +171,7 @@ export default function TDRWorkspace() {
         <main className="flex-1 overflow-y-auto bg-background">
           <TDRInputs
             activeStep={activeStep}
+            sessionId={session?.sessionId}
             inputValues={inputValues}
             onSaveInput={saveInput}
             onToggleStepComplete={handleToggleStepComplete}
