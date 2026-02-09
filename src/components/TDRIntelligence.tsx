@@ -179,7 +179,7 @@ export function TDRIntelligence({
           Deal Info Header
           ──────────────────────────────────────────────────────────── */}
       {deal && (
-        <div className="border-b border-slate-800 px-5 py-4">
+        <div className="border-b border-[#2a2540] px-5 py-4">
           <h3 className="text-base font-semibold text-white">{deal.account}</h3>
           <p className="text-sm text-slate-400">{deal.dealName}</p>
           <div className="mt-1.5 flex items-center gap-2 text-sm">
@@ -196,7 +196,7 @@ export function TDRIntelligence({
           ACCOUNT INTELLIGENCE — elevated inner card
           ──────────────────────────────────────────────────────────── */}
       {deal && (
-        <div className="mx-3 my-3 rounded-lg bg-white/[0.04] p-4 ring-1 ring-white/[0.06]">
+        <div className="mx-3 my-3 rounded-lg bg-[#221d38] p-4 ring-1 ring-[#322b4d]">
           <p className="mb-3 text-2xs font-semibold uppercase tracking-widest text-slate-400">
             Account Intelligence
           </p>
@@ -208,7 +208,7 @@ export function TDRIntelligence({
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               placeholder="acme.com"
-              className="h-8 text-xs bg-slate-800/80 border-slate-700/60 text-white placeholder:text-slate-500 focus-visible:ring-slate-600"
+              className="h-8 text-xs bg-[#1e1a30] border-[#362f50] text-white placeholder:text-slate-500 focus-visible:ring-[#4a3f6b]"
             />
           </div>
 
@@ -217,7 +217,7 @@ export function TDRIntelligence({
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-1.5 text-xs h-8 border-slate-700/60 bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-40"
+              className="flex-1 gap-1.5 text-xs h-8 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
               onClick={handleEnrichSumble}
               disabled={sumbleLoading || !domain.trim()}
             >
@@ -231,7 +231,7 @@ export function TDRIntelligence({
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 gap-1.5 text-xs h-8 border-slate-700/60 bg-slate-800/60 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-40"
+              className="flex-1 gap-1.5 text-xs h-8 border-[#362f50] bg-[#1e1a30]/80 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
               onClick={handleResearchPerplexity}
               disabled={perplexityLoading}
             >
@@ -352,7 +352,7 @@ export function TDRIntelligence({
 
           {/* Divider between Sumble and Perplexity */}
           {sumbleData?.success && perplexityData?.success && (
-            <div className="my-3 border-t border-white/[0.06]" />
+            <div className="my-3 border-t border-[#322b4d]" />
           )}
 
           {/* ── Perplexity Results ── */}
@@ -451,13 +451,13 @@ export function TDRIntelligence({
           DEAL TEAM
           ──────────────────────────────────────────────────────────── */}
       {deal && (
-        <div className="border-b border-slate-800 px-5 py-4">
+        <div className="border-b border-[#2a2540] px-5 py-4">
           <p className="mb-3 text-2xs font-semibold uppercase tracking-wider text-slate-500">
             Deal Team
           </p>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#221d38]">
                 <Building2 className="h-3.5 w-3.5 text-slate-400" />
               </div>
               <div>
@@ -490,7 +490,7 @@ export function TDRIntelligence({
       {/* ────────────────────────────────────────────────────────────
           READINESS SCORE
           ──────────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-800 px-5 py-4">
+      <div className="border-b border-[#2a2540] px-5 py-4">
         <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
           Readiness Score
         </p>
@@ -514,7 +514,7 @@ export function TDRIntelligence({
       {/* ────────────────────────────────────────────────────────────
           RISK FLAGS
           ──────────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-800 px-5 py-4">
+      <div className="border-b border-[#2a2540] px-5 py-4">
         <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
           Risk Flags
         </p>
@@ -538,7 +538,7 @@ export function TDRIntelligence({
       {/* ────────────────────────────────────────────────────────────
           MISSING INFORMATION
           ──────────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-800 px-5 py-4">
+      <div className="border-b border-[#2a2540] px-5 py-4">
         <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
           Missing Information
         </p>
@@ -559,16 +559,16 @@ export function TDRIntelligence({
       {/* ────────────────────────────────────────────────────────────
           EVIDENCE
           ──────────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-800 px-5 py-4">
+      <div className="border-b border-[#2a2540] px-5 py-4">
         <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
           Evidence
         </p>
         <div className="space-y-0.5">
-          <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200">
+          <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-400 transition-colors hover:bg-[#221d38] hover:text-slate-200">
             <Link className="h-3.5 w-3.5" />
             <span>Opportunity in CRM</span>
           </button>
-          <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200">
+          <button className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-slate-400 transition-colors hover:bg-[#221d38] hover:text-slate-200">
             <FileText className="h-3.5 w-3.5" />
             <span>Technical Assessment</span>
           </button>
@@ -578,15 +578,15 @@ export function TDRIntelligence({
       {/* ────────────────────────────────────────────────────────────
           FINAL OUTCOME
           ──────────────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-800 px-5 py-4">
+      <div className="border-b border-[#2a2540] px-5 py-4">
         <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
           Final Outcome
         </p>
         <Select>
-          <SelectTrigger className="h-9 text-sm bg-slate-800 border-slate-700/60 text-slate-200 focus:ring-slate-600 [&>svg]:text-slate-400">
+          <SelectTrigger className="h-9 text-sm bg-[#1e1a30] border-[#362f50] text-slate-200 focus:ring-[#4a3f6b] [&>svg]:text-slate-400">
             <SelectValue placeholder="Select outcome..." />
           </SelectTrigger>
-          <SelectContent className="bg-slate-800 border-slate-700 text-slate-200">
+          <SelectContent className="bg-[#1e1a30] border-[#362f50] text-slate-200">
             <SelectItem value="approved">Approved for Forecast</SelectItem>
             <SelectItem value="needs-work">Needs More Work</SelectItem>
             <SelectItem value="deferred">Deferred</SelectItem>
@@ -602,7 +602,7 @@ export function TDRIntelligence({
         <div className="space-y-2">
           <Button
             variant="outline"
-            className="w-full gap-2 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+            className="w-full gap-2 border-[#362f50] text-slate-300 hover:bg-[#221d38] hover:text-white"
             size="sm"
           >
             <Save className="h-3.5 w-3.5" />
@@ -610,7 +610,7 @@ export function TDRIntelligence({
           </Button>
           <Button
             variant="outline"
-            className="w-full gap-2 border-slate-700/60 text-slate-300 hover:bg-slate-800 hover:text-white"
+            className="w-full gap-2 border-[#362f50] text-slate-300 hover:bg-[#221d38] hover:text-white"
             size="sm"
           >
             <CheckCircle className="h-3.5 w-3.5" />
