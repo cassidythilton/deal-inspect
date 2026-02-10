@@ -234,6 +234,10 @@ export function TDRIntelligence({
   const [sentimentTrend, setSentimentTrend] = useState<SentimentDataPoint[]>([]);
   const [sentimentLoading, setSentimentLoading] = useState(false);
 
+  // ── Sprint 11: Similar Deals ──
+  const [similarDeals, setSimilarDeals] = useState<{ opportunityId: string; accountName: string; similarityScore: number; sessionId?: string }[]>([]);
+  const [similarDealsLoading, setSimilarDealsLoading] = useState(false);
+
   // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
   useEffect(() => {
     if (deal?.websiteDomain) {
@@ -490,6 +494,21 @@ export function TDRIntelligence({
       console.warn('[TDRIntelligence] Failed to load sentiment trend:', err);
     }
     setSentimentLoading(false);
+  }, [deal?.id]);
+
+  // ── Sprint 11: Find Similar Deals ──
+  const handleFindSimilarDeals = useCallback(async () => {
+    if (!deal?.id) return;
+    setSimilarDealsLoading(true);
+    try {
+      const result = await cortexAi.findSimilarDeals(deal.id);
+      if (result.success) {
+        setSimilarDeals(result.deals);
+      }
+    } catch (err) {
+      console.warn('[TDRIntelligence] Failed to find similar deals:', err);
+    }
+    setSimilarDealsLoading(false);
   }, [deal?.id]);
 
   // Get short stage name
@@ -1445,6 +1464,72 @@ export function TDRIntelligence({
                 </div>
               ) : !sentimentLoading && (
                 <p className="mt-1 text-2xs text-slate-600 italic">Click the chart icon to analyze sentiment</p>
+              )}
+            </div>
+          )}
+
+          {/* ── Sprint 11: Similar Deals (visible when intel exists) ── */}
+          {(sumbleData || perplexityData) && (
+            <div className="mt-3 pt-3 border-t border-[#322b4d]">
+              <div className="flex items-center justify-between">
+                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Similar Deals</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-2xs text-slate-500 hover:text-slate-300 hover:bg-[#221d38]"
+                  onClick={handleFindSimilarDeals}
+                  disabled={similarDealsLoading}
+                  title="Find deals with similar tech profiles and competitive landscapes"
+                >
+                  {similarDealsLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                </Button>
+              </div>
+
+              {similarDealsLoading && (
+                <div className="flex items-center gap-2 mt-2 text-slate-400">
+                  <Loader2 className="h-3 w-3 animate-spin text-violet-400" />
+                  <span className="text-2xs">Finding similar deals via AI embeddings...</span>
+                </div>
+              )}
+
+              {similarDeals.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  {similarDeals.map((d, i) => {
+                    const scorePct = Math.round(d.similarityScore * 100);
+                    return (
+                      <div key={i} className="flex items-center gap-2 group">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-slate-300 font-medium truncate">{d.accountName}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="w-12 h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
+                            <div
+                              className={cn(
+                                'h-full rounded-full',
+                                scorePct >= 80 ? 'bg-emerald-500/70' : scorePct >= 60 ? 'bg-amber-500/70' : 'bg-slate-500/50'
+                              )}
+                              style={{ width: `${scorePct}%` }}
+                            />
+                          </div>
+                          <span className={cn(
+                            'text-2xs font-medium w-8 text-right tabular-nums',
+                            scorePct >= 80 ? 'text-emerald-400' : scorePct >= 60 ? 'text-amber-400' : 'text-slate-500'
+                          )}>
+                            {scorePct}%
+                          </span>
+                          {d.sessionId && (
+                            <Target className="h-3 w-3 text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity" title="Has TDR session" />
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="text-2xs text-slate-600 mt-1">Based on tech stack, initiatives & competitive overlap</p>
+                </div>
+              )}
+
+              {!similarDealsLoading && similarDeals.length === 0 && (
+                <p className="mt-1 text-2xs text-slate-600 italic">Click the search icon to find similar deals</p>
               )}
             </div>
           )}

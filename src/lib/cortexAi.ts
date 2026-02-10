@@ -7,8 +7,9 @@
  *
  * Sprint 7: generateTDRBrief, classifyFindings, extractEntities
  * Sprint 9: getPortfolioInsights, summarizeIntelHistory, getSentimentTrend
+ * Sprint 11: findSimilarDeals, askAnalyst
  *
- * @see IMPLEMENTATION_STRATEGY.md Section 7 (Sprint 7) & Sprint 9
+ * @see IMPLEMENTATION_STRATEGY.md Section 7 (Sprint 7), Sprint 9 & Sprint 11
  */
 
 import { isDomoEnvironment } from './domo';
@@ -68,6 +69,29 @@ export interface SentimentDataPoint {
 export interface SentimentTrendResult {
   success: boolean;
   trend: SentimentDataPoint[];
+  error?: string;
+}
+
+// Sprint 11 types
+export interface SimilarDeal {
+  opportunityId: string;
+  accountName: string;
+  similarityScore: number;
+  sessionId?: string;
+}
+
+export interface SimilarDealsResult {
+  success: boolean;
+  deals: SimilarDeal[];
+  error?: string;
+}
+
+export interface AnalystResult {
+  success: boolean;
+  sql?: string | null;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  answer?: string;
   error?: string;
 }
 
@@ -278,6 +302,30 @@ const MOCK_SENTIMENT: SentimentTrendResult = {
   ],
 };
 
+// Sprint 11 mocks
+const MOCK_SIMILAR_DEALS: SimilarDealsResult = {
+  success: true,
+  deals: [
+    { opportunityId: 'mock-opp-001', accountName: 'Globex Corporation', similarityScore: 0.89, sessionId: 'mock-sess-001' },
+    { opportunityId: 'mock-opp-002', accountName: 'Initech', similarityScore: 0.82, sessionId: 'mock-sess-002' },
+    { opportunityId: 'mock-opp-003', accountName: 'Hooli', similarityScore: 0.76, sessionId: undefined },
+    { opportunityId: 'mock-opp-004', accountName: 'Pied Piper', similarityScore: 0.71, sessionId: 'mock-sess-004' },
+    { opportunityId: 'mock-opp-005', accountName: 'Massive Dynamic', similarityScore: 0.65, sessionId: undefined },
+  ],
+};
+
+const MOCK_ANALYST: AnalystResult = {
+  success: true,
+  sql: 'SELECT ACCOUNT_NAME, ACV, STAGE FROM TDR_APP.TDR_DATA.TDR_SESSIONS WHERE STATUS = \'in-progress\' ORDER BY ACV DESC LIMIT 10',
+  columns: ['ACCOUNT_NAME', 'ACV', 'STAGE'],
+  rows: [
+    { ACCOUNT_NAME: 'Acme Corp', ACV: 125000, STAGE: '4: Negotiate' },
+    { ACCOUNT_NAME: 'Globex Corp', ACV: 89000, STAGE: '3: Demonstrate Value' },
+    { ACCOUNT_NAME: 'Initech', ACV: 67500, STAGE: '2: Discovery' },
+  ],
+  answer: 'There are 3 active TDR sessions. The highest ACV deal is Acme Corp at $125,000 in the Negotiate stage. Globex Corp follows at $89,000 in Demonstrate Value, and Initech at $67,500 in Discovery.',
+};
+
 // ─── Brief Section Parser ────────────────────────────────────────────────────
 
 export interface BriefSection {
@@ -476,6 +524,49 @@ export const cortexAi = {
     } catch (err: unknown) {
       console.error('[CortexAI] getSentimentTrend failed:', err);
       return { success: false, trend: [], error: String(err) };
+    }
+  },
+
+  // ─── Sprint 11: Semantic Search & Analyst ─────────────────────────────
+
+  /**
+   * Find deals with similar tech profiles and competitive landscapes.
+   * Uses AI_EMBED + AI_SIMILARITY to compare enrichment embeddings.
+   * Requires at least one Perplexity research pull for the source deal.
+   */
+  async findSimilarDeals(opportunityId: string): Promise<SimilarDealsResult> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning mock similar deals');
+      return { ...MOCK_SIMILAR_DEALS };
+    }
+
+    try {
+      const raw = await callCodeEngine<unknown>('findSimilarDeals', { opportunityId });
+      const result = extractResult(raw) as unknown as SimilarDealsResult;
+      return result;
+    } catch (err: unknown) {
+      console.error('[CortexAI] findSimilarDeals failed:', err);
+      return { success: false, deals: [], error: String(err) };
+    }
+  },
+
+  /**
+   * Ask a natural language question about TDR portfolio data.
+   * Uses AI_COMPLETE to generate SQL, execute it, and provide a natural language answer.
+   */
+  async askAnalyst(question: string): Promise<AnalystResult> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning mock analyst result');
+      return { ...MOCK_ANALYST };
+    }
+
+    try {
+      const raw = await callCodeEngine<unknown>('askAnalyst', { question });
+      const result = extractResult(raw) as unknown as AnalystResult;
+      return result;
+    } catch (err: unknown) {
+      console.error('[CortexAI] askAnalyst failed:', err);
+      return { success: false, columns: [], rows: [], error: String(err) };
     }
   },
 };

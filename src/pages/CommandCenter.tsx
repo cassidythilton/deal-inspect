@@ -9,10 +9,12 @@ import { mockDeals } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
 import { MAX_STAGE_AGE_DAYS, TDR_PRIORITY_THRESHOLDS, ALLOWED_MANAGERS } from '@/lib/constants';
 import { Deal } from '@/types/tdr';
-import { Info, Brain, Loader2, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Info, Brain, Loader2, Sparkles, ChevronDown, ChevronUp, Search, MessageSquare, Database, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { calculateTDRScore, getTopFactors, STAGE_TIMING } from '@/lib/tdrCriticalFactors';
 import { cortexAi } from '@/lib/cortexAi';
+import type { AnalystResult } from '@/lib/cortexAi';
 
 // Default manager on load
 const DEFAULT_MANAGER = ALLOWED_MANAGERS[0]; // Andrew Rich
@@ -42,6 +44,12 @@ export default function CommandCenter() {
   const [portfolioLoading, setPortfolioLoading] = useState(false);
   const [portfolioExpanded, setPortfolioExpanded] = useState(false);
   const [portfolioDealCount, setPortfolioDealCount] = useState(0);
+
+  // Sprint 11: Ask TDR Analyst
+  const [analystQuestion, setAnalystQuestion] = useState('');
+  const [analystResult, setAnalystResult] = useState<AnalystResult | null>(null);
+  const [analystLoading, setAnalystLoading] = useState(false);
+  const [analystExpanded, setAnalystExpanded] = useState(false);
   
   // Fetch deals from Domo (pre-filtered for stage age > 365 days)
   const {
@@ -240,6 +248,21 @@ export default function CommandCenter() {
     setPortfolioLoading(false);
   }, [seFilters.selectedManager]);
 
+  // Sprint 11: Ask TDR Analyst handler
+  const handleAskAnalyst = useCallback(async () => {
+    if (!analystQuestion.trim()) return;
+    setAnalystLoading(true);
+    setAnalystExpanded(true);
+    try {
+      const result = await cortexAi.askAnalyst(analystQuestion.trim());
+      setAnalystResult(result);
+    } catch (err) {
+      console.error('[CommandCenter] Ask Analyst error:', err);
+      setAnalystResult({ success: false, columns: [], rows: [], error: String(err) });
+    }
+    setAnalystLoading(false);
+  }, [analystQuestion]);
+
   return (
     <div className="flex min-h-screen flex-col">
       <TopBar 
@@ -409,7 +432,140 @@ export default function CommandCenter() {
             )}
           </section>
 
-          {/* Zone 4: Deals Table */}
+          {/* Zone 4: Ask TDR (Sprint 11) */}
+          <section className="panel overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3">
+              <MessageSquare className="h-4 w-4 text-cyan-500 shrink-0" />
+              <div className="flex-1 relative">
+                <Input
+                  placeholder="Ask about your TDR portfolio... (e.g. &quot;Which accounts use Snowflake but have no TDR?&quot;)"
+                  value={analystQuestion}
+                  onChange={(e) => setAnalystQuestion(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !analystLoading) handleAskAnalyst();
+                  }}
+                  className="h-9 pr-10 text-sm bg-muted/40 border-border/50 placeholder:text-muted-foreground/40"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                  onClick={handleAskAnalyst}
+                  disabled={analystLoading || !analystQuestion.trim()}
+                >
+                  {analystLoading ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
+              {analystResult && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 shrink-0"
+                  onClick={() => setAnalystExpanded(!analystExpanded)}
+                >
+                  {analystExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </Button>
+              )}
+            </div>
+
+            {analystExpanded && analystResult && (
+              <div className="border-t border-border px-4 py-3 space-y-3">
+                {analystLoading ? (
+                  <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin text-cyan-500" />
+                    <p className="text-xs">Generating SQL and querying TDR data...</p>
+                  </div>
+                ) : analystResult.success ? (
+                  <>
+                    {/* Natural language answer */}
+                    {analystResult.answer && (
+                      <div className="bg-cyan-500/5 border border-cyan-500/15 rounded-lg px-3 py-2.5">
+                        <p className="text-sm text-foreground/80 leading-relaxed">{analystResult.answer}</p>
+                      </div>
+                    )}
+
+                    {/* Generated SQL (collapsible) */}
+                    {analystResult.sql && (
+                      <details className="group">
+                        <summary className="text-2xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-1.5">
+                          <Database className="h-3 w-3" />
+                          View generated SQL
+                        </summary>
+                        <pre className="mt-2 text-2xs bg-muted/30 rounded-md p-2.5 overflow-x-auto text-muted-foreground font-mono">
+                          {analystResult.sql}
+                        </pre>
+                      </details>
+                    )}
+
+                    {/* Result table */}
+                    {analystResult.rows.length > 0 && (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-border">
+                              {analystResult.columns.map((col) => (
+                                <th key={col} className="px-2 py-1.5 text-left text-2xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                  {col.replace(/_/g, ' ')}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {analystResult.rows.slice(0, 20).map((row, i) => (
+                              <tr key={i} className="border-b border-border/30 hover:bg-muted/20">
+                                {analystResult.columns.map((col) => (
+                                  <td key={col} className="px-2 py-1.5 text-foreground/70 tabular-nums">
+                                    {String(row[col] ?? '')}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {analystResult.rows.length > 20 && (
+                          <p className="text-2xs text-muted-foreground mt-1 text-center">
+                            Showing 20 of {analystResult.rows.length} rows
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 text-destructive text-xs py-2">
+                    <Info className="h-3.5 w-3.5" />
+                    <span>{analystResult.error || 'Unable to process that question.'}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Suggestion chips */}
+            {!analystResult && !analystLoading && (
+              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                {[
+                  'Which accounts have the highest ACV with active TDR sessions?',
+                  'How many deals are in each stage?',
+                  'Which accounts have Sumble enrichment but no Perplexity research?',
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    className="text-2xs px-2.5 py-1 rounded-full bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors border border-border/30"
+                    onClick={() => {
+                      setAnalystQuestion(suggestion);
+                    }}
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Zone 5: Deals Table */}
           <section>
             <DealsTable deals={filteredDeals} onPinDeal={handlePinDeal} />
           </section>

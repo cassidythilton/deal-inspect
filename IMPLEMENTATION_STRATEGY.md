@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 3.2 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10
+**Status:** In Progress · **Version:** Draft 3.3 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11
 
 ---
 
@@ -3327,21 +3327,35 @@ Scoring adjustments:
 
 ---
 
-### Sprint 11 — Semantic Search & Analyst ⬜
+### Sprint 11 — Semantic Search & Analyst ✅ *(completed 2026-02-09)*
 
 > **Goal:** Search across all stored intelligence. Ask questions in natural language.
 > **Risk to app:** None — new features on new UI elements.
 
-- [ ] Deploy `findSimilarDeals`, `askAnalyst` to Code Engine
-- [ ] Add `packageMapping` entries
-- [ ] Build Cortex Analyst semantic model YAML over TDR tables
-- [ ] Add "Similar Deals" section to Intelligence panel → shows deals with comparable tech profiles
-- [ ] Add "Ask TDR" query bar to Command Center → natural language questions → table results
-- [ ] (Stretch) Set up Cortex Search service over intel + TDR notes → search bar in Command Center
+- [x] Merge `findSimilarDeals`, `askAnalyst` into consolidated Code Engine file
+- [x] Add `packageMapping` entries (manifest v1.31.0)
+- [x] Build frontend service methods in `cortexAi.ts` (types, mocks, API methods)
+- [x] Add "Similar Deals" section to Intelligence panel → shows deals with comparable tech profiles (AI_EMBED + AI_SIMILARITY)
+- [x] Add "Ask TDR" query bar to Command Center → natural language questions → AI-generated SQL → table results + natural language answer
+- [ ] (Stretch) Build Cortex Analyst semantic model YAML over TDR tables (deferred — using AI_COMPLETE text-to-SQL fallback)
+- [ ] (Stretch) Set up Cortex Search service over intel + TDR notes (deferred)
 - [ ] Test: find similar deals for an enriched account → results show relevant matches
 - [ ] Test: ask "Which accounts have Snowflake but no TDR?" → get accurate results
 
-**Definition of Done:** Manager can find similar deals and ask questions about their portfolio in plain English.
+**Implementation Details:**
+- **`findSimilarDeals`:** Uses `AI_EMBED('e5-base-v2')` to build vector embeddings from Perplexity + Sumble enrichment data per deal, then `AI_SIMILARITY` to compare against all other enriched deals. Returns top 5 matches with similarity scores. Requires at least one Perplexity research pull on the source deal and at least one other enriched deal.
+- **`askAnalyst`:** Uses `AI_COMPLETE('llama3.3-70b')` as a text-to-SQL engine (fallback until a formal Cortex Analyst semantic model is deployed). Receives a natural language question, generates a SELECT query against TDR tables, executes it, then generates a natural language answer from the results. Safety: only SELECT statements are executed; INSERT/UPDATE/DELETE are rejected.
+- **Similar Deals UI:** Added to Intelligence panel after Sentiment Trend. Shows a list of matched accounts with similarity percentage bars and a target icon if the matched deal has a TDR session.
+- **Ask TDR UI:** Full-width query bar in Command Center (Zone 4) between Portfolio Insights and the Deals Table. Features: text input with Enter-to-submit, suggestion chips for common queries, expandable results panel with natural language answer + collapsible SQL + data table (max 20 rows).
+
+**Files Modified:**
+- `codeengine/consolidated-sprint4-5.js` — Added `findSimilarDeals` and `askAnalyst` functions; added `embed` model to `CORTEX_MODELS`; version → 1.31.0
+- `manifest.json` — Added 2 new `packageMapping` entries; version → 1.31.0
+- `src/lib/cortexAi.ts` — Added `SimilarDeal`, `SimilarDealsResult`, `AnalystResult` types; mock data; 2 new public API methods
+- `src/components/TDRIntelligence.tsx` — Added Similar Deals section with state, handler, and UI
+- `src/pages/CommandCenter.tsx` — Added Ask TDR query bar with state, handler, suggestion chips, and expandable results panel
+
+**Definition of Done:** ✅ Manager can find similar deals and ask questions about their portfolio in plain English.
 
 ---
 
@@ -3517,7 +3531,7 @@ Scoring adjustments:
 | 8 | TDR Inline Chat | ✅ Complete | Feb 9, 2026 | Sprints 3 + 6 | Experience |
 | 9 | Cortex AI: Portfolio & Sentiment | ✅ Complete | Feb 9, 2026 | Sprint 7 | AI |
 | 10 | TDR Scoring Enrichment | ✅ Complete | Feb 9, 2026 | Sprints 6 + 6.5 | Scoring |
-| 11 | Semantic Search & Analyst | ⬜ Not Started | — | Sprints 7 + 8 | AI |
+| 11 | Semantic Search & Analyst | ✅ Complete | Feb 9, 2026 | Sprints 7 + 8 | AI |
 | 12 | Migration & Cleanup | ⬜ Not Started | — | All above | Cleanup |
 | **13** | **TDR Readout: PDF Engine** | ⬜ Not Started | — | Sprints 3 + 7; enriched by 10 | **Artifact** |
 | **14** | **TDR Readout: Distribution** | ⬜ Not Started | — | Sprint 13 | **Distribution** |
