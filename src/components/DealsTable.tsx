@@ -20,9 +20,13 @@
 
 import { useCallback, useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
+import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, ICellRendererParams, GridReadyEvent, RowClickedEvent } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
+
+// Register all AG Grid Community modules (required in v35+)
+ModuleRegistry.registerModules([AllCommunityModule]);
 
 import { Deal } from '@/types/tdr';
 import { cn } from '@/lib/utils';
