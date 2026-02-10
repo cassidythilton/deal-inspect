@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { TDRSteps } from '@/components/TDRSteps';
 import { TDRInputs } from '@/components/TDRInputs';
@@ -8,12 +8,15 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Sparkles } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Sparkles, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
 import { useTDRSession } from '@/hooks/useTDRSession';
 import { tdrReadout } from '@/lib/tdrReadout';
+
+/** Debounce delay for thesis auto-save */
+const THESIS_AUTOSAVE_MS = 1500;
 
 export default function TDRWorkspace() {
   const [searchParams] = useSearchParams();
@@ -86,26 +89,67 @@ export default function TDRWorkspace() {
     ? ['Competitive pressure identified']
     : ['Critical timeline risk', 'Budget constraints'];
 
-  // ── Thesis field (always-visible, Sprint 17) ──
+  // ── Thesis field (always-visible, Sprint 17) with auto-save ──
   const thesisKey = 'thesis::domo-thesis';
   const thesisValue = inputValues?.get(thesisKey) || '';
   const [localThesis, setLocalThesis] = useState<string | null>(null);
   const [thesisSaved, setThesisSaved] = useState(false);
+  const thesisTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const localThesisRef = useRef<string | null>(null);
+  const saveInputRef = useRef(saveInput);
+  useEffect(() => { saveInputRef.current = saveInput; }, [saveInput]);
+
+  const flushThesis = useCallback(async () => {
+    const val = localThesisRef.current;
+    if (val === null) return;
+    try {
+      await saveInputRef.current({
+        stepId: 'thesis',
+        stepLabel: 'Thesis',
+        fieldId: 'domo-thesis',
+        fieldLabel: 'Why Domo Belongs',
+        fieldValue: val,
+        stepOrder: -1,
+      });
+      setThesisSaved(true);
+    } catch (err) {
+      console.error('[TDRWorkspace] Thesis auto-save failed:', err);
+    }
+  }, []);
+
+  const handleThesisChange = useCallback((value: string) => {
+    setLocalThesis(value);
+    localThesisRef.current = value;
+    setThesisSaved(false);
+
+    // Debounced auto-save
+    if (thesisTimerRef.current) clearTimeout(thesisTimerRef.current);
+    thesisTimerRef.current = setTimeout(() => {
+      flushThesis();
+    }, THESIS_AUTOSAVE_MS);
+  }, [flushThesis]);
 
   const handleThesisBlur = useCallback(async () => {
     if (localThesis === null || localThesis === thesisValue) return;
-    setThesisSaved(false);
-    await saveInput({
-      stepId: 'thesis',
-      stepLabel: 'Thesis',
-      fieldId: 'domo-thesis',
-      fieldLabel: 'Why Domo Belongs',
-      fieldValue: localThesis,
-      stepOrder: -1, // always first
-    });
-    setThesisSaved(true);
-    setTimeout(() => setThesisSaved(false), 2000);
-  }, [localThesis, thesisValue, saveInput]);
+    // Cancel debounce and flush immediately
+    if (thesisTimerRef.current) {
+      clearTimeout(thesisTimerRef.current);
+      thesisTimerRef.current = null;
+    }
+    await flushThesis();
+  }, [localThesis, thesisValue, flushThesis]);
+
+  // Flush thesis on unmount
+  useEffect(() => {
+    return () => {
+      if (thesisTimerRef.current) {
+        clearTimeout(thesisTimerRef.current);
+      }
+      if (localThesisRef.current !== null) {
+        flushThesis();
+      }
+    };
+  }, [flushThesis]);
 
   // Sprint 13: Export Readout
   const [exportLoading, setExportLoading] = useState(false);
@@ -243,12 +287,12 @@ export default function TDRWorkspace() {
               placeholder="In one sentence: Why does Domo belong in this architecture?"
               className="min-h-[40px] h-[40px] resize-none text-sm border-violet-200 dark:border-violet-800/50 focus:border-violet-400 dark:focus:border-violet-600 bg-violet-50/30 dark:bg-violet-950/10"
               value={localThesis !== null ? localThesis : thesisValue}
-              onChange={(e) => setLocalThesis(e.target.value)}
+              onChange={(e) => handleThesisChange(e.target.value)}
               onBlur={handleThesisBlur}
             />
             {thesisSaved && (
               <span className="absolute right-2 top-2 flex items-center gap-0.5 text-2xs text-emerald-600">
-                <Save className="h-2.5 w-2.5" />
+                <Check className="h-2.5 w-2.5" />
                 saved
               </span>
             )}
