@@ -13,8 +13,8 @@ import { Deal } from '@/types/tdr';
 import { Info, Loader2 } from 'lucide-react';
 import { calculateTDRScore, getTopFactors } from '@/lib/tdrCriticalFactors';
 
-// Default manager on load — null = show all allowed managers
-const DEFAULT_MANAGER = null;
+// Default manager on load — first allowed manager
+const DEFAULT_MANAGER: string = ALLOWED_MANAGERS[0];
 
 // Get current quarter in format matching Domo data (e.g., "2026-Q1")
 const getCurrentQuarter = () => {
