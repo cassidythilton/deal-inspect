@@ -3463,11 +3463,12 @@ Scoring adjustments:
 
 ---
 
-### Sprint 14 — TDR Readout: Distribution & Executive Summary 🔄
+### Sprint 14 — TDR Readout: Slack Distribution & Executive Summary ⏸ PAUSED
 
 > **Goal:** Push TDR readouts to Slack channels with AI-generated summaries and PDF attachments.
 > **Risk to app:** Low — new outbound integration. Slack API failure doesn't affect core app.
-> **Decision:** Slack-only distribution (Teams evaluated and deferred — see Section 22). PDF attachment is a hard requirement.
+> **Decision:** Slack-only distribution (Teams evaluated and deferred). PDF attachment is a hard requirement.
+> **Status:** Paused as of Feb 10, 2026. All prerequisite infrastructure (tables, readout assembly, PDF engine) is complete. Implementation is ready to resume when Slack integration is prioritized.
 
 **Architecture: Slack Bot Token**
 - Auth: Single Slack Bot Token (`xoxb-...`) stored in Domo Account (Account ID configured in CE)
@@ -3562,7 +3563,14 @@ Scoring adjustments:
 | 11 | Semantic Search & Analyst | ✅ Complete | Feb 9, 2026 | Sprints 7 + 8 | AI |
 | 12 | Migration & Cleanup | ✅ Complete | Feb 9, 2026 | All above | Cleanup |
 | **13** | **TDR Readout: PDF Engine** | ✅ Complete | Feb 10, 2026 | Sprints 3 + 7; enriched by 10 | **Artifact** |
-| **14** | **TDR Readout: Distribution** | ⬜ Not Started | — | Sprint 13 | **Distribution** |
+| **14** | **TDR Readout: Slack Distribution** | ⏸ Paused | — | Sprint 13 | **Distribution** |
+
+**Post-Sprint Bug Fixes (Feb 10, 2026):**
+- Fixed `getSentimentTrend` crash: `AI_SENTIMENT` returns NULL for sessions without inputs → `parseFloat(null)` → NaN → serialized as `null` in JSON → `.toFixed()` crash. Added null-filtering in handler and `?? 0` fallback at render.
+- Fixed `askAnalyst` "not a SELECT" error: AI model returned preamble text before SQL. Added regex extraction to strip commentary and find the actual `SELECT`/`WITH` statement. Improved prompt to be more explicit. Added CTE (`WITH`) support.
+- Fixed `askAnalyst` SQL compilation error with unexpected `"`: Same root cause as above — model output contains Snowflake-incompatible quoting. The preamble extraction fix resolves this.
+- Removed Portfolio Insights and Ask TDR Analyst UI sections from Command Center (CE functions retained for future use).
+- `findSimilarDeals` returns empty results as expected — requires multiple deals with Perplexity enrichment data to compare against. Not a bug.
 
 **Parallel tracks:** Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6. Sprint 6.5 (Sumble deep intelligence) extends the intelligence track and feeds Sprint 10 (scoring enrichment). Sprints 7 and 8 (Cortex deal-level and inline chat) can also run in parallel — both depend on persistence + intelligence but not on each other. They converge again at Sprint 11 (search & analyst). Sprint 6.5 can run in parallel with 7/8. **Sprints 13–14 (TDR Readout)** have a hard dependency on Sprints 3 + 7 (both complete) and a soft enrichment dependency on Sprint 10 (scoring enrichment). The PDF engine can start immediately with graceful degradation for missing scoring data, but the §6 scoring section reaches full fidelity only after Sprint 10. Sprint 12 (migration) remains last.
 
