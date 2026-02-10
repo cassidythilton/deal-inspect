@@ -488,7 +488,11 @@ export function TDRIntelligence({
     try {
       const result = await cortexAi.getSentimentTrend(deal.id);
       if (result.success) {
-        setSentimentTrend(result.trend);
+        // Filter out entries where sentiment is null/NaN (e.g. sessions with no inputs)
+        const validTrend = (result.trend || []).filter(
+          (pt) => pt.sentiment != null && !isNaN(pt.sentiment)
+        );
+        setSentimentTrend(validTrend);
       }
     } catch (err) {
       console.warn('[TDRIntelligence] Failed to load sentiment trend:', err);
@@ -502,8 +506,15 @@ export function TDRIntelligence({
     setSimilarDealsLoading(true);
     try {
       const result = await cortexAi.findSimilarDeals(deal.id);
+      console.log('[TDRIntelligence] Similar deals result:', result);
       if (result.success) {
-        setSimilarDeals(result.deals);
+        // Filter out entries with null/NaN similarity scores
+        const validDeals = (result.deals || []).filter(
+          (d) => d.similarityScore != null && !isNaN(d.similarityScore)
+        );
+        setSimilarDeals(validDeals);
+      } else if (result.error) {
+        console.warn('[TDRIntelligence] Similar deals error from CE:', result.error);
       }
     } catch (err) {
       console.warn('[TDRIntelligence] Failed to find similar deals:', err);
@@ -1433,8 +1444,9 @@ export function TDRIntelligence({
               {sentimentTrend.length > 0 ? (
                 <div className="mt-2 space-y-1.5">
                   {sentimentTrend.map((pt, i) => {
-                    const pct = Math.round((pt.sentiment + 1) * 50); // -1..+1 → 0..100
-                    const isPositive = pt.sentiment >= 0;
+                    const score = pt.sentiment ?? 0;
+                    const pct = Math.round((score + 1) * 50); // -1..+1 → 0..100
+                    const isPositive = score >= 0;
                     return (
                       <div key={i} className="flex items-center gap-2">
                         <span className="text-2xs text-slate-600 w-12 shrink-0">TDR {pt.iteration}</span>
@@ -1451,7 +1463,7 @@ export function TDRIntelligence({
                           'text-2xs font-medium w-8 text-right tabular-nums',
                           isPositive ? 'text-emerald-400' : 'text-amber-400'
                         )}>
-                          {pt.sentiment > 0 ? '+' : ''}{pt.sentiment.toFixed(2)}
+                          {score > 0 ? '+' : ''}{score.toFixed(2)}
                         </span>
                         {i === sentimentTrend.length - 1 && (
                           isPositive
@@ -1495,7 +1507,7 @@ export function TDRIntelligence({
               {similarDeals.length > 0 && (
                 <div className="mt-2 space-y-1.5">
                   {similarDeals.map((d, i) => {
-                    const scorePct = Math.round(d.similarityScore * 100);
+                    const scorePct = Math.round((d.similarityScore ?? 0) * 100);
                     return (
                       <div key={i} className="flex items-center gap-2 group">
                         <div className="flex-1 min-w-0">
