@@ -297,7 +297,7 @@ function DealAccountCell({ data }: ICellRendererParams<Deal>) {
   return (
     <div className="min-w-0 py-1">
       <div className="flex items-center gap-1.5">
-        <p className="text-sm font-medium text-foreground truncate">{data.account}</p>
+        <p className="text-[13px] font-medium text-[hsl(127,4%,30%)] truncate">{data.account}</p>
         {data.hasIntel && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -310,13 +310,13 @@ function DealAccountCell({ data }: ICellRendererParams<Deal>) {
         )}
       </div>
       <div className="flex items-center gap-1.5 mt-0.5">
-        <p className="text-xs text-muted-foreground truncate">{data.dealName}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{data.dealName}</p>
         {data.dealType && (
           <span className={cn(
-            'inline-flex items-center shrink-0 rounded px-1.5 py-0 text-[10px] font-medium leading-tight',
+            'inline-flex items-center shrink-0 rounded px-1 py-0 text-[9px] font-medium leading-tight',
             data.dealType.toLowerCase().includes('new logo')
-              ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
-              : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
+              ? 'bg-blue-500/8 text-blue-500 border border-blue-500/15'
+              : 'bg-amber-500/8 text-amber-500 border border-amber-500/15'
           )}>
             {data.dealType.toLowerCase().includes('new logo') ? 'New' : 'Upsell'}
           </span>
@@ -334,11 +334,11 @@ function StageBadgeCell({ data }: ICellRendererParams<Deal>) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
-          'inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-medium cursor-help whitespace-nowrap',
+          'inline-flex items-center gap-1 rounded px-1.5 py-[2px] text-[11px] font-medium cursor-help whitespace-nowrap',
           getStageBadgeStyle(stageNum)
         )}>
           <CheckCircle2 className={cn(
-            'h-3 w-3 shrink-0',
+            'h-2.5 w-2.5 shrink-0',
             stageNum <= 2 ? 'text-emerald-600' : stageNum === 3 ? 'text-teal-600' : 'text-amber-600'
           )} />
           [{stageNum.toString().padStart(2, '0')}] {stageName}
@@ -368,10 +368,10 @@ function StageBadgeCell({ data }: ICellRendererParams<Deal>) {
 function AgeDaysCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
   const colorClass = data.stageAge && data.stageAge >= 60
-    ? 'text-red-600'
+    ? 'text-red-500/80'
     : data.stageAge && data.stageAge >= 30
-    ? 'text-amber-600'
-    : 'text-muted-foreground';
+    ? 'text-amber-500/80'
+    : '';  // inherit AG Grid's muted sage foreground
   return (
     <span className={cn('text-xs font-medium tabular-nums', colorClass)}>
       {data.stageAge ? `${data.stageAge}d` : '-'}
@@ -381,7 +381,7 @@ function AgeDaysCell({ data }: ICellRendererParams<Deal>) {
 
 function CurrencyCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
-  return <span className="text-xs font-medium tabular-nums text-foreground">{formatCurrency(data.acv)}</span>;
+  return <span className="text-xs font-medium tabular-nums">{formatCurrency(data.acv)}</span>;
 }
 
 function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
@@ -393,7 +393,7 @@ function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
-          'inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums cursor-help',
+          'inline-flex items-center justify-center rounded-full px-[7px] py-[2px] text-[11px] font-bold tabular-nums cursor-help',
           getTDRBadgeStyle(tdrScore)
         )}>
           {tdrScore}
@@ -489,12 +489,12 @@ function SETeamCell({ data }: ICellRendererParams<Deal>) {
   return (
     <div className="space-y-0.5 min-w-0">
       {data.salesConsultant ? (
-        <p className="text-xs font-medium truncate">{data.salesConsultant}</p>
+        <p className="text-xs truncate">{data.salesConsultant}</p>
       ) : (
-        <p className="text-xs text-muted-foreground/50 italic">No SE</p>
+        <p className="text-xs text-muted-foreground/40 italic">No SE</p>
       )}
       {data.pocSalesConsultant && (
-        <p className="text-2xs text-muted-foreground truncate">PoC: {data.pocSalesConsultant}</p>
+        <p className="text-[10px] text-muted-foreground/70 truncate">PoC: {data.pocSalesConsultant}</p>
       )}
     </div>
   );
@@ -540,7 +540,7 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
   const whyTags = getTopFactors(data, 2);
   if (whyTags.length === 0) return <span className="text-2xs text-muted-foreground">-</span>;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-[5px]">
       {whyTags.map((factor, i) => {
         const IconComponent = FACTOR_ICONS[factor.icon] || Zap;
         const dynamicLabel = getDynamicFactorLabel(factor, data);
@@ -550,10 +550,10 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
           <Tooltip key={i}>
             <TooltipTrigger asChild>
               <span className={cn(
-                'inline-flex items-center gap-1 cursor-help rounded px-1.5 py-0.5 text-2xs font-medium',
+                'inline-flex items-center gap-[3px] cursor-help rounded px-[5px] py-[1px] text-[10px] font-medium',
                 pillStyle
               )}>
-                <IconComponent className="h-2.5 w-2.5" />
+                <IconComponent className="h-[9px] w-[9px]" />
                 {dynamicLabel}
               </span>
             </TooltipTrigger>
@@ -792,10 +792,10 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
     <TooltipProvider delayDuration={150}>
       <div className="panel overflow-hidden">
         <div className="border-b border-border/60 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium">Deals</h2>
+          <h2 className="text-sm font-medium text-[hsl(127,4%,30%)]">Recommended Deals</h2>
           <span className="text-xs text-muted-foreground">{deals.length} loaded</span>
         </div>
-        <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 56 + 90, 800) }}>
+        <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 64 + 90, 800) }}>
           <AgGridReact<Deal>
             ref={gridRef}
             rowData={deals}
@@ -813,7 +813,7 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
             suppressRowClickSelection={true}
             domLayout="normal"
             headerHeight={40}
-            rowHeight={56}
+            rowHeight={64}
             tooltipShowDelay={0}
             enableCellTextSelection={false}
           />

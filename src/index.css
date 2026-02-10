@@ -241,18 +241,18 @@
   --ag-row-border-color: hsl(127 8% 88% / 0.35);
   --ag-header-column-separator-display: none;
 
-  /* Typography — muted sage, not black */
-  --ag-foreground-color: hsl(127 5% 45%);
-  --ag-secondary-foreground-color: hsl(127 5% 55%);
-  --ag-header-foreground-color: hsl(127 5% 50%);
+  /* Typography — soft sage grays, never black */
+  --ag-foreground-color: hsl(127 4% 52%);
+  --ag-secondary-foreground-color: hsl(127 4% 58%);
+  --ag-header-foreground-color: hsl(127 4% 52%);
 
   /* Metrics */
   --ag-font-family: inherit;
-  --ag-font-size: 13px;
+  --ag-font-size: 12px;
   --ag-grid-size: 4px;
-  --ag-row-height: 56px;
+  --ag-row-height: 64px;
   --ag-header-height: 40px;
-  --ag-cell-horizontal-padding: 16px;
+  --ag-cell-horizontal-padding: 14px;
 
   /* Chrome suppression */
   --ag-borders: none;
@@ -282,7 +282,8 @@
 /* Row separators — ultra-subtle */
 .ag-theme-tdr .ag-row {
   cursor: pointer;
-  border-bottom: 1px solid hsl(127 8% 88% / 0.3) !important;
+  border-bottom: 1px solid hsl(127 8% 90% / 0.35) !important;
+  transition: background-color 0.12s ease;
 }
 
 /* Clean pagination */
