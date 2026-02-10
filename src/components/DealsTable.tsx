@@ -297,7 +297,7 @@ function DealAccountCell({ data }: ICellRendererParams<Deal>) {
   return (
     <div className="min-w-0 py-1">
       <div className="flex items-center gap-1.5">
-        <p className="text-[13px] font-medium text-[hsl(127,4%,30%)] truncate">{data.account}</p>
+        <p className="text-[13px] font-medium text-foreground truncate">{data.account}</p>
         {data.hasIntel && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -793,7 +793,7 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
     <TooltipProvider delayDuration={150}>
       <div className="panel overflow-hidden">
         <div className="border-b border-border/60 px-4 py-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-[hsl(127,4%,30%)]">Recommended Deals</h2>
+          <h2 className="text-sm font-medium text-foreground">Recommended Deals</h2>
           <span className="text-xs text-muted-foreground">{deals.length} loaded</span>
         </div>
         <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 64 + 90, 800) }}>

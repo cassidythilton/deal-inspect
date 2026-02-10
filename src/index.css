@@ -241,10 +241,10 @@
   --ag-row-border-color: hsl(127 8% 88% / 0.35);
   --ag-header-column-separator-display: none;
 
-  /* Typography — soft sage grays, never black */
-  --ag-foreground-color: hsl(127 4% 52%);
-  --ag-secondary-foreground-color: hsl(127 4% 58%);
-  --ag-header-foreground-color: hsl(127 4% 52%);
+  /* Typography — aubergine-tinted grays matching #291F2E family */
+  --ag-foreground-color: hsl(281 19% 15%);
+  --ag-secondary-foreground-color: hsl(281 8% 48%);
+  --ag-header-foreground-color: hsl(281 8% 42%);
 
   /* Metrics */
   --ag-font-family: inherit;
@@ -290,7 +290,7 @@
 .ag-theme-tdr .ag-paging-panel {
   border-top: 1px solid hsl(127 8% 88% / 0.4);
   font-size: 11px;
-  color: hsl(127 5% 55%);
+  color: hsl(281 8% 48%);
   height: 36px;
   padding: 0 16px;
 }
