@@ -201,6 +201,8 @@ export function TDRIntelligence({
   const [sumbleLoading, setSumbleLoading] = useState(false);
   const [perplexityLoading, setPerplexityLoading] = useState(false);
   const [intelLoaded, setIntelLoaded] = useState(false);
+  const [sumbleError, setSumbleError] = useState<string | null>(null);
+  const [perplexityError, setPerplexityError] = useState<string | null>(null);
 
   // ── Intel History State ──
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -312,14 +314,19 @@ export function TDRIntelligence({
   const handleEnrichSumble = useCallback(async () => {
     if (!deal || !domain.trim()) return;
     setSumbleLoading(true);
+    setSumbleError(null);
     try {
       const result = await accountIntel.enrichSumble(deal.id, deal.account, domain.trim());
       if (result.success) {
         setSumbleData(result);
+        setSumbleError(null);
       } else {
+        const msg = typeof result.error === 'string' ? result.error : 'Enrichment failed';
+        setSumbleError(msg);
         console.error('[TDRIntelligence] Sumble enrichment failed:', result.error);
       }
     } catch (err) {
+      setSumbleError(err instanceof Error ? err.message : 'Unexpected error');
       console.error('[TDRIntelligence] Sumble enrichment error:', err);
     }
     setSumbleLoading(false);
@@ -329,6 +336,7 @@ export function TDRIntelligence({
   const handleResearchPerplexity = useCallback(async () => {
     if (!deal) return;
     setPerplexityLoading(true);
+    setPerplexityError(null);
     try {
       const result = await accountIntel.researchPerplexity(
         deal.id,
@@ -341,6 +349,7 @@ export function TDRIntelligence({
       );
       if (result.success) {
         setPerplexityData(result);
+        setPerplexityError(null);
 
         // Auto-trigger Cortex AI classification + entity extraction (Sprint 7)
         if (result.pullId) {
@@ -370,9 +379,12 @@ export function TDRIntelligence({
           setCortexProcessing(false);
         }
       } else {
+        const msg = typeof result.error === 'string' ? result.error : 'Research failed';
+        setPerplexityError(msg);
         console.error('[TDRIntelligence] Perplexity research failed:', result.error);
       }
     } catch (err) {
+      setPerplexityError(err instanceof Error ? err.message : 'Unexpected error');
       console.error('[TDRIntelligence] Perplexity research error:', err);
     }
     setPerplexityLoading(false);
@@ -623,6 +635,18 @@ export function TDRIntelligence({
               <div className="flex items-center gap-1.5 text-2xs text-violet-400">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 AI classifying findings &amp; extracting entities…
+              </div>
+            )}
+            {sumbleError && !sumbleLoading && (
+              <div className="flex items-start gap-1.5 text-2xs text-amber-400/80 bg-amber-500/5 rounded px-2 py-1.5">
+                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <span className="break-all">Sumble: {sumbleError.length > 120 ? sumbleError.substring(0, 120) + '…' : sumbleError}</span>
+              </div>
+            )}
+            {perplexityError && !perplexityLoading && (
+              <div className="flex items-start gap-1.5 text-2xs text-amber-400/80 bg-amber-500/5 rounded px-2 py-1.5">
+                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                <span className="break-all">Perplexity: {perplexityError.length > 120 ? perplexityError.substring(0, 120) + '…' : perplexityError}</span>
               </div>
             )}
           </div>
