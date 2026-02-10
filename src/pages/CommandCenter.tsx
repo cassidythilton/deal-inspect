@@ -121,7 +121,21 @@ export default function CommandCenter() {
     return result;
   }, [baseDeals, pinnedIds, seFilters]);
 
-  const pinnedDeals = deals.filter((d) => d.isPinned);
+  // ── Displayed deals: what AG Grid actually shows after its column filters ──
+  // Defaults to the TopBar-filtered `deals`; updated by AG Grid's onFilterChanged.
+  const [displayedDeals, setDisplayedDeals] = useState<Deal[]>([]);
+
+  // When TopBar-filtered deals change, reset displayedDeals until AG Grid reports back
+  useEffect(() => {
+    setDisplayedDeals(deals);
+  }, [deals]);
+
+  const handleDisplayedRowsChange = useCallback((displayed: Deal[]) => {
+    setDisplayedDeals(displayed);
+  }, []);
+
+  // Pinned deals come from the displayed set (so charts & metrics reflect the grid)
+  const pinnedDeals = displayedDeals.filter((d) => d.isPinned);
 
   // AI recommendation lookup
   const aiRecommendationMap = useMemo(() => {
@@ -130,19 +144,19 @@ export default function CommandCenter() {
     return map;
   }, [aiRecommendations]);
 
-  // Metrics
+  // Metrics — driven by displayedDeals (reflects both TopBar + AG Grid filters)
   const metrics = useMemo(() => {
-    const recommendedDeals = deals
+    const recommendedDeals = displayedDeals
       .map(d => ({ ...d, tdrScore: d.tdrScore ?? calculateTDRScore(d) }))
       .sort((a, b) => (b.tdrScore ?? 0) - (a.tdrScore ?? 0))
       .slice(0, 10);
 
-    const eligibleACV = deals.reduce((sum, d) => sum + d.acv, 0);
+    const eligibleACV = displayedDeals.reduce((sum, d) => sum + d.acv, 0);
     const recommendedACV = recommendedDeals.reduce((sum, d) => sum + d.acv, 0);
     const agendaACV = pinnedDeals.reduce((sum, d) => sum + d.acv, 0);
-    const atRiskDeals = deals.filter(d => d.riskLevel === 'red' || d.riskLevel === 'yellow');
+    const atRiskDeals = displayedDeals.filter(d => d.riskLevel === 'red' || d.riskLevel === 'yellow');
     const atRiskACV = atRiskDeals.reduce((sum, d) => sum + d.acv, 0);
-    const criticalCount = deals.filter(d => d.riskLevel === 'red').length;
+    const criticalCount = displayedDeals.filter(d => d.riskLevel === 'red').length;
 
     const formatValue = (val: number) => {
       if (val >= 1000000) return `$${(val / 1000000).toFixed(2)}M`;
@@ -151,12 +165,12 @@ export default function CommandCenter() {
     };
 
     return {
-      eligible: { value: formatValue(eligibleACV), deals: deals.length },
+      eligible: { value: formatValue(eligibleACV), deals: displayedDeals.length },
       recommended: { value: formatValue(recommendedACV), deals: recommendedDeals.length },
       agenda: { value: formatValue(agendaACV), deals: pinnedDeals.length },
       atRisk: { value: formatValue(atRiskACV), deals: atRiskDeals.length, critical: criticalCount },
     };
-  }, [deals, pinnedDeals]);
+  }, [displayedDeals, pinnedDeals]);
 
   const handleSEFilterChange = useCallback((filters: Partial<SEFilterState>) => {
     setSEFilters((prev) => ({ ...prev, ...filters }));
@@ -238,16 +252,16 @@ export default function CommandCenter() {
             </div>
           </section>
 
-          {/* Zone 2: Charts Row */}
+          {/* Zone 2: Charts Row — driven by displayedDeals (TopBar + AG Grid filters) */}
           <section className="grid grid-cols-3 gap-3">
             <div className="stat-card">
-              <TopTDRCandidatesChart deals={deals} />
+              <TopTDRCandidatesChart deals={displayedDeals} />
             </div>
             <div className="stat-card">
-              <TDRPriorityChart deals={deals} />
+              <TDRPriorityChart deals={displayedDeals} />
             </div>
             <div className="stat-card">
-              <PipelineByCloseChart deals={deals} />
+              <PipelineByCloseChart deals={displayedDeals} />
             </div>
           </section>
 
@@ -257,10 +271,14 @@ export default function CommandCenter() {
             <div className="flex items-center justify-between mb-2">
               <DealSearch allDeals={allDeals} />
               <span className="text-xs text-muted-foreground tabular-nums">
-                Showing {deals.length} deals
+                Showing {displayedDeals.length}{displayedDeals.length !== deals.length ? ` of ${deals.length}` : ''} deals
               </span>
             </div>
-            <DealsTable deals={deals} onPinDeal={handlePinDeal} />
+            <DealsTable
+              deals={deals}
+              onPinDeal={handlePinDeal}
+              onDisplayedRowsChange={handleDisplayedRowsChange}
+            />
           </section>
 
           {/* Zone 4: Agenda */}

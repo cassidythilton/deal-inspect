@@ -21,7 +21,7 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import type { ColDef, ICellRendererParams, GridReadyEvent, RowClickedEvent } from 'ag-grid-community';
+import type { ColDef, ICellRendererParams, GridReadyEvent, RowClickedEvent, FilterChangedEvent } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
 
@@ -50,6 +50,9 @@ import { getTopFactors, CriticalFactor, calculateTDRScore, getPriorityFromScore 
 interface DealsTableProps {
   deals: Deal[];
   onPinDeal?: (id: string) => void;
+  /** Called whenever AG Grid's visible rows change (filter, sort, pagination).
+   *  Passes the full set of rows that survive all column filters. */
+  onDisplayedRowsChange?: (displayed: Deal[]) => void;
 }
 
 // ─── HELPERS (preserved from original) ────────────────────────────────────────
@@ -567,13 +570,28 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
 
 // ─── COMPONENT ─────────────────────────────────────────────────────────────────
 
-export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
+export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTableProps) {
   const navigate = useNavigate();
   const gridRef = useRef<AgGridReact<Deal>>(null);
 
+  /** Extract all rows that survive AG Grid's column filters and notify parent. */
+  const emitDisplayedRows = useCallback((api: GridReadyEvent['api']) => {
+    const displayed: Deal[] = [];
+    api.forEachNodeAfterFilter((node) => {
+      if (node.data) displayed.push(node.data);
+    });
+    onDisplayedRowsChange?.(displayed);
+  }, [onDisplayedRowsChange]);
+
   const onGridReady = useCallback((params: GridReadyEvent) => {
     params.api.sizeColumnsToFit();
-  }, []);
+    // Report initial (unfiltered) dataset
+    emitDisplayedRows(params.api);
+  }, [emitDisplayedRows]);
+
+  const onFilterChanged = useCallback((params: FilterChangedEvent) => {
+    emitDisplayedRows(params.api);
+  }, [emitDisplayedRows]);
 
   const onRowClicked = useCallback((event: RowClickedEvent<Deal>) => {
     // Don't navigate if the click was on the pin button
@@ -775,7 +793,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       <div className="panel overflow-hidden">
         <div className="border-b border-border/60 px-4 py-3 flex items-center justify-between">
           <h2 className="text-sm font-medium">Deals</h2>
-          <span className="text-xs text-muted-foreground">{deals.length} deals</span>
+          <span className="text-xs text-muted-foreground">{deals.length} loaded</span>
         </div>
         <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 56 + 90, 800) }}>
           <AgGridReact<Deal>
@@ -785,6 +803,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
             defaultColDef={defaultColDef}
             onGridReady={onGridReady}
             onRowClicked={onRowClicked}
+            onFilterChanged={onFilterChanged}
             pagination={true}
             paginationPageSize={25}
             paginationPageSizeSelector={[10, 25, 50, 100]}
