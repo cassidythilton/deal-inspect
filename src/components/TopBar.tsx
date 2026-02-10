@@ -1,19 +1,23 @@
 /**
  * TopBar Component
- * Simplified filter bar: Quarter scope + Agenda toggle.
+ * Filter bar with Quarter, AE Manager, SE Manager, SE, and Agenda toggle.
  *
- * Person-based filters (AE Manager, SE Manager, SE) moved into AG Grid columns.
- * Priority filter → AG Grid TDR Score column filter.
- * View toggle (Recommended / Agenda / All) → removed; Agenda is a toggle.
+ * The Shadcn dropdowns provide elegant, modern filtering.
+ * AG Grid column filters remain available for in-grid refinement.
  */
 
-import { User, Filter, X, Check, Pin } from 'lucide-react';
+import { User, Users, Filter, X, Check, Pin } from 'lucide-react';
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
   SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { ALLOWED_MANAGERS } from '@/lib/constants';
 
 export interface SEFilterOptions {
   seManagers: string[];
@@ -61,6 +65,12 @@ export function TopBar({
       return b.localeCompare(a);
     });
 
+  // Filter lists
+  const managers = ALLOWED_MANAGERS;
+  const salesEngineers = seFilterOptions?.salesConsultants || [];
+  const pocArchitects = seFilterOptions?.pocSalesConsultants || [];
+  const seManagers = seFilterOptions?.seManagers || [];
+
   // Multi-select quarter handling
   const selectedQuarters = seFilterState?.selectedQuarters || [];
 
@@ -94,12 +104,22 @@ export function TopBar({
     ? selectedQuarters[0]
     : `${selectedQuarters.length} quarters`;
 
+  // SE display text
+  const getSeDisplayText = () => {
+    if (!seFilterState?.selectedSE) return 'All SEs';
+    const val = seFilterState.selectedSE;
+    if (val.startsWith('se:')) return val.slice(3);
+    if (val.startsWith('poc:')) return val.slice(4);
+    return val;
+  };
+
+  const hasSeData = salesEngineers.length > 0 || pocArchitects.length > 0;
   const showAgenda = seFilterState?.showAgendaOnly ?? false;
 
   return (
     <header className="flex h-12 items-center justify-between border-b border-border bg-card px-6">
-      {/* Left: Scope filters */}
-      <div className="flex items-center gap-3">
+      {/* Left: Filters */}
+      <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Filter className="h-3.5 w-3.5" />
           <span className="text-2xs font-medium uppercase tracking-wide">Scope</span>
@@ -176,6 +196,111 @@ export function TopBar({
               )}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="h-4 w-px bg-border" />
+
+        {/* AE Manager dropdown */}
+        <Select
+          value={seFilterState?.selectedManager || 'all'}
+          onValueChange={(v) => onSEFilterChange?.({ selectedManager: v === 'all' ? null : v })}
+        >
+          <SelectTrigger className={cn(
+            'h-7 w-36 text-xs font-medium shadow-none border',
+            seFilterState?.selectedManager
+              ? 'border-emerald-500/50 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400'
+              : 'border-border bg-secondary'
+          )}>
+            <SelectValue placeholder="AE Manager" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs font-medium">All AE Managers</SelectItem>
+            {managers.map((m) => (
+              <SelectItem key={m} value={m} className="text-xs">
+                {m}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="h-4 w-px bg-border" />
+
+        {/* SE group: SE Mgr + SE dropdown */}
+        <div className="flex items-center gap-1.5">
+          <Users className="h-3 w-3 text-muted-foreground" />
+
+          {/* SE Manager dropdown */}
+          {seManagers.length > 0 && (
+            <Select
+              value={seFilterState?.selectedSEManager || 'all'}
+              onValueChange={(v) => onSEFilterChange?.({ selectedSEManager: v === 'all' ? null : v })}
+            >
+              <SelectTrigger className={cn(
+                'h-7 w-28 text-2xs font-medium shadow-none border',
+                seFilterState?.selectedSEManager
+                  ? 'border-violet-500/50 bg-violet-500/5 text-violet-700 dark:text-violet-400'
+                  : 'border-border bg-secondary'
+              )}>
+                <SelectValue placeholder="SE Mgr" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="text-xs">All SE Mgrs</SelectItem>
+                {seManagers.map((mgr) => (
+                  <SelectItem key={mgr} value={mgr} className="text-xs">
+                    {mgr}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Combined SE + PoC dropdown with groupings */}
+          {hasSeData && (
+            <Select
+              value={seFilterState?.selectedSE || 'all'}
+              onValueChange={(v) => onSEFilterChange?.({ selectedSE: v === 'all' ? null : v })}
+            >
+              <SelectTrigger className={cn(
+                'h-7 w-28 text-2xs font-medium shadow-none border',
+                seFilterState?.selectedSE
+                  ? seFilterState.selectedSE.startsWith('poc:')
+                    ? 'border-teal-500/50 bg-teal-500/5 text-teal-700 dark:text-teal-400'
+                    : 'border-sky-500/50 bg-sky-500/5 text-sky-700 dark:text-sky-400'
+                  : 'border-border bg-secondary'
+              )}>
+                <SelectValue placeholder="All SEs">{getSeDisplayText()}</SelectValue>
+              </SelectTrigger>
+              <SelectContent className="max-h-[400px] min-w-[220px]">
+                <SelectItem value="all" className="text-xs font-medium">All SEs</SelectItem>
+
+                {salesEngineers.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
+                      Sales Engineers
+                    </SelectLabel>
+                    {salesEngineers.map((se) => (
+                      <SelectItem key={`se-${se}`} value={`se:${se}`} className="text-xs pl-4">
+                        {se}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+
+                {pocArchitects.length > 0 && (
+                  <SelectGroup>
+                    <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
+                      PoC Architects
+                    </SelectLabel>
+                    {pocArchitects.map((se) => (
+                      <SelectItem key={`poc-${se}`} value={`poc:${se}`} className="text-xs pl-4">
+                        {se}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                )}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <div className="h-4 w-px bg-border" />

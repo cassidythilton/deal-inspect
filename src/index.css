@@ -222,44 +222,45 @@
 }
 
 /* ─── AG Grid TDR Theme ─────────────────────────────────────────────────── */
-/* Custom theme that matches the TDR design system: quiet, elegant, dense */
+/* Quiet, elegant, editorial. Matches the TDR design system.                */
+/* AG Grid provides: sort, paginate, resize, reorder.                       */
+/* Filtering is handled by the TopBar Shadcn dropdowns — not AG Grid.       */
 
 .ag-theme-tdr {
-  /* Core colors mapped to TDR design tokens */
-  --ag-background-color: hsl(40 30% 99%);
-  --ag-header-background-color: hsl(40 30% 99%);
+  /* Canvas — warm off-white, matching card background */
+  --ag-background-color: transparent;
+  --ag-header-background-color: transparent;
   --ag-odd-row-background-color: transparent;
-  --ag-row-hover-color: hsl(161 50% 95% / 0.5);
-  --ag-selected-row-background-color: hsl(161 50% 95% / 0.3);
-  --ag-border-color: hsl(127 8% 88% / 0.6);
-  --ag-header-column-separator-color: hsl(127 8% 88% / 0.4);
-  --ag-row-border-color: hsl(127 8% 88% / 0.4);
-  --ag-foreground-color: hsl(281 19% 15%);
-  --ag-secondary-foreground-color: hsl(127 5% 45%);
-  --ag-header-foreground-color: hsl(127 5% 45%);
-  --ag-control-panel-background-color: hsl(40 30% 99%);
-  --ag-subheader-background-color: hsl(40 20% 97%);
-  --ag-range-selection-border-color: hsl(161 50% 45%);
-  --ag-input-focus-border-color: hsl(161 50% 45%);
-  --ag-checkbox-checked-color: hsl(152 73% 40%);
+
+  /* Hover — subtle teal wash */
+  --ag-row-hover-color: hsl(161 50% 95% / 0.45);
+  --ag-selected-row-background-color: hsl(161 50% 95% / 0.25);
+
+  /* Borders — nearly invisible hairlines */
+  --ag-border-color: transparent;
+  --ag-row-border-color: hsl(127 8% 88% / 0.35);
+  --ag-header-column-separator-display: none;
+
+  /* Typography — muted sage, not black */
+  --ag-foreground-color: hsl(127 5% 45%);
+  --ag-secondary-foreground-color: hsl(127 5% 55%);
+  --ag-header-foreground-color: hsl(127 5% 50%);
+
+  /* Metrics */
   --ag-font-family: inherit;
   --ag-font-size: 13px;
   --ag-grid-size: 4px;
-  --ag-row-height: 44px;
-  --ag-header-height: 36px;
-  --ag-list-item-height: 28px;
-  --ag-cell-horizontal-padding: 12px;
-  --ag-header-column-separator-display: block;
-  --ag-header-column-separator-height: 50%;
-  --ag-header-column-separator-width: 1px;
+  --ag-row-height: 56px;
+  --ag-header-height: 40px;
+  --ag-cell-horizontal-padding: 16px;
+
+  /* Chrome suppression */
   --ag-borders: none;
   --ag-wrapper-border-radius: 0;
-  --ag-card-radius: 6px;
-  --ag-card-shadow: 0 4px 16px hsl(220 20% 10% / 0.08);
   --ag-icon-size: 14px;
 }
 
-/* Header text style — matches section-header */
+/* Header text — quiet uppercase, matches section-header */
 .ag-theme-tdr .ag-header-cell-label {
   font-size: 11px;
   font-weight: 600;
@@ -267,65 +268,225 @@
   letter-spacing: 0.05em;
 }
 
-/* Remove the outer border from the grid root */
+/* Remove ALL grid wrapper borders */
 .ag-theme-tdr .ag-root-wrapper {
   border: none !important;
   border-radius: 0;
 }
 
-/* Clean pagination styling */
-.ag-theme-tdr .ag-paging-panel {
-  border-top: 1px solid hsl(127 8% 88% / 0.6);
-  font-size: 12px;
-  color: hsl(127 5% 45%);
-  height: 36px;
-  padding: 0 12px;
+/* Header row — hairline bottom only */
+.ag-theme-tdr .ag-header {
+  border-bottom: 1px solid hsl(127 8% 88% / 0.5) !important;
 }
 
+/* Row separators — ultra-subtle */
+.ag-theme-tdr .ag-row {
+  cursor: pointer;
+  border-bottom: 1px solid hsl(127 8% 88% / 0.3) !important;
+}
+
+/* Clean pagination */
+.ag-theme-tdr .ag-paging-panel {
+  border-top: 1px solid hsl(127 8% 88% / 0.4);
+  font-size: 11px;
+  color: hsl(127 5% 55%);
+  height: 36px;
+  padding: 0 16px;
+}
 .ag-theme-tdr .ag-paging-button {
   cursor: pointer;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 .ag-theme-tdr .ag-paging-button:hover {
   opacity: 1;
 }
 
-/* Filter popup styling */
-.ag-theme-tdr .ag-filter-toolpanel {
-  background: hsl(40 30% 99%);
-}
-
-/* Row cursor */
-.ag-theme-tdr .ag-row {
-  cursor: pointer;
-}
-
-/* Cell focus — remove the blue outline */
+/* Kill all cell focus chrome */
 .ag-theme-tdr .ag-cell-focus,
 .ag-theme-tdr .ag-cell:focus {
   outline: none !important;
   border: none !important;
 }
 
-/* Column resize handle */
+/* Subtle resize handle */
 .ag-theme-tdr .ag-header-cell-resize {
   width: 4px;
 }
 
-/* Suppress icon noise but keep filter icons */
-.ag-theme-tdr .ag-header-cell-menu-button {
+/* Header menu/filter icons — subtle, appear on hover */
+.ag-theme-tdr .ag-header-cell-menu-button,
+.ag-theme-tdr .ag-header-cell-filter-button {
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s ease;
 }
-.ag-theme-tdr .ag-header-cell:hover .ag-header-cell-menu-button {
-  opacity: 0.6;
+.ag-theme-tdr .ag-header-cell:hover .ag-header-cell-menu-button,
+.ag-theme-tdr .ag-header-cell:hover .ag-header-cell-filter-button {
+  opacity: 0.45;
 }
-.ag-theme-tdr .ag-header-cell:hover .ag-header-cell-menu-button:hover {
-  opacity: 1;
+.ag-theme-tdr .ag-header-cell:hover .ag-header-cell-menu-button:hover,
+.ag-theme-tdr .ag-header-cell:hover .ag-header-cell-filter-button:hover {
+  opacity: 0.8;
 }
-
-/* Filter active indicator */
-.ag-theme-tdr .ag-header-cell-filtered .ag-header-cell-menu-button {
+/* Active filter indicator — emerald accent */
+.ag-theme-tdr .ag-header-cell-filtered .ag-header-cell-menu-button,
+.ag-theme-tdr .ag-header-cell-filtered .ag-header-cell-filter-button {
   opacity: 1;
   color: hsl(152 73% 40%);
+}
+
+/* Sort icon — keep but soften */
+.ag-theme-tdr .ag-sort-indicator-icon {
+  opacity: 0.4;
+}
+.ag-theme-tdr .ag-header-cell:hover .ag-sort-indicator-icon {
+  opacity: 0.7;
+}
+
+/* ─── AG Grid Filter Popup Styling ─────────────────────────────────────── */
+/* Match the warm, rounded, emerald-accented Shadcn aesthetic              */
+
+/* Popup container */
+.ag-theme-tdr .ag-popup {
+  font-family: inherit;
+}
+.ag-theme-tdr .ag-filter {
+  background: hsl(40 30% 99%);
+  border: 1px solid hsl(127 8% 88% / 0.6);
+  border-radius: 8px;
+  box-shadow: 0 4px 24px hsl(220 20% 10% / 0.08), 0 1px 4px hsl(220 20% 10% / 0.04);
+  padding: 12px;
+  min-width: 200px;
+}
+
+/* Filter text inputs */
+.ag-theme-tdr .ag-filter .ag-text-field-input,
+.ag-theme-tdr .ag-filter .ag-number-field-input {
+  background: hsl(40 20% 97%);
+  border: 1px solid hsl(127 8% 88%);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: hsl(281 19% 15%);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ag-theme-tdr .ag-filter .ag-text-field-input:focus,
+.ag-theme-tdr .ag-filter .ag-number-field-input:focus {
+  border-color: hsl(152 73% 50%);
+  box-shadow: 0 0 0 2px hsl(152 73% 50% / 0.15);
+}
+.ag-theme-tdr .ag-filter .ag-text-field-input::placeholder,
+.ag-theme-tdr .ag-filter .ag-number-field-input::placeholder {
+  color: hsl(127 5% 60%);
+}
+
+/* Filter select dropdowns */
+.ag-theme-tdr .ag-filter .ag-picker-field-wrapper {
+  background: hsl(40 20% 97%);
+  border: 1px solid hsl(127 8% 88%);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  min-height: 32px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.ag-theme-tdr .ag-filter .ag-picker-field-wrapper:hover {
+  border-color: hsl(127 8% 78%);
+}
+
+/* Select dropdown list */
+.ag-theme-tdr .ag-select-list {
+  background: hsl(40 30% 99%);
+  border: 1px solid hsl(127 8% 88% / 0.6);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px hsl(220 20% 10% / 0.08);
+  padding: 4px;
+}
+.ag-theme-tdr .ag-select-list-item {
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ag-theme-tdr .ag-select-list-item:hover {
+  background: hsl(161 50% 95% / 0.5);
+}
+.ag-theme-tdr .ag-select-list-item.ag-active-item {
+  background: hsl(152 73% 50% / 0.1);
+  color: hsl(152 73% 30%);
+}
+
+/* Set filter (checkbox list) */
+.ag-theme-tdr .ag-set-filter-list {
+  padding: 4px 0;
+}
+.ag-theme-tdr .ag-set-filter-item {
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin: 1px 4px;
+}
+.ag-theme-tdr .ag-set-filter-item:hover {
+  background: hsl(161 50% 95% / 0.5);
+}
+
+/* Mini filter search in set filter */
+.ag-theme-tdr .ag-mini-filter {
+  margin: 0 0 6px 0;
+}
+.ag-theme-tdr .ag-mini-filter .ag-text-field-input {
+  background: hsl(40 20% 97%);
+  border: 1px solid hsl(127 8% 88%);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.ag-theme-tdr .ag-mini-filter .ag-text-field-input:focus {
+  border-color: hsl(152 73% 50%);
+  box-shadow: 0 0 0 2px hsl(152 73% 50% / 0.15);
+}
+
+/* Checkbox styling — emerald accent */
+.ag-theme-tdr .ag-checkbox-input-wrapper {
+  border-radius: 3px;
+}
+.ag-theme-tdr .ag-checkbox-input-wrapper.ag-checked {
+  background-color: hsl(152 73% 40%);
+  border-color: hsl(152 73% 40%);
+}
+
+/* Filter buttons (Apply / Reset) */
+.ag-theme-tdr .ag-filter-apply-panel {
+  padding-top: 8px;
+  border-top: 1px solid hsl(127 8% 88% / 0.4);
+  margin-top: 8px;
+}
+.ag-theme-tdr .ag-filter-apply-panel button {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 5px;
+  transition: all 0.15s;
+}
+.ag-theme-tdr .ag-standard-button {
+  background: hsl(40 20% 97%);
+  border: 1px solid hsl(127 8% 88%);
+  color: hsl(127 5% 45%);
+  border-radius: 5px;
+}
+.ag-theme-tdr .ag-standard-button:hover {
+  background: hsl(161 50% 95% / 0.5);
+  border-color: hsl(152 73% 50% / 0.4);
+  color: hsl(152 73% 30%);
+}
+
+/* Filter condition join (AND / OR radio) — soften */
+.ag-theme-tdr .ag-filter-condition {
+  padding: 6px 0;
+}
+.ag-theme-tdr .ag-filter-condition .ag-radio-button-input-wrapper.ag-checked {
+  border-color: hsl(152 73% 40%);
+}
+.ag-theme-tdr .ag-filter-condition .ag-radio-button-input-wrapper.ag-checked::after {
+  background-color: hsl(152 73% 40%);
 }

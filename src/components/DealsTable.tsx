@@ -294,7 +294,7 @@ function DealAccountCell({ data }: ICellRendererParams<Deal>) {
   return (
     <div className="min-w-0 py-1">
       <div className="flex items-center gap-1.5">
-        <p className="text-sm font-medium truncate">{data.account}</p>
+        <p className="text-sm font-medium text-foreground truncate">{data.account}</p>
         {data.hasIntel && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -378,7 +378,7 @@ function AgeDaysCell({ data }: ICellRendererParams<Deal>) {
 
 function CurrencyCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
-  return <span className="text-sm font-medium tabular-nums">{formatCurrency(data.acv)}</span>;
+  return <span className="text-xs font-medium tabular-nums text-foreground">{formatCurrency(data.acv)}</span>;
 }
 
 function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
@@ -611,39 +611,42 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       headerName: 'Deal / Account',
       field: 'account',
       cellRenderer: DealAccountCell,
-      minWidth: 200,
-      flex: 2,
+      minWidth: 220,
+      flex: 2.5,
       filter: 'agTextColumnFilter',
       filterParams: { filterOptions: ['contains'], debounceMs: 200 },
       sortable: true,
       getQuickFilterText: (params) => `${params.data?.account} ${params.data?.dealName}`,
     },
     {
-      headerName: 'AE Manager',
+      headerName: 'AE Mgr',
       field: 'owner',
-      minWidth: 120,
-      flex: 1,
-      filter: 'agSetColumnFilter',
+      minWidth: 110,
+      flex: 0.8,
+      filter: 'agTextColumnFilter',
+      filterParams: { filterOptions: ['contains', 'equals'], debounceMs: 200 },
       sortable: true,
       cellClass: 'text-xs',
     },
     {
       headerName: 'AE',
       field: 'accountExecutive',
-      minWidth: 120,
-      flex: 1,
+      minWidth: 110,
+      flex: 0.8,
       filter: 'agTextColumnFilter',
       filterParams: { filterOptions: ['contains'], debounceMs: 200 },
       sortable: true,
       cellClass: 'text-xs',
+      hide: true, // hidden by default — visible via column menu
       valueFormatter: (params) => params.value || '—',
     },
     {
-      headerName: 'SE Manager',
+      headerName: 'SE Mgr',
       field: 'seManager',
-      minWidth: 120,
-      flex: 1,
-      filter: 'agSetColumnFilter',
+      minWidth: 110,
+      flex: 0.8,
+      filter: 'agTextColumnFilter',
+      filterParams: { filterOptions: ['contains', 'equals'], debounceMs: 200 },
       sortable: true,
       cellClass: 'text-xs',
       valueFormatter: (params) => params.value || '—',
@@ -652,8 +655,8 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       headerName: 'SE Team',
       field: 'salesConsultant',
       cellRenderer: SETeamCell,
-      minWidth: 140,
-      flex: 1,
+      minWidth: 120,
+      flex: 0.9,
       filter: 'agTextColumnFilter',
       filterParams: { filterOptions: ['contains'], debounceMs: 200 },
       sortable: true,
@@ -664,7 +667,9 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       field: 'stage',
       cellRenderer: StageBadgeCell,
       minWidth: 150,
-      filter: 'agSetColumnFilter',
+      flex: 1,
+      filter: 'agTextColumnFilter',
+      filterParams: { filterOptions: ['contains'], debounceMs: 200 },
       sortable: true,
       comparator: (_, __, nodeA, nodeB) => {
         const a = nodeA?.data?.stageNumber || getStageNumber(nodeA?.data?.stage || '');
@@ -676,8 +681,8 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       headerName: 'Age',
       field: 'stageAge',
       cellRenderer: AgeDaysCell,
-      minWidth: 60,
-      maxWidth: 75,
+      minWidth: 55,
+      maxWidth: 65,
       filter: 'agNumberColumnFilter',
       sortable: true,
       cellStyle: { textAlign: 'center' },
@@ -687,8 +692,8 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       headerName: 'ACV',
       field: 'acv',
       cellRenderer: CurrencyCell,
-      minWidth: 80,
-      maxWidth: 100,
+      minWidth: 75,
+      maxWidth: 90,
       filter: 'agNumberColumnFilter',
       sortable: true,
       cellStyle: { textAlign: 'right' },
@@ -698,8 +703,8 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       headerName: 'TDR',
       field: 'tdrScore',
       cellRenderer: TDRScoreCell,
-      minWidth: 65,
-      maxWidth: 80,
+      minWidth: 55,
+      maxWidth: 70,
       filter: 'agNumberColumnFilter',
       sortable: true,
       sort: 'desc',
@@ -710,8 +715,8 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       headerName: 'TDRs',
       field: 'tdrSessions',
       cellRenderer: TDRDotsCell,
-      minWidth: 60,
-      maxWidth: 70,
+      minWidth: 55,
+      maxWidth: 65,
       sortable: true,
       comparator: (_, __, nodeA, nodeB) => {
         const a = (nodeA?.data?.tdrSessions || []).length;
@@ -721,28 +726,29 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
       cellStyle: { textAlign: 'center' },
     },
     {
-      headerName: 'Partner',
+      headerName: 'Ptr',
       field: 'partnerSignal',
       cellRenderer: PartnerIconCell,
-      minWidth: 65,
-      maxWidth: 80,
-      filter: 'agSetColumnFilter',
+      minWidth: 50,
+      maxWidth: 60,
+      filter: 'agTextColumnFilter',
+      filterParams: { filterOptions: ['contains'], debounceMs: 200 },
       sortable: true,
       cellStyle: { textAlign: 'center' },
     },
     {
       headerName: 'Why TDR?',
       cellRenderer: WhyTDRCell,
-      minWidth: 180,
-      flex: 2,
+      minWidth: 200,
+      flex: 2.5,
       sortable: false,
       filter: false,
     },
     {
       headerName: '',
       cellRenderer: PinActionCell,
-      minWidth: 80,
-      maxWidth: 90,
+      minWidth: 70,
+      maxWidth: 80,
       sortable: false,
       filter: false,
       pinned: 'right',
@@ -771,7 +777,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
           <h2 className="text-sm font-medium">Deals</h2>
           <span className="text-xs text-muted-foreground">{deals.length} deals</span>
         </div>
-        <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 44 + 80, 800) }}>
+        <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 56 + 90, 800) }}>
           <AgGridReact<Deal>
             ref={gridRef}
             rowData={deals}
@@ -787,8 +793,8 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
             suppressCellFocus={true}
             suppressRowClickSelection={true}
             domLayout="normal"
-            headerHeight={36}
-            rowHeight={44}
+            headerHeight={40}
+            rowHeight={56}
             tooltipShowDelay={0}
             enableCellTextSelection={false}
           />

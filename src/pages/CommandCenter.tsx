@@ -76,13 +76,37 @@ export default function CommandCenter() {
     return mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
   }, [domoDeals, isDomoConnected]);
 
-  // Apply scope filters to deals
+  // Apply all filters to deals
   const deals: Deal[] = useMemo(() => {
     let result = baseDeals.map((d) => ({
       ...d,
       isPinned: pinnedIds.has(d.id),
       agendaStatus: pinnedIds.has(d.id) ? (d.agendaStatus || 'draft') : undefined,
     }));
+
+    // AE Manager filter
+    if (seFilters.selectedManager) {
+      result = result.filter((d) => d.owner === seFilters.selectedManager);
+    }
+
+    // SE Manager filter
+    if (seFilters.selectedSEManager) {
+      result = result.filter((d) => d.seManager === seFilters.selectedSEManager);
+    }
+
+    // Individual SE filter (Sales Engineer or PoC Architect)
+    if (seFilters.selectedSE) {
+      const seValue = seFilters.selectedSE;
+      if (seValue.startsWith('poc:')) {
+        const pocName = seValue.slice(4);
+        result = result.filter((d) => d.pocSalesConsultant === pocName);
+      } else if (seValue.startsWith('se:')) {
+        const seName = seValue.slice(3);
+        result = result.filter((d) => d.salesConsultant === seName);
+      } else {
+        result = result.filter((d) => d.salesConsultant === seValue || d.pocSalesConsultant === seValue);
+      }
+    }
 
     // Quarter filter (scope-level)
     if (seFilters.selectedQuarters && seFilters.selectedQuarters.length > 0) {
