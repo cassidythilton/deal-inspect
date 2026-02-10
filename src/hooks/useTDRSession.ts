@@ -15,7 +15,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Deal } from '@/types/tdr';
-import { snowflakeStore } from '@/lib/snowflakeStore';
+import { snowflakeStore, parseCompletedSteps } from '@/lib/snowflakeStore';
 import type { SnowflakeSession, StepInput, SaveStepInputArgs } from '@/lib/snowflakeStore';
 import { getAppSettings } from '@/lib/appSettings';
 
@@ -109,7 +109,7 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
         if (activeSession) {
           console.log(`[useTDRSession] Found active session: ${activeSession.sessionId}`);
           setSession(activeSession);
-          setCompletedSteps(new Set(activeSession.completedSteps || []));
+          setCompletedSteps(new Set(parseCompletedSteps(activeSession.completedSteps)));
 
           // Load existing inputs
           try {

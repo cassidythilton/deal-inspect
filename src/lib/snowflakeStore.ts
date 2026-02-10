@@ -143,28 +143,68 @@ function generateDevId(): string {
  *   - SDK-wrapped:   { sessions: { success: true, sessions: [...] } }
  *   - SDK-wrapped with direct array: { sessions: [...] }
  */
+/**
+ * Safely parse completedSteps from Snowflake.
+ *
+ * Snowflake returns VARIANT columns as JSON strings (e.g. '["context","decision"]'),
+ * not native JS arrays. If the frontend naively passes a string to `new Set(string)`,
+ * JavaScript iterates over individual CHARACTERS — producing garbage.
+ *
+ * This helper normalizes the value to always return a clean string[].
+ */
+export function parseCompletedSteps(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((s): s is string => typeof s === 'string');
+  if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.filter((s): s is string => typeof s === 'string');
+    } catch {
+      // Malformed JSON — return empty
+    }
+  }
+  return [];
+}
+
+/**
+ * Normalize a session's completedSteps from string → array.
+ */
+function normalizeSession(session: SnowflakeSession): SnowflakeSession {
+  return {
+    ...session,
+    completedSteps: parseCompletedSteps(session.completedSteps),
+  };
+}
+
 function extractSessionsArray(raw: unknown): SnowflakeSession[] {
-  if (Array.isArray(raw)) return raw;
-  if (raw && typeof raw === 'object') {
+  let sessions: SnowflakeSession[] = [];
+
+  if (Array.isArray(raw)) {
+    sessions = raw;
+  } else if (raw && typeof raw === 'object') {
     const obj = raw as Record<string, unknown>;
 
     // Direct .sessions as array (e.g. raw CE response or SDK alias)
-    if (Array.isArray(obj.sessions)) return obj.sessions as SnowflakeSession[];
-
-    // SDK-wrapped: { sessions: { success, sessions: [...] } }
-    if (obj.sessions && typeof obj.sessions === 'object' && !Array.isArray(obj.sessions)) {
-      const inner = obj.sessions as Record<string, unknown>;
-      if (Array.isArray(inner.sessions)) return inner.sessions as SnowflakeSession[];
-      if (Array.isArray(inner.data)) return inner.data as SnowflakeSession[];
+    if (Array.isArray(obj.sessions)) {
+      sessions = obj.sessions as SnowflakeSession[];
     }
-
+    // SDK-wrapped: { sessions: { success, sessions: [...] } }
+    else if (obj.sessions && typeof obj.sessions === 'object' && !Array.isArray(obj.sessions)) {
+      const inner = obj.sessions as Record<string, unknown>;
+      if (Array.isArray(inner.sessions)) sessions = inner.sessions as SnowflakeSession[];
+      else if (Array.isArray(inner.data)) sessions = inner.data as SnowflakeSession[];
+    }
     // Other fallbacks
-    if (Array.isArray(obj.data)) return obj.data as SnowflakeSession[];
-    if (Array.isArray(obj.items)) return obj.items as SnowflakeSession[];
-    if (Array.isArray(obj.output)) return obj.output as SnowflakeSession[];
+    else if (Array.isArray(obj.data)) sessions = obj.data as SnowflakeSession[];
+    else if (Array.isArray(obj.items)) sessions = obj.items as SnowflakeSession[];
+    else if (Array.isArray(obj.output)) sessions = obj.output as SnowflakeSession[];
   }
-  console.warn('[SnowflakeStore] Could not extract sessions array from:', raw);
-  return [];
+
+  if (sessions.length === 0 && raw) {
+    console.warn('[SnowflakeStore] Could not extract sessions array from:', raw);
+  }
+
+  // Normalize completedSteps on every session (Snowflake returns JSON strings, not arrays)
+  return sessions.map(normalizeSession);
 }
 
 /**
@@ -233,7 +273,7 @@ export const snowflakeStore = {
       throw new Error('[SnowflakeStore] createSession failed');
     }
 
-    return result.session!;
+    return normalizeSession(result.session!);
   },
 
   /**
@@ -251,9 +291,15 @@ export const snowflakeStore = {
     }
 
     const raw = await callCodeEngine<unknown>('updateSession', { sessionId, updates });
-    const result = extractResult<{ success?: boolean; session?: SnowflakeSession }>(raw);
+    const result = extractResult<{ success?: boolean; session?: SnowflakeSession; error?: string }>(raw);
 
-    return result.session || null;
+    if (!result.success) {
+      const errMsg = result.error || 'updateSession failed';
+      console.error('[SnowflakeStore] updateSession failed:', errMsg);
+      throw new Error(errMsg);
+    }
+
+    return result.session ? normalizeSession(result.session) : null;
   },
 
   /**
@@ -442,7 +488,7 @@ export const snowflakeStore = {
       createdBy: session.createdBy,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
-      completedSteps: session.completedSteps || [],
+      completedSteps: parseCompletedSteps(session.completedSteps),
       notes: session.notes || '',
     };
   },
