@@ -69,6 +69,7 @@ export interface SentimentDataPoint {
 export interface SentimentTrendResult {
   success: boolean;
   trend: SentimentDataPoint[];
+  noInputs?: boolean;  // true when no TDR inputs exist to analyze
   error?: string;
 }
 

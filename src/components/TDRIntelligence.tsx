@@ -233,6 +233,8 @@ export function TDRIntelligence({
   const [evolutionOpen, setEvolutionOpen] = useState(false);
   const [sentimentTrend, setSentimentTrend] = useState<SentimentDataPoint[]>([]);
   const [sentimentLoading, setSentimentLoading] = useState(false);
+  const [sentimentNoInputs, setSentimentNoInputs] = useState(false);
+  const [sentimentFetched, setSentimentFetched] = useState(false);
 
   // ── Sprint 11: Similar Deals ──
   const [similarDeals, setSimilarDeals] = useState<{ opportunityId: string; accountName: string; similarityScore: number; sessionId?: string }[]>([]);
@@ -485,19 +487,23 @@ export function TDRIntelligence({
   const handleLoadSentiment = useCallback(async () => {
     if (!deal?.id) return;
     setSentimentLoading(true);
+    setSentimentNoInputs(false);
     try {
       const result = await cortexAi.getSentimentTrend(deal.id);
+      console.log('[TDRIntelligence] Sentiment trend result:', result);
       if (result.success) {
         // Filter out entries where sentiment is null/NaN (e.g. sessions with no inputs)
         const validTrend = (result.trend || []).filter(
           (pt) => pt.sentiment != null && !isNaN(pt.sentiment)
         );
         setSentimentTrend(validTrend);
+        setSentimentNoInputs(result.noInputs === true || validTrend.length === 0);
       }
     } catch (err) {
       console.warn('[TDRIntelligence] Failed to load sentiment trend:', err);
     }
     setSentimentLoading(false);
+    setSentimentFetched(true);
   }, [deal?.id]);
 
   // ── Sprint 11: Find Similar Deals ──
@@ -1474,7 +1480,9 @@ export function TDRIntelligence({
                     );
                   })}
                 </div>
-              ) : !sentimentLoading && (
+              ) : sentimentFetched && sentimentNoInputs ? (
+                <p className="mt-1 text-2xs text-slate-500 italic">No TDR inputs to analyze — complete some TDR steps first</p>
+              ) : !sentimentLoading && !sentimentFetched && (
                 <p className="mt-1 text-2xs text-slate-600 italic">Click the chart icon to analyze sentiment</p>
               )}
             </div>
