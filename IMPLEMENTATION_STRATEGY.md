@@ -3566,6 +3566,7 @@ Scoring adjustments:
 | **14** | **TDR Readout: Slack Distribution** | ⏸ Paused | — | Sprint 13 | **Distribution** |
 | **15** | **AG Grid Table, Deal Search & Filter Rethink** | 🔄 In Progress | — | None (frontend-only) | **UX** |
 | **17.5** | **Structured TDR Analytics Extraction Pipeline** | 🔲 Planned | — | Sprint 17 | **Analytics** |
+| **17.6** | **TDR Portfolio Analytics Page** | 🔲 Planned | — | Sprint 17.5 | **Analytics / UX** |
 
 **Post-Sprint Bug Fixes (Feb 10, 2026):**
 - Fixed `getSentimentTrend` crash: `AI_SENTIMENT` returns NULL for sessions without inputs → `parseFloat(null)` → NaN → serialized as `null` in JSON → `.toFixed()` crash. Added null-filtering in handler and `?? 0` fallback at render.
@@ -4105,6 +4106,236 @@ Rules:
 
 ---
 
+### Sprint 17.6 — TDR Portfolio Analytics Page 🔲
+
+> **Goal:** Build a dedicated analytics page that surfaces portfolio-level patterns from structured TDR data. This is the **visualization companion** to Sprint 17.5's extraction pipeline — it turns `V_TDR_ANALYTICS` into interactive charts and tables that answer the questions SE Managers and leadership actually ask.
+> **Risk to app:** None — purely additive. New page, new route, no changes to existing pages.
+> **Effort:** ~1.5 days
+> **Dependencies:** Sprint 17.5 (extraction pipeline must exist to produce data)
+
+**Problem Statement:**
+
+Today the app has a **Command Center** that answers "what's in the pipeline?" — it shows deal volume, priority scores, and close date distribution. But it doesn't answer portfolio-level TDR questions:
+
+- "What platforms are we competing on across all TDRs?"
+- "Who are our most common competitors?"
+- "How does Domo typically enter the stack?"
+- "What risks keep appearing?"
+- "What Domo capabilities are most in demand?"
+- "How are TDR completion rates trending?"
+- "Are there patterns in which deals we approve vs. send back?"
+
+These questions require **structured cross-deal analysis** — exactly what Sprint 17.5's `V_TDR_ANALYTICS` view provides. This sprint builds the UI to surface those answers.
+
+**Page Design: `/analytics`**
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  TDR Portfolio Analytics                                            [Filters]│
+│  Patterns across all Technical Deal Reviews                                  │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─── Summary Stats (4 cards) ──────────────────────────────────────────┐   │
+│  │ TDRs Completed │ Avg Complexity  │ Proceed Rate    │ Avg TDR Duration│   │
+│  │ 47             │ Moderate (2.1)  │ 72% Proceed     │ 3.2 days        │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌─── Row 1: Platform & Technology ─────────────────────────────────────┐   │
+│  │  [Cloud Platform Distribution]  │  [Entry Layer Distribution]        │   │
+│  │  (donut chart)                  │  (horizontal bar chart)            │   │
+│  │  Snowflake: 42%                 │  Data Integration ████████ 15     │   │
+│  │  Databricks: 23%               │  Visualization    ██████ 11       │   │
+│  │  BigQuery: 12%                  │  App Development  ████ 8          │   │
+│  │  Multiple: 11%                  │  Embedded         ███ 6           │   │
+│  │  Other: 12%                     │  AI / ML          ██ 4            │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌─── Row 2: Competitive & Risk ────────────────────────────────────────┐   │
+│  │  [Top Competitors]              │  [Risk Categories]                 │   │
+│  │  (horizontal bar)               │  (horizontal bar)                  │   │
+│  │  Sigma ████████████ 18          │  competitive_displacement ████ 22  │   │
+│  │  Tableau ████████ 12            │  integration_risk ████████ 15     │   │
+│  │  Power BI ██████ 9              │  timeline_pressure ██████ 12     │   │
+│  │  Fivetran ████ 6                │  technical_complexity █████ 10   │   │
+│  │  ThoughtSpot ██ 3               │  adoption_risk ███ 7             │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌─── Row 3: Decisions & Trends ────────────────────────────────────────┐   │
+│  │  [Verdict Distribution]         │  [TDR Volume & Verdict Trend]      │   │
+│  │  (donut chart)                  │  (stacked area chart by month)     │   │
+│  │  Proceed: 72%                   │                                    │   │
+│  │  Corrections: 21%              │  ──▓▓▓▓▓▓──────────────────────    │   │
+│  │  Rework: 7%                     │  ──▓▓▓▓▓▓▓▓────────────────────   │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌─── Row 4: Domo Positioning ──────────────────────────────────────────┐   │
+│  │  [Most Used Domo Capabilities]  │  [Key Differentiators]             │   │
+│  │  (horizontal bar)               │  (horizontal bar)                  │   │
+│  │  MagicETL ████████████ 20       │  Governance ██████████ 16         │   │
+│  │  App Studio ████████ 14         │  No-code Integration ████████ 12  │   │
+│  │  Dashboards ██████ 10           │  Speed to Value ██████ 9          │   │
+│  │  Writeback ████ 7               │  App Platform ████ 6              │   │
+│  │  Governance ███ 5               │  Embedded UX ███ 4                │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  ┌─── Row 5: Detail Table ──────────────────────────────────────────────┐   │
+│  │  Sortable, searchable table of all extracted TDR sessions            │   │
+│  │  Account | ACV | Platform | Entry Layer | Competitors | Verdict | …  │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Section 1 — Summary Stats (4 cards)**
+
+| Card | Metric | Computation | Format |
+|------|--------|-------------|--------|
+| **TDRs Completed** | Count of sessions with `STATUS = 'completed'` | `COUNT(*)` | Integer |
+| **Avg Deal Complexity** | Mean of `DEAL_COMPLEXITY` mapped to 1/2/3 | Simple→1, Moderate→2, Complex→3, avg | `Moderate (2.1)` |
+| **Proceed Rate** | % of sessions with `VERDICT = 'Proceed'` | `COUNT(Proceed) / COUNT(with verdict)` | `72%` |
+| **Avg TDR Duration** | Mean days from `CREATED_AT` to `UPDATED_AT` for completed TDRs | `AVG(TDR_DURATION_DAYS)` | `3.2 days` |
+
+**Section 2 — Platform & Technology (2 charts)**
+
+| Chart | Type | Data Source | X-Axis / Segments | Y-Axis / Metric |
+|-------|------|-------------|-------|-------|
+| Cloud Platform Distribution | Donut (PieChart) | `CLOUD_PLATFORM` | Platform name | Deal count |
+| Entry Layer Distribution | Horizontal bar | `ENTRY_LAYER` | Layer name | Deal count |
+
+**Section 3 — Competitive & Risk (2 charts)**
+
+| Chart | Type | Data Source | X-Axis / Segments | Y-Axis / Metric |
+|-------|------|-------------|-------|-------|
+| Top Competitors | Horizontal bar | `NAMED_COMPETITORS` (flattened) | Competitor name | Mention count |
+| Risk Categories | Horizontal bar | `RISK_CATEGORIES` (flattened) | Category name | Occurrence count |
+
+**Section 4 — Decisions & Trends (2 charts)**
+
+| Chart | Type | Data Source | X-Axis | Y-Axis |
+|-------|------|-------------|--------|--------|
+| Verdict Distribution | Donut (PieChart) | `VERDICT` | Verdict value | Deal count |
+| TDR Volume & Verdict Trend | Stacked area (AreaChart) | `TDR_STARTED` × `VERDICT` | Month | Deal count per verdict |
+
+**Section 5 — Domo Positioning (2 charts)**
+
+| Chart | Type | Data Source | X-Axis | Y-Axis |
+|-------|------|-------------|--------|--------|
+| Most Used Domo Capabilities | Horizontal bar | `DOMO_USE_CASES` (flattened) | Use case | Mention count |
+| Key Differentiators | Horizontal bar | `KEY_DIFFERENTIATORS` (flattened) | Differentiator | Mention count |
+
+**Section 6 — Detail Table**
+
+A sortable/filterable table showing all extracted TDR sessions. Columns:
+
+| Column | Source | Sortable | Filterable |
+|--------|--------|----------|------------|
+| Account | `ACCOUNT_NAME` | ✅ | ✅ text |
+| ACV | `ACV` | ✅ | ✅ range |
+| Stage | `STAGE` | ✅ | ✅ set |
+| Cloud Platform | `CLOUD_PLATFORM` | ✅ | ✅ set |
+| Entry Layer | `ENTRY_LAYER` | ✅ | ✅ set |
+| Competitors | `NAMED_COMPETITORS` | No | ✅ text |
+| Complexity | `DEAL_COMPLEXITY` | ✅ | ✅ set |
+| Verdict | `VERDICT` | ✅ | ✅ set |
+| TDR Date | `TDR_STARTED` | ✅ | ✅ date range |
+| Thesis | `THESIS` | No | ✅ text |
+
+Click row → navigate to `/workspace?deal={opportunityId}` (open the TDR for that deal).
+
+**Page-Level Filters (top right)**
+
+| Filter | Type | Options | Default |
+|--------|------|---------|---------|
+| Date Range | Date picker (from/to) | Any range | Last 90 days |
+| SE Manager | Multi-select | From `SE_NAME` values | All |
+| Cloud Platform | Multi-select | From `CLOUD_PLATFORM` values | All |
+| Verdict | Multi-select | Proceed, Corrections, Rework | All |
+
+Filters apply to ALL sections simultaneously — charts and detail table update together.
+
+**Data Retrieval: Code Engine Function `getTDRAnalyticsData`**
+
+A single Code Engine function queries `V_TDR_ANALYTICS` and returns the raw rows. Frontend aggregates client-side since row count is manageable (one per TDR session — unlikely to exceed hundreds in the near term).
+
+```
+getTDRAnalyticsData() → { success, rows: V_TDR_ANALYTICS[] }
+```
+
+The function runs a simple `SELECT * FROM V_TDR_ANALYTICS` — all filtering and aggregation happens client-side in React for responsiveness. If row count grows past ~500, we'll add server-side aggregation in a future iteration.
+
+**Code Engine Function I/O:**
+
+| Function | Inputs | Outputs | Domo Types |
+|----------|--------|---------|------------|
+| `getTDRAnalyticsData` | (none) | `{ success, rows: [...] }` (object) | Input: none, Output: object |
+
+**Color Palette (consistent with existing charts):**
+
+Uses the existing coolors.co palette from `TopTDRCandidatesChart`, `TDRPriorityChart`, and `PipelineByCloseChart`:
+- Primary: `#6366f1` (indigo) — Proceed / Snowflake
+- Secondary: `#f59e0b` (amber) — Corrections / Databricks
+- Tertiary: `#ef4444` (red) — Rework / risk signals
+- Quaternary: `#10b981` (emerald) — positive signals
+- Additional segments use `#8b5cf6`, `#3b82f6`, `#ec4899`, `#14b8a6`, `#f97316`
+
+**Files Changed:**
+
+| File | Change |
+|------|--------|
+| `src/pages/TDRAnalytics.tsx` | **New** — full analytics page with 4 stat cards, 8 charts, 1 detail table |
+| `src/components/charts/PlatformDonutChart.tsx` | **New** — cloud platform distribution donut |
+| `src/components/charts/EntryLayerBarChart.tsx` | **New** — entry layer horizontal bar |
+| `src/components/charts/CompetitorBarChart.tsx` | **New** — top competitors horizontal bar |
+| `src/components/charts/RiskCategoryBarChart.tsx` | **New** — risk category horizontal bar |
+| `src/components/charts/VerdictDonutChart.tsx` | **New** — verdict distribution donut |
+| `src/components/charts/TDRTrendChart.tsx` | **New** — TDR volume + verdict stacked area |
+| `src/components/charts/UseCaseBarChart.tsx` | **New** — Domo use cases horizontal bar |
+| `src/components/charts/DifferentiatorBarChart.tsx` | **New** — key differentiators horizontal bar |
+| `src/components/AppSidebar.tsx` | Add "Analytics" nav item (icon: `BarChart3` from lucide) |
+| `src/App.tsx` | Add `/analytics` route |
+| `src/lib/snowflakeStore.ts` | Add `getTDRAnalyticsData()` method |
+| `manifest.json` | Add `getTDRAnalyticsData` to `packageMapping` |
+| `codeengine/consolidated-sprint4-5.js` | Add `getTDRAnalyticsData` function |
+
+**No Snowflake changes** — this sprint only reads from `V_TDR_ANALYTICS` (created in Sprint 17.5).
+
+**Design Principles:**
+1. Same `stat-card` pattern as Command Center — visual consistency
+2. All charts use Recharts (already installed) — no new dependencies
+3. Page is useful with even 1 TDR session (graceful empty states: "Complete more TDRs to see trends")
+4. Responsive layout: 2-column grid for charts, full-width for detail table
+5. Every chart has an info tooltip explaining what it shows and why it matters
+6. Charts animate on mount for a polished feel
+
+**Empty State:**
+
+When no TDR sessions have been extracted yet:
+
+```
+┌────────────────────────────────────────────────────────┐
+│  📊  No TDR Analytics Yet                              │
+│                                                        │
+│  Complete a TDR to start seeing portfolio patterns.    │
+│  Analytics are extracted automatically when a TDR is   │
+│  marked complete.                                      │
+│                                                        │
+│  [Go to Command Center]                                │
+└────────────────────────────────────────────────────────┘
+```
+
+**What This Page Answers (by audience):**
+
+| Audience | Key Questions | Sections |
+|----------|---------------|----------|
+| **SE Manager** | "What platforms is my team selling on? What risks keep appearing? How are my TDR completion rates?" | Platform, Risk, Stats, Trends |
+| **VP / Director** | "Are we winning competitive deals? What's our proceed rate? Where does Domo enter?" | Competitive, Verdict, Entry Layer |
+| **SE Leadership** | "What capabilities are most in demand? What differentiates us? How complex are our deals?" | Domo Positioning, Stats |
+| **Enablement** | "What battle cards should we update? What partner playbooks are needed?" | Competitive, Risk, Platform |
+
+**Definition of Done:** A dedicated `/analytics` page shows 8 interactive charts and 4 stat cards driven by `V_TDR_ANALYTICS`. Filters apply globally. Detail table allows drill-down to individual TDRs. Page works with ≥1 extracted TDR session and shows meaningful empty states otherwise.
+
+---
+
 ### Sprint 18 — TDR Score v2 (Pre-TDR & Post-TDR) 🔲
 
 > **Goal:** Evolve the TDR Score into a two-phase model: Pre-TDR (structured data) and Post-TDR (enriched with SE input quality, enrichment data, fileset signals, and named competitor intelligence).
@@ -4477,8 +4708,12 @@ Sprint 17 — Lean TDR Refactor (2–3 days) ✅ ──┐
 Sprint 17.5 — Structured TDR Analytics (1 day) │
     │  (Cortex extracts → analytics table)      │
     │                                           │
+    ▼                                           │
+Sprint 17.6 — TDR Analytics Page (1.5 days)    │
+    │  (visualization of V_TDR_ANALYTICS)       │
+    │                                           │
     │  Sprint 19 — Fileset Intelligence         │
-    │  (2–3 days, parallel with S17.5)   ──────┤
+    │  (2–3 days, parallel with S17.5/6) ──────┤
     │                                           │
     ▼                                           ▼
 Sprint 18 — TDR Score v2 (2 days)        ──────┤
@@ -4499,7 +4734,8 @@ Sprint 20 — Hero Metrics & Nav (1–2 days)      │
 | S16: Fix Similar Deals | — | None | ~1 hr | ✅ |
 | S17: Lean TDR Refactor | ✅ with S19 | None | 2-3 days | ✅ |
 | **S17.5: Structured TDR Analytics** | ✅ with S19 | S17 | 1 day | 🔲 Next |
-| S19: Fileset Intelligence | ✅ with S17.5 | None | 2-3 days | 🔲 |
+| **S17.6: TDR Portfolio Analytics Page** | Sequential | S17.5 | 1.5 days | 🔲 |
+| S19: Fileset Intelligence | ✅ with S17.5/6 | None | 2-3 days | 🔲 |
 | S18: TDR Score v2 | No | S17.5 + S19 | 2 days | 🔲 |
 | S20: Hero Metrics & Nav | ✅ with S21 | S18 | 1-2 days | 🔲 |
 | S21: Action Plan Synthesis | ✅ with S20 | S17.5 + S18 + S19 | 2-3 days | 🔲 |
