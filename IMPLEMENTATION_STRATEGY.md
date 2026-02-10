@@ -3463,10 +3463,17 @@ Scoring adjustments:
 
 ---
 
-### Sprint 14 — TDR Readout: Distribution & Executive Summary ⬜
+### Sprint 14 — TDR Readout: Distribution & Executive Summary 🔄
 
-> **Goal:** Push TDR readouts to Slack channels with AI-generated summaries. Build the distribution backbone.
-> **Risk to app:** Low — new outbound integration. Slack webhook failure doesn't affect core app.
+> **Goal:** Push TDR readouts to Slack channels with AI-generated summaries and PDF attachments.
+> **Risk to app:** Low — new outbound integration. Slack API failure doesn't affect core app.
+> **Decision:** Slack-only distribution (Teams evaluated and deferred — see Section 22). PDF attachment is a hard requirement.
+
+**Architecture: Slack Bot Token**
+- Auth: Single Slack Bot Token (`xoxb-...`) stored in Domo Account (Account ID configured in CE)
+- Required OAuth scopes: `chat:write`, `files:write`, `channels:read`
+- Two-call pattern: `files.uploadV2` (upload PDF) → `chat.postMessage` (send Block Kit message with file permalink)
+- Rate limits: 1 msg/sec per channel (well above our needs)
 
 **AI Executive Summary Generation**
 - [ ] Build Code Engine function `generateReadoutSummary`:
@@ -3478,52 +3485,61 @@ Scoring adjustments:
 
 **Slack Integration**
 - [ ] Build Code Engine function `distributeToSlack`:
-  - Input: `sessionId`, `channel`, `summary`, `pdfBase64` (or `pdfUrl`)
-  - Uses Slack `chat.postMessage` + `files.uploadV2` API (via Bot token stored in Domo Account)
-  - Posts a rich Block Kit message:
-    - Header: "📋 TDR Readout: {Account Name}"
+  - Input: `sessionId` (string), `channel` (string), `summary` (string), `pdfBase64` (string)
+  - Step 1: Decode base64 → upload PDF via Slack `files.uploadV2` API
+  - Step 2: Post rich Block Kit message via `chat.postMessage`:
+    - Header: "TDR Readout: {Account Name}"
     - Section: AI-generated executive summary
-    - Fields: ACV, Stage, Decision, Reviewer
-    - Action: "View in TDR App" deep link
-  - Attaches the PDF as a file
-  - Logs distribution in `TDR_DISTRIBUTIONS`
-- [ ] Add `packageMapping` entry for `distributeToSlack`
-- [ ] Create Domo Account for Slack Bot Token (OAuth scope: `chat:write`, `files:write`, `channels:read`)
-- [ ] Handle Slack API errors gracefully (channel not found, rate limit, file too large)
+    - Fields: ACV, Stage, Decision, Deal Type, Account Executive
+    - Context: TDR Score, generated timestamp
+    - Action: "View in TDR App" deep link button
+    - File: attached PDF permalink
+  - Step 3: Log distribution in `TDR_DISTRIBUTIONS`
+- [ ] Build Code Engine function `getSlackChannels`:
+  - Input: none (uses stored Bot Token)
+  - Calls Slack `conversations.list` API to fetch available channels
+  - Returns `{ channels: [{ id, name }] }` for the channel picker
+- [ ] Add `packageMapping` entries for `distributeToSlack` and `getSlackChannels`
+- [ ] Handle Slack API errors: channel not found, bot not in channel, rate limit, file too large (>1GB)
 
 **Frontend UI**
-- [ ] Add "Share" button next to "Export Readout" in workspace header (icon: `Share2` from Lucide)
-- [ ] Share dialog with:
-  - Auto-generated executive summary (editable before send)
-  - Channel picker dropdown (fetched from Slack `conversations.list` or predefined list in settings)
-  - "Include PDF attachment" toggle (default: on)
-  - Preview of the Slack Block Kit message
-  - "Send to Slack" button with confirmation
-- [ ] Post-distribution: show toast with "✓ Sent to #channel-name" confirmation
-- [ ] Distribution history: small log in readout dialog showing past distributions (who, when, where)
+- [ ] Add "Share to Slack" button next to "Export PDF" in workspace header (icon: `Share2` from Lucide)
+- [ ] Share dialog (`TDRShareDialog.tsx`) with:
+  - Auto-generated executive summary textarea (editable before send)
+  - "Generate Summary" button to trigger AI summary via `generateReadoutSummary`
+  - Channel picker dropdown (fetched from `getSlackChannels` CE function)
+  - "Include PDF attachment" toggle (default: on, always on per requirement)
+  - "Send to Slack" button with loading state and confirmation
+- [ ] Post-distribution: toast notification with "Sent to #channel-name" confirmation
+- [ ] Distribution history: small log showing past distributions (who, when, where) accessible from the dialog
 
 **Settings Integration**
-- [ ] Add "Slack Integration" section to Settings page:
-  - Slack Bot Token status (connected / not connected)
-  - Default distribution channel(s)
-  - Option to auto-distribute on TDR completion (status → completed)
-- [ ] Add "PDF Branding" section to Settings page:
-  - Logo upload (stored as base64 or URL)
-  - Primary brand color picker
-  - Confidentiality notice text (default: "CONFIDENTIAL — Internal Use Only")
+- [ ] Add "Slack" section to Settings page:
+  - Connection status indicator (connected / not connected)
+  - Default distribution channel (saved in Snowflake or localStorage)
+  - Info text about required Slack App setup
 
-**Snowflake Schema: `TDR_DISTRIBUTIONS`**
-- [ ] Track: `DISTRIBUTION_ID`, `READOUT_ID`, `SESSION_ID`, `CHANNEL`, `METHOD` (slack/download/email), `RECIPIENT`, `SUMMARY_SENT`, `STATUS`, `ERROR_MESSAGE`, `DISTRIBUTED_AT`, `DISTRIBUTED_BY`
+**Snowflake Tables**
+- `TDR_READOUTS` — already created in Sprint 13
+- `TDR_DISTRIBUTIONS` — already created in Sprint 13 (tracks distribution_id, readout_id, method, channel, status, etc.)
 
 **Tests**
 - [ ] Test: generate summary → coherent 3–5 sentence overview
-- [ ] Test: send to Slack → message appears in channel with correct formatting
-- [ ] Test: PDF attachment received in Slack → opens correctly
+- [ ] Test: send to Slack → message appears in channel with correct Block Kit formatting
+- [ ] Test: PDF attachment received in Slack → opens and renders correctly
 - [ ] Test: distribution logged in `TDR_DISTRIBUTIONS`
-- [ ] Test: settings page shows Slack connection status
+- [ ] Test: error handling → bot not in channel shows helpful message
 - [ ] Test: re-distribute same readout → new row in distribution log (not overwrite)
 
-**Definition of Done:** SE Manager can generate an executive-ready PDF and push it to Slack in under 10 seconds. The Slack message includes an AI-written summary that a VP can read without opening the PDF. Every distribution is logged for audit.
+**New Code Engine Functions (3)**
+
+| Function | Inputs | Output | Domo CE Types |
+|----------|--------|--------|---------------|
+| `generateReadoutSummary` | `sessionId` (string) | `{ success, summary, model, error }` (object) | Input: string, Output: object |
+| `distributeToSlack` | `sessionId` (string), `channel` (string), `summary` (string), `pdfBase64` (string) | `{ success, messageTs, fileId, error }` (object) | Input: 4× string, Output: object |
+| `getSlackChannels` | (none — uses stored token) | `{ success, channels: [{id, name}], error }` (object) | Input: none, Output: object |
+
+**Definition of Done:** SE Manager can generate an executive-ready PDF and push it to Slack in under 10 seconds. The Slack message includes an AI-written summary that a VP can read without opening the PDF. The PDF is attached as a downloadable file. Every distribution is logged for audit.
 
 ---
 
