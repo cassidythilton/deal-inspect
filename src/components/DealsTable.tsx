@@ -25,6 +25,9 @@ import type { ColDef, ICellRendererParams, GridReadyEvent, RowClickedEvent, Filt
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
 
+// Legacy theme override: tell AG Grid v35 we're using CSS file themes, not the Theming API
+const AG_GRID_THEME = 'legacy' as const;
+
 // Register all AG Grid Community modules (required in v35+)
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -831,6 +834,7 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
         <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 64 + 90, 800) }}>
           <AgGridReact<Deal>
             ref={gridRef}
+            theme={AG_GRID_THEME}
             rowData={deals}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
@@ -841,9 +845,8 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
             paginationPageSize={25}
             paginationPageSizeSelector={[10, 25, 50, 100]}
             animateRows={true}
-            rowSelection="single"
+            rowSelection={{ mode: 'singleRow', enableClickSelection: false }}
             suppressCellFocus={true}
-            suppressRowClickSelection={true}
             domLayout="normal"
             headerHeight={40}
             rowHeight={64}

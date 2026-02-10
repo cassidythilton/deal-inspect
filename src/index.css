@@ -232,9 +232,9 @@
   --ag-header-background-color: transparent;
   --ag-odd-row-background-color: transparent;
 
-  /* Hover — subtle teal wash */
-  --ag-row-hover-color: hsl(161 50% 95% / 0.45);
-  --ag-selected-row-background-color: hsl(161 50% 95% / 0.25);
+  /* Hover — subtle aubergine wash */
+  --ag-row-hover-color: hsl(281 10% 30% / 0.04);
+  --ag-selected-row-background-color: hsl(281 10% 30% / 0.08);
 
   /* Borders — nearly invisible hairlines */
   --ag-border-color: transparent;
