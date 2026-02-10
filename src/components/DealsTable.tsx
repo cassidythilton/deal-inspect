@@ -645,17 +645,17 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
       filterParams: { filterOptions: ['contains', 'equals'], debounceMs: 200 },
       sortable: true,
       cellClass: 'text-xs',
+      hide: true, // covered by TopBar filter — visible via column menu
     },
     {
       headerName: 'AE',
       field: 'accountExecutive',
-      minWidth: 110,
-      flex: 0.8,
+      minWidth: 120,
+      flex: 0.9,
       filter: 'agTextColumnFilter',
       filterParams: { filterOptions: ['contains'], debounceMs: 200 },
       sortable: true,
       cellClass: 'text-xs',
-      hide: true, // hidden by default — visible via column menu
       valueFormatter: (params) => params.value || '—',
     },
     {
@@ -667,6 +667,7 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
       filterParams: { filterOptions: ['contains', 'equals'], debounceMs: 200 },
       sortable: true,
       cellClass: 'text-xs',
+      hide: true, // covered by TopBar filter — visible via column menu
       valueFormatter: (params) => params.value || '—',
     },
     {
