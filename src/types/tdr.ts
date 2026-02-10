@@ -43,7 +43,8 @@ export interface Deal {
   numCompetitors?: number;      // Number of Competitors
   competitors?: string;          // Competitor names (comma-separated or semicolon-separated)
   // TDR scoring
-  tdrScore?: number; // 0-100 score
+  tdrScore?: number; // 0-100 Pre-TDR score
+  postTDRScore?: number; // 0-100 Post-TDR score (with enrichment/input quality signals)
   // TDR session tracking (from AppDB) — a deal can have up to 5 TDRs
   tdrSessions?: TDRSessionSummary[];
   // Account Intelligence indicator

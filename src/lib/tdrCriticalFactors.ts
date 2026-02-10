@@ -512,6 +512,108 @@ export function getPriorityFromScore(score: number): 'CRITICAL' | 'HIGH' | 'MEDI
   return 'LOW';
 }
 
+// ---------------------------------------------------------------------------
+// Post-TDR Score v2 (Sprint 18)
+// ---------------------------------------------------------------------------
+
+export interface PostTDRScoreContext {
+  /** Named competitors from structured extract or deal data */
+  namedCompetitors?: string[];
+  /** Dangerous competitor list from Settings */
+  dangerousCompetitors?: string[];
+  /** Has Sumble enrichment data */
+  hasSumbleEnrichment?: boolean;
+  /** Has Perplexity enrichment data */
+  hasPerplexityEnrichment?: boolean;
+  /** Risk categories from structured extract */
+  riskCategories?: string[];
+  /** Deal complexity from structured extract */
+  dealComplexity?: string;
+  /** Domo use cases identified from structured extract */
+  domoUseCases?: string[];
+  /** Number of completed TDR steps (0-9) */
+  completedStepCount?: number;
+  /** Total TDR steps */
+  totalStepCount?: number;
+}
+
+export interface PostTDRScoreBreakdown {
+  preTDRScore: number;
+  namedCompetitorThreat: number;
+  enrichmentDepth: number;
+  tdrInputCompleteness: number;
+  riskAwareness: number;
+  totalPostTDR: number;
+}
+
+/**
+ * Calculate the Post-TDR Score — adds enrichment-based components on top
+ * of the Pre-TDR base score. Only meaningful after SE has started the TDR.
+ */
+export function calculatePostTDRScore(
+  deal: Deal,
+  context: PostTDRScoreContext
+): PostTDRScoreBreakdown {
+  const preTDRScore = calculateTDRScore(deal);
+  let namedCompetitorThreat = 0;
+  let enrichmentDepth = 0;
+  let tdrInputCompleteness = 0;
+  let riskAwareness = 0;
+
+  // ── Named Competitor Threat (0-10) ─────────────────────────────────────
+  // If the deal names competitors from the "dangerous" list, score higher
+  const dangerousList = (context.dangerousCompetitors ?? []).map(c => c.toLowerCase());
+  const namedList = (context.namedCompetitors ?? []).map(c => c.toLowerCase());
+
+  if (namedList.length > 0 && dangerousList.length > 0) {
+    const dangerousMatches = namedList.filter(nc =>
+      dangerousList.some(dc => nc.includes(dc) || dc.includes(nc))
+    );
+    if (dangerousMatches.length >= 2) namedCompetitorThreat = 10;
+    else if (dangerousMatches.length === 1) namedCompetitorThreat = 7;
+    else if (namedList.length > 0) namedCompetitorThreat = 3; // Named but not dangerous
+  }
+
+  // ── Enrichment Depth (0-5) ─────────────────────────────────────────────
+  // More external intelligence = more informed TDR
+  if (context.hasSumbleEnrichment) enrichmentDepth += 2;
+  if (context.hasPerplexityEnrichment) enrichmentDepth += 2;
+  if (context.hasSumbleEnrichment && context.hasPerplexityEnrichment) enrichmentDepth += 1; // bonus for both
+
+  // ── TDR Input Completeness (0-10) ──────────────────────────────────────
+  // How much of the TDR has the SE actually filled out?
+  const completed = context.completedStepCount ?? 0;
+  const total = context.totalStepCount ?? 9;
+  if (total > 0) {
+    const ratio = completed / total;
+    if (ratio >= 0.9) tdrInputCompleteness = 10;      // 90%+ complete
+    else if (ratio >= 0.7) tdrInputCompleteness = 7;   // 70%+
+    else if (ratio >= 0.5) tdrInputCompleteness = 5;   // 50%+
+    else if (ratio >= 0.2) tdrInputCompleteness = 2;   // started
+    else tdrInputCompleteness = 0;                      // barely touched
+  }
+
+  // ── Risk Awareness (0-5) ───────────────────────────────────────────────
+  // SE identified risks = more thoughtful TDR
+  const riskCount = context.riskCategories?.length ?? 0;
+  if (riskCount >= 3) riskAwareness = 5;
+  else if (riskCount >= 2) riskAwareness = 3;
+  else if (riskCount >= 1) riskAwareness = 2;
+
+  const totalPostTDR = Math.max(0, Math.min(100,
+    preTDRScore + namedCompetitorThreat + enrichmentDepth + tdrInputCompleteness + riskAwareness
+  ));
+
+  return {
+    preTDRScore,
+    namedCompetitorThreat,
+    enrichmentDepth,
+    tdrInputCompleteness,
+    riskAwareness,
+    totalPostTDR,
+  };
+}
+
 /**
  * Get the top N most impactful factors for display as WHY TDR? tags
  */

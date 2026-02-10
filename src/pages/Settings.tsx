@@ -24,6 +24,8 @@ import {
   Activity,
   AlertCircle,
   Loader2,
+  ShieldAlert,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +57,7 @@ export default function Settings() {
   // ─── State ──────────────────────────────────────────────────────────────────
   const [settings, setSettings] = useState<AppSettings>(getAppSettings);
   const [managerText, setManagerText] = useState('');
+  const [competitorsText, setCompetitorsText] = useState('');
   const [isDirty, setIsDirty] = useState(false);
 
   // ── Account Intelligence Usage ──
@@ -72,9 +75,10 @@ export default function Settings() {
     setUsageLoading(false);
   }, []);
 
-  // Sync manager text on mount + load usage stats
+  // Sync manager text + competitors text on mount + load usage stats
   useEffect(() => {
     setManagerText(settings.allowedManagers.join('\n'));
+    setCompetitorsText((settings.dangerousCompetitors ?? []).join('\n'));
     loadUsageStats();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -91,10 +95,13 @@ export default function Settings() {
     setIsDirty(true);
   };
 
+  const parsedCompetitors = parseManagerList(competitorsText); // reuse the same line parser
+
   const handleSave = () => {
     const patch: Partial<AppSettings> = {
       ...settings,
       allowedManagers: parsedManagers,
+      dangerousCompetitors: parsedCompetitors,
     };
     saveAppSettings(patch);
     setIsDirty(false);
@@ -108,6 +115,7 @@ export default function Settings() {
     const defaults = { ...DEFAULT_APP_SETTINGS };
     setSettings(defaults);
     setManagerText(defaults.allowedManagers.join('\n'));
+    setCompetitorsText((defaults.dangerousCompetitors ?? []).join('\n'));
     setIsDirty(false);
     toast('Settings Reset', {
       description: 'All settings have been restored to defaults.',
@@ -281,7 +289,51 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* ── 5. Account Intelligence ─────────────────────────────────── */}
+          {/* ── 5. Dangerous Competitors (Sprint 18) ────────────────────── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Dangerous Competitors</CardTitle>
+              </div>
+              <CardDescription>
+                Competitors that trigger elevated TDR scoring. When a deal names one of these
+                competitors, the Post-TDR Score increases to signal competitive urgency.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="competitors">Tracked Competitors (one per line)</Label>
+                <Textarea
+                  id="competitors"
+                  placeholder={`Sigma Computing\nFivetran\ndbt\nTableau`}
+                  value={competitorsText}
+                  onChange={(e) => {
+                    setCompetitorsText(e.target.value);
+                    setIsDirty(true);
+                  }}
+                  className="min-h-28 font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {parsedCompetitors.length === 0
+                    ? 'No dangerous competitors configured'
+                    : `${parsedCompetitors.length} competitors tracked`}
+                </p>
+              </div>
+
+              {parsedCompetitors.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {parsedCompetitors.map((comp, i) => (
+                    <Badge key={i} variant="destructive" className="text-xs">
+                      {comp}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── 6. Account Intelligence ─────────────────────────────────── */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">

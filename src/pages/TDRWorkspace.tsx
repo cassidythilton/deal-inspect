@@ -352,6 +352,8 @@ export default function TDRWorkspace() {
             missingInfo={missingInfo}
             riskFlags={riskFlags}
                 sessionId={session?.sessionId}
+                completedStepCount={completedSteps.size}
+                totalStepCount={stepsWithCompletion.length}
               />
             </TabsContent>
             <TabsContent value="chat" className="flex-1 overflow-hidden mt-0">

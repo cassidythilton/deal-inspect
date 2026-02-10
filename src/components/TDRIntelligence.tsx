@@ -57,6 +57,9 @@ import { accountIntel } from '@/lib/accountIntel';
 import type { SumbleEnrichment, PerplexityResearch, SumbleOrgData, SumbleJobData, SumblePeopleData } from '@/lib/accountIntel';
 import { cortexAi, parseBriefSections, FINDING_CATEGORY_STYLES } from '@/lib/cortexAi';
 import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, SentimentDataPoint, StructuredExtractResult } from '@/lib/cortexAi';
+import { calculateTDRScore, calculatePostTDRScore, getPriorityFromScore } from '@/lib/tdrCriticalFactors';
+import type { PostTDRScoreBreakdown } from '@/lib/tdrCriticalFactors';
+import { getAppSettings } from '@/lib/appSettings';
 
 interface TDRIntelligenceProps {
   deal?: Deal;
@@ -64,6 +67,10 @@ interface TDRIntelligenceProps {
   missingInfo: string[];
   riskFlags: string[];
   sessionId?: string;
+  /** Sprint 18: Number of completed TDR steps for Post-TDR scoring */
+  completedStepCount?: number;
+  /** Sprint 18: Total number of TDR steps */
+  totalStepCount?: number;
 }
 
 // ── Tech category badge colors (dark-native, vibrant on dark bg) ──
@@ -191,6 +198,8 @@ export function TDRIntelligence({
   missingInfo,
   riskFlags,
   sessionId,
+  completedStepCount = 0,
+  totalStepCount = 9,
 }: TDRIntelligenceProps) {
   const [showSummary, setShowSummary] = useState(false);
 
@@ -572,6 +581,121 @@ export function TDRIntelligence({
           </div>
         </div>
       )}
+
+      {/* ────────────────────────────────────────────────────────────
+          TDR SCORE (Sprint 18) — Pre vs Post indicator
+          ──────────────────────────────────────────────────────────── */}
+      {deal && (() => {
+        const preTDRScore = deal.tdrScore ?? calculateTDRScore(deal);
+        const settings = getAppSettings();
+
+        // Calculate Post-TDR score when we have enrichment or session data
+        const hasAnyPostData = !!sumbleData?.success || !!perplexityData?.success || completedStepCount > 0 || (extractionResult?.success && extractionResult.structured);
+        let postBreakdown: PostTDRScoreBreakdown | null = null;
+
+        if (hasAnyPostData) {
+          postBreakdown = calculatePostTDRScore(deal, {
+            namedCompetitors: extractedEntities?.competitors
+              ?? extractionResult?.structured?.NAMED_COMPETITORS
+              ?? [],
+            dangerousCompetitors: settings.dangerousCompetitors,
+            hasSumbleEnrichment: !!sumbleData?.success,
+            hasPerplexityEnrichment: !!perplexityData?.success,
+            riskCategories: extractionResult?.structured?.RISK_CATEGORIES ?? [],
+            dealComplexity: extractionResult?.structured?.DEAL_COMPLEXITY,
+            domoUseCases: extractionResult?.structured?.DOMO_USE_CASES ?? [],
+            completedStepCount,
+            totalStepCount,
+          });
+        }
+
+        const displayScore = postBreakdown ? postBreakdown.totalPostTDR : preTDRScore;
+        const priority = getPriorityFromScore(displayScore);
+        const isPostTDR = !!postBreakdown;
+
+        return (
+          <div className="border-b border-[#2a2540] px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                TDR Score
+              </p>
+              <span className={cn(
+                'rounded-full px-2 py-0.5 text-2xs font-medium',
+                isPostTDR
+                  ? 'bg-violet-500/15 text-violet-300 border border-violet-500/25'
+                  : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+              )}>
+                {isPostTDR ? 'Post-TDR' : 'Pre-TDR'}
+              </span>
+            </div>
+
+            {/* Score gauge */}
+            <div className="flex items-center gap-3 mb-2">
+              <div className={cn(
+                'flex items-center justify-center rounded-lg h-12 w-14 font-bold text-lg tabular-nums',
+                priority === 'CRITICAL' ? 'bg-red-500/15 text-red-400 border border-red-500/25' :
+                priority === 'HIGH' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
+                priority === 'MEDIUM' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25' :
+                'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+              )}>
+                {displayScore}
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className={cn(
+                    'font-semibold',
+                    priority === 'CRITICAL' ? 'text-red-400' :
+                    priority === 'HIGH' ? 'text-emerald-400' :
+                    priority === 'MEDIUM' ? 'text-amber-400' :
+                    'text-slate-400'
+                  )}>{priority}</span>
+                  <span className="text-slate-600 text-2xs">/100</span>
+                </div>
+                {/* Progress bar */}
+                <div className="h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all duration-500',
+                      priority === 'CRITICAL' ? 'bg-red-500/70' :
+                      priority === 'HIGH' ? 'bg-emerald-500/70' :
+                      priority === 'MEDIUM' ? 'bg-amber-500/70' :
+                      'bg-slate-500/50'
+                    )}
+                    style={{ width: `${displayScore}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Post-TDR breakdown (only show when we have post data) */}
+            {postBreakdown && (
+              <div className="mt-3 pt-3 border-t border-[#322b4d] space-y-1.5">
+                <p className="text-2xs text-slate-600 mb-1">Score Breakdown</p>
+                {[
+                  { label: 'Pre-TDR Base', value: postBreakdown.preTDRScore, max: 100 },
+                  { label: 'Competitor Threat', value: postBreakdown.namedCompetitorThreat, max: 10 },
+                  { label: 'Enrichment Depth', value: postBreakdown.enrichmentDepth, max: 5 },
+                  { label: 'TDR Completeness', value: postBreakdown.tdrInputCompleteness, max: 10 },
+                  { label: 'Risk Awareness', value: postBreakdown.riskAwareness, max: 5 },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-2 text-2xs">
+                    <span className="text-slate-500 w-28 shrink-0">{item.label}</span>
+                    <div className="flex-1 h-1 rounded-full bg-[#2a2540] overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-violet-500/50 transition-all"
+                        style={{ width: `${item.max > 0 ? (item.value / item.max) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <span className="text-slate-400 tabular-nums w-10 text-right font-medium">
+                      +{item.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ────────────────────────────────────────────────────────────
           ACCOUNT INTELLIGENCE — elevated inner card

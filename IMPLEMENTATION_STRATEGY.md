@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 3.6 · **Date:** February 10, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6
+**Status:** In Progress · **Version:** Draft 3.7 · **Date:** February 10, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18
 
 ---
 
@@ -3568,6 +3568,7 @@ Scoring adjustments:
 | **17** | **Lean TDR Refactor** | ✅ Complete | Feb 10, 2026 | Sprints 3 + 7 | **UX** |
 | **17.5** | **Structured TDR Analytics Extraction Pipeline** | ✅ Complete | Feb 10, 2026 | Sprint 17 | **Analytics** |
 | **17.6** | **TDR Portfolio Analytics Page + NLQ** | ✅ Complete | Feb 10, 2026 | Sprint 17.5 | **Analytics / UX** |
+| **18** | **TDR Score v2 (Pre-TDR & Post-TDR)** | ✅ Complete | Feb 10, 2026 | Sprints 17.5 + 6.5 | **Scoring** |
 
 **Post-Sprint Bug Fixes (Feb 10, 2026):**
 - Fixed `getSentimentTrend` crash: `AI_SENTIMENT` returns NULL for sessions without inputs → `parseFloat(null)` → NaN → serialized as `null` in JSON → `.toFixed()` crash. Added null-filtering in handler and `?? 0` fallback at render.
@@ -3592,6 +3593,10 @@ Sprint 1 ──┬── Sprint 2 ── Sprint 3 ──┬── Sprint 7 ─�
                                   │                       (PDF Engine)  (Slack)
                                   │
                                   └──────────────────── Sprint 12 (last)
+
+Sprint 17 ── Sprint 17.5 ──┬── Sprint 17.6 (Analytics + NLQ)
+                            │
+                            └── Sprint 18 (Score v2: Pre/Post-TDR)
 ```
 
 ---
@@ -4587,12 +4592,13 @@ When no TDR sessions have been extracted yet:
 
 ---
 
-### Sprint 18 — TDR Score v2 (Pre-TDR & Post-TDR) 🔲
+### Sprint 18 — TDR Score v2 (Pre-TDR & Post-TDR) ✅ COMPLETE
 
 > **Goal:** Evolve the TDR Score into a two-phase model: Pre-TDR (structured data) and Post-TDR (enriched with SE input quality, enrichment data, fileset signals, and named competitor intelligence).
 > **Risk to app:** Medium — scoring changes affect the deals table, charts, and sorting. Must maintain backward compatibility.
 > **Effort:** ~2 days
 > **Dependencies:** Sprint 17 (lean TDR step schema), Sprint 19 (fileset data availability)
+> **Completed:** February 10, 2026
 
 **Two-Phase Scoring Model:**
 
@@ -4638,14 +4644,15 @@ When no TDR sessions have been extracted yet:
 
 | File | Change |
 |------|--------|
-| `src/lib/tdrCriticalFactors.ts` | Add `calculatePostTDRScore()` with new components. Keep `calculateTDRScore()` as Pre-TDR. |
-| `src/components/DealsTable.tsx` | Show Pre vs Post score indicator in `TDRScoreCell` |
-| `src/pages/Settings.tsx` | Add "Dangerous Competitors" configuration section |
-| `src/lib/appSettings.ts` | Add `dangerousCompetitors: string[]` to settings |
-| `src/lib/cortexAi.ts` | Add `evaluateInputQuality()` — Cortex AI_COMPLETE call to assess SE input quality |
-| `codeengine/consolidated-sprint4-5.js` | Add `evaluateInputQuality` function (Cortex AI_COMPLETE) |
+| `src/lib/tdrCriticalFactors.ts` | ✅ Added `PostTDRScoreContext`, `PostTDRScoreBreakdown` interfaces and `calculatePostTDRScore()`. Pre-TDR `calculateTDRScore()` unchanged. |
+| `src/components/DealsTable.tsx` | ✅ `TDRScoreCell` shows Post-TDR score when available, with violet ring indicator and tooltip breakdown showing Pre→Post delta |
+| `src/components/TDRIntelligence.tsx` | ✅ New "TDR Score" section with Pre/Post badge, visual score gauge, progress bar, and full Post-TDR breakdown (5 components). Auto-calculates from enrichment + session state. |
+| `src/pages/TDRWorkspace.tsx` | ✅ Passes `completedStepCount` and `totalStepCount` to TDRIntelligence |
+| `src/pages/Settings.tsx` | ✅ Added "Dangerous Competitors" card with textarea, badge preview, save/reset support |
+| `src/lib/appSettings.ts` | ✅ Added `dangerousCompetitors: string[]` to `AppSettings` with default list |
+| `src/types/tdr.ts` | ✅ Added `postTDRScore?: number` to `Deal` interface |
 
-**Definition of Done:** Deals table shows Pre-TDR Score for all deals. After TDR completion with enrichment, Post-TDR Score appears alongside. Dangerous competitor list is editable in Settings.
+**Definition of Done:** ✅ Deals table shows Pre-TDR Score for all deals. TDR Intelligence panel shows live Post-TDR Score breakdown that updates as enrichment data and TDR steps are completed. When Post-TDR score is available, `TDRScoreCell` shows it with a violet ring indicator and tooltip showing the Pre→Post delta. Dangerous competitor list is editable in Settings with badge preview. Note: `evaluateInputQuality` (Cortex AI_COMPLETE for SE input quality assessment) and fileset match signal deferred to when Sprint 19 (Fileset Intelligence) is complete — the current Post-TDR score uses enrichment depth, competitor threat, input completeness, and risk awareness instead.
 
 ---
 
@@ -4987,7 +4994,7 @@ Sprint 20 — Hero Metrics & Nav (1–2 days)      │
 | **S17.5: Structured TDR Analytics** | ✅ with S19 | S17 | 1 day | 🔲 Next |
 | **S17.6: TDR Portfolio Analytics Page** | Sequential | S17.5 | 1.5 days | 🔲 |
 | S19: Fileset Intelligence | ✅ with S17.5/6 | None | 2-3 days | 🔲 |
-| S18: TDR Score v2 | No | S17.5 + S19 | 2 days | 🔲 |
+| S18: TDR Score v2 | No | S17.5 + S19 | 2 days | ✅ |
 | S20: Hero Metrics & Nav | ✅ with S21 | S18 | 1-2 days | 🔲 |
 | S21: Action Plan Synthesis | ✅ with S20 | S17.5 + S18 + S19 | 2-3 days | 🔲 |
 

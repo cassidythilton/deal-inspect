@@ -395,23 +395,31 @@ function CurrencyCell({ data }: ICellRendererParams<Deal>) {
 
 function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
-  const tdrScore = data.tdrScore ?? calculateTDRScore(data);
-  const priority = getPriorityFromScore(tdrScore);
+  const preTDRScore = data.tdrScore ?? calculateTDRScore(data);
+  const hasPostTDR = data.postTDRScore != null && data.postTDRScore !== preTDRScore;
+  const displayScore = hasPostTDR ? data.postTDRScore! : preTDRScore;
+  const priority = getPriorityFromScore(displayScore);
   const whyTags = getTopFactors(data, 2);
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
           'inline-flex items-center justify-center rounded px-1.5 text-[11px] font-semibold tabular-nums cursor-help h-5 leading-5 min-w-[28px]',
-          getTDRBadgeStyle(tdrScore)
+          getTDRBadgeStyle(displayScore),
+          hasPostTDR && 'ring-1 ring-violet-500/30'
         )}>
-          {tdrScore}
+          {displayScore}
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-md p-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold text-foreground">TDR Index: {tdrScore}/100</p>
+            <p className="text-sm font-semibold text-foreground">
+              TDR Index: {displayScore}/100
+              {hasPostTDR && (
+                <span className="ml-2 text-xs font-normal text-violet-500">(Post-TDR)</span>
+              )}
+            </p>
             <span className={cn(
               'rounded px-1.5 py-0.5 text-xs font-bold',
               priority === 'CRITICAL' ? 'bg-red-500/20 text-red-700' :
@@ -420,6 +428,11 @@ function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
               'bg-secondary text-muted-foreground'
             )}>{priority}</span>
           </div>
+          {hasPostTDR && (
+            <p className="text-xs text-muted-foreground">
+              Pre-TDR base: {preTDRScore} → Post-TDR: {data.postTDRScore} (+{data.postTDRScore! - preTDRScore} from enrichment &amp; input quality)
+            </p>
+          )}
           <p className="text-sm text-foreground/75 leading-relaxed">
             {priority === 'CRITICAL' ? 'Immediate TDR required — multiple high-value signals converging.' :
              priority === 'HIGH' ? 'TDR strongly recommended — good intervention opportunity.' :
