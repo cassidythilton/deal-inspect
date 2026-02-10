@@ -3721,11 +3721,11 @@ fetchOpportunities()              →  ~8,476 deals (stage age ≤ 365)
 
 ---
 
-### Sprint 16 — Fix Similar Deals Vector Error 🔲
+### Sprint 16 — Fix Similar Deals Vector Error ✅ COMPLETE
 
 > **Goal:** Fix the `AI_SIMILARITY` function type mismatch that prevents "Find Similar Deals" from working.
 > **Risk to app:** None — Code Engine fix only, no frontend changes.
-> **Effort:** ~1 hour
+> **Completed:** February 10, 2026
 
 **Root Cause:**
 The error `Invalid argument types for function 'AI_SIMILARITY_1024$V6': (VECTOR(FLOAT, 768), VECTOR(FLOAT, 768))` indicates a dimension mismatch. The Snowflake environment's `AI_SIMILARITY` function is typed for 1024-dimension vectors, but the `e5-base-v2` embedding model produces 768-dimension vectors. The function signature `AI_SIMILARITY_1024$V6` confirms this.
