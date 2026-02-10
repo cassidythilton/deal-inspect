@@ -71,7 +71,8 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
   else if (stageAge > 90) riskLevel = 'yellow';
 
   const numCompetitors = getNum('Number of Competitors', 'NumberOfCompetitors');
-  const isCompetitive = numCompetitors > 0;
+  const competitors = get('Competitors') || undefined;
+  const isCompetitive = numCompetitors > 0 || !!competitors;
 
   const reasons: string[] = [];
   if (isCompetitive) reasons.push('Competitive');
@@ -127,6 +128,7 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
     forecastCategory: get('Domo Forecast Category', 'DomoForecastCategory') || undefined,
     dealType: dealType || undefined,
     numCompetitors,
+    competitors,
     tdrScore: undefined,
     isCompetitive,
     isPartnerPlay: hasPartner,

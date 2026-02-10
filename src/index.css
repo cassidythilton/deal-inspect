@@ -10,22 +10,22 @@
    - Teal:       #59C9A5 → 161 50% 57%
    - Sage:       #5B6C5D → 127 9% 39%
    - Plum:       #3B2C35 → 324 15% 20%
-   - Aubergine:  #2A1F2D → 281 19% 15%
+   - Aubergine:  #2A1F2D → 281 19% 15% (sidebar bg), 281 10% 30% (text foreground)
 */
 
 @layer base {
   :root {
     /* Canvas - warm off-white with subtle warmth */
     --background: 40 20% 97%;
-    --foreground: 281 19% 15%;
+    --foreground: 281 10% 30%;
 
     /* Cards - clean white with warmth */
     --card: 40 30% 99%;
-    --card-foreground: 281 19% 15%;
+    --card-foreground: 281 10% 30%;
 
     /* Popovers */
     --popover: 40 30% 99%;
-    --popover-foreground: 281 19% 15%;
+    --popover-foreground: 281 10% 30%;
 
     /* Primary - deep plum (elegant accent) */
     --primary: 324 15% 20%;
@@ -33,7 +33,7 @@
 
     /* Secondary - sage tones */
     --secondary: 127 9% 92%;
-    --secondary-foreground: 127 9% 25%;
+    --secondary-foreground: 127 9% 32%;
 
     /* Muted - sage-tinted grays */
     --muted: 127 6% 92%;
@@ -74,7 +74,7 @@
     --sidebar-background: 281 19% 15%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 281 19% 15%;
+    --sidebar-primary-foreground: 281 10% 30%;
     --sidebar-accent: 281 19% 22%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 281 15% 22%;
@@ -241,10 +241,10 @@
   --ag-row-border-color: hsl(127 8% 88% / 0.35);
   --ag-header-column-separator-display: none;
 
-  /* Typography — aubergine-tinted grays matching #291F2E family */
-  --ag-foreground-color: hsl(281 19% 15%);
-  --ag-secondary-foreground-color: hsl(281 8% 48%);
-  --ag-header-foreground-color: hsl(281 8% 42%);
+  /* Typography — soft aubergine-gray family */
+  --ag-foreground-color: hsl(281 10% 30%);
+  --ag-secondary-foreground-color: hsl(281 6% 50%);
+  --ag-header-foreground-color: hsl(281 6% 45%);
 
   /* Metrics */
   --ag-font-family: inherit;
@@ -367,7 +367,7 @@
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 13px;
-  color: hsl(281 19% 15%);
+  color: hsl(281 10% 30%);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }

@@ -41,6 +41,7 @@ export interface Deal {
   forecastCategory?: string;    // Domo Forecast Category
   dealType?: string;            // Type: "New Logo", "Upsell", etc.
   numCompetitors?: number;      // Number of Competitors
+  competitors?: string;          // Competitor names (comma-separated or semicolon-separated)
   // TDR scoring
   tdrScore?: number; // 0-100 score
   // TDR session tracking (from AppDB) — a deal can have up to 5 TDRs

@@ -37,7 +37,7 @@ const createStyles = (theme: ReadoutTheme) =>
     page: {
       fontFamily: 'Inter',
       fontSize: 10,
-      color: '#1a1a2e',
+      color: '#433650',
       paddingTop: 60,
       paddingBottom: 50,
       paddingHorizontal: 40,

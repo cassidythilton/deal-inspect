@@ -264,6 +264,12 @@ function getDynamicFactorDescription(factor: CriticalFactor, deal: Deal): string
         : 'Stage 3 — strong window to influence technical direction.';
     case 'competitiveDisplacement': {
       const n = deal.numCompetitors ?? 0;
+      const names = deal.competitors?.trim();
+      if (names) {
+        return n >= 2
+          ? `${n} competitors in play (${names}) — develop clear differentiation strategy.`
+          : `Competitor in play (${names}) — prepare competitive battle card.`;
+      }
       return n >= 2
         ? `${n} competitors in play — develop clear differentiation strategy.`
         : 'Competitor present — prepare competitive battle card.';
@@ -281,8 +287,10 @@ function getDynamicFactorDescription(factor: CriticalFactor, deal: Deal): string
     case 'newLogoRisk': {
       const comp = deal.numCompetitors ?? 0;
       const age = deal.stageAge ?? 0;
-      if (comp >= 1 && age > 60) return `New logo with ${comp} competitor(s) and ${age}d stale — high risk.`;
-      if (comp >= 1) return `New logo in competitive evaluation (${comp} competitor(s)).`;
+      const names = deal.competitors?.trim();
+      const compLabel = names ? `${comp} competitor(s): ${names}` : `${comp} competitor(s)`;
+      if (comp >= 1 && age > 60) return `New logo with ${compLabel} and ${age}d stale — high risk.`;
+      if (comp >= 1) return `New logo in competitive evaluation (${compLabel}).`;
       return `New logo stalling (${age}d). Investigate blockers.`;
     }
     default:
@@ -417,8 +425,13 @@ function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
              priority === 'MEDIUM' ? 'TDR beneficial — monitor for escalation.' :
              'Standard process — no urgent TDR need.'}
           </p>
+          {data.competitors && (
+            <p className="text-sm text-foreground/75 mt-1">
+              <span className="font-medium text-foreground">Competitors:</span> {data.competitors}
+            </p>
+          )}
           {whyTags.length > 0 && (
-            <div className="border-t border-border/40 pt-2">
+            <div className="border-t border-border/40 pt-2 mt-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Contributing Factors</p>
               <ul className="space-y-0.5">
                 {whyTags.map((f, i) => (
@@ -560,6 +573,11 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-md p-4">
               <p className="text-sm text-foreground leading-relaxed mb-2">{dynamicDesc}</p>
+              {factor.id === 'competitiveDisplacement' && data.competitors && (
+                <p className="text-sm text-foreground/85 leading-relaxed mb-2">
+                  <span className="font-medium">Competitors:</span> {data.competitors}
+                </p>
+              )}
               <p className="text-sm text-foreground/80 leading-relaxed mb-3">→ {factor.strategy}</p>
               {factor.tdrPrep && factor.tdrPrep.length > 0 && (
                 <div>
