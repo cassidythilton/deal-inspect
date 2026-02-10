@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 3.7 · **Date:** February 10, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18
+**Status:** In Progress · **Version:** Draft 3.8 · **Date:** February 10, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18
 
 ---
 
@@ -3576,6 +3576,9 @@ Scoring adjustments:
 - Fixed `askAnalyst` SQL compilation error with unexpected `"`: Same root cause as above — model output contains Snowflake-incompatible quoting. The preamble extraction fix resolves this.
 - Removed Portfolio Insights and Ask TDR Analyst UI sections from Command Center (CE functions retained for future use).
 - `findSimilarDeals` returns empty results as expected — requires multiple deals with Perplexity enrichment data to compare against. Not a bug.
+- **Fixed Perplexity `RAW_RESPONSE` JSON escaping (Base64):** Perplexity responses containing special characters (newlines, quotes, unicode) caused Snowflake `DML operation failed: Error parsing JSON: unterminated string` errors. Updated `sqlJsonExpr()` in `consolidated-sprint4-5.js` (and `copiedDomoCEfunctions.js`) to Base64-encode JSON values using `TRY_PARSE_JSON(BASE64_DECODE_STRING('...'))` instead of raw string literals.
+- **Fixed Sumble/Perplexity infinite retry loop:** When Sumble (422 — missing `organization`/`filters` fields due to outdated deployed CE function) or Perplexity (422 — JSON parse failure) returned errors, the frontend retried indefinitely on every React re-render. Added error state tracking (`sumbleError`, `perplexityError`) to `TDRIntelligence.tsx` to display errors to the user and prevent repeated attempts.
+- **Code Engine file synchronization:** Identified that `copiedDomoCEfunctions.js` was significantly out of date compared to `consolidated-sprint4-5.js`. Synchronized all functions from Sprints 8, 6.5, 9, 11, 13, 17.5 including the `sqlJsonExpr` Base64 fix and `extractStructuredTDR` function. Going forward, `consolidated-sprint4-5.js` is the source of truth.
 
 **Parallel tracks:** Sprints 2–3 (persistence) and 4–5 (intelligence) are independent tracks that converge at Sprint 6. Sprint 6.5 (Sumble deep intelligence) extends the intelligence track and feeds Sprint 10 (scoring enrichment). Sprints 7 and 8 (Cortex deal-level and inline chat) can also run in parallel — both depend on persistence + intelligence but not on each other. They converge again at Sprint 11 (search & analyst). Sprint 6.5 can run in parallel with 7/8. **Sprints 13–14 (TDR Readout)** have a hard dependency on Sprints 3 + 7 (both complete) and a soft enrichment dependency on Sprint 10 (scoring enrichment). The PDF engine can start immediately with graceful degradation for missing scoring data, but the §6 scoring section reaches full fidelity only after Sprint 10. Sprint 12 (migration) remains last.
 
@@ -4974,7 +4977,7 @@ Sprint 17.6 — TDR Analytics Page + NLQ ✅        │
     │  (2–3 days, parallel with S17.5/6) ──────┤
     │                                           │
     ▼                                           ▼
-Sprint 18 — TDR Score v2 (2 days)        ──────┤
+Sprint 18 — TDR Score v2 (2 days) ✅     ──────┤
     │  (depends on S17.5 + S19)                 │
     ▼                                           │
 Sprint 20 — Hero Metrics & Nav (1–2 days)      │
@@ -4991,12 +4994,12 @@ Sprint 20 — Hero Metrics & Nav (1–2 days)      │
 |--------|--------------|------------|--------|--------|
 | S16: Fix Similar Deals | — | None | ~1 hr | ✅ |
 | S17: Lean TDR Refactor | ✅ with S19 | None | 2-3 days | ✅ |
-| **S17.5: Structured TDR Analytics** | ✅ with S19 | S17 | 1 day | 🔲 Next |
-| **S17.6: TDR Portfolio Analytics Page** | Sequential | S17.5 | 1.5 days | 🔲 |
-| S19: Fileset Intelligence | ✅ with S17.5/6 | None | 2-3 days | 🔲 |
+| S17.5: Structured TDR Analytics | ✅ with S19 | S17 | 1 day | ✅ |
+| S17.6: TDR Portfolio Analytics Page | Sequential | S17.5 | 1.5 days | ✅ |
+| **S19: Fileset Intelligence** | ✅ with S20 | None | 2-3 days | 🔲 Next |
 | S18: TDR Score v2 | No | S17.5 + S19 | 2 days | ✅ |
-| S20: Hero Metrics & Nav | ✅ with S21 | S18 | 1-2 days | 🔲 |
-| S21: Action Plan Synthesis | ✅ with S20 | S17.5 + S18 + S19 | 2-3 days | 🔲 |
+| **S20: Hero Metrics & Nav** | ✅ with S21 | S18 | 1-2 days | 🔲 |
+| **S21: Action Plan Synthesis** | ✅ with S20 | S17.5 + S18 + S19 | 2-3 days | 🔲 |
 
 ---
 
