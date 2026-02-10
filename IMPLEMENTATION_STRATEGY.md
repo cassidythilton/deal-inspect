@@ -4299,13 +4299,346 @@ Uses the existing coolors.co palette from `TopTDRCandidatesChart`, `TDRPriorityC
 
 **No Snowflake changes** — this sprint only reads from `V_TDR_ANALYTICS` (created in Sprint 17.5).
 
+---
+
+#### Natural Language Query (NLQ) — "Ask Your TDR Data"
+
+> **The headline feature:** Users can ask free-form questions in plain English and get instant answers backed by SQL against `V_TDR_ANALYTICS`. This turns the analytics page from a **static dashboard** into an **interactive exploration tool**.
+
+**Why NLQ Belongs on This Page:**
+
+The 8 pre-built charts answer the *most common* portfolio questions. But leaders always have follow-up questions the chart designers didn't anticipate:
+- *"What % of TDRs cite Snowflake as the platform?"*
+- *"What are the most common risks across all deals?"*
+- *"Show me deals with ACV > $100K that have competitive risk"*
+- *"Which entry layer has the highest proceed rate?"*
+- *"Compare this quarter's TDR volume to last quarter"*
+- *"What accounts have both Snowflake and Databricks in their stack?"*
+
+NLQ lets them ask these questions directly — no SQL knowledge required.
+
+**How It Works (Engine):**
+
+Two-tier approach, identical to Sprint 11's `askAnalyst` but scoped to the analytics view:
+
+| Tier | Engine | Schema Context | When |
+|------|--------|---------------|------|
+| **Tier A (Default)** | `AI_COMPLETE` text-to-SQL | `V_TDR_ANALYTICS` column definitions | Ships immediately |
+| **Tier B (Upgrade)** | Cortex Analyst API + Semantic Model YAML | Deployed semantic model over `V_TDR_ANALYTICS` | When semantic model YAML is authored + deployed to stage |
+
+**Tier A** reuses the proven pattern from Sprint 11's `askAnalyst` but replaces the old multi-table EAV schema context with the flat `V_TDR_ANALYTICS` view. This is a massive accuracy improvement because:
+- No EAV pivoting required (the AI doesn't have to understand FIELD_ID → column mapping)
+- All analytical columns are pre-named with business semantics (e.g., `CLOUD_PLATFORM`, `NAMED_COMPETITORS`, `VERDICT`)
+- VARIANT columns (JSON arrays) can be queried with `FLATTEN` — the prompt teaches this pattern
+- One view instead of 10+ tables — fewer join errors
+
+**Tier B** uses Snowflake's native Cortex Analyst API (`POST /api/v2/cortex/analyst/message`) with a formal semantic model. This provides:
+- Better query accuracy through defined metrics, dimensions, and relationships
+- Multi-turn conversation with memory (Cortex manages context)
+- Verified answers with confidence scoring
+- *Requires:* a `tdr_analytics_semantic_model.yaml` deployed to a Snowflake internal stage
+
+**CE Function: `askTDRAnalytics`**
+
+```
+askTDRAnalytics(question: string) → {
+  success: boolean,
+  sql: string | null,       // Generated SQL (for transparency)
+  columns: string[],        // Result column names
+  rows: object[],           // Result data
+  answer: string,           // Natural language answer
+  chartHint?: string        // 'bar' | 'donut' | 'line' | 'table' — auto-detected
+}
+```
+
+Schema context provided to `AI_COMPLETE`:
+
+```
+View: TDR_APP.TDR_DATA.V_TDR_ANALYTICS
+Columns:
+  SESSION_ID (VARCHAR) — unique TDR session identifier
+  OPPORTUNITY_ID (VARCHAR) — Salesforce opportunity ID
+  ACCOUNT_NAME (VARCHAR) — company name
+  OPPORTUNITY_NAME (VARCHAR) — deal name
+  ACV (NUMBER) — annual contract value in USD
+  STAGE (VARCHAR) — sales stage
+  STATUS (VARCHAR) — TDR status: in-progress, completed, abandoned
+  OUTCOME (VARCHAR) — TDR outcome
+  OWNER (VARCHAR) — deal owner / SE name
+  ITERATION (NUMBER) — TDR iteration number
+  SESSION_CREATED_AT (TIMESTAMP) — when TDR was started
+  SESSION_UPDATED_AT (TIMESTAMP) — when TDR was last modified
+  -- Structured Extracts (from TDR inputs)
+  STRATEGIC_VALUE (VARCHAR) — strategic value classification
+  CUSTOMER_DECISION (VARCHAR) — what the customer is deciding
+  DECISION_TIMELINE (VARCHAR) — timeline for decision
+  CLOUD_PLATFORM (VARCHAR) — primary cloud platform (Snowflake, Databricks, BigQuery, etc.)
+  ENTRY_LAYER (VARCHAR) — how Domo enters the stack
+  VERDICT (VARCHAR) — TDR verdict: Proceed, Corrections, Rework
+  PARTNER_POSTURE (VARCHAR) — partner engagement posture
+  AI_REALITY (VARCHAR) — AI readiness classification
+  NAMED_COMPETITORS (VARIANT) — JSON array of competitor names
+  KEY_TECHNOLOGIES (VARIANT) — JSON array of technologies in use
+  RISK_CATEGORIES (VARIANT) — JSON array of risk types
+  USE_CASES (VARIANT) — JSON array of Domo use cases
+  ARCHITECTURAL_PATTERNS (VARIANT) — JSON array of architecture patterns
+  DEAL_COMPLEXITY (VARCHAR) — Low, Medium, High
+  KEY_STAKEHOLDERS (VARIANT) — JSON array of stakeholder roles
+  INTEGRATION_POINTS (VARIANT) — JSON array of integration targets
+  EXPECTED_USERS (INTEGER) — expected user count
+  EXTRACTED_AT (TIMESTAMP) — when extraction occurred
+  -- Enrichment Data
+  SUMBLE_INDUSTRY (VARCHAR) — industry from Sumble
+  SUMBLE_EMPLOYEE_COUNT (NUMBER) — employee count
+  SUMBLE_REVENUE (NUMBER) — estimated revenue
+  SUMBLE_TECHNOLOGIES (VARIANT) — tech stack from Sumble
+  PERPLEXITY_SUMMARY (VARCHAR) — AI research summary
+  PERPLEXITY_INITIATIVES (VARCHAR) — recent company initiatives
+  PERPLEXITY_TECH_SIGNALS (VARCHAR) — technology signals
+
+Rules:
+- Generate ONLY SELECT statements — never INSERT, UPDATE, DELETE
+- Always qualify: TDR_APP.TDR_DATA.V_TDR_ANALYTICS
+- For VARIANT (JSON array) columns, use LATERAL FLATTEN:
+    SELECT f.value::STRING AS competitor, COUNT(*) AS cnt
+    FROM TDR_APP.TDR_DATA.V_TDR_ANALYTICS, LATERAL FLATTEN(input => NAMED_COMPETITORS) f
+    GROUP BY competitor ORDER BY cnt DESC
+- Return ONLY the raw SQL — no markdown, no explanation
+- LIMIT results to 50 rows unless the user asks for more
+```
+
+**Answer Generation:**
+
+After SQL executes, a second `AI_COMPLETE` call generates a natural language answer from the results (same pattern as Sprint 11):
+```
+"Based on 47 completed TDRs, 42% cite Snowflake as their primary cloud platform,
+followed by Databricks (23%) and BigQuery (12%). Snowflake is the dominant platform
+across your TDR portfolio."
+```
+
+**Auto-Chart Detection:**
+
+The CE function inspects the result shape and returns a `chartHint`:
+
+| Result Shape | chartHint | Rendered As |
+|-------------|-----------|-------------|
+| 1 categorical col + 1 numeric col | `bar` | Horizontal bar chart |
+| 1 categorical col with ≤6 values + 1 numeric col | `donut` | Donut/pie chart |
+| 1 date/timestamp col + 1 numeric col | `line` | Line chart |
+| Multiple columns or complex shape | `table` | Data table |
+
+The frontend renders the appropriate Recharts component dynamically based on the hint. If no hint or `table`, it falls back to a clean data table.
+
+**UI Component: `<AnalyticsNLQ />`**
+
+Positioned as **Section 0** — the hero element above the stat cards:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  🔍 Ask anything about your TDR portfolio...                          ⏎    │
+│                                                                              │
+│  Try:  [What % cite Snowflake?]  [Top risks?]  [Proceed rate by quarter]    │
+│        [Competitors in deals > $100K]  [Entry layer vs verdict]             │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+  When a question is asked, the answer area expands below:
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  🔍 What % of TDRs cite Snowflake as the platform?                    ⏎    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  💬 Answer                                                                  │
+│  Based on 47 completed TDRs, 42% (20 deals) cite Snowflake as their        │
+│  primary cloud platform, followed by Databricks at 23% (11 deals) and      │
+│  BigQuery at 12% (6 deals).                                                │
+│                                                                              │
+│  ┌─ Auto-generated chart ────────────────────────────────────┐              │
+│  │  Snowflake   ████████████████████ 20 (42%)                │              │
+│  │  Databricks  ██████████ 11 (23%)                          │              │
+│  │  BigQuery    █████ 6 (12%)                                │              │
+│  │  Azure       ████ 5 (11%)                                 │              │
+│  │  Other       ██████ 5 (12%)                               │              │
+│  └───────────────────────────────────────────────────────────┘              │
+│                                                                              │
+│  ▸ View SQL   ▸ View raw data (5 rows)                                     │
+│                                                                              │
+│  ── Follow-up ──────────────────────────────────────────────────────        │
+│  🔍 Now break that down by entry layer...                          ⏎       │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+**NLQ UI Behavior:**
+
+| Element | Behavior |
+|---------|----------|
+| **Input bar** | Single-line text input, submit on Enter. Styled as a prominent hero search bar with subtle glow. |
+| **Suggestion chips** | 5 clickable chips below the input. Click fills the input and auto-submits. Chips rotate on page load. |
+| **Loading state** | Pulsing skeleton + "Analyzing your TDR data..." text while Cortex processes. |
+| **Answer** | Natural language text in a callout card. Rendered with markdown support. |
+| **Auto-chart** | Rendered inline below the answer using the appropriate Recharts component. |
+| **"View SQL"** | Collapsible code block showing the generated SQL (power users / debugging). |
+| **"View raw data"** | Collapsible table showing the full result set. |
+| **Follow-up** | After an answer, a second input appears for follow-up questions. Conversation state is maintained client-side. |
+| **Error state** | If SQL generation fails: "I couldn't generate a query for that. Try rephrasing?" with the raw error in a collapsible section. |
+| **Empty view state** | "Complete TDRs and run the extraction pipeline to enable natural language queries." |
+
+**Multi-Turn Conversation:**
+
+The NLQ bar supports follow-up questions. The conversation history (user questions + Cortex answers) is maintained in React state and sent with each subsequent call. This enables natural exchanges like:
+
+> **User:** "What are the most common risk categories?"
+> **Answer:** "Competitive displacement (22 mentions), integration risk (15), timeline pressure (12)..."
+> **User:** "Which of those appear most in deals over $100K ACV?"
+> **Answer:** "In deals over $100K, competitive displacement is still #1 but integration risk jumps to #2..."
+
+Conversation resets when the page is refreshed or the user clicks a "New question" button.
+
+**Suggestion Chips — Curated Examples:**
+
+| Chip Label | Actual Question |
+|------------|----------------|
+| `What % cite Snowflake?` | What percentage of TDRs cite Snowflake as the cloud platform? |
+| `Top risks?` | What are the top 5 most common risk categories across all TDRs? |
+| `Proceed rate by quarter` | What is the proceed rate (verdict = Proceed) by quarter? |
+| `Competitors in deals > $100K` | Which competitors appear most in deals with ACV greater than 100000? |
+| `Entry layer vs verdict` | Show the proceed rate broken down by entry layer |
+
+**Code Engine Function I/O (updated):**
+
+| Function | Inputs | Outputs | Domo Types |
+|----------|--------|---------|------------|
+| `getTDRAnalyticsData` | (none) | `{ success, rows: [...] }` (object) | Input: none, Output: object |
+| `askTDRAnalytics` | `question` (string) | `{ success, sql, columns, rows, answer, chartHint }` (object) | Input: text, Output: object |
+
+**Files Changed (updated with NLQ):**
+
+| File | Change |
+|------|--------|
+| `src/pages/TDRAnalytics.tsx` | **New** — full analytics page with NLQ bar, 4 stat cards, 8 charts, 1 detail table |
+| `src/components/AnalyticsNLQ.tsx` | **New** — natural language query bar with answer display, auto-chart, conversation state |
+| `src/components/charts/AutoChart.tsx` | **New** — dynamic chart renderer (bar/donut/line/table) based on `chartHint` and result shape |
+| `src/components/charts/PlatformDonutChart.tsx` | **New** — cloud platform distribution donut |
+| `src/components/charts/EntryLayerBarChart.tsx` | **New** — entry layer horizontal bar |
+| `src/components/charts/CompetitorBarChart.tsx` | **New** — top competitors horizontal bar |
+| `src/components/charts/RiskCategoryBarChart.tsx` | **New** — risk category horizontal bar |
+| `src/components/charts/VerdictDonutChart.tsx` | **New** — verdict distribution donut |
+| `src/components/charts/TDRTrendChart.tsx` | **New** — TDR volume + verdict stacked area |
+| `src/components/charts/UseCaseBarChart.tsx` | **New** — Domo use cases horizontal bar |
+| `src/components/charts/DifferentiatorBarChart.tsx` | **New** — key differentiators horizontal bar |
+| `src/components/AppSidebar.tsx` | Add "Analytics" nav item (icon: `BarChart3` from lucide) |
+| `src/App.tsx` | Add `/analytics` route |
+| `src/lib/snowflakeStore.ts` | Add `getTDRAnalyticsData()` method |
+| `src/lib/cortexAi.ts` | Add `askTDRAnalytics()` method |
+| `manifest.json` | Add `getTDRAnalyticsData` and `askTDRAnalytics` to `packageMapping` |
+| `codeengine/consolidated-sprint4-5.js` | Add `getTDRAnalyticsData` and `askTDRAnalytics` functions |
+
+**Semantic Model YAML (Tier B — Stretch):**
+
+When ready to upgrade to native Cortex Analyst, deploy this semantic model to a Snowflake internal stage:
+
+```yaml
+# tdr_analytics_semantic_model.yaml
+# Deploy to: @TDR_APP.TDR_DATA.SEMANTIC_MODELS/tdr_analytics.yaml
+name: TDR Portfolio Analytics
+tables:
+  - name: V_TDR_ANALYTICS
+    description: Consolidated view of all TDR sessions with structured extracts and enrichment data
+    base_table:
+      database: TDR_APP
+      schema: TDR_DATA
+      table: V_TDR_ANALYTICS
+    dimensions:
+      - name: account_name
+        expr: ACCOUNT_NAME
+        description: Company name
+      - name: cloud_platform
+        expr: CLOUD_PLATFORM
+        description: Primary cloud platform (Snowflake, Databricks, BigQuery, etc.)
+      - name: entry_layer
+        expr: ENTRY_LAYER
+        description: How Domo enters the technology stack
+      - name: verdict
+        expr: VERDICT
+        description: TDR verdict (Proceed, Corrections, Rework)
+      - name: deal_complexity
+        expr: DEAL_COMPLEXITY
+        description: Deal complexity (Low, Medium, High)
+      - name: stage
+        expr: STAGE
+        description: Sales pipeline stage
+      - name: owner
+        expr: OWNER
+        description: Deal owner / Sales Engineer
+      - name: strategic_value
+        expr: STRATEGIC_VALUE
+        description: Strategic value classification
+      - name: partner_posture
+        expr: PARTNER_POSTURE
+        description: Partner engagement posture
+      - name: ai_reality
+        expr: AI_REALITY
+        description: AI readiness classification
+      - name: sumble_industry
+        expr: SUMBLE_INDUSTRY
+        description: Industry classification from Sumble enrichment
+    time_dimensions:
+      - name: tdr_created_date
+        expr: SESSION_CREATED_AT
+        description: When the TDR session was started
+      - name: tdr_updated_date
+        expr: SESSION_UPDATED_AT
+        description: When the TDR was last modified
+      - name: extracted_date
+        expr: EXTRACTED_AT
+        description: When structured fields were extracted
+    measures:
+      - name: tdr_count
+        expr: COUNT(DISTINCT SESSION_ID)
+        description: Number of TDR sessions
+      - name: total_acv
+        expr: SUM(ACV)
+        description: Total ACV in USD
+      - name: avg_acv
+        expr: AVG(ACV)
+        description: Average ACV in USD
+      - name: proceed_rate
+        expr: "COUNT(CASE WHEN VERDICT = 'Proceed' THEN 1 END)::FLOAT / NULLIF(COUNT(CASE WHEN VERDICT IS NOT NULL THEN 1 END), 0)"
+        description: Percentage of TDRs with Proceed verdict
+      - name: avg_expected_users
+        expr: AVG(EXPECTED_USERS)
+        description: Average expected user count across TDRs
+    verified_queries:
+      - name: platform_distribution
+        question: What percentage of TDRs cite each cloud platform?
+        sql: |
+          SELECT CLOUD_PLATFORM, COUNT(*) AS tdr_count,
+                 ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) AS pct
+          FROM TDR_APP.TDR_DATA.V_TDR_ANALYTICS
+          WHERE CLOUD_PLATFORM IS NOT NULL
+          GROUP BY CLOUD_PLATFORM ORDER BY tdr_count DESC
+      - name: top_risks
+        question: What are the most common risks across all deals?
+        sql: |
+          SELECT f.value::STRING AS risk_category, COUNT(*) AS mentions
+          FROM TDR_APP.TDR_DATA.V_TDR_ANALYTICS, LATERAL FLATTEN(input => RISK_CATEGORIES) f
+          GROUP BY risk_category ORDER BY mentions DESC LIMIT 10
+      - name: competitor_frequency
+        question: Which competitors appear most often?
+        sql: |
+          SELECT f.value::STRING AS competitor, COUNT(*) AS mentions
+          FROM TDR_APP.TDR_DATA.V_TDR_ANALYTICS, LATERAL FLATTEN(input => NAMED_COMPETITORS) f
+          GROUP BY competitor ORDER BY mentions DESC LIMIT 10
+```
+
 **Design Principles:**
 1. Same `stat-card` pattern as Command Center — visual consistency
 2. All charts use Recharts (already installed) — no new dependencies
-3. Page is useful with even 1 TDR session (graceful empty states: "Complete more TDRs to see trends")
-4. Responsive layout: 2-column grid for charts, full-width for detail table
-5. Every chart has an info tooltip explaining what it shows and why it matters
-6. Charts animate on mount for a polished feel
+3. **NLQ bar is the hero element** — positioned at the top, before stat cards, to signal this page is interactive
+4. Page is useful with even 1 TDR session (graceful empty states: "Complete more TDRs to see trends")
+5. Responsive layout: 2-column grid for charts, full-width for detail table and NLQ results
+6. Every chart has an info tooltip explaining what it shows and why it matters
+7. Charts animate on mount for a polished feel
+8. **Auto-chart from NLQ results** — when the result shape matches a known pattern, render a chart automatically
 
 **Empty State:**
 
@@ -4327,12 +4660,13 @@ When no TDR sessions have been extracted yet:
 
 | Audience | Key Questions | Sections |
 |----------|---------------|----------|
-| **SE Manager** | "What platforms is my team selling on? What risks keep appearing? How are my TDR completion rates?" | Platform, Risk, Stats, Trends |
-| **VP / Director** | "Are we winning competitive deals? What's our proceed rate? Where does Domo enter?" | Competitive, Verdict, Entry Layer |
-| **SE Leadership** | "What capabilities are most in demand? What differentiates us? How complex are our deals?" | Domo Positioning, Stats |
-| **Enablement** | "What battle cards should we update? What partner playbooks are needed?" | Competitive, Risk, Platform |
+| **SE Manager** | "What platforms is my team selling on? What risks keep appearing? How are my TDR completion rates?" | Platform, Risk, Stats, Trends, **NLQ** |
+| **VP / Director** | "Are we winning competitive deals? What's our proceed rate? Where does Domo enter?" | Competitive, Verdict, Entry Layer, **NLQ** |
+| **SE Leadership** | "What capabilities are most in demand? What differentiates us? How complex are our deals?" | Domo Positioning, Stats, **NLQ** |
+| **Enablement** | "What battle cards should we update? What partner playbooks are needed?" | Competitive, Risk, Platform, **NLQ** |
+| **Any user with a custom question** | Anything not covered by the pre-built charts | **NLQ** |
 
-**Definition of Done:** A dedicated `/analytics` page shows 8 interactive charts and 4 stat cards driven by `V_TDR_ANALYTICS`. Filters apply globally. Detail table allows drill-down to individual TDRs. Page works with ≥1 extracted TDR session and shows meaningful empty states otherwise.
+**Definition of Done:** A dedicated `/analytics` page shows an NLQ hero bar (powered by Cortex `AI_COMPLETE` against `V_TDR_ANALYTICS`), 8 interactive charts, and 4 stat cards. Users can ask natural language questions and receive answers with auto-generated charts and data tables. Filters apply globally. Detail table allows drill-down to individual TDRs. Multi-turn follow-up questions are supported. Page works with ≥1 extracted TDR session and shows meaningful empty states otherwise.
 
 ---
 
