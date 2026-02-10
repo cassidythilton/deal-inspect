@@ -3565,6 +3565,7 @@ Scoring adjustments:
 | **13** | **TDR Readout: PDF Engine** | ✅ Complete | Feb 10, 2026 | Sprints 3 + 7; enriched by 10 | **Artifact** |
 | **14** | **TDR Readout: Slack Distribution** | ⏸ Paused | — | Sprint 13 | **Distribution** |
 | **15** | **AG Grid Table, Deal Search & Filter Rethink** | 🔄 In Progress | — | None (frontend-only) | **UX** |
+| **17.5** | **Structured TDR Analytics Extraction Pipeline** | 🔲 Planned | — | Sprint 17 | **Analytics** |
 
 **Post-Sprint Bug Fixes (Feb 10, 2026):**
 - Fixed `getSentimentTrend` crash: `AI_SENTIMENT` returns NULL for sessions without inputs → `parseFloat(null)` → NaN → serialized as `null` in JSON → `.toFixed()` crash. Added null-filtering in handler and `?? 0` fallback at render.
@@ -3812,6 +3813,295 @@ TDR is not a documentation exercise. It is a thinking exercise. Every required s
 | `src/components/TDRSteps.tsx` | Rewritten: Required steps shown as primary list, optional steps in collapsible "Additional Context" section with chevron toggle. Progress bar tracks required steps only. Optional steps show `+` icon when incomplete. |
 | `src/components/TDRInputs.tsx` | Lean field configs: Context (3 fields), Decision (3 fields, forcing question), Architecture (5 fields including system-of-record, cloud platform, architectural truth, target change), Domo Role (4 fields — entry layer, in-scope, out-of-scope, why now), Risk & Verdict (3 fields — top risks, key assumption, verdict dropdown). Added `hint` and `optional` field properties. Core Question banner rendered above fields. |
 | `src/pages/TDRWorkspace.tsx` | Added always-visible Thesis bar between header and three-panel layout. Thesis field saves to Snowflake via `thesis::domo-thesis` key. Violet accent styling with italicized guidance text. |
+
+---
+
+### Sprint 17.5 — Structured TDR Analytics Extraction Pipeline 🔲
+
+> **Goal:** Transform free-text TDR inputs into structured, queryable analytical data using Cortex AI extraction. Produce a flat one-row-per-session table that enables cross-deal analytics, trend detection, and portfolio-level reporting — without changing the SE-facing input experience.
+> **Risk to app:** None — purely additive. No changes to input flow, EAV storage, or existing UI.
+> **Effort:** ~1 day
+> **Dependencies:** Sprint 17 (lean TDR step schema must be stable)
+
+**Problem Statement:**
+
+TDR inputs are stored in an EAV (Entity-Attribute-Value) model:
+
+```
+SESSION_ID + STEP_ID + FIELD_ID → VARCHAR FIELD_VALUE
+```
+
+This is perfect for the app — flexible, append-only, schema-tolerant. But it's **terrible for analytics**. Today you cannot answer:
+- "What % of TDRs cite Snowflake as the cloud platform?" (select field, but buried in EAV)
+- "Which deals mention Sigma as a competitor?" (locked in free text across multiple fields)
+- "What are the top 5 risks cited across all TDRs?" (free-text only, no normalization)
+- "How many deals have Domo positioned as Data Integration vs. Embedded Analytics?" (select, but in EAV)
+- "Which architectural patterns appear most often?" (free text, needs AI extraction)
+- "Are there patterns in why Domo compositions succeed?" (free text, cross-session analysis)
+
+**Two-Tier Extraction Strategy:**
+
+| Tier | Source | Method | Fields |
+|------|--------|--------|--------|
+| **Tier 1: Direct** | Select/dropdown fields (already structured) | Direct read from `TDR_STEP_INPUTS` | `strategic-value`, `cloud-platform`, `entry-layer`, `timeline`, `partner-posture`, `ai-reality`, `verdict` |
+| **Tier 2: Cortex AI** | Free-text textarea fields | Cortex `AI_COMPLETE` structured extraction prompt | Competitors, technologies, stakeholders, risk categories, use cases, architectural patterns, deal complexity |
+
+**Current Field Inventory (what we're extracting from):**
+
+| Step | Field ID | Type | Tier | Analytical Dimension |
+|------|----------|------|------|---------------------|
+| `context` | `strategic-value` | select | 1 | Strategic Value (High/Medium/Low) |
+| `context` | `why-now` | textarea | 2 | Urgency drivers → classified by Cortex |
+| `context` | `key-stakeholders` | text | 2 | Named stakeholders → extracted by Cortex |
+| `decision` | `customer-goal` | textarea | 2 | Decision type → classified by Cortex |
+| `decision` | `timeline` | select | 1 | Decision Timeline |
+| `current-arch` | `system-of-record` | textarea | 2 | Named technologies → extracted by Cortex |
+| `current-arch` | `cloud-platform` | select | 1 | Cloud Platform |
+| `current-arch` | `arch-truth` | textarea | 2 | Architectural constraints → classified |
+| `current-arch` | `target-change` | textarea | 2 | Migration pattern → classified |
+| `domo-role` | `entry-layer` | select | 1 | Entry Layer |
+| `domo-role` | `in-scope` | textarea | 2 | Domo use cases → extracted |
+| `domo-role` | `out-of-scope` | textarea | 2 | Boundary definition → classified |
+| `domo-role` | `why-composition` | textarea | 2 | Value proposition → extracted |
+| `risk` | `top-risks` | textarea | 2 | Risk categories → classified |
+| `risk` | `key-assumption` | textarea | 2 | Key assumptions → extracted |
+| `risk` | `verdict` | select | 1 | Verdict |
+| `partner` | `partner-name` | text | 1 | Partner Name (direct text) |
+| `partner` | `partner-posture` | select | 1 | Partner Posture |
+| `ai-strategy` | `ai-reality` | select | 1 | AI Maturity |
+| `thesis` | `domo-thesis` | text | 1 | Thesis (stored as-is) |
+
+**New Snowflake Table: `TDR_STRUCTURED_EXTRACTS`**
+
+One flat row per TDR session — denormalized for analytical queries.
+
+```sql
+CREATE TABLE IF NOT EXISTS TDR_STRUCTURED_EXTRACTS (
+  EXTRACT_ID           VARCHAR PRIMARY KEY,       -- UUID
+  SESSION_ID           VARCHAR NOT NULL UNIQUE,    -- FK → TDR_SESSIONS (one extract per session)
+  OPPORTUNITY_ID       VARCHAR NOT NULL,
+
+  -- ═══ Tier 1: Direct from select/text fields ═══
+  THESIS               VARCHAR,                   -- The one-liner thesis
+  STRATEGIC_VALUE      VARCHAR,                   -- 'High' | 'Medium' | 'Low'
+  CLOUD_PLATFORM       VARCHAR,                   -- 'Snowflake' | 'Databricks' | 'BigQuery' | etc.
+  ENTRY_LAYER          VARCHAR,                   -- 'Data Integration' | 'Visualization / BI' | etc.
+  DECISION_TIMELINE    VARCHAR,                   -- 'This Quarter' | 'Next Quarter' | '6+ Months'
+  PARTNER_NAME         VARCHAR,                   -- Free-text partner name
+  PARTNER_POSTURE      VARCHAR,                   -- 'Amplifying' | 'Neutral' | 'Conflicting' | 'None'
+  AI_MATURITY          VARCHAR,                   -- 'Production today' | 'Piloting' | etc.
+  VERDICT              VARCHAR,                   -- 'Proceed' | 'Proceed with Corrections' | 'Rework'
+
+  -- ═══ Tier 2: Cortex AI extracted from free-text ═══
+  NAMED_COMPETITORS    VARIANT,                   -- JSON array: ['Sigma', 'Tableau', 'Power BI']
+  NAMED_TECHNOLOGIES   VARIANT,                   -- JSON array: ['Snowflake', 'dbt', 'Fivetran', 'Kafka']
+  NAMED_STAKEHOLDERS   VARIANT,                   -- JSON array: [{ "name": "...", "role": "..." }]
+  RISK_CATEGORIES      VARIANT,                   -- JSON array: ['competitive_displacement', 'integration_risk']
+  DOMO_USE_CASES       VARIANT,                   -- JSON array: ['embedded analytics', 'MagicETL', 'app dev']
+  ARCHITECTURAL_PATTERN VARCHAR,                  -- 'cloud-native' | 'hybrid' | 'on-prem-migration' | 'lakehouse' | 'warehouse-first' | 'data-mesh' | 'embedded'
+  DEAL_COMPLEXITY      VARCHAR,                   -- 'Simple' | 'Moderate' | 'Complex'
+  KEY_DIFFERENTIATORS  VARIANT,                   -- JSON array: ['governance layer', 'no-code integration', 'app platform']
+  CUSTOMER_DECISION_TYPE VARCHAR,                 -- 'replace-existing' | 'greenfield' | 'augment-stack' | 'consolidate'
+  URGENCY_DRIVERS      VARIANT,                   -- JSON array: ['contract renewal', 'exec mandate', 'compliance deadline']
+
+  -- ═══ Metadata ═══
+  EXTRACTION_MODEL     VARCHAR,                   -- 'claude-sonnet-4-5' | 'llama3.1-70b' | etc.
+  EXTRACTION_VERSION   VARCHAR DEFAULT 'v1',      -- For re-extraction when prompt evolves
+  EXTRACTED_AT         TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+  RAW_EXTRACTION       VARIANT                    -- Full Cortex response (for debugging/reprocessing)
+);
+```
+
+**New Analytical View: `V_TDR_ANALYTICS`**
+
+Joins the structured extracts with session metadata, Sumble, and Perplexity data for a single queryable analytical surface.
+
+```sql
+CREATE OR REPLACE VIEW V_TDR_ANALYTICS AS
+SELECT
+  -- Session context
+  s.SESSION_ID,
+  s.OPPORTUNITY_ID,
+  s.ACCOUNT_NAME,
+  s.OPPORTUNITY_NAME,
+  s.ACV,
+  s.STAGE,
+  s.STATUS AS SESSION_STATUS,
+  s.OUTCOME,
+  s.OWNER AS AE_NAME,
+  s.CREATED_BY AS SE_NAME,
+  s.ITERATION,
+
+  -- Structured TDR extracts (Tier 1 + Tier 2)
+  e.THESIS,
+  e.STRATEGIC_VALUE,
+  e.CLOUD_PLATFORM,
+  e.ENTRY_LAYER,
+  e.DECISION_TIMELINE,
+  e.VERDICT,
+  e.PARTNER_NAME,
+  e.PARTNER_POSTURE,
+  e.AI_MATURITY,
+  e.NAMED_COMPETITORS,
+  e.NAMED_TECHNOLOGIES,
+  e.NAMED_STAKEHOLDERS,
+  e.RISK_CATEGORIES,
+  e.DOMO_USE_CASES,
+  e.ARCHITECTURAL_PATTERN,
+  e.DEAL_COMPLEXITY,
+  e.KEY_DIFFERENTIATORS,
+  e.CUSTOMER_DECISION_TYPE,
+  e.URGENCY_DRIVERS,
+
+  -- Enrichment overlay
+  sm.INDUSTRY AS SUMBLE_INDUSTRY,
+  sm.EMPLOYEE_COUNT AS SUMBLE_EMPLOYEE_COUNT,
+  sm.REVENUE AS SUMBLE_REVENUE,
+  sm.TECHNOLOGIES AS SUMBLE_TECH_STACK,
+  p.SUMMARY AS PERPLEXITY_SUMMARY,
+  p.COMPETITIVE_LANDSCAPE AS PERPLEXITY_COMPETITORS,
+  p.TECHNOLOGY_SIGNALS AS PERPLEXITY_TECH_SIGNALS,
+
+  -- Temporal
+  s.CREATED_AT AS TDR_STARTED,
+  s.UPDATED_AT AS TDR_LAST_UPDATED,
+  e.EXTRACTED_AT,
+  DATEDIFF('day', s.CREATED_AT, s.UPDATED_AT) AS TDR_DURATION_DAYS
+
+FROM TDR_SESSIONS s
+LEFT JOIN TDR_STRUCTURED_EXTRACTS e ON s.SESSION_ID = e.SESSION_ID
+LEFT JOIN (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY OPPORTUNITY_ID ORDER BY PULLED_AT DESC) AS rn
+  FROM ACCOUNT_INTEL_SUMBLE
+) sm ON s.OPPORTUNITY_ID = sm.OPPORTUNITY_ID AND sm.rn = 1
+LEFT JOIN (
+  SELECT *, ROW_NUMBER() OVER (PARTITION BY OPPORTUNITY_ID ORDER BY PULLED_AT DESC) AS rn
+  FROM ACCOUNT_INTEL_PERPLEXITY
+) p ON s.OPPORTUNITY_ID = p.OPPORTUNITY_ID AND p.rn = 1;
+```
+
+**Example Analytical Queries (what this unlocks):**
+
+```sql
+-- 1. Cloud platform distribution across all TDRs
+SELECT CLOUD_PLATFORM, COUNT(*) AS deals, SUM(ACV) AS total_acv
+FROM V_TDR_ANALYTICS
+WHERE SESSION_STATUS = 'completed'
+GROUP BY CLOUD_PLATFORM ORDER BY total_acv DESC;
+
+-- 2. Most common competitors
+SELECT c.VALUE::VARCHAR AS competitor, COUNT(*) AS mentions
+FROM V_TDR_ANALYTICS, LATERAL FLATTEN(input => NAMED_COMPETITORS) c
+GROUP BY competitor ORDER BY mentions DESC;
+
+-- 3. Domo entry layer × deal outcome
+SELECT ENTRY_LAYER, VERDICT, COUNT(*) AS deals, AVG(ACV) AS avg_acv
+FROM V_TDR_ANALYTICS
+WHERE VERDICT IS NOT NULL
+GROUP BY ENTRY_LAYER, VERDICT ORDER BY ENTRY_LAYER;
+
+-- 4. Risk category frequency
+SELECT r.VALUE::VARCHAR AS risk, COUNT(*) AS occurrences
+FROM V_TDR_ANALYTICS, LATERAL FLATTEN(input => RISK_CATEGORIES) r
+GROUP BY risk ORDER BY occurrences DESC;
+
+-- 5. Deals with competitive displacement risk + high ACV
+SELECT ACCOUNT_NAME, ACV, NAMED_COMPETITORS, VERDICT
+FROM V_TDR_ANALYTICS
+WHERE ARRAY_CONTAINS('competitive_displacement'::VARIANT, RISK_CATEGORIES)
+  AND ACV > 50000
+ORDER BY ACV DESC;
+
+-- 6. Architectural pattern trends over time
+SELECT DATE_TRUNC('month', TDR_STARTED) AS month,
+       ARCHITECTURAL_PATTERN, COUNT(*) AS deals
+FROM V_TDR_ANALYTICS
+GROUP BY month, ARCHITECTURAL_PATTERN
+ORDER BY month;
+```
+
+**New Code Engine Function: `extractStructuredTDR`**
+
+```
+extractStructuredTDR(sessionId)
+```
+
+**Logic:**
+1. Fetch all latest step inputs for the session (reuse `getLatestInputs` SQL)
+2. Fetch thesis value (stored as `thesis::domo-thesis`)
+3. **Tier 1**: Read select field values directly from step inputs — no AI needed
+4. **Tier 2**: Concatenate all free-text field values into a structured prompt
+5. Call Cortex `AI_COMPLETE('claude-sonnet-4-5', prompt)` with a structured extraction prompt
+6. Parse the JSON response
+7. MERGE into `TDR_STRUCTURED_EXTRACTS` (upsert — re-extraction overwrites)
+
+**Cortex Extraction Prompt:**
+
+```
+You are a data structuring assistant for Technical Deal Reviews (TDRs) at Domo, a data analytics platform.
+
+Given the following TDR inputs from a Solutions Engineer, extract structured analytical fields.
+
+TDR INPUTS:
+{key: value pairs for all step fields}
+
+DEAL METADATA:
+Account: {accountName}, ACV: {acv}, Stage: {stage}
+
+Extract ONLY what is explicitly mentioned. Return valid JSON with these fields:
+
+{
+  "namedCompetitors": ["company/product names competing with Domo"],
+  "namedTechnologies": ["specific platforms, databases, tools, frameworks mentioned"],
+  "namedStakeholders": [{"name": "...", "role": "..."}],
+  "riskCategories": ["from: competitive_displacement, technical_complexity, timeline_pressure, resource_constraint, organizational_change, integration_risk, adoption_risk, pricing_risk, data_quality, security_compliance"],
+  "domoUseCases": ["specific Domo capabilities: MagicETL, App Studio, Dashboards, Alerts, Governance, Writeback, etc."],
+  "architecturalPattern": "one of: cloud-native, hybrid, on-prem-migration, lakehouse, warehouse-first, data-mesh, embedded, standalone",
+  "dealComplexity": "one of: Simple, Moderate, Complex",
+  "keyDifferentiators": ["what makes Domo win in THIS specific deal"],
+  "customerDecisionType": "one of: replace-existing, greenfield, augment-stack, consolidate",
+  "urgencyDrivers": ["what's creating time pressure"]
+}
+
+Rules:
+- Only include items EXPLICITLY mentioned in the inputs
+- If a field has no data, use [] for arrays or null for scalars
+- For competitors, include both company and product names (e.g., "Sigma Computing", "Tableau")
+- For technologies, be specific (e.g., "Snowflake" not "cloud data warehouse")
+- Return ONLY the JSON object — no commentary, no markdown fences
+```
+
+**Trigger Points:**
+1. **Auto-trigger**: When a TDR session status changes to `completed` (all required steps visited)
+2. **Manual trigger**: "Extract Analytics" button in the TDR Workspace Intelligence panel
+3. **Re-extraction**: If inputs change after initial extraction, a "Re-extract" button appears
+4. **Batch**: Future Snowflake Task can re-extract all sessions when the extraction prompt evolves
+
+**Code Engine Function I/O:**
+
+| Function | Inputs | Outputs | Domo Types |
+|----------|--------|---------|------------|
+| `extractStructuredTDR` | `sessionId` (string) | `{ success, extractId, structured: { ... } }` (object) | Input: string, Output: object |
+
+**Frontend Changes:**
+
+| File | Change |
+|------|--------|
+| `src/lib/cortexAi.ts` | Add `extractStructuredTDR()` method |
+| `src/hooks/useTDRSession.ts` | Trigger extraction when session marked complete |
+| `src/components/TDRIntelligence.tsx` | Add "Analytics Extraction" status indicator + manual trigger |
+| `manifest.json` | Add `extractStructuredTDR` to `packageMapping` |
+| `codeengine/consolidated-sprint4-5.js` | Add `extractStructuredTDR` function |
+
+**No changes to:** TDR input fields, step definitions, EAV storage, or the SE-facing experience.
+
+**Why This Matters for Downstream Sprints:**
+- **Sprint 18 (Score v2)**: Post-TDR Score can use `DEAL_COMPLEXITY`, `RISK_CATEGORIES`, and `NAMED_COMPETITORS` from the extract instead of parsing free text at scoring time
+- **Sprint 21 (Action Plan)**: `generateActionPlan` can read from `TDR_STRUCTURED_EXTRACTS` for pre-parsed entities instead of doing its own extraction
+- **Cortex Analyst**: The `V_TDR_ANALYTICS` view becomes a semantic model source — "ask TDR" questions become SQL against structured columns, not text parsing
+- **Portfolio reporting**: SE Managers can see patterns across their team's TDRs (most common platforms, entry layers, risk categories, competitor frequency)
+
+**Definition of Done:** After a TDR is completed, Cortex AI extracts structured analytical fields and stores them in `TDR_STRUCTURED_EXTRACTS`. The `V_TDR_ANALYTICS` view joins session, extract, and enrichment data into a single queryable surface. Example analytical queries run successfully against the view.
 
 ---
 
@@ -4178,36 +4468,41 @@ Generate the action plan in these 7 sections:
 ### Sprint Execution Order & Dependencies
 
 ```
-Sprint 16 — Fix Similar Deals (1 hr)
+Sprint 16 — Fix Similar Deals (1 hr) ✅
     │ (no dependencies — quick win, do first)
     ▼
-Sprint 17 — Lean TDR Refactor (2–3 days)  ──┐
-    │                                         │
-    │  Sprint 19 — Fileset Intelligence       │
-    │  (2–3 days, parallel with S17)    ──────┤
-    │                                         │
-    ▼                                         ▼
-Sprint 18 — TDR Score v2 (2 days)      ──────┤
-    │  (depends on S17 + S19)                 │
-    ▼                                         │
-Sprint 20 — Hero Metrics & Nav (1–2 days)    │
-    (depends on S18)                          │
-                                              ▼
+Sprint 17 — Lean TDR Refactor (2–3 days) ✅ ──┐
+    │                                           │
+    ▼                                           │
+Sprint 17.5 — Structured TDR Analytics (1 day) │
+    │  (Cortex extracts → analytics table)      │
+    │                                           │
+    │  Sprint 19 — Fileset Intelligence         │
+    │  (2–3 days, parallel with S17.5)   ──────┤
+    │                                           │
+    ▼                                           ▼
+Sprint 18 — TDR Score v2 (2 days)        ──────┤
+    │  (depends on S17.5 + S19)                 │
+    ▼                                           │
+Sprint 20 — Hero Metrics & Nav (1–2 days)      │
+    (depends on S18)                            │
+                                                ▼
                                 Sprint 21 — Action Plan Synthesis (2–3 days)
-                                    (depends on S17 + S18 + S19)
+                                    (depends on S17.5 + S18 + S19)
                                     THE CAPSTONE — synthesizes everything
 ```
 
 **Total estimated effort:** ~10-14 days of focused development
 
-| Sprint | Can Parallel? | Depends On | Effort |
-|--------|--------------|------------|--------|
-| S16: Fix Similar Deals | — | None | ~1 hr |
-| S17: Lean TDR Refactor | ✅ with S19 | None | 2-3 days |
-| S19: Fileset Intelligence | ✅ with S17 | None | 2-3 days |
-| S18: TDR Score v2 | No | S17 + S19 | 2 days |
-| S20: Hero Metrics & Nav | ✅ with S21 | S18 | 1-2 days |
-| S21: Action Plan Synthesis | ✅ with S20 | S17 + S18 + S19 | 2-3 days |
+| Sprint | Can Parallel? | Depends On | Effort | Status |
+|--------|--------------|------------|--------|--------|
+| S16: Fix Similar Deals | — | None | ~1 hr | ✅ |
+| S17: Lean TDR Refactor | ✅ with S19 | None | 2-3 days | ✅ |
+| **S17.5: Structured TDR Analytics** | ✅ with S19 | S17 | 1 day | 🔲 Next |
+| S19: Fileset Intelligence | ✅ with S17.5 | None | 2-3 days | 🔲 |
+| S18: TDR Score v2 | No | S17.5 + S19 | 2 days | 🔲 |
+| S20: Hero Metrics & Nav | ✅ with S21 | S18 | 1-2 days | 🔲 |
+| S21: Action Plan Synthesis | ✅ with S20 | S17.5 + S18 + S19 | 2-3 days | 🔲 |
 
 ---
 
