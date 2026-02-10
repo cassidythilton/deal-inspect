@@ -107,6 +107,12 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
 
     if (rawOpps.length > 0) {
       console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).sort());
+      // Log competitor field presence for debugging
+      const compKeys = Object.keys(rawOpps[0]).filter(k => /compet/i.test(k));
+      if (compKeys.length > 0) {
+        const sample = rawOpps.slice(0, 5).map(r => compKeys.map(k => `${k}=${r[k]}`).join(', '));
+        console.log('[Domo] Competitor fields found:', compKeys, '| Samples:', sample);
+      }
     }
 
     const allOpps = rawOpps

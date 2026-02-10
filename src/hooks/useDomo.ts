@@ -71,7 +71,7 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
   else if (stageAge > 90) riskLevel = 'yellow';
 
   const numCompetitors = getNum('Number of Competitors', 'NumberOfCompetitors');
-  const competitors = get('Competitors') || undefined;
+  const competitors = get('Competitors', 'competitors', 'CompetitorName', 'Competitor') || undefined;
   const isCompetitive = numCompetitors > 0 || !!competitors;
 
   const reasons: string[] = [];
