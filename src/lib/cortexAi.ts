@@ -8,8 +8,9 @@
  * Sprint 7: generateTDRBrief, classifyFindings, extractEntities
  * Sprint 9: getPortfolioInsights, summarizeIntelHistory, getSentimentTrend
  * Sprint 11: findSimilarDeals, askAnalyst
+ * Sprint 17.5: extractStructuredTDR
  *
- * @see IMPLEMENTATION_STRATEGY.md Section 7 (Sprint 7), Sprint 9 & Sprint 11
+ * @see IMPLEMENTATION_STRATEGY.md Section 7 (Sprint 7), Sprint 9, Sprint 11 & Sprint 17.5
  */
 
 import { isDomoEnvironment } from './domo';
@@ -93,6 +94,35 @@ export interface AnalystResult {
   columns: string[];
   rows: Record<string, unknown>[];
   answer?: string;
+  error?: string;
+}
+
+export interface StructuredExtractResult {
+  success: boolean;
+  extractId?: string;
+  structured?: {
+    THESIS?: string | null;
+    STRATEGIC_VALUE?: string | null;
+    CLOUD_PLATFORM?: string | null;
+    ENTRY_LAYER?: string | null;
+    DECISION_TIMELINE?: string | null;
+    PARTNER_NAME?: string | null;
+    PARTNER_POSTURE?: string | null;
+    AI_MATURITY?: string | null;
+    VERDICT?: string | null;
+    NAMED_COMPETITORS?: string[];
+    NAMED_TECHNOLOGIES?: string[];
+    NAMED_STAKEHOLDERS?: Array<{ name: string; role: string }>;
+    RISK_CATEGORIES?: string[];
+    DOMO_USE_CASES?: string[];
+    ARCHITECTURAL_PATTERN?: string | null;
+    DEAL_COMPLEXITY?: string | null;
+    KEY_DIFFERENTIATORS?: string[];
+    CUSTOMER_DECISION_TYPE?: string | null;
+    URGENCY_DRIVERS?: string[];
+    extractionModel?: string | null;
+    extractionVersion?: string;
+  };
   error?: string;
 }
 
@@ -568,6 +598,50 @@ export const cortexAi = {
     } catch (err: unknown) {
       console.error('[CortexAI] askAnalyst failed:', err);
       return { success: false, columns: [], rows: [], error: String(err) };
+    }
+  },
+
+  /**
+   * Extract structured analytical fields from a TDR session.
+   * Tier 1: Reads select/dropdown fields directly.
+   * Tier 2: Uses Cortex AI to extract entities from free-text fields.
+   * Stores results in TDR_STRUCTURED_EXTRACTS (upsert).
+   *
+   * @param sessionId - The TDR session to extract from
+   * @returns Structured extraction result including competitors, technologies, risks, etc.
+   */
+  async extractStructuredTDR(sessionId: string): Promise<StructuredExtractResult> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning mock structured extract');
+      return {
+        success: true,
+        extractId: 'mock-extract-id',
+        structured: {
+          THESIS: 'Mock thesis',
+          STRATEGIC_VALUE: 'High',
+          CLOUD_PLATFORM: 'Snowflake',
+          ENTRY_LAYER: 'Data Integration',
+          VERDICT: 'Proceed',
+          NAMED_COMPETITORS: ['Tableau', 'Power BI'],
+          NAMED_TECHNOLOGIES: ['Snowflake', 'dbt'],
+          RISK_CATEGORIES: ['competitive_displacement'],
+          DOMO_USE_CASES: ['Dashboards', 'MagicETL'],
+          DEAL_COMPLEXITY: 'Moderate',
+          ARCHITECTURAL_PATTERN: 'warehouse-first',
+          extractionModel: 'llama3.3-70b',
+          extractionVersion: 'v1',
+        },
+      };
+    }
+
+    try {
+      console.log('[CortexAI] Extracting structured TDR data for session:', sessionId);
+      const raw = await callCodeEngine<unknown>('extractStructuredTDR', { sessionId });
+      const result = extractResult(raw) as unknown as StructuredExtractResult;
+      return result;
+    } catch (err: unknown) {
+      console.error('[CortexAI] extractStructuredTDR failed:', err);
+      return { success: false, error: String(err) };
     }
   },
 };

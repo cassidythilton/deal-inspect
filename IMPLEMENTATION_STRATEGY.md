@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 3.5 · **Date:** February 10, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13
+**Status:** In Progress · **Version:** Draft 3.6 · **Date:** February 10, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6
 
 ---
 
@@ -3565,8 +3565,9 @@ Scoring adjustments:
 | **13** | **TDR Readout: PDF Engine** | ✅ Complete | Feb 10, 2026 | Sprints 3 + 7; enriched by 10 | **Artifact** |
 | **14** | **TDR Readout: Slack Distribution** | ⏸ Paused | — | Sprint 13 | **Distribution** |
 | **15** | **AG Grid Table, Deal Search & Filter Rethink** | 🔄 In Progress | — | None (frontend-only) | **UX** |
-| **17.5** | **Structured TDR Analytics Extraction Pipeline** | 🔲 Planned | — | Sprint 17 | **Analytics** |
-| **17.6** | **TDR Portfolio Analytics Page** | 🔲 Planned | — | Sprint 17.5 | **Analytics / UX** |
+| **17** | **Lean TDR Refactor** | ✅ Complete | Feb 10, 2026 | Sprints 3 + 7 | **UX** |
+| **17.5** | **Structured TDR Analytics Extraction Pipeline** | ✅ Complete | Feb 10, 2026 | Sprint 17 | **Analytics** |
+| **17.6** | **TDR Portfolio Analytics Page + NLQ** | ✅ Complete | Feb 10, 2026 | Sprint 17.5 | **Analytics / UX** |
 
 **Post-Sprint Bug Fixes (Feb 10, 2026):**
 - Fixed `getSentimentTrend` crash: `AI_SENTIMENT` returns NULL for sessions without inputs → `parseFloat(null)` → NaN → serialized as `null` in JSON → `.toFixed()` crash. Added null-filtering in handler and `?? 0` fallback at render.
@@ -3817,9 +3818,10 @@ TDR is not a documentation exercise. It is a thinking exercise. Every required s
 
 ---
 
-### Sprint 17.5 — Structured TDR Analytics Extraction Pipeline 🔲
+### Sprint 17.5 — Structured TDR Analytics Extraction Pipeline ✅ COMPLETE
 
 > **Goal:** Transform free-text TDR inputs into structured, queryable analytical data using Cortex AI extraction. Produce a flat one-row-per-session table that enables cross-deal analytics, trend detection, and portfolio-level reporting — without changing the SE-facing input experience.
+> **Completed:** February 10, 2026
 > **Risk to app:** None — purely additive. No changes to input flow, EAV storage, or existing UI.
 > **Effort:** ~1 day
 > **Dependencies:** Sprint 17 (lean TDR step schema must be stable)
@@ -4102,13 +4104,22 @@ Rules:
 - **Cortex Analyst**: The `V_TDR_ANALYTICS` view becomes a semantic model source — "ask TDR" questions become SQL against structured columns, not text parsing
 - **Portfolio reporting**: SE Managers can see patterns across their team's TDRs (most common platforms, entry layers, risk categories, competitor frequency)
 
-**Definition of Done:** After a TDR is completed, Cortex AI extracts structured analytical fields and stores them in `TDR_STRUCTURED_EXTRACTS`. The `V_TDR_ANALYTICS` view joins session, extract, and enrichment data into a single queryable surface. Example analytical queries run successfully against the view.
+**Definition of Done:** After a TDR is completed, Cortex AI extracts structured analytical fields and stores them in `TDR_STRUCTURED_EXTRACTS`. The `V_TDR_ANALYTICS` view joins session, extract, and enrichment data into a single queryable surface. Example analytical queries run successfully against the view. ✅
+
+**Sprint 17.5 Completion Notes (Feb 10, 2026):**
+- DDL for `TDR_STRUCTURED_EXTRACTS` table and `V_TDR_ANALYTICS` view added to `sql/bootstrap.sql`
+- `extractStructuredTDR` CE function added to `codeengine/consolidated-sprint4-5.js` — two-tier extraction (Tier 1: scalar fields via `AI_COMPLETE`, Tier 2: array fields via second pass)
+- Auto-trigger on TDR completion wired in `useTDRSession.ts` (fire-and-forget, non-blocking)
+- Manual "Extract Analytics" button + status indicator added to `TDRIntelligence.tsx`
+- `manifest.json` updated with `extractStructuredTDR` package mapping
+- Types (`StructuredExtractResult`) added to `cortexAi.ts`
 
 ---
 
-### Sprint 17.6 — TDR Portfolio Analytics Page 🔲
+### Sprint 17.6 — TDR Portfolio Analytics Page + NLQ ✅ COMPLETE
 
-> **Goal:** Build a dedicated analytics page that surfaces portfolio-level patterns from structured TDR data. This is the **visualization companion** to Sprint 17.5's extraction pipeline — it turns `V_TDR_ANALYTICS` into interactive charts and tables that answer the questions SE Managers and leadership actually ask.
+> **Goal:** Build a dedicated analytics page that surfaces portfolio-level patterns from structured TDR data. This is the **visualization companion** to Sprint 17.5's extraction pipeline — it turns `V_TDR_ANALYTICS` into interactive charts and tables that answer the questions SE Managers and leadership actually ask. Includes a natural-language query bar ("Ask Your TDR Data") powered by Cortex AI.
+> **Completed:** February 10, 2026
 > **Risk to app:** None — purely additive. New page, new route, no changes to existing pages.
 > **Effort:** ~1.5 days
 > **Dependencies:** Sprint 17.5 (extraction pipeline must exist to produce data)
@@ -4324,7 +4335,7 @@ Two-tier approach, identical to Sprint 11's `askAnalyst` but scoped to the analy
 | Tier | Engine | Schema Context | When |
 |------|--------|---------------|------|
 | **Tier A (Default)** | `AI_COMPLETE` text-to-SQL | `V_TDR_ANALYTICS` column definitions | Ships immediately |
-| **Tier B (Upgrade)** | Cortex Analyst API + Semantic Model YAML | Deployed semantic model over `V_TDR_ANALYTICS` | When semantic model YAML is authored + deployed to stage |
+| **Tier B (Upgrade)** | Cortex Analyst API + Snowflake Semantic View | Semantic view defined over `V_TDR_ANALYTICS` | When semantic view is created in Snowflake (future sprint) |
 
 **Tier A** reuses the proven pattern from Sprint 11's `askAnalyst` but replaces the old multi-table EAV schema context with the flat `V_TDR_ANALYTICS` view. This is a massive accuracy improvement because:
 - No EAV pivoting required (the AI doesn't have to understand FIELD_ID → column mapping)
@@ -4532,103 +4543,9 @@ Conversation resets when the page is refreshed or the user clicks a "New questio
 | `manifest.json` | Add `getTDRAnalyticsData` and `askTDRAnalytics` to `packageMapping` |
 | `codeengine/consolidated-sprint4-5.js` | Add `getTDRAnalyticsData` and `askTDRAnalytics` functions |
 
-**Semantic Model YAML (Tier B — Stretch):**
+**Snowflake Semantic View (Tier B — Future Sprint):**
 
-When ready to upgrade to native Cortex Analyst, deploy this semantic model to a Snowflake internal stage:
-
-```yaml
-# tdr_analytics_semantic_model.yaml
-# Deploy to: @TDR_APP.TDR_DATA.SEMANTIC_MODELS/tdr_analytics.yaml
-name: TDR Portfolio Analytics
-tables:
-  - name: V_TDR_ANALYTICS
-    description: Consolidated view of all TDR sessions with structured extracts and enrichment data
-    base_table:
-      database: TDR_APP
-      schema: TDR_DATA
-      table: V_TDR_ANALYTICS
-    dimensions:
-      - name: account_name
-        expr: ACCOUNT_NAME
-        description: Company name
-      - name: cloud_platform
-        expr: CLOUD_PLATFORM
-        description: Primary cloud platform (Snowflake, Databricks, BigQuery, etc.)
-      - name: entry_layer
-        expr: ENTRY_LAYER
-        description: How Domo enters the technology stack
-      - name: verdict
-        expr: VERDICT
-        description: TDR verdict (Proceed, Corrections, Rework)
-      - name: deal_complexity
-        expr: DEAL_COMPLEXITY
-        description: Deal complexity (Low, Medium, High)
-      - name: stage
-        expr: STAGE
-        description: Sales pipeline stage
-      - name: owner
-        expr: OWNER
-        description: Deal owner / Sales Engineer
-      - name: strategic_value
-        expr: STRATEGIC_VALUE
-        description: Strategic value classification
-      - name: partner_posture
-        expr: PARTNER_POSTURE
-        description: Partner engagement posture
-      - name: ai_reality
-        expr: AI_REALITY
-        description: AI readiness classification
-      - name: sumble_industry
-        expr: SUMBLE_INDUSTRY
-        description: Industry classification from Sumble enrichment
-    time_dimensions:
-      - name: tdr_created_date
-        expr: SESSION_CREATED_AT
-        description: When the TDR session was started
-      - name: tdr_updated_date
-        expr: SESSION_UPDATED_AT
-        description: When the TDR was last modified
-      - name: extracted_date
-        expr: EXTRACTED_AT
-        description: When structured fields were extracted
-    measures:
-      - name: tdr_count
-        expr: COUNT(DISTINCT SESSION_ID)
-        description: Number of TDR sessions
-      - name: total_acv
-        expr: SUM(ACV)
-        description: Total ACV in USD
-      - name: avg_acv
-        expr: AVG(ACV)
-        description: Average ACV in USD
-      - name: proceed_rate
-        expr: "COUNT(CASE WHEN VERDICT = 'Proceed' THEN 1 END)::FLOAT / NULLIF(COUNT(CASE WHEN VERDICT IS NOT NULL THEN 1 END), 0)"
-        description: Percentage of TDRs with Proceed verdict
-      - name: avg_expected_users
-        expr: AVG(EXPECTED_USERS)
-        description: Average expected user count across TDRs
-    verified_queries:
-      - name: platform_distribution
-        question: What percentage of TDRs cite each cloud platform?
-        sql: |
-          SELECT CLOUD_PLATFORM, COUNT(*) AS tdr_count,
-                 ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 1) AS pct
-          FROM TDR_APP.TDR_DATA.V_TDR_ANALYTICS
-          WHERE CLOUD_PLATFORM IS NOT NULL
-          GROUP BY CLOUD_PLATFORM ORDER BY tdr_count DESC
-      - name: top_risks
-        question: What are the most common risks across all deals?
-        sql: |
-          SELECT f.value::STRING AS risk_category, COUNT(*) AS mentions
-          FROM TDR_APP.TDR_DATA.V_TDR_ANALYTICS, LATERAL FLATTEN(input => RISK_CATEGORIES) f
-          GROUP BY risk_category ORDER BY mentions DESC LIMIT 10
-      - name: competitor_frequency
-        question: Which competitors appear most often?
-        sql: |
-          SELECT f.value::STRING AS competitor, COUNT(*) AS mentions
-          FROM TDR_APP.TDR_DATA.V_TDR_ANALYTICS, LATERAL FLATTEN(input => NAMED_COMPETITORS) f
-          GROUP BY competitor ORDER BY mentions DESC LIMIT 10
-```
+> **Note:** The upgrade path will use **Snowflake Semantic Views** (not YAML files deployed to stages). Semantic views are defined directly in Snowflake SQL as first-class objects over `V_TDR_ANALYTICS`. This will be addressed in a future sprint when there's sufficient TDR data to validate the approach. The dimensions, measures, and verified queries from the Tier A schema context will inform the semantic view definition.
 
 **Design Principles:**
 1. Same `stat-card` pattern as Command Center — visual consistency
@@ -5039,11 +4956,11 @@ Sprint 16 — Fix Similar Deals (1 hr) ✅
 Sprint 17 — Lean TDR Refactor (2–3 days) ✅ ──┐
     │                                           │
     ▼                                           │
-Sprint 17.5 — Structured TDR Analytics (1 day) │
-    │  (Cortex extracts → analytics table)      │
-    │                                           │
-    ▼                                           │
-Sprint 17.6 — TDR Analytics Page (1.5 days)    │
+Sprint 17.5 — Structured TDR Analytics (1 day) ✅ │
+    │  (Cortex extracts → analytics table)        │
+    │                                             │
+    ▼                                             │
+Sprint 17.6 — TDR Analytics Page + NLQ ✅        │
     │  (visualization of V_TDR_ANALYTICS)       │
     │                                           │
     │  Sprint 19 — Fileset Intelligence         │

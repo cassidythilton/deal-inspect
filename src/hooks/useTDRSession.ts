@@ -18,6 +18,7 @@ import { Deal } from '@/types/tdr';
 import { snowflakeStore, parseCompletedSteps } from '@/lib/snowflakeStore';
 import type { SnowflakeSession, StepInput, SaveStepInputArgs } from '@/lib/snowflakeStore';
 import { getAppSettings } from '@/lib/appSettings';
+import { cortexAi } from '@/lib/cortexAi';
 
 export interface UseTDRSessionReturn {
   /** The active session (null while loading or if creation failed) */
@@ -280,6 +281,21 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
         status: 'completed',
       });
       if (updated) setSession(updated);
+
+      // Sprint 17.5: Auto-trigger structured analytics extraction on completion
+      // Fire-and-forget — don't block the UI on extraction
+      console.log('[useTDRSession] Triggering structured extraction for completed session:', session.sessionId);
+      cortexAi.extractStructuredTDR(session.sessionId)
+        .then(result => {
+          if (result.success) {
+            console.log('[useTDRSession] Structured extraction complete:', result.extractId);
+          } else {
+            console.warn('[useTDRSession] Structured extraction failed:', result.error);
+          }
+        })
+        .catch(err => {
+          console.warn('[useTDRSession] Structured extraction error:', err);
+        });
     } catch (err) {
       console.error('[useTDRSession] Failed to complete session:', err);
     }

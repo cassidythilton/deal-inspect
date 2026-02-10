@@ -56,7 +56,7 @@ import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 import { accountIntel } from '@/lib/accountIntel';
 import type { SumbleEnrichment, PerplexityResearch, SumbleOrgData, SumbleJobData, SumblePeopleData } from '@/lib/accountIntel';
 import { cortexAi, parseBriefSections, FINDING_CATEGORY_STYLES } from '@/lib/cortexAi';
-import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, SentimentDataPoint } from '@/lib/cortexAi';
+import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, SentimentDataPoint, StructuredExtractResult } from '@/lib/cortexAi';
 
 interface TDRIntelligenceProps {
   deal?: Deal;
@@ -217,6 +217,10 @@ export function TDRIntelligence({
   const [classifiedFindings, setClassifiedFindings] = useState<ClassifiedFinding[]>([]);
   const [extractedEntities, setExtractedEntities] = useState<ExtractedEntities | null>(null);
   const [cortexProcessing, setCortexProcessing] = useState(false);
+
+  // ── Sprint 17.5: Structured Extraction State ──
+  const [extractionResult, setExtractionResult] = useState<StructuredExtractResult | null>(null);
+  const [extractionLoading, setExtractionLoading] = useState(false);
 
   // ── Sprint 6.5: Deep Intelligence State ──
   const [sumbleOrgData, setSumbleOrgData] = useState<SumbleOrgData | null>(null);
@@ -1724,6 +1728,122 @@ export function TDRIntelligence({
           </SelectContent>
         </Select>
       </div>
+
+      {/* ────────────────────────────────────────────────────────────
+          ANALYTICS EXTRACTION (Sprint 17.5)
+          ──────────────────────────────────────────────────────────── */}
+      {sessionId && (
+        <div className="border-b border-[#2a2540] px-5 py-4">
+          <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
+            Analytics Extraction
+          </p>
+          {extractionResult?.success ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-emerald-400">
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>Extracted successfully</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-500">
+                {extractionResult.structured?.NAMED_COMPETITORS && extractionResult.structured.NAMED_COMPETITORS.length > 0 && (
+                  <span>Competitors: {extractionResult.structured.NAMED_COMPETITORS.length}</span>
+                )}
+                {extractionResult.structured?.RISK_CATEGORIES && extractionResult.structured.RISK_CATEGORIES.length > 0 && (
+                  <span>Risks: {extractionResult.structured.RISK_CATEGORIES.length}</span>
+                )}
+                {extractionResult.structured?.DOMO_USE_CASES && extractionResult.structured.DOMO_USE_CASES.length > 0 && (
+                  <span>Use cases: {extractionResult.structured.DOMO_USE_CASES.length}</span>
+                )}
+                {extractionResult.structured?.DEAL_COMPLEXITY && (
+                  <span>Complexity: {extractionResult.structured.DEAL_COMPLEXITY}</span>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white"
+                size="sm"
+                disabled={extractionLoading}
+                onClick={async () => {
+                  setExtractionLoading(true);
+                  try {
+                    const result = await cortexAi.extractStructuredTDR(sessionId);
+                    setExtractionResult(result);
+                  } catch (err) {
+                    console.error('[TDRIntelligence] Re-extraction failed:', err);
+                  }
+                  setExtractionLoading(false);
+                }}
+              >
+                {extractionLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                Re-extract
+              </Button>
+            </div>
+          ) : extractionResult && !extractionResult.success ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-amber-400">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span>Extraction failed</span>
+              </div>
+              <p className="text-[10px] text-slate-600 break-all">{extractionResult.error}</p>
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white"
+                size="sm"
+                disabled={extractionLoading}
+                onClick={async () => {
+                  setExtractionLoading(true);
+                  try {
+                    const result = await cortexAi.extractStructuredTDR(sessionId);
+                    setExtractionResult(result);
+                  } catch (err) {
+                    console.error('[TDRIntelligence] Retry extraction failed:', err);
+                  }
+                  setExtractionLoading(false);
+                }}
+              >
+                {extractionLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                Retry
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full gap-2 border-[#362f50] text-slate-300 hover:bg-[#221d38] hover:text-white"
+              size="sm"
+              disabled={extractionLoading}
+              onClick={async () => {
+                setExtractionLoading(true);
+                try {
+                  const result = await cortexAi.extractStructuredTDR(sessionId);
+                  setExtractionResult(result);
+                } catch (err) {
+                  console.error('[TDRIntelligence] Extraction failed:', err);
+                }
+                setExtractionLoading(false);
+              }}
+            >
+              {extractionLoading ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Extracting...
+                </>
+              ) : (
+                <>
+                  <Database className="h-3.5 w-3.5" />
+                  Extract Analytics
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* ────────────────────────────────────────────────────────────
           ACTION BUTTONS
