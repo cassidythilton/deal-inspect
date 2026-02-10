@@ -51,63 +51,86 @@ interface TDRInputsProps {
   allSteps?: TDRStep[];
 }
 
-const stepInputConfigs: Record<string, { fields: { id: string; label: string; type: 'text' | 'textarea' | 'select'; options?: string[]; placeholder?: string }[] }> = {
+interface FieldConfig {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select';
+  options?: string[];
+  placeholder?: string;
+  /** Hint text shown below the field for guidance */
+  hint?: string;
+  /** Whether this field is optional within a required step */
+  optional?: boolean;
+}
+
+const stepInputConfigs: Record<string, { fields: FieldConfig[] }> = {
+  // ── REQUIRED: Section 0 — Deal Context & Stakes (2-3 min) ──
   'context': {
     fields: [
       { id: 'strategic-value', label: 'Strategic Value', type: 'select', options: ['High', 'Medium', 'Low'] },
-      { id: 'business-impact', label: 'Business Impact', type: 'textarea', placeholder: 'Describe the business impact...' },
-      { id: 'key-stakeholders', label: 'Key Stakeholders', type: 'text', placeholder: 'List key stakeholders...' },
+      { id: 'why-now', label: 'Why This Deal Matters Now', type: 'textarea', placeholder: 'Why is this deal worth technical inspection right now?', hint: 'Focus on timing — what makes this deal urgent or important today?' },
+      { id: 'key-stakeholders', label: 'Key Stakeholders', type: 'text', placeholder: 'Names and roles of key decision makers...', optional: true },
     ],
   },
+  // ── REQUIRED: Section 1 — Business Decision (5 min) ──
   'decision': {
     fields: [
-      { id: 'customer-goal', label: 'Customer Goal', type: 'textarea', placeholder: 'What is the customer trying to achieve?' },
-      { id: 'timeline', label: 'Decision Timeline', type: 'select', options: ['This Quarter', 'Next Quarter', '6+ Months'] },
-      { id: 'success-criteria', label: 'Success Criteria', type: 'textarea', placeholder: 'How will success be measured?' },
+      { id: 'customer-goal', label: 'Customer Decision', type: 'textarea', placeholder: 'The customer is trying to decide _____ so they can _____.', hint: 'One sentence. If you can\'t say it in one sentence — pause the review.' },
+      { id: 'success-criteria', label: 'Success Criteria', type: 'textarea', placeholder: 'How will the customer measure success?', optional: true },
+      { id: 'timeline', label: 'Decision Timeline', type: 'select', options: ['This Quarter', 'Next Quarter', '6+ Months'], optional: true },
     ],
   },
+  // ── REQUIRED: Section 2 — Architecture: Current → Target (8-10 min) ──
   'current-arch': {
     fields: [
-      { id: 'existing-systems', label: 'Existing Systems', type: 'textarea', placeholder: 'Current data systems and tools...' },
-      { id: 'data-sources', label: 'Data Sources', type: 'text', placeholder: 'Key data sources...' },
-      { id: 'pain-points', label: 'Pain Points', type: 'textarea', placeholder: 'Current challenges and limitations...' },
+      { id: 'system-of-record', label: 'System of Record', type: 'textarea', placeholder: 'Where does the system of record live? (e.g., Snowflake, Databricks, BigQuery, on-prem SQL Server...)', hint: 'Is this platform strategic or incidental to the customer?' },
+      { id: 'cloud-platform', label: 'Cloud / Data Platform', type: 'select', options: ['Snowflake', 'Databricks', 'BigQuery', 'Azure Synapse', 'AWS Redshift', 'On-Prem / Other', 'Multiple'] },
+      { id: 'arch-truth', label: 'Architectural Truth', type: 'textarea', placeholder: 'What architectural truth must we accept in this account?', hint: 'What existing constraint or decision can we NOT change?' },
+      { id: 'target-change', label: 'What Changes in Target State', type: 'textarea', placeholder: 'What is different in the target architecture vs. today?', hint: 'Don\'t list everything — focus on what changes and why.' },
+      { id: 'pain-points', label: 'Pain Points', type: 'textarea', placeholder: 'Current challenges driving the change...', optional: true },
     ],
   },
+  // ── REQUIRED: Section 3 — Domo's Composable Role (10 min) — TDR Heart ──
+  'domo-role': {
+    fields: [
+      { id: 'entry-layer', label: 'Entry Layer', type: 'select', options: ['Data Integration', 'Data Warehouse', 'Visualization / BI', 'Embedded Analytics', 'App Development', 'Automation / Alerts', 'AI / ML'] },
+      { id: 'in-scope', label: 'In-Scope Layers', type: 'textarea', placeholder: 'Which Domo capabilities are in scope for this deal?', hint: 'Be specific — what will Domo actually do in production?' },
+      { id: 'out-of-scope', label: 'Out of Scope', type: 'textarea', placeholder: 'What is explicitly NOT Domo\'s job in this architecture?', hint: 'Drawing boundaries is as important as defining scope.' },
+      { id: 'why-composition', label: 'Why This Composition Works Now', type: 'textarea', placeholder: 'Why does this specific configuration of Domo make sense for this customer right now?', hint: 'This is the TDR heart. If this answer is weak — the deal is not ready.' },
+    ],
+  },
+  // ── REQUIRED: Section 4 — Risk & Verdict (5 min) ──
+  'risk': {
+    fields: [
+      { id: 'top-risks', label: 'Top 1–2 Technical Risks', type: 'textarea', placeholder: 'What could go wrong technically?', hint: 'Focus on the risks that would actually kill the deal.' },
+      { id: 'key-assumption', label: 'Key Assumption', type: 'textarea', placeholder: 'What is the ONE assumption that must be true for this deal to succeed?', hint: 'If this assumption is wrong, everything else falls apart.' },
+      { id: 'verdict', label: 'Verdict', type: 'select', options: ['Proceed', 'Proceed with Corrections', 'Rework Before Advancing'], hint: 'Your professional judgment as an SE.' },
+    ],
+  },
+  // ── OPTIONAL: Target Architecture Detail ──
   'target-arch': {
     fields: [
-      { id: 'proposed-solution', label: 'Proposed Solution', type: 'textarea', placeholder: 'Describe the target architecture...' },
+      { id: 'proposed-solution', label: 'Proposed Solution Detail', type: 'textarea', placeholder: 'Detailed target architecture description...' },
       { id: 'integration-points', label: 'Integration Points', type: 'text', placeholder: 'Key integrations required...' },
       { id: 'data-flow', label: 'Data Flow', type: 'textarea', placeholder: 'How will data flow through the system?' },
     ],
   },
-  'domo-role': {
-    fields: [
-      { id: 'domo-positioning', label: 'Domo Positioning', type: 'select', options: ['Primary Platform', 'Complementary', 'Point Solution'] },
-      { id: 'key-capabilities', label: 'Key Capabilities Used', type: 'textarea', placeholder: 'Which Domo capabilities are core to this deal?' },
-      { id: 'differentiation', label: 'Differentiation', type: 'textarea', placeholder: 'Why Domo over alternatives?' },
-    ],
-  },
+  // ── OPTIONAL: Partner & AI Implications ──
   'partner': {
     fields: [
-      { id: 'partner-name', label: 'Partner Name', type: 'text', placeholder: 'SI / Partner name...' },
-      { id: 'partner-role', label: 'Partner Role', type: 'select', options: ['Implementation', 'Reseller', 'Referral', 'None'] },
-      { id: 'commitment-level', label: 'Commitment Level', type: 'select', options: ['Contracted', 'Committed', 'Interested', 'Unknown'] },
+      { id: 'partner-name', label: 'Key Partner', type: 'text', placeholder: 'Which partner matters most?' },
+      { id: 'partner-posture', label: 'Partner Posture', type: 'select', options: ['Amplifying', 'Neutral', 'Conflicting', 'None'] },
+      { id: 'compute-alignment', label: 'Where Does Compute Execute?', type: 'textarea', placeholder: 'Partner cloud, Domo cloud, customer cloud...', optional: true },
     ],
   },
+  // ── OPTIONAL: AI Strategy & Data Science ──
   'ai-strategy': {
     fields: [
-      { id: 'ai-use-cases', label: 'AI/ML Use Cases', type: 'textarea', placeholder: 'Planned AI/ML use cases...' },
-      { id: 'data-science-needs', label: 'Data Science Needs', type: 'select', options: ['Advanced', 'Moderate', 'Basic', 'None'] },
-      { id: 'ai-readiness', label: 'AI Readiness', type: 'select', options: ['Ready', 'Preparing', 'Exploring', 'Not Applicable'] },
+      { id: 'ai-reality', label: 'AI Reality Check', type: 'select', options: ['Production today', 'Piloting', 'Roadmap only', 'Not applicable'], hint: 'Is AI real or future in this account?' },
+      { id: 'autonomous-decision', label: 'Autonomous Decision Potential', type: 'textarea', placeholder: 'What decision could become autonomous?', optional: true },
     ],
   },
-  'risk': {
-    fields: [
-      { id: 'technical-risks', label: 'Technical Risks', type: 'textarea', placeholder: 'Key technical risks and concerns...' },
-      { id: 'mitigations', label: 'Mitigations', type: 'textarea', placeholder: 'How will risks be mitigated?' },
-      { id: 'risk-level', label: 'Overall Risk Level', type: 'select', options: ['Low', 'Medium', 'High'] },
-    ],
-  },
+  // ── OPTIONAL: Usage & Adoption Detail (defer post-TDR) ──
   'usage': {
     fields: [
       { id: 'user-count', label: 'Expected Users', type: 'text', placeholder: 'Number of users...' },
@@ -450,6 +473,18 @@ export function TDRInputs({
         </div>
       )}
 
+      {/* Core forcing question */}
+      {activeStep.coreQuestion && (
+        <div className="mb-5 rounded-lg border border-violet-200 bg-violet-50/50 px-4 py-3 dark:border-violet-800/50 dark:bg-violet-950/20">
+          <p className="text-xs font-medium text-violet-700 dark:text-violet-300">
+            Core Question
+          </p>
+          <p className="mt-0.5 text-sm text-violet-600 dark:text-violet-400 italic">
+            {activeStep.coreQuestion}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-5">
         {config.fields.map((field) => {
           const fieldKey = `${activeStep.id}::${field.id}`;
@@ -462,6 +497,11 @@ export function TDRInputs({
                 <Label htmlFor={field.id} className="text-xs font-medium">
                   {field.label}
                 </Label>
+                {field.optional && (
+                  <span className="rounded bg-secondary px-1.5 py-0.5 text-2xs text-muted-foreground">
+                    optional
+                  </span>
+                )}
                 {isSaved && (
                   <span className="flex items-center gap-0.5 text-2xs text-emerald-600">
                     <Check className="h-2.5 w-2.5" />
@@ -516,6 +556,9 @@ export function TDRInputs({
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+              {field.hint && (
+                <p className="text-2xs text-muted-foreground italic">{field.hint}</p>
               )}
             </div>
           );

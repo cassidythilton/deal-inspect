@@ -61,6 +61,10 @@ export interface TDRStep {
   description: string;
   isComplete: boolean;
   isActive: boolean;
+  /** Whether this step is required for TDR completion */
+  required?: boolean;
+  /** Core forcing question for this step */
+  coreQuestion?: string;
 }
 
 export interface MetricCard {

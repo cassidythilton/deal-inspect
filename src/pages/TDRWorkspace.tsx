@@ -5,9 +5,10 @@ import { TDRInputs } from '@/components/TDRInputs';
 import { TDRIntelligence } from '@/components/TDRIntelligence';
 import { TDRChat } from '@/components/TDRChat';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
@@ -84,6 +85,27 @@ export default function TDRWorkspace() {
     : deal.riskLevel === 'yellow'
     ? ['Competitive pressure identified']
     : ['Critical timeline risk', 'Budget constraints'];
+
+  // ── Thesis field (always-visible, Sprint 17) ──
+  const thesisKey = 'thesis::domo-thesis';
+  const thesisValue = inputValues?.get(thesisKey) || '';
+  const [localThesis, setLocalThesis] = useState<string | null>(null);
+  const [thesisSaved, setThesisSaved] = useState(false);
+
+  const handleThesisBlur = useCallback(async () => {
+    if (localThesis === null || localThesis === thesisValue) return;
+    setThesisSaved(false);
+    await saveInput({
+      stepId: 'thesis',
+      stepLabel: 'Thesis',
+      fieldId: 'domo-thesis',
+      fieldLabel: 'Why Domo Belongs',
+      fieldValue: localThesis,
+      stepOrder: -1, // always first
+    });
+    setThesisSaved(true);
+    setTimeout(() => setThesisSaved(false), 2000);
+  }, [localThesis, thesisValue, saveInput]);
 
   // Sprint 13: Export Readout
   const [exportLoading, setExportLoading] = useState(false);
@@ -208,6 +230,34 @@ export default function TDRWorkspace() {
           <span className="text-sm text-muted-foreground">Loading TDR session...</span>
         </div>
       )}
+
+      {/* ── Thesis Bar (always visible, Sprint 17) ── */}
+      <div className="shrink-0 border-b border-border bg-card px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="flex items-center gap-1.5 pt-1.5 shrink-0">
+            <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+            <span className="text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">Thesis</span>
+          </div>
+          <div className="flex-1 relative">
+            <Textarea
+              placeholder="In one sentence: Why does Domo belong in this architecture?"
+              className="min-h-[40px] h-[40px] resize-none text-sm border-violet-200 dark:border-violet-800/50 focus:border-violet-400 dark:focus:border-violet-600 bg-violet-50/30 dark:bg-violet-950/10"
+              value={localThesis !== null ? localThesis : thesisValue}
+              onChange={(e) => setLocalThesis(e.target.value)}
+              onBlur={handleThesisBlur}
+            />
+            {thesisSaved && (
+              <span className="absolute right-2 top-2 flex items-center gap-0.5 text-2xs text-emerald-600">
+                <Save className="h-2.5 w-2.5" />
+                saved
+              </span>
+            )}
+          </div>
+        </div>
+        <p className="mt-1 ml-[72px] text-2xs text-muted-foreground italic">
+          If this sentence is strong — the deal is probably solid. If it's weak — the rest doesn't matter.
+        </p>
+      </div>
 
       {/* Three-panel layout */}
       <div className="flex flex-1 overflow-hidden">

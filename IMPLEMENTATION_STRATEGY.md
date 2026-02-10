@@ -3741,13 +3741,17 @@ Replace `AI_SIMILARITY(t.EMBEDDING, o.EMBEDDING)` with `VECTOR_COSINE_SIMILARITY
 
 **Definition of Done:** `findSimilarDeals` returns similar deal results without SQL errors when an account has Perplexity/Sumble enrichment data.
 
+**Post-Sprint 16 Fix — Sentiment Trend NULL Handling:**
+- `getSentimentTrend` Code Engine function now checks for existing TDR inputs before calling `AI_SENTIMENT`, returns `noInputs: true` flag when no step data exists
+- Frontend shows three distinct states: pre-click prompt, no-inputs message, and rendered sentiment bars
+- Files changed: `codeengine/consolidated-sprint4-5.js`, `src/lib/cortexAi.ts`, `src/components/TDRIntelligence.tsx`
+
 ---
 
-### Sprint 17 — Lean TDR Refactor 🔲
+### Sprint 17 — Lean TDR Refactor ✅ COMPLETE
 
 > **Goal:** Compress the 9-step TDR from a heavy documentation exercise into a 30-minute thinking exercise. 5 required sections, 4 optional/collapsible — same 9 underlying step IDs, just UI changes.
-> **Risk to app:** Medium — changes the primary TDR Workspace experience. All existing sessions remain loadable (no schema change).
-> **Effort:** ~2-3 days
+> **Completed:** February 10, 2026
 
 **Design Philosophy:**
 TDR is not a documentation exercise. It is a thinking exercise. Every required section answers one of five questions:
@@ -3798,6 +3802,16 @@ TDR is not a documentation exercise. It is a thinking exercise. Every required s
 | `src/index.css` | Styles for collapsed optional section, thesis field prominence |
 
 **Definition of Done:** TDR Workspace shows 5 required sections + collapsible optional section. Existing sessions load correctly. Thesis field is always visible. Total TDR time target: ~30 minutes.
+
+**Implementation Summary:**
+
+| File | Change |
+|------|--------|
+| `src/types/tdr.ts` | Added `required` and `coreQuestion` fields to `TDRStep` interface |
+| `src/data/mockData.ts` | Reclassified 9 steps: 5 required (Context, Decision, Architecture, Domo Role, Risk & Verdict) + 4 optional (Target Detail, Partner & AI, AI Strategy, Usage). Added `coreQuestion` to each. Combined Current + Target Architecture into one required "Architecture" step. Renamed "Usage & Adoption" step to "Risk & Verdict" (repurposed). |
+| `src/components/TDRSteps.tsx` | Rewritten: Required steps shown as primary list, optional steps in collapsible "Additional Context" section with chevron toggle. Progress bar tracks required steps only. Optional steps show `+` icon when incomplete. |
+| `src/components/TDRInputs.tsx` | Lean field configs: Context (3 fields), Decision (3 fields, forcing question), Architecture (5 fields including system-of-record, cloud platform, architectural truth, target change), Domo Role (4 fields — entry layer, in-scope, out-of-scope, why now), Risk & Verdict (3 fields — top risks, key assumption, verdict dropdown). Added `hint` and `optional` field properties. Core Question banner rendered above fields. |
+| `src/pages/TDRWorkspace.tsx` | Added always-visible Thesis bar between header and three-panel layout. Thesis field saves to Snowflake via `thesis::domo-thesis` key. Violet accent styling with italicized guidance text. |
 
 ---
 
