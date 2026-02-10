@@ -224,6 +224,8 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
         });
       } catch (err) {
         console.error('[useTDRSession] Failed to save input:', err);
+        setIsSaving(false);
+        throw err; // Re-throw so TDRInputs knows the save failed
       }
       setIsSaving(false);
     },

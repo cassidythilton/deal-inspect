@@ -349,7 +349,14 @@ export const snowflakeStore = {
       return input;
     }
 
-    const raw = await callCodeEngine<unknown>('saveStepInput', args);
+    // Domo Code Engine validates types against manifest — stepOrder is declared as string
+    const ceArgs = {
+      ...args,
+      stepOrder: args.stepOrder !== undefined && args.stepOrder !== null
+        ? String(args.stepOrder)
+        : '0',
+    };
+    const raw = await callCodeEngine<unknown>('saveStepInput', ceArgs);
     const result = extractResult<{ success?: boolean; input?: StepInput }>(raw);
 
     if (!result.success && !result.input) {
