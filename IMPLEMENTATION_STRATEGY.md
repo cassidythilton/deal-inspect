@@ -4026,6 +4026,141 @@ const files = await domo.get(`/domo/files/v1/filesets/${filesetId}/files`);
 
 ---
 
+### Sprint 21 — TDR Action Plan Synthesis 🔲
+
+> **Goal:** After TDR completion, use Cortex AI to synthesize ALL captured data — SE inputs, deal metadata, Perplexity research, Sumble enrichment, fileset battle cards/playbooks, chat highlights, classified findings, extracted entities, and Post-TDR Score — into a comprehensive, tailored action plan for the SE/AE.
+> **Risk to app:** Low — additive feature. Enhances the readout without changing existing behavior.
+> **Effort:** ~2-3 days
+> **Dependencies:** Sprint 17 (lean TDR inputs), Sprint 18 (Post-TDR Score), Sprint 19 (fileset intelligence)
+
+**Problem Statement:**
+Today's `assembleTDRReadout` is a **data aggregator** — it pulls from 9 Snowflake tables and renders each source in its own PDF section. The data is displayed as-is: raw SE inputs in §2, raw Sumble data in §3, raw chat messages in §7. Nobody is connecting the dots. The TDR Brief (§1) is the closest thing to synthesis, but it was designed before filesets, Post-TDR scoring, and named competitor intelligence existed. It's a summary, not an action plan.
+
+**What the SE/AE actually needs after a TDR:**
+- "Here's exactly what to do next, in what order, and why."
+- "Here's how to beat [Sigma] specifically — based on the battle card AND what we learned in this TDR."
+- "Here's who to engage at the account — based on Sumble people data AND the architecture gaps identified."
+- "Here's the timeline risk — close date is X, you're in Stage Y, these Z things need to happen first."
+
+**Solution: Cortex AI Synthesis Step**
+
+A new Code Engine function `generateActionPlan` runs after TDR completion. It:
+
+1. **Assembles the full context** (reuses `assembleTDRReadout` payload + fileset search results + Post-TDR Score breakdown)
+2. **Sends everything to Cortex AI_COMPLETE** with a structured prompt requesting 7 sections
+3. **Stores the result** in `CORTEX_ANALYSIS_RESULTS` as `analysis_type: 'tdr_action_plan'`
+4. **Surfaces in two places:** the TDR Workspace and the PDF Readout
+
+**Action Plan Structure (7 sections):**
+
+| Section | Content | Primary Data Sources |
+|---------|---------|---------------------|
+| **Executive Summary** | 2-3 sentence deal narrative — what it is, what's at stake, what's the call to action | All sources |
+| **Competitive Strategy** | Specific tactics against named competitors. "Against Sigma, lead with governance and app layer. Against Fivetran, emphasize MagicETL's no-code approach." | Fileset battle cards + Perplexity competitive landscape + `competitors` field + SE competitive inputs |
+| **Partner Alignment Actions** | Specific partner engagement steps. "Schedule joint architecture session with Snowflake SA. Confirm co-sell motion alignment before Stage 4." | Fileset partner playbooks + partner fields + SE partner inputs |
+| **Technical Next Steps** | Prioritized technical actions with rationale. "1. Validate MagicETL compute strategy (blocking). 2. Prepare integration architecture diagram (enabler). 3. Demo governance layer (differentiator)." | SE architecture inputs + Sumble tech stack + Perplexity tech signals |
+| **Stakeholder Engagement Plan** | Who to engage and why. "Target VP Data Engineering (decision maker, per Sumble). Account is hiring 3 data roles — signals active investment." | Sumble people + Sumble jobs + Perplexity org intelligence |
+| **Risk Mitigation** | Specific risks with countermeasures. "Risk: Customer evaluating Sigma in parallel. Mitigation: Schedule competitive bake-off focused on governance + app layer." | SE risk inputs + classified findings + competitive data + stage age |
+| **Timeline & Urgency** | Actions mapped to close date and stage progression. "Close date: March 15. Currently Stage 3. Must complete POC by Feb 28 to maintain timeline." | Deal metadata (close date, stage, stage age) + SE inputs |
+
+**Cortex Prompt Design:**
+
+```
+You are a senior Solutions Engineering strategist at Domo.
+A Technical Deal Review has been completed. Below is ALL available intelligence for this deal.
+Your job is to synthesize this into a specific, actionable plan that the SE and AE can execute immediately.
+
+RULES:
+- Be SPECIFIC. Name competitors, name partners, name people, name technologies.
+- Every recommendation must cite which data source informed it.
+- Prioritize actions by impact and urgency.
+- If data is missing for a section, say what's missing and what to do about it.
+- Use the battle card / playbook content directly — don't generalize.
+
+DEAL METADATA:
+{session data — account, ACV, stage, close date, competitors, partner, deal type}
+
+SE INPUTS (from TDR):
+{all step inputs — thesis, architecture, Domo role, risks}
+
+PERPLEXITY RESEARCH:
+{summary, initiatives, competitive landscape, tech signals}
+
+SUMBLE ENRICHMENT:
+{org profile, tech stack, hiring signals, key people}
+
+FILESET KNOWLEDGE BASE:
+{top-K relevant document chunks — battle cards, playbooks}
+
+TDR SCORE BREAKDOWN:
+{Pre-TDR score, Post-TDR score, factor breakdown}
+
+CHAT HIGHLIGHTS:
+{key Q&A from TDR chat session}
+
+CLASSIFIED FINDINGS:
+{Cortex-classified risk findings}
+
+Generate the action plan in these 7 sections:
+1. Executive Summary (2-3 sentences)
+2. Competitive Strategy (specific to named competitors)
+3. Partner Alignment Actions (specific to partner platform)
+4. Technical Next Steps (prioritized, with rationale)
+5. Stakeholder Engagement Plan (who to engage, why)
+6. Risk Mitigation (specific risks + countermeasures)
+7. Timeline & Urgency (actions mapped to close date)
+```
+
+**Where the Action Plan Appears:**
+
+**1. TDR Workspace — new "Action Plan" section**
+- Visible after all required steps are completed (or triggered manually via "Generate Action Plan" button)
+- Rendered as structured markdown in the Intelligence panel under a new "Action Plan" tab
+- Regeneratable — SE can update inputs and regenerate
+- Stored in Snowflake (`CORTEX_ANALYSIS_RESULTS` with `analysis_type: 'tdr_action_plan'`)
+
+**2. PDF Readout — replaces current §1 with full Action Plan**
+- Current PDF §1 "Executive Summary" (which just shows the TDR brief) is replaced by the full 7-section Action Plan
+- This becomes the FIRST and MOST IMPORTANT section of the PDF — what the reader actually acts on
+- Remaining sections (inputs, intelligence, chat) become supporting evidence
+- Updated PDF structure:
+
+| PDF Section | Content | Status |
+|-------------|---------|--------|
+| **Cover** | Deal info, TDR metadata | Unchanged |
+| **§1 Strategic Action Plan** | Full 7-section Cortex-synthesized action plan | **NEW** — replaces old Executive Summary |
+| **§2 TDR Score Analysis** | Pre-TDR + Post-TDR breakdown, factor details | Enhanced with Post-TDR |
+| §3 Deal Context & SE Inputs | Raw SE step inputs (supporting evidence) | Unchanged |
+| §4 Account Intelligence | Sumble + Perplexity (supporting evidence) | Unchanged |
+| §5 Knowledge Base Matches | Relevant fileset documents cited | **NEW** — from Sprint 19 |
+| §6 Risk Assessment | Classified findings + extracted entities | Unchanged |
+| §7 Hiring & People Signals | Sumble org/jobs/people | Unchanged |
+| §8 AI Chat Highlights | Key chat exchanges | Unchanged |
+| §9 Appendix | Generation metadata, data sources, timestamps | Unchanged |
+
+**Code Engine Changes:**
+
+| Function | Change |
+|----------|--------|
+| `generateActionPlan` | **New** — Cortex AI_COMPLETE with full context synthesis prompt |
+| `assembleTDRReadout` | **Enhanced** — include `actionPlan` field from `CORTEX_ANALYSIS_RESULTS` + fileset match results |
+
+**Frontend Changes:**
+
+| File | Change |
+|------|--------|
+| `src/components/TDRIntelligence.tsx` | Add "Action Plan" section (or tab) — shown after TDR completion |
+| `src/components/pdf/readoutTypes.ts` | Add `ReadoutActionPlan` interface, update `ReadoutPayload` |
+| `src/components/pdf/TDRReadoutDocument.tsx` | Replace §1 with full Action Plan rendering, add §5 Knowledge Base |
+| `src/lib/cortexAi.ts` | Add `generateActionPlan()` frontend method |
+| `src/lib/tdrReadout.ts` | Pass fileset results to readout assembly |
+| `manifest.json` | Add `generateActionPlan` to `packageMapping` |
+| `codeengine/consolidated-sprint4-5.js` | Add `generateActionPlan` function |
+
+**Definition of Done:** After TDR completion, the SE/AE can generate a tailored action plan that synthesizes all available intelligence into specific, prioritized next steps. The PDF readout leads with this action plan as its most prominent section. Every recommendation cites its data source.
+
+---
+
 ### Sprint Execution Order & Dependencies
 
 ```
@@ -4038,22 +4173,27 @@ Sprint 17 — Lean TDR Refactor (2–3 days)  ──┐
     │  (2–3 days, parallel with S17)    ──────┤
     │                                         │
     ▼                                         ▼
-Sprint 18 — TDR Score v2 (2 days)
-    │  (depends on S17 for new inputs + S19 for fileset signal)
-    ▼
-Sprint 20 — Hero Metrics & Nav (1–2 days)
-    (depends on S18 for enriched scoring data)
+Sprint 18 — TDR Score v2 (2 days)      ──────┤
+    │  (depends on S17 + S19)                 │
+    ▼                                         │
+Sprint 20 — Hero Metrics & Nav (1–2 days)    │
+    (depends on S18)                          │
+                                              ▼
+                                Sprint 21 — Action Plan Synthesis (2–3 days)
+                                    (depends on S17 + S18 + S19)
+                                    THE CAPSTONE — synthesizes everything
 ```
 
-**Total estimated effort:** ~8-11 days of focused development
+**Total estimated effort:** ~10-14 days of focused development
 
-| Sprint | Can Parallel? | Depends On |
-|--------|--------------|------------|
-| S16: Fix Similar Deals | — | None |
-| S17: Lean TDR Refactor | ✅ with S19 | None |
-| S19: Fileset Intelligence | ✅ with S17 | None |
-| S18: TDR Score v2 | No | S17 + S19 |
-| S20: Hero Metrics & Nav | No | S18 |
+| Sprint | Can Parallel? | Depends On | Effort |
+|--------|--------------|------------|--------|
+| S16: Fix Similar Deals | — | None | ~1 hr |
+| S17: Lean TDR Refactor | ✅ with S19 | None | 2-3 days |
+| S19: Fileset Intelligence | ✅ with S17 | None | 2-3 days |
+| S18: TDR Score v2 | No | S17 + S19 | 2 days |
+| S20: Hero Metrics & Nav | ✅ with S21 | S18 | 1-2 days |
+| S21: Action Plan Synthesis | ✅ with S20 | S17 + S18 + S19 | 2-3 days |
 
 ---
 
@@ -4339,6 +4479,11 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 **Why it matters independently:** Even if you never build another enrichment source, a faster TDR means more deals get reviewed. The compression removes documentation overhead and focuses the SE on the one question that matters: does the technical story hold together?
 **Key outcome:** The app respects the user's time.
 
+### Pillar 9: Action Plan Synthesis (Sprint 21) — THE CAPSTONE
+**What:** After TDR completion, Cortex AI synthesizes ALL captured data — SE inputs, deal metadata, Perplexity research, Sumble enrichment, fileset battle cards/playbooks, chat highlights, classified findings, Post-TDR Score — into a 7-section strategic action plan tailored to the specific deal. Every recommendation cites its data source. The plan names specific competitors, specific partners, specific people, specific technologies.
+**Why it matters independently:** This is the payoff for everything else. Every other pillar *generates* intelligence. This pillar *converts* that intelligence into action. Without it, the SE/AE still has to read through raw data and figure out what to do. With it, they open the PDF and the first thing they see is: "Here's exactly what to do next, in what order, and why."
+**Key outcome:** The app tells you what to do.
+
 ### The Flywheel
 
 ```
@@ -4386,9 +4531,10 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 | Pillars 1–5 (+ Scoring v2) | A self-improving deal intelligence system that gets smarter with every review, with Pre-TDR and Post-TDR scores |
 | Pillars 1–6 (+ Readout) | A complete deal intelligence platform that produces executive-ready artifacts |
 | Pillars 1–7 (+ Knowledge Base) | A knowledge-augmented TDR system — battle cards and playbooks surface automatically at the point of decision |
-| All 8 Pillars (+ Lean Model) | The complete operating mechanism: fast, focused, AI-enriched TDRs that take 30 minutes and produce actionable intelligence |
+| Pillars 1–8 (+ Lean Model) | A fast, focused TDR that takes 30 minutes and produces structured intelligence |
+| All 9 Pillars (+ Action Plan) | **The complete platform:** every data source, every AI capability, every enrichment — synthesized into a specific, tailored action plan that tells the SE/AE exactly what to do next |
 
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 8 is the operating model: it ensures that every other pillar is exercised efficiently.
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 9 is the capstone: it converts everything the other eight pillars generate into a single actionable artifact — the strategic action plan that leads the PDF readout and drives the next steps in the deal.
 
 ---
 
