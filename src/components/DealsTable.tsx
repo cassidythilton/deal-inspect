@@ -22,11 +22,9 @@ import { useCallback, useMemo, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import type { ColDef, ICellRendererParams, GridReadyEvent, RowClickedEvent, FilterChangedEvent } from 'ag-grid-community';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-quartz.css';
 
-// Legacy theme override: tell AG Grid v35 we're using CSS file themes, not the Theming API
-const AG_GRID_THEME = 'legacy' as const;
+// AG Grid v35 Theming API: no CSS file imports needed — themeQuartz is the default.
+// Our `.ag-theme-tdr` CSS class provides custom variable overrides on top.
 
 // Register all AG Grid Community modules (required in v35+)
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -831,10 +829,9 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
           <h2 className="text-sm font-medium text-foreground">Recommended Deals</h2>
           <span className="text-xs text-muted-foreground">{deals.length} loaded</span>
         </div>
-        <div className="ag-theme-quartz ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 64 + 90, 800) }}>
+        <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 64 + 90, 800) }}>
           <AgGridReact<Deal>
             ref={gridRef}
-            theme={AG_GRID_THEME}
             rowData={deals}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
