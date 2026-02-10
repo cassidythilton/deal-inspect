@@ -77,20 +77,20 @@ const FACTOR_ICONS: Record<string, LucideIcon> = {
 };
 
 const FACTOR_PILL_COLORS: Record<string, string> = {
-  cyan:      'bg-cyan-500/8 text-cyan-700 border border-cyan-500/15',
-  emerald:   'bg-emerald-500/8 text-emerald-700 border border-emerald-500/15',
-  amber:     'bg-amber-500/8 text-amber-700 border border-amber-500/15',
-  violet:    'bg-violet-500/8 text-violet-700 border border-violet-500/15',
-  blue:      'bg-blue-500/8 text-blue-700 border border-blue-500/15',
-  orange:    'bg-orange-500/8 text-orange-700 border border-orange-500/15',
-  red:       'bg-red-500/8 text-red-700 border border-red-500/15',
-  secondary: 'bg-secondary/50 text-muted-foreground',
+  cyan:      'bg-cyan-500/10 text-cyan-700 border border-cyan-500/20',
+  emerald:   'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20',
+  amber:     'bg-amber-500/10 text-amber-700 border border-amber-500/20',
+  violet:    'bg-violet-500/10 text-violet-700 border border-violet-500/20',
+  blue:      'bg-blue-500/10 text-blue-700 border border-blue-500/20',
+  orange:    'bg-orange-500/10 text-orange-700 border border-orange-500/20',
+  red:       'bg-red-500/10 text-red-700 border border-red-500/20',
+  secondary: 'bg-secondary text-muted-foreground',
 };
 
 const BRAND_PILL_STYLES = {
-  snowflake:  'border text-[#00B9ED] bg-[#00B9ED]/8 border-[#00B9ED]/15',
-  databricks: 'border text-[#CB2B1D] bg-[#CB2B1D]/8 border-[#CB2B1D]/15',
-  bigquery:   'border text-[#4285F4] bg-[#4285F4]/8 border-[#4285F4]/15',
+  snowflake:  'border text-[#00B9ED] bg-[#00B9ED]/10 border-[#00B9ED]/20',
+  databricks: 'border text-[#CB2B1D] bg-[#CB2B1D]/10 border-[#CB2B1D]/20',
+  bigquery:   'border text-[#4285F4] bg-[#4285F4]/10 border-[#4285F4]/20',
 } as const;
 
 const getFactorPillStyle = (color: string): string =>
@@ -107,9 +107,9 @@ function getBrandPillStyle(factor: CriticalFactor, deal: Deal): string | null {
 }
 
 const PILL_STYLES = {
-  emerald: 'bg-emerald-500/8 text-emerald-700 border border-emerald-500/15',
-  teal: 'bg-teal-500/8 text-teal-700 border border-teal-500/15',
-  amber: 'bg-amber-500/8 text-amber-700 border border-amber-500/15',
+  emerald: 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20',
+  teal: 'bg-teal-500/10 text-teal-700 border border-teal-500/20',
+  amber: 'bg-amber-500/10 text-amber-700 border border-amber-500/20',
 } as const;
 
 const getTDRBadgeStyle = (score: number): string => {
@@ -315,8 +315,8 @@ function DealAccountCell({ data }: ICellRendererParams<Deal>) {
           <span className={cn(
             'inline-flex items-center shrink-0 rounded px-1 py-0 text-[9px] font-medium leading-tight',
             data.dealType.toLowerCase().includes('new logo')
-              ? 'bg-blue-500/8 text-blue-500 border border-blue-500/15'
-              : 'bg-amber-500/8 text-amber-500 border border-amber-500/15'
+              ? 'bg-blue-500/10 text-blue-600 border border-blue-500/20'
+              : 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
           )}>
             {data.dealType.toLowerCase().includes('new logo') ? 'New' : 'Upsell'}
           </span>
