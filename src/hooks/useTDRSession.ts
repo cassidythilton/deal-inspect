@@ -79,7 +79,7 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
       setError(null);
 
       const settings = getAppSettings();
-      if (!settings.enableSnowflake && !settings.enableAppDB) {
+      if (!settings.enableSnowflake) {
         // Persistence disabled — create a local-only session
         setSession({
           sessionId: `local-${Date.now()}`,

@@ -1,7 +1,7 @@
 /**
  * Snowflake Store — Front-end service for TDR persistence via Code Engine.
  *
- * Replaces `appDb.ts` as the primary persistence layer. All operations
+ * The single persistence layer since Sprint 12 (AppDB retired). All operations
  * route through Domo Code Engine → Snowflake SQL API.
  *
  * In dev mode (no Domo SDK), falls back to localStorage (same pattern as appDb.ts).

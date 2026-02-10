@@ -1,13 +1,15 @@
 /**
+ * @deprecated — Sprint 12: AppDB has been retired. Snowflake is now the single source of truth.
+ *
+ * This file is retained only for the `TDRSession` type export which is used by
+ * `snowflakeStore.toAppDbSession()` for backward compatibility.
+ *
+ * Do NOT use `appDb.*` functions in new code. All persistence flows through
+ * `snowflakeStore.ts` → Code Engine → Snowflake.
+ *
+ * Previous purpose:
  * AppDB Service — Domo AppDB integration for TDR session persistence.
- *
- * Uses the Domo AppDB API (/domo/datastores/v1/collections) to store
- * TDR sessions per deal. Each session records whether a TDR has been
- * completed (or is in-progress) for a given opportunity.
- *
- * In dev mode (no Domo SDK), falls back to localStorage.
- *
- * API reference: https://developer.domo.com/portal/1l1fm2g0sfm69-app-db-api
+ * Uses the Domo AppDB API (/domo/datastores/v1/collections).
  */
 
 import { isDomoEnvironment } from './domo';

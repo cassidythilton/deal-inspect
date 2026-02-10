@@ -5,7 +5,7 @@
  *   1. Manager Filter — textarea + badge preview
  *   2. TDR Eligibility — min ACV input
  *   3. Default Filters — "Default to Current Quarter" switch
- *   4. Features — AI Recommendations + AppDB Persistence switches
+ *   4. Features — AI Recommendations + Snowflake Persistence switches
  *   5. Excluded Forecast Categories — badge list (read-only)
  *
  * Persists via localStorage through appSettings helpers.
@@ -268,21 +268,9 @@ export default function Settings() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>AppDB Persistence</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Save TDR sessions and agenda items to Domo AppDB.
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.enableAppDB}
-                  onCheckedChange={(v) => updateSetting('enableAppDB', v)}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
                   <Label>Snowflake Persistence</Label>
                   <p className="text-xs text-muted-foreground">
-                    Use Snowflake (via Code Engine) as primary TDR data store. Falls back to AppDB if unavailable.
+                    Use Snowflake (via Code Engine) as the TDR data store. All sessions, inputs, and intelligence are persisted in Snowflake.
                   </p>
                 </div>
                 <Switch

@@ -18,7 +18,7 @@ import { fetchOpportunities, fetchSEMapping, DomoSEMapping, isDomoEnvironment } 
 import { Deal } from '@/types/tdr';
 import { ALLOWED_MANAGERS } from '@/lib/constants';
 import { calculateTDRScore } from '@/lib/tdrCriticalFactors';
-import { appDb } from '@/lib/appDb';
+// AppDB retired in Sprint 12 — Snowflake is the single source of truth
 import type { TDRSession } from '@/lib/appDb';
 import { snowflakeStore } from '@/lib/snowflakeStore';
 import type { SnowflakeSession } from '@/lib/snowflakeStore';
@@ -141,46 +141,32 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
 export function useDeals() {
   const { data: opportunities, isLoading: oppsLoading, error: oppsError, refetch: refetchOpps } = useOpportunities();
 
-  // ── AppDB: TDR sessions per deal ──
+  // ── TDR sessions per deal (Snowflake-only since Sprint 12) ──
   const [tdrSessionsByDeal, setTdrSessionsByDeal] = useState<Map<string, TDRSession[]>>(new Map());
   const [tdrStatusLoaded, setTdrStatusLoaded] = useState(false);
 
   const fetchTDRStatus = useCallback(async () => {
     const settings = getAppSettings();
 
-    // Try Snowflake first (if enabled)
-    if (settings.enableSnowflake) {
-      try {
-        console.log('[useDomo] Fetching TDR sessions from Snowflake...');
-        const sfMap = await snowflakeStore.getSessionsByDeal();
-
-        // Convert SnowflakeSession map to TDRSession map for compatibility
-        const compatMap = new Map<string, TDRSession[]>();
-        for (const [oppId, sessions] of sfMap) {
-          compatMap.set(oppId, sessions.map(s => snowflakeStore.toAppDbSession(s)));
-        }
-
-        setTdrSessionsByDeal(compatMap);
-        console.log(`[useDomo] Snowflake: ${sfMap.size} deals with TDR sessions`);
-        setTdrStatusLoaded(true);
-        return; // Snowflake succeeded — skip AppDB
-      } catch (err) {
-        console.warn('[useDomo] Snowflake fetch failed, falling back to AppDB:', err);
-      }
-    }
-
-    // Fallback: AppDB (original behavior)
-    if (!settings.enableAppDB) {
+    if (!settings.enableSnowflake) {
       setTdrStatusLoaded(true);
       return;
     }
+
     try {
-      // Initialize collections (idempotent)
-      await appDb.initializeCollections();
-      const map = await appDb.getTDRSessionsByDeal();
-      setTdrSessionsByDeal(map);
+      console.log('[useDomo] Fetching TDR sessions from Snowflake...');
+      const sfMap = await snowflakeStore.getSessionsByDeal();
+
+      // Convert SnowflakeSession map to TDRSession map for compatibility
+      const compatMap = new Map<string, TDRSession[]>();
+      for (const [oppId, sessions] of sfMap) {
+        compatMap.set(oppId, sessions.map(s => snowflakeStore.toAppDbSession(s)));
+      }
+
+      setTdrSessionsByDeal(compatMap);
+      console.log(`[useDomo] Snowflake: ${sfMap.size} deals with TDR sessions`);
     } catch (err) {
-      console.error('[useDomo] Failed to fetch TDR sessions from AppDB:', err);
+      console.error('[useDomo] Snowflake fetch failed:', err);
     }
     setTdrStatusLoaded(true);
   }, []);

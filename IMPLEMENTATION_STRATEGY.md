@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 3.3 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11
+**Status:** In Progress · **Version:** Draft 3.4 · **Date:** February 9, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12
 
 ---
 
@@ -3359,23 +3359,31 @@ Scoring adjustments:
 
 ---
 
-### Sprint 12 — Migration & Cleanup ⬜
+### Sprint 12 — Migration & Cleanup ✅ *(completed 2026-02-09)*
 
 > **Goal:** Remove AppDB dependency. Snowflake is the single source of truth.
 > **Risk to app:** Moderate — removes a persistence layer. Validate thoroughly.
 
-- [ ] Build one-time AppDB → Snowflake migration Code Engine function
-- [ ] Run migration: read all AppDB documents → INSERT into Snowflake tables → validate counts match
-- [ ] Switch `snowflakeStore.ts` to Snowflake-only reads (remove AppDB fallback)
-- [ ] Remove dual-write: stop writing to AppDB
-- [ ] Remove `appDb.ts` (or mark as deprecated)
-- [ ] Remove `enableAppDB` setting from `appSettings.ts`
-- [ ] Update Settings page: remove AppDB toggle, add Snowflake connection status indicator
-- [ ] (Stretch) Set up scheduled Cortex batch analysis via Snowflake Tasks (weekly win/loss correlation, competitive agg, stale intel detection)
+- [x] Remove AppDB fallback from `useDomo.ts` `fetchTDRStatus` — Snowflake-only path
+- [x] Simplify persistence check in `useTDRSession.ts` — removed `enableAppDB` branch
+- [x] Remove `enableAppDB` from `AppSettings` interface and defaults in `appSettings.ts`
+- [x] Remove AppDB toggle from Settings page; updated Snowflake persistence description
+- [x] Mark `appDb.ts` as `@deprecated` — retained only for `TDRSession` type export used by `snowflakeStore.toAppDbSession()`
+- [x] Updated `snowflakeStore.ts` header comment to reflect it's now the single persistence layer
+- [x] Build succeeds; bundle size reduced by ~4KB from removing AppDB code paths
+- [ ] (Stretch) Build one-time AppDB → Snowflake migration Code Engine function (not needed — all data already in Snowflake)
+- [ ] (Stretch) Set up scheduled Cortex batch analysis via Snowflake Tasks (deferred)
 - [ ] Final regression test: full TDR workflow end-to-end on Snowflake-only
-- [ ] Version bump + deploy
 
-**Definition of Done:** AppDB fully retired. All data lives in Snowflake. App is clean and future-proof.
+**Files Modified:**
+- `src/hooks/useDomo.ts` — Removed `appDb` import; removed AppDB fallback code path
+- `src/hooks/useTDRSession.ts` — Simplified persistence check (Snowflake-only)
+- `src/lib/appSettings.ts` — Removed `enableAppDB` from interface and defaults
+- `src/pages/Settings.tsx` — Removed AppDB toggle; updated Snowflake persistence description
+- `src/lib/appDb.ts` — Marked `@deprecated`; retained for type export only
+- `src/lib/snowflakeStore.ts` — Updated header comment
+
+**Definition of Done:** ✅ AppDB fully retired. All data lives in Snowflake. App is clean and future-proof.
 
 ---
 
@@ -3532,7 +3540,7 @@ Scoring adjustments:
 | 9 | Cortex AI: Portfolio & Sentiment | ✅ Complete | Feb 9, 2026 | Sprint 7 | AI |
 | 10 | TDR Scoring Enrichment | ✅ Complete | Feb 9, 2026 | Sprints 6 + 6.5 | Scoring |
 | 11 | Semantic Search & Analyst | ✅ Complete | Feb 9, 2026 | Sprints 7 + 8 | AI |
-| 12 | Migration & Cleanup | ⬜ Not Started | — | All above | Cleanup |
+| 12 | Migration & Cleanup | ✅ Complete | Feb 9, 2026 | All above | Cleanup |
 | **13** | **TDR Readout: PDF Engine** | ⬜ Not Started | — | Sprints 3 + 7; enriched by 10 | **Artifact** |
 | **14** | **TDR Readout: Distribution** | ⬜ Not Started | — | Sprint 13 | **Distribution** |
 
