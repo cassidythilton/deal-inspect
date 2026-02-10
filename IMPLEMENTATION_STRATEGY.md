@@ -3721,7 +3721,341 @@ fetchOpportunities()              →  ~8,476 deals (stage age ≤ 365)
 
 ---
 
-## 19. Reference Links
+### Sprint 16 — Fix Similar Deals Vector Error 🔲
+
+> **Goal:** Fix the `AI_SIMILARITY` function type mismatch that prevents "Find Similar Deals" from working.
+> **Risk to app:** None — Code Engine fix only, no frontend changes.
+> **Effort:** ~1 hour
+
+**Root Cause:**
+The error `Invalid argument types for function 'AI_SIMILARITY_1024$V6': (VECTOR(FLOAT, 768), VECTOR(FLOAT, 768))` indicates a dimension mismatch. The Snowflake environment's `AI_SIMILARITY` function is typed for 1024-dimension vectors, but the `e5-base-v2` embedding model produces 768-dimension vectors. The function signature `AI_SIMILARITY_1024$V6` confirms this.
+
+**Fix:**
+Replace `AI_SIMILARITY(t.EMBEDDING, o.EMBEDDING)` with `VECTOR_COSINE_SIMILARITY(t.EMBEDDING, o.EMBEDDING)` in the `findSimilarDeals` Code Engine function. `VECTOR_COSINE_SIMILARITY` is dimension-agnostic — it accepts any matching vector pairs without requiring a specific dimension count.
+
+**Changes:**
+
+| File | Change |
+|------|--------|
+| `codeengine/consolidated-sprint4-5.js` | Replace `AI_SIMILARITY` → `VECTOR_COSINE_SIMILARITY` in `findSimilarDeals` SQL |
+
+**Definition of Done:** `findSimilarDeals` returns similar deal results without SQL errors when an account has Perplexity/Sumble enrichment data.
+
+---
+
+### Sprint 17 — Lean TDR Refactor 🔲
+
+> **Goal:** Compress the 9-step TDR from a heavy documentation exercise into a 30-minute thinking exercise. 5 required sections, 4 optional/collapsible — same 9 underlying step IDs, just UI changes.
+> **Risk to app:** Medium — changes the primary TDR Workspace experience. All existing sessions remain loadable (no schema change).
+> **Effort:** ~2-3 days
+
+**Design Philosophy:**
+TDR is not a documentation exercise. It is a thinking exercise. Every required section answers one of five questions:
+1. Do we understand why the customer is buying?
+2. Do we respect the existing stack?
+3. Is Domo positioned correctly as a composable component?
+4. Are we aligned with partners?
+5. Are we taking intelligent risk?
+
+**Section Structure (maps to existing 9 step IDs):**
+
+| Section | Required? | Maps to Existing Steps | Time Target | Core Question |
+|---------|-----------|----------------------|-------------|---------------|
+| **Thesis** (always-visible field) | ✅ Required | New field (top of workspace) | 1 min | "In one sentence: Why does Domo belong in this architecture?" |
+| **0. Deal Context & Stakes** | ✅ Required | Step 1 (Context & Stakes) | 2-3 min | "Why is this deal worth technical inspection?" |
+| **1. Business Decision** | ✅ Required | Step 2 (Business Decision) | 5 min | One sentence: "The customer is trying to decide X so they can Y." |
+| **2. Architecture (Current + Target)** | ✅ Required | Steps 3+4 combined (Current Architecture + Target Architecture) | 8-10 min | "What architectural truth must we accept in this account?" |
+| **3. Domo's Composable Role** | ✅ Required | Step 5 (Domo Role) | 10 min | Entry layer, in-scope, out-of-scope, why this composition makes sense now |
+| **4. Risk & Next Steps** | ✅ Required | Step 9 (Usage & Adoption) repurposed | 5 min | Top 1-2 risks, 1 assumption that must be true |
+| *Partner & AI Implications* | Optional | Step 6 (Partner Alignment) + Step 7 (AI Readiness) | — | Collapsed by default, expandable |
+| *Usage & Adoption Detail* | Optional | Step 8 (Data Science) + Step 9 (Usage) | — | Deferred post-TDR |
+| *Competitive Strategy* | Optional | Step 8 (Technical Risk) | — | Auto-populated from enrichment when available |
+
+**UI Changes:**
+
+1. **Thesis Field:** Always visible at the top of the TDR Workspace, above the step flow. Not a gating blocker (TDR proceeds regardless), but the first thing an SE sees and should fill.
+2. **Required Steps:** Rendered as a linear flow (accordion or stepper). All 5 must be at least visited to mark TDR "complete."
+3. **Optional Steps:** Collapsed section below the required flow. Label: "Additional Context (optional)". Each step expands on click. Greyed-out status dot until filled.
+4. **Field Reduction within Required Steps:**
+   - Business Decision: Compress to ONE primary textarea ("In one sentence, what is the customer trying to decide?") + optional supporting fields (metrics, timeline)
+   - Architecture: Combine Current + Target into one flow with a "Current → Target" visual divider. Keep key fields (system of record, cloud platform, key integration). Remove verbose inventories.
+   - Domo Role: Keep as-is — this is the TDR heart. Entry layer, in-scope layers, out-of-scope, why now.
+   - Risk: Compress to Top 2 risks + 1 assumption. Remove full risk registers.
+5. **Progress Indicator:** Required steps show green checkmarks. Optional show "+" icon.
+
+**No Snowflake Schema Changes:**
+- Same `TDR_STEP_INPUTS` table structure
+- Same `stepSchemaVersion: 'v1'` — the 9 step IDs are unchanged
+- Required vs. optional is purely a frontend concern
+
+**Files Changed:**
+
+| File | Change |
+|------|--------|
+| `src/pages/TDRWorkspace.tsx` | Add Thesis field, restructure step layout (required vs optional) |
+| `src/components/TDRInputs.tsx` | Reclassify which fields are required vs optional, add "forcing questions" as placeholders |
+| `src/lib/tdrSteps.ts` (or equivalent) | Define `REQUIRED_STEPS` vs `OPTIONAL_STEPS` mapping |
+| `src/index.css` | Styles for collapsed optional section, thesis field prominence |
+
+**Definition of Done:** TDR Workspace shows 5 required sections + collapsible optional section. Existing sessions load correctly. Thesis field is always visible. Total TDR time target: ~30 minutes.
+
+---
+
+### Sprint 18 — TDR Score v2 (Pre-TDR & Post-TDR) 🔲
+
+> **Goal:** Evolve the TDR Score into a two-phase model: Pre-TDR (structured data) and Post-TDR (enriched with SE input quality, enrichment data, fileset signals, and named competitor intelligence).
+> **Risk to app:** Medium — scoring changes affect the deals table, charts, and sorting. Must maintain backward compatibility.
+> **Effort:** ~2 days
+> **Dependencies:** Sprint 17 (lean TDR step schema), Sprint 19 (fileset data availability)
+
+**Two-Phase Scoring Model:**
+
+| Phase | When Calculated | Data Sources | Score Range |
+|-------|----------------|-------------|-------------|
+| **Pre-TDR Score** | On every page load (current behavior) | Structured deal data from SFDC: ACV, stage, forecast, competitors, partner, deal code | 0–100 |
+| **Post-TDR Score** | After SE submits TDR inputs + enrichment exists | Pre-TDR base + SE input quality + enrichment signals + fileset match + named competitor threat | 0–100 (recalculated) |
+
+**Pre-TDR Score (v1 components — keep as-is):**
+1. ACV Significance (0–20)
+2. Stage TDR Value (0–15)
+3. Cloud Partner Alignment (0–15)
+4. Competitive Pressure (0–10)
+5. Deal Type Signal (0–23)
+6. Forecast Momentum (0–10)
+7. Stage Freshness (-10 to +5)
+8. Deal Complexity (0–10)
+9. Partner Role Strength (0–5)
+
+**Post-TDR Score (new components added to Pre-TDR base):**
+
+| Component | Range | Source | Logic |
+|-----------|-------|--------|-------|
+| **Named Competitor Threat** | 0–10 | `competitors` field (deal data) | Sigma, Fivetran, dbt, Matillion, Tableau = "dangerous" (+10). Other named competitors = moderate (+5). Generic count only = current behavior. Dangerous list editable in Settings. |
+| **Enrichment Depth** | 0–5 | Snowflake enrichment tables | Has Perplexity? +2. Has Sumble? +2. Has both? +1 bonus. More data = more informed TDR. |
+| **TDR Input Quality** | -10 to +10 | Cortex AI analysis of SE free-text inputs | Cortex evaluates: Is the architecture story coherent? Is Domo's role well-defined? Are risks identified? Strong inputs boost score; empty/weak inputs penalize. |
+| **Fileset Match Signal** | 0–5 | Domo fileset query results | If fileset contains battle cards / playbooks for named competitors in the deal → +5. Partial match → +2. |
+
+**Named Competitor Configuration (Settings):**
+- New section in Settings: "Dangerous Competitors"
+- Default list: `Sigma Computing, Fivetran, dbt, Matillion, Tableau, Power BI, Qlik, Looker`
+- Editable textarea (one per line) with badge preview
+- Stored in `localStorage` via `appSettings`
+- Used by both Pre-TDR (basic competitor count) and Post-TDR (named threat analysis)
+
+**Score Display Changes:**
+- Deals table shows Pre-TDR Score by default
+- When a deal has a Post-TDR Score, show both: `Pre: 62 → Post: 78` or visual upgrade indicator
+- TDR Workspace shows the full Post-TDR breakdown in a score panel
+- Charts/metrics use Pre-TDR for unreviewed deals, Post-TDR for reviewed deals
+
+**Files Changed:**
+
+| File | Change |
+|------|--------|
+| `src/lib/tdrCriticalFactors.ts` | Add `calculatePostTDRScore()` with new components. Keep `calculateTDRScore()` as Pre-TDR. |
+| `src/components/DealsTable.tsx` | Show Pre vs Post score indicator in `TDRScoreCell` |
+| `src/pages/Settings.tsx` | Add "Dangerous Competitors" configuration section |
+| `src/lib/appSettings.ts` | Add `dangerousCompetitors: string[]` to settings |
+| `src/lib/cortexAi.ts` | Add `evaluateInputQuality()` — Cortex AI_COMPLETE call to assess SE input quality |
+| `codeengine/consolidated-sprint4-5.js` | Add `evaluateInputQuality` function (Cortex AI_COMPLETE) |
+
+**Definition of Done:** Deals table shows Pre-TDR Score for all deals. After TDR completion with enrichment, Post-TDR Score appears alongside. Dangerous competitor list is editable in Settings.
+
+---
+
+### Sprint 19 — Fileset Intelligence Layer 🔲
+
+> **Goal:** Integrate Domo filesets (unstructured PDFs — partner playbooks, competitive battle cards) into the TDR experience via Cortex AI analysis.
+> **Risk to app:** Low — additive feature. No existing behavior changes.
+> **Effort:** ~2-3 days
+
+**Architecture:**
+
+```
+  Domo Fileset API
+  (/domo/files/v1/filesets/{id}/query)
+          │
+          ▼
+  Semantic search (fileset query endpoint)
+  { query: "competitor battle card Sigma", topK: 8 }
+          │
+          ▼
+  Top-K results (text chunks + metadata)
+          │
+    ┌─────┴──────────────────────┐
+    ▼                            ▼
+Intelligence Panel            Chat Context
+(auto-surfaced)            (grounded answers)
+    │                            │
+    ▼                            ▼
+Post-TDR Score              AI summarization
+(fileset match signal)      via /domo/ai/v1/text/generation
+```
+
+**Features:**
+
+**1. Settings → Fileset Configuration**
+- New section in Settings: "Knowledge Base Filesets"
+- Default fileset: `6d0776f7-cafe-47c0-9153-d11a365a0c02` (Partner playbooks & competitive battle cards)
+- User can add additional fileset IDs (text input + "Add" button)
+- Each fileset shows: name, file count, last updated (fetched from `/domo/files/v1/filesets/{id}`)
+- Stored in `localStorage` via `appSettings`
+
+**2. Automatic Contextual Search (Intelligence Panel)**
+When an SE opens a TDR, the system:
+1. Builds a search query from the deal context: competitor names + partner platform + cloud platform + account industry
+2. Queries all configured filesets via `/domo/files/v1/filesets/{id}/query`
+3. Returns top-K relevant document chunks
+4. Passes chunks to Cortex/Domo AI for summarization
+5. Displays in the Intelligence panel under a new **"Knowledge Base"** section:
+   - Relevant battle cards (title, relevance score, key excerpts)
+   - Partner playbook matches
+   - "View Source" links to original documents
+
+**3. Chat Integration**
+- New toggle in TDR Chat: "Include Knowledge Base" (on by default)
+- When enabled, user questions first query the filesets, then pass results as context to the LLM
+- Citation format: "According to [Partner Playbook: Snowflake Co-Sell Guide]..."
+- Follows the pattern from `samples/filesets chat interface_/app.js`:
+  - Query: `/domo/files/v1/filesets/{id}/query` with `{ query, topK: 8 }`
+  - Fallback: `/domo/files/v1/filesets/{id}/files` for file listing
+  - Generation: `/domo/ai/v1/text/generation` with document context in prompt
+
+**4. Score Integration (Sprint 18 dependency)**
+- If fileset contains battle cards for deal's named competitors → `filesetMatchSignal: +5`
+- If partial match (related industry/partner content) → `filesetMatchSignal: +2`
+- No match → `filesetMatchSignal: 0`
+- This feeds into the Post-TDR Score from Sprint 18
+
+**Technical Approach (from sample app analysis):**
+
+```javascript
+// Search a fileset
+const results = await domo.post(
+  `/domo/files/v1/filesets/${filesetId}/query`,
+  { query: searchQuery, topK: 8 }
+);
+
+// List available filesets
+const filesets = await domo.post(
+  '/domo/files/v1/filesets/search?offset=0',
+  {}
+);
+
+// Get fileset metadata
+const meta = await domo.get(`/domo/files/v1/filesets/${filesetId}`);
+
+// List files in a fileset
+const files = await domo.get(`/domo/files/v1/filesets/${filesetId}/files`);
+```
+
+**Files Changed:**
+
+| File | Change |
+|------|--------|
+| `src/lib/filesetIntel.ts` | **New** — Fileset search, query, and result processing |
+| `src/lib/appSettings.ts` | Add `filesetIds: string[]` to settings |
+| `src/pages/Settings.tsx` | Add "Knowledge Base Filesets" configuration section |
+| `src/components/TDRIntelligence.tsx` | Add "Knowledge Base" section with auto-search results |
+| `src/components/TDRChat.tsx` | Add "Include Knowledge Base" toggle, fileset context injection |
+| `src/lib/tdrCriticalFactors.ts` | Add `filesetMatchSignal` to Post-TDR Score (Sprint 18 integration) |
+
+**Definition of Done:** Opening a TDR auto-searches configured filesets for relevant content. Results displayed in Intelligence panel. Chat can reference fileset content. Settings allows adding/removing filesets.
+
+---
+
+### Sprint 20 — Hero Metrics & Nav Cleanup 🔲
+
+> **Goal:** Rethink the Command Center top metrics and charts to align with TDR objectives. Clean up left nav redundancy.
+> **Risk to app:** Medium — changes the main dashboard experience. No backend changes.
+> **Effort:** ~1-2 days
+> **Dependencies:** Sprint 18 (new scoring model provides richer data)
+
+**Current State (7 zones):**
+- 4 stat cards: Eligible ACV, Recommended, Agenda, At-Risk
+- 3 charts: Top TDR Candidates (bar), TDR Priority (donut), Pipeline by Close (area)
+
+**Problem:** These metrics were designed before we had competition data, enrichment signals, fileset intelligence, and a two-phase scoring model. They answer "what's in the pipeline?" but not "what needs my attention *for TDR purposes* right now?"
+
+**Proposed Stat Cards (4):**
+
+| Card | Metric | What It Answers | Data Source |
+|------|--------|----------------|-------------|
+| **TDR Queue** | Count of HIGH/CRITICAL-scored deals with no TDR session | "How many deals need review?" | Pre-TDR Score + `tdrSessions` |
+| **Competitive Battles** | Count + ACV of deals with named competitors | "Where are we fighting?" | `competitors` field |
+| **Partner Pipeline** | ACV in Snowflake/Databricks/GCP co-sell deals | "How healthy is Cloud Amplifier?" | `snowflakeTeam` + `partnersInvolved` |
+| **Stale Deals** | Count of deals with stage age > 60 days | "What's stuck?" | `stageAge` |
+
+**Proposed Charts (3):**
+
+| Chart | Type | What It Shows | Why It Matters |
+|-------|------|-------------|---------------|
+| **TDR Coverage** | Donut | Reviewed (has TDR session) vs. Unreviewed vs. In-Progress | "Are we doing enough TDRs?" |
+| **Score Distribution** | Histogram / bar | Deal count by score bracket (Low / Medium / High / Critical) | "Is our scoring model producing the right distribution?" |
+| **Close Date Urgency** | Area / timeline | ACV by close date, colored by TDR status (reviewed / unreviewed) | "Which unreviewed deals are closing soonest?" |
+
+**Left Nav Cleanup:**
+
+| Current | Proposed | Reason |
+|---------|----------|--------|
+| Command Center | ✅ Keep | Home page — primary dashboard |
+| Agenda | ❌ Remove | Routes to same page (`/agenda` → `CommandCenter`). Agenda toggle exists in TopBar. |
+| TDR Workspace | ✅ Keep | Deal-level TDR workspace |
+| History | ✅ Keep | TDR review history |
+| Settings | ✅ Keep | App configuration |
+
+**Routing Change:**
+- Remove `/agenda` route from `App.tsx`
+- Remove `agenda` nav item from `AppSidebar.tsx`
+
+**Files Changed:**
+
+| File | Change |
+|------|--------|
+| `src/pages/CommandCenter.tsx` | New stat card metrics, new chart components |
+| `src/components/charts/TDRCoverageChart.tsx` | **New** — donut chart: reviewed vs unreviewed vs in-progress |
+| `src/components/charts/ScoreDistributionChart.tsx` | **New** — histogram: deal count by score bracket |
+| `src/components/charts/CloseUrgencyChart.tsx` | **New** — area chart: ACV by close date, colored by TDR status |
+| `src/components/charts/TopTDRCandidatesChart.tsx` | **Remove** (replaced by TDR Coverage + Score Distribution) |
+| `src/components/charts/TDRPriorityChart.tsx` | **Remove** (replaced by Score Distribution) |
+| `src/components/charts/PipelineByCloseChart.tsx` | **Remove** (replaced by Close Urgency) |
+| `src/components/AppSidebar.tsx` | Remove Agenda nav item |
+| `src/App.tsx` | Remove `/agenda` route |
+
+**Definition of Done:** Command Center shows TDR-aligned metrics. Every stat card and chart answers a question an SE manager would actually ask. Left nav has no redundancy.
+
+---
+
+### Sprint Execution Order & Dependencies
+
+```
+Sprint 16 — Fix Similar Deals (1 hr)
+    │ (no dependencies — quick win, do first)
+    ▼
+Sprint 17 — Lean TDR Refactor (2–3 days)  ──┐
+    │                                         │
+    │  Sprint 19 — Fileset Intelligence       │
+    │  (2–3 days, parallel with S17)    ──────┤
+    │                                         │
+    ▼                                         ▼
+Sprint 18 — TDR Score v2 (2 days)
+    │  (depends on S17 for new inputs + S19 for fileset signal)
+    ▼
+Sprint 20 — Hero Metrics & Nav (1–2 days)
+    (depends on S18 for enriched scoring data)
+```
+
+**Total estimated effort:** ~8-11 days of focused development
+
+| Sprint | Can Parallel? | Depends On |
+|--------|--------------|------------|
+| S16: Fix Similar Deals | — | None |
+| S17: Lean TDR Refactor | ✅ with S19 | None |
+| S19: Fileset Intelligence | ✅ with S17 | None |
+| S18: TDR Score v2 | No | S17 + S19 |
+| S20: Hero Metrics & Nav | No | S18 |
+
+---
 
 | Resource | URL |
 |----------|-----|
@@ -3738,6 +4072,9 @@ fetchOpportunities()              →  ~8,476 deals (stage age ≤ 365)
 | Domo AppDB API | https://developer.domo.com/portal/1l1fm2g0sfm69-app-db-api |
 | Sample: aptSnowflakeCodeEngine.js | `samples/aptSnowflakeCodeEngine.js` (local) |
 | Sample: cortexAnalystCodeEngine.js | `samples/cortexAnalystCodeEngine.js` (local) |
+| Sample: Filesets Chat Interface | `samples/filesets chat interface_/` (local) |
+| Domo Filesets API (query endpoint) | `/domo/files/v1/filesets/{id}/query` (App Studio proxy) |
+| Domo Filesets (default KB) | https://domo.domo.com/datacenter/filesets/6d0776f7-cafe-47c0-9153-d11a365a0c02/files |
 
 ---
 
@@ -3982,30 +4319,40 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 **Why it matters independently:** Even without external intelligence, Cortex can analyze patterns across historical TDR sessions, find deals that stalled at similar stages, and surface insights from the team's own notes. With external intelligence, it becomes a strategic advisor.
 **Key outcome:** The app thinks about the data.
 
-### Pillar 5: Enriched Scoring (Sprint 10)
-**What:** TDR scores incorporate real-world signals. New critical factors (tech stack overlap, strategic momentum) fire based on external intelligence. The Domo AI prompt includes cached intel, making its recommendations grounded in reality rather than just SFDC fields.
-**Why it matters independently:** Even if a manager never opens the TDR Workspace, the deals table shows better priorities. The "Why TDR?" pills tell a richer story. The AI recommends more actionable next steps.
-**Key outcome:** The app prioritizes smarter.
+### Pillar 5: Enriched Scoring (Sprints 10, 18)
+**What:** TDR scores incorporate real-world signals. Phase 1 (Sprint 10): New critical factors fire based on external intelligence. Phase 2 (Sprint 18): Two-phase scoring — Pre-TDR (structured SFDC data) and Post-TDR (enriched with SE input quality, Cortex AI analysis, named competitor threat, fileset intelligence match, and enrichment depth). Named "dangerous competitors" (Sigma, Fivetran, dbt, Matillion, Tableau) are configurable in Settings and weighted higher.
+**Why it matters independently:** Even if a manager never opens the TDR Workspace, the deals table shows better priorities. The "Why TDR?" pills tell a richer story. Post-TDR scores validate that the SE did meaningful work and the deal is genuinely complex.
+**Key outcome:** The app prioritizes smarter — and gets smarter after each review.
 
 ### Pillar 6: Canonical Readout (Sprints 13–14)
 **What:** A one-click, executive-ready PDF that captures the entire TDR lifecycle — inputs, enrichment, analysis, research, chat highlights, decision rationale, and recommendations — rendered into a beautifully structured document with branded theming, tables, charts, and citations. Distribution via direct download or push-to-Slack with an AI-generated executive summary.
 **Why it matters independently:** Even if nothing else changes, the readout transforms a TDR from a transient work session into a permanent artifact. It's the document that gets attached to a deal review email, shared in a leadership Slack channel, or pulled up six months later during renewal prep. It closes the loop: every other pillar generates value *during* the TDR; this pillar packages that value for consumption *after* the TDR.
 **Key outcome:** The app produces a deliverable.
 
+### Pillar 7: Unstructured Knowledge (Sprint 19)
+**What:** Domo filesets — PDFs containing partner playbooks, competitive battle cards, co-sell guides — are made searchable and actionable within the TDR experience. When an SE opens a TDR, the app auto-searches configured filesets for content relevant to the deal's competitors, partner platform, and cloud strategy. Results surface in the Intelligence panel and enrich the chat context.
+**Why it matters independently:** Even without any other enrichment, filesets turn the TDR into a context-aware experience. An SE reviewing a Sigma competitive deal gets the Sigma battle card surfaced automatically. An SE reviewing a Snowflake co-sell deal gets the Snowflake partner playbook. The knowledge that exists in scattered PDFs becomes instantly accessible at the point of decision.
+**Key outcome:** The app knows the playbook.
+
+### Pillar 8: Lean Operating Model (Sprint 17)
+**What:** The 9-step TDR is compressed into 5 required sections + optional extras. A Thesis field ("Why does Domo belong?") is always visible. Fields are replaced with forcing questions. The target is 30 minutes, not 90.
+**Why it matters independently:** Even if you never build another enrichment source, a faster TDR means more deals get reviewed. The compression removes documentation overhead and focuses the SE on the one question that matters: does the technical story hold together?
+**Key outcome:** The app respects the user's time.
+
 ### The Flywheel
 
 ```
                     ┌──────────────────────┐
                     │  Better Priorities   │
-                    │  (Enriched Scoring)  │
+                    │  (Two-Phase Scoring) │
                     └──────────┬───────────┘
                                │
                     Manager reviews the RIGHT deals
                                │
                                ▼
 ┌──────────────┐    ┌──────────────────────┐    ┌─────────────────────┐
-│  Smarter AI  │◄───│  Richer TDR Reviews  │───►│  Canonical Readout  │
-│  (Cortex)    │    │  (Chat + Intel)      │    │  (PDF + Slack)      │
+│  Smarter AI  │◄───│  Lean TDR Reviews    │───►│  Canonical Readout  │
+│  (Cortex)    │    │  (30 min, focused)   │    │  (PDF + Slack)      │
 └──────┬───────┘    └──────────┬───────────┘    └─────────┬───────────┘
        │                       │                          │
        │            More data flows into Snowflake        │
@@ -4014,10 +4361,18 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 ┌──────────────────────────────────────────┐              │
 │       Deeper Persistent Memory           │              │
 │  (Sessions, Inputs, Chat, Intel, Cortex) │◄─────────────┘
-└──────────────────────────────────────────┘   Distribution
-       │                                       logged back
-       └──── Feeds back into Cortex analysis,  to Snowflake
-             chat context, and scoring signals
+└──────────────┬───────────────────────────┘   Distribution
+               │                               logged back
+    ┌──────────┴──────────┐                    to Snowflake
+    ▼                     ▼
+┌────────────────┐  ┌─────────────────────┐
+│  Knowledge     │  │  Post-TDR Score     │
+│  Base Search   │  │  (AI-evaluated)     │
+│  (Filesets)    │  │                     │
+└────────────────┘  └─────────────────────┘
+    │                     │
+    └──── Both feed back into scoring,
+          chat context, and next TDR
 ```
 
 ### What This Means Practically
@@ -4028,10 +4383,12 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 | Pillars 1 + 2 (+ Intelligence) | A context-rich TDR tool that knows the account |
 | Pillars 1 + 2 + 3 (+ Chat) | An AI-assisted TDR workflow where you never leave the app |
 | Pillars 1–4 (+ Cortex) | A strategic platform that generates insights across all deals |
-| Pillars 1–5 (+ Scoring) | A self-improving deal intelligence system that gets smarter with every review |
-| All 6 Pillars | A complete deal intelligence platform that produces executive-ready artifacts and distributes them automatically |
+| Pillars 1–5 (+ Scoring v2) | A self-improving deal intelligence system that gets smarter with every review, with Pre-TDR and Post-TDR scores |
+| Pillars 1–6 (+ Readout) | A complete deal intelligence platform that produces executive-ready artifacts |
+| Pillars 1–7 (+ Knowledge Base) | A knowledge-augmented TDR system — battle cards and playbooks surface automatically at the point of decision |
+| All 8 Pillars (+ Lean Model) | The complete operating mechanism: fast, focused, AI-enriched TDRs that take 30 minutes and produce actionable intelligence |
 
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 6 is the capstone: it turns everything the other five pillars generate into a tangible, shareable, archivable deliverable.
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 8 is the operating model: it ensures that every other pillar is exercised efficiently.
 
 ---
 
