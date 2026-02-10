@@ -831,7 +831,7 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
           <h2 className="text-sm font-medium text-foreground">Recommended Deals</h2>
           <span className="text-xs text-muted-foreground">{deals.length} loaded</span>
         </div>
-        <div className="ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 64 + 90, 800) }}>
+        <div className="ag-theme-quartz ag-theme-tdr" style={{ width: '100%', height: Math.min(deals.length * 64 + 90, 800) }}>
           <AgGridReact<Deal>
             ref={gridRef}
             theme={AG_GRID_THEME}

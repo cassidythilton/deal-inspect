@@ -108,10 +108,16 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
     if (rawOpps.length > 0) {
       console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).sort());
       // Log competitor field presence for debugging
-      const compKeys = Object.keys(rawOpps[0]).filter(k => /compet/i.test(k));
+      const allKeys = Object.keys(rawOpps[0]);
+      const compKeys = allKeys.filter(k => /compet/i.test(k));
+      const hasCompetitorsAlias = allKeys.includes('Competitors');
+      console.log(`[Domo] Competitors alias present: ${hasCompetitorsAlias} | All competitor-like keys: [${compKeys.join(', ')}]`);
       if (compKeys.length > 0) {
         const sample = rawOpps.slice(0, 5).map(r => compKeys.map(k => `${k}=${r[k]}`).join(', '));
-        console.log('[Domo] Competitor fields found:', compKeys, '| Samples:', sample);
+        console.log('[Domo] Competitor field samples:', sample);
+      }
+      if (!hasCompetitorsAlias) {
+        console.warn('[Domo] ⚠ "Competitors" alias NOT in data — verify in Domo App Studio that the column mapping exists and the app is re-published');
       }
     }
 
