@@ -344,14 +344,14 @@ function StageBadgeCell({ data }: ICellRendererParams<Deal>) {
           [{stageNum.toString().padStart(2, '0')}] {stageName}
         </span>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-sm p-3">
-        <p className="text-xs font-medium mb-1">
+      <TooltipContent side="top" className="max-w-md p-4">
+        <p className="text-sm font-medium text-foreground mb-1">
           {stageNum <= 2 ? 'Peak TDR Value — Architecture Shaping Window'
             : stageNum === 3 ? 'Strong TDR Value — Evaluation Phase'
             : stageNum === 4 ? 'Limited TDR Value — Confirmation Phase'
             : 'Minimal TDR Value — Closing Phase'}
         </p>
-        <p className="text-2xs text-muted-foreground">
+        <p className="text-sm text-foreground/75 leading-relaxed">
           {stageNum <= 2
             ? 'Maximum opportunity to shape architecture decisions before they lock in.'
             : stageNum === 3
@@ -399,31 +399,32 @@ function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
           {tdrScore}
         </span>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-sm p-3">
+      <TooltipContent side="top" className="max-w-md p-4">
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold">TDR Index: {tdrScore}/100</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">TDR Index: {tdrScore}/100</p>
             <span className={cn(
-              'rounded px-1.5 py-0.5 text-2xs font-bold',
+              'rounded px-1.5 py-0.5 text-xs font-bold',
               priority === 'CRITICAL' ? 'bg-red-500/20 text-red-700' :
               priority === 'HIGH' ? 'bg-emerald-500/20 text-emerald-700' :
               priority === 'MEDIUM' ? 'bg-amber-500/20 text-amber-700' :
               'bg-secondary text-muted-foreground'
             )}>{priority}</span>
           </div>
-          <p className="text-2xs text-muted-foreground">
+          <p className="text-sm text-foreground/75 leading-relaxed">
             {priority === 'CRITICAL' ? 'Immediate TDR required — multiple high-value signals converging.' :
              priority === 'HIGH' ? 'TDR strongly recommended — good intervention opportunity.' :
              priority === 'MEDIUM' ? 'TDR beneficial — monitor for escalation.' :
              'Standard process — no urgent TDR need.'}
           </p>
           {whyTags.length > 0 && (
-            <div className="border-t border-border/40 pt-1.5">
-              <p className="text-2xs font-medium text-muted-foreground mb-1">Contributing Factors:</p>
+            <div className="border-t border-border/40 pt-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Contributing Factors</p>
               <ul className="space-y-0.5">
                 {whyTags.map((f, i) => (
-                  <li key={i} className="text-2xs text-muted-foreground">
-                    • <span className="font-medium text-foreground">{f.label}</span> — Tier {f.tier}, +{f.points}pts
+                  <li key={i} className="text-sm text-foreground/75 flex gap-2">
+                    <span className="text-muted-foreground shrink-0">·</span>
+                    <span><span className="font-medium text-foreground">{f.label}</span> — Tier {f.tier}, +{f.points}pts</span>
                   </li>
                 ))}
               </ul>
@@ -468,12 +469,12 @@ function TDRDotsCell({ data }: ICellRendererParams<Deal>) {
           ))}
         </div>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs">
-        <p className="text-xs font-medium">{tooltipText}</p>
+      <TooltipContent side="top" className="max-w-xs p-3">
+        <p className="text-sm font-medium text-foreground">{tooltipText}</p>
         {completed.length > 0 && (
-          <div className="mt-1 space-y-0.5">
+          <div className="mt-1.5 space-y-0.5">
             {completed.map((s, i) => (
-              <p key={i} className="text-2xs text-muted-foreground">
+              <p key={i} className="text-sm text-foreground/75">
                 TDR {i + 1}: {s.completedAt ? new Date(s.completedAt).toLocaleDateString() : 'Completed'}
               </p>
             ))}
@@ -512,19 +513,19 @@ function PartnerIconCell({ data }: ICellRendererParams<Deal>) {
         </span>
       </TooltipTrigger>
       {partnerTip ? (
-        <TooltipContent side="top" className="max-w-xs p-3">
-          <p className="text-xs font-medium mb-1">{partnerTip.title}</p>
+        <TooltipContent side="top" className="max-w-md p-4">
+          <p className="text-sm font-medium text-foreground mb-1">{partnerTip.title}</p>
           {partnerTip.role && (
-            <p className="text-2xs text-muted-foreground">
-              Role: <span className="font-medium">{partnerTip.role}</span>
+            <p className="text-sm text-foreground/75">
+              Role: <span className="font-medium text-foreground">{partnerTip.role}</span>
             </p>
           )}
           {partnerTip.dealCode && (
-            <p className="text-2xs text-muted-foreground">
-              Deal Code: <span className="font-mono">{partnerTip.dealCode}</span>
+            <p className="text-sm text-foreground/75">
+              Deal Code: <span className="font-mono text-foreground">{partnerTip.dealCode}</span>
             </p>
           )}
-          <p className="text-xs text-primary mt-1.5">→ {partnerTip.strategy}</p>
+          <p className="text-sm text-foreground/80 mt-2">→ {partnerTip.strategy}</p>
         </TooltipContent>
       ) : (
         <TooltipContent side="top" className="max-w-xs">
@@ -557,9 +558,22 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
                 {dynamicLabel}
               </span>
             </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-sm p-3">
-              <p className="text-xs font-medium mb-1">{dynamicDesc}</p>
-              <p className="text-xs text-primary mt-1.5">→ {factor.strategy}</p>
+            <TooltipContent side="top" className="max-w-md p-4">
+              <p className="text-sm text-foreground leading-relaxed mb-2">{dynamicDesc}</p>
+              <p className="text-sm text-foreground/80 leading-relaxed mb-3">→ {factor.strategy}</p>
+              {factor.tdrPrep && factor.tdrPrep.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">TDR Preparation</p>
+                  <ul className="space-y-1">
+                    {factor.tdrPrep.map((step, j) => (
+                      <li key={j} className="text-sm text-foreground/75 leading-relaxed flex gap-2">
+                        <span className="text-muted-foreground shrink-0">·</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </TooltipContent>
           </Tooltip>
         );
