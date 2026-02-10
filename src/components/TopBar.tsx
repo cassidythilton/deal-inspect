@@ -157,7 +157,7 @@ export function TopBar({
                   }}
                 />
               )}
-            </SelectTrigger>
+          </SelectTrigger>
             <SelectContent className="min-w-[200px]">
               {quarters.map((q) => {
                 const isSelected = selectedQuarters.includes(q);
@@ -204,8 +204,8 @@ export function TopBar({
                   </div>
                 </>
               )}
-            </SelectContent>
-          </Select>
+          </SelectContent>
+        </Select>
         </div>
 
         {/* Include Current indicator */}
@@ -239,53 +239,53 @@ export function TopBar({
           </SelectContent>
         </Select>
 
-        <div className="h-4 w-px bg-border" />
-
+            <div className="h-4 w-px bg-border" />
+            
         {/* SE group: SE Mgr, SE, PoC SE — inline with shared Users icon */}
         <div className="flex items-center gap-1.5">
           <Users className="h-3 w-3 text-muted-foreground" />
 
           {/* SE Manager dropdown */}
           {seManagers.length > 0 && (
-            <Select 
+              <Select 
               value={seFilterState?.selectedSEManager || 'all'} 
               onValueChange={(v) => onSEFilterChange?.({ selectedSEManager: v === 'all' ? null : v })}
-            >
-              <SelectTrigger className={cn(
+              >
+                <SelectTrigger className={cn(
                 "h-7 w-28 text-2xs font-medium shadow-none border",
                 seFilterState?.selectedSEManager 
-                  ? "border-violet-500/50 bg-violet-500/5 text-violet-700 dark:text-violet-400" 
+                    ? "border-violet-500/50 bg-violet-500/5 text-violet-700 dark:text-violet-400" 
                   : "border-border bg-secondary"
-              )}>
+                )}>
                 <SelectValue placeholder="SE Mgr" />
-              </SelectTrigger>
-              <SelectContent>
+                </SelectTrigger>
+                <SelectContent>
                 <SelectItem value="all" className="text-xs">All SE Mgrs</SelectItem>
                 {seManagers.map((mgr) => (
-                  <SelectItem key={mgr} value={mgr} className="text-xs">
-                    {mgr}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+                    <SelectItem key={mgr} value={mgr} className="text-xs">
+                      {mgr}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
           {/* Combined SE + PoC dropdown with groupings */}
           {hasSeData && (
-            <Select 
+              <Select 
               value={seFilterState?.selectedSE || 'all'} 
               onValueChange={(v) => onSEFilterChange?.({ selectedSE: v === 'all' ? null : v })}
-            >
-              <SelectTrigger className={cn(
+              >
+                <SelectTrigger className={cn(
                 "h-7 w-28 text-2xs font-medium shadow-none border",
                 seFilterState?.selectedSE 
                   ? seFilterState.selectedSE.startsWith('poc:')
-                    ? "border-teal-500/50 bg-teal-500/5 text-teal-700 dark:text-teal-400"
+                    ? "border-teal-500/50 bg-teal-500/5 text-teal-700 dark:text-teal-400" 
                     : "border-sky-500/50 bg-sky-500/5 text-sky-700 dark:text-sky-400"
                   : "border-border bg-secondary"
-              )}>
+                )}>
                 <SelectValue placeholder="All SEs">{getSeDisplayText()}</SelectValue>
-              </SelectTrigger>
+                </SelectTrigger>
               <SelectContent className="max-h-[400px] min-w-[220px]">
                 <SelectItem value="all" className="text-xs font-medium">All SEs</SelectItem>
 
@@ -309,14 +309,14 @@ export function TopBar({
                     </SelectLabel>
                     {pocArchitects.map((se) => (
                       <SelectItem key={`poc-${se}`} value={`poc:${se}`} className="text-xs pl-4">
-                        {se}
-                      </SelectItem>
-                    ))}
+                      {se}
+                    </SelectItem>
+                  ))}
                   </SelectGroup>
                 )}
-              </SelectContent>
-            </Select>
-          )}
+                </SelectContent>
+              </Select>
+            )}
         </div>
 
         <div className="h-4 w-px bg-border" />

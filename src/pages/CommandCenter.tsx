@@ -43,7 +43,7 @@ export default function CommandCenter() {
     deals: domoDeals, filterOptions, isLoading, isDomoConnected, refetch,
     suggestedDealIds, aiRecommendations, aiStatus,
   } = useDeals();
-
+  
   // Auto-pin AI-suggested deals (once, on first load)
   useEffect(() => {
     if (suggestedDealIds.size > 0 && !hasAppliedSuggestions) {
@@ -250,16 +250,16 @@ export default function CommandCenter() {
                   RECOMMENDED
                 </span>
                 <Info className="h-3 w-3 text-muted-foreground/50" />
-              </div>
+                  </div>
               <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.recommended.value}</div>
-              <div className="mt-0.5 flex items-center gap-2">
+                  <div className="mt-0.5 flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{metrics.recommended.deals} deals</span>
                 <div className="h-1.5 w-6 rounded-full bg-success" />
-              </div>
+                </div>
             </div>
 
             {/* Agenda */}
-            <div className="stat-card">
+              <div className="stat-card">
               <div className="flex items-center gap-1">
                 <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
                   AGENDA
@@ -271,7 +271,7 @@ export default function CommandCenter() {
             </div>
 
             {/* At-Risk */}
-            <div className="stat-card">
+              <div className="stat-card">
               <div className="flex items-center gap-1">
                 <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
                   AT-RISK

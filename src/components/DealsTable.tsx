@@ -518,12 +518,12 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="panel overflow-hidden">
-        <div className="border-b border-border/60 px-4 py-3">
-          <h2 className="text-sm font-medium">Recommended Deals</h2>
-        </div>
+    <div className="panel overflow-hidden">
+      <div className="border-b border-border/60 px-4 py-3">
+        <h2 className="text-sm font-medium">Recommended Deals</h2>
+      </div>
 
-        <div className="overflow-x-auto">
+      <div className="overflow-x-auto">
           <table className="w-full table-fixed">
             {/* Column widths */}
             <colgroup>
@@ -538,21 +538,21 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
               <col className="w-[27%]" />  {/* Why TDR? */}
               <col className="w-[10%]" />  {/* Action */}
             </colgroup>
-            <thead>
-              <tr className="border-b border-border/40">
-                <th className="section-header px-4 py-2 text-left">Deal / Account</th>
-                <th className="section-header px-3 py-2 text-left">Stage</th>
+          <thead>
+            <tr className="border-b border-border/40">
+              <th className="section-header px-4 py-2 text-left">Deal / Account</th>
+              <th className="section-header px-3 py-2 text-left">Stage</th>
                 <th className="section-header px-3 py-2 text-center">Age</th>
-                <th className="section-header px-3 py-2 text-right">ACV</th>
+              <th className="section-header px-3 py-2 text-right">ACV</th>
                 <th className="section-header px-3 py-2 text-center">TDR</th>
                 <th className="section-header px-2 py-2 text-center">TDRs</th>
                 <th className="section-header px-3 py-2 text-left">SE Team</th>
-                <th className="section-header px-3 py-2 text-center">Partner</th>
+              <th className="section-header px-3 py-2 text-center">Partner</th>
                 <th className="section-header px-3 py-2 text-left">Why TDR?</th>
-                <th className="section-header px-3 py-2 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
+              <th className="section-header px-3 py-2 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody>
               {deals.map((deal) => {
                 const stageNum = deal.stageNumber || getStageNumber(deal.stage);
                 const stageName = getShortStageName(deal.stage);
@@ -571,13 +571,13 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                 const partnerTip = deal.partnerSignal !== 'none' ? getPartnerTooltipContent(deal) : null;
 
                 return (
-                  <tr
-                    key={deal.id}
-                    className="table-row-tight group cursor-pointer"
-                    onClick={() => navigate(`/workspace?deal=${deal.id}`)}
-                  >
+              <tr
+                key={deal.id}
+                className="table-row-tight group cursor-pointer"
+                onClick={() => navigate(`/workspace?deal=${deal.id}`)}
+              >
                     {/* Deal / Account */}
-                    <td className="px-4 py-2.5">
+                <td className="px-4 py-2.5">
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <p className="text-sm font-medium truncate">{deal.account}</p>
@@ -607,11 +607,11 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                             </span>
                           )}
                         </div>
-                      </div>
-                    </td>
+                  </div>
+                </td>
 
                     {/* Stage */}
-                    <td className="px-3 py-2.5">
+                <td className="px-3 py-2.5">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className={cn(
@@ -624,7 +624,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                               stageNum === 3 ? 'text-teal-600' : 'text-amber-600'
                             )} />
                             [{stageNum.toString().padStart(2, '0')}] {stageName}
-                          </span>
+                  </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-sm p-3">
                           <p className="text-xs font-medium mb-1">
@@ -652,14 +652,14 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                     {/* Age */}
                     <td className={cn("px-3 py-2.5 text-center text-xs font-medium tabular-nums", ageColorClass)}>
                       {deal.stageAge ? `${deal.stageAge}d` : '-'}
-                    </td>
+                </td>
 
                     {/* ACV */}
-                    <td className="px-3 py-2.5 text-right">
-                      <span className="text-sm font-medium tabular-nums">
-                        {formatCurrency(deal.acv)}
-                      </span>
-                    </td>
+                <td className="px-3 py-2.5 text-right">
+                  <span className="text-sm font-medium tabular-nums">
+                    {formatCurrency(deal.acv)}
+                  </span>
+                </td>
 
                     {/* TDR Score */}
                     <td className="px-3 py-2.5 text-center">
@@ -670,7 +670,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                             getTDRBadgeStyle(tdrScore)
                           )}>
                             {tdrScore}
-                          </span>
+                  </span>
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-sm p-3">
                           <div className="space-y-2">
@@ -705,7 +705,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                           </div>
                         </TooltipContent>
                       </Tooltip>
-                    </td>
+                </td>
 
                     {/* TDR Sessions — 5 dots */}
                     <td className="px-2 py-2.5 text-center">
@@ -732,9 +732,9 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                             <TooltipTrigger asChild>
                               <div className="inline-flex items-center gap-[3px] cursor-help">
                                 {dots.map((status, i) => (
-                                  <span
-                                    key={i}
-                                    className={cn(
+                      <span
+                        key={i}
+                        className={cn(
                                       'block h-[6px] w-[6px] rounded-full transition-colors',
                                       status === 'completed' && 'bg-emerald-500',
                                       status === 'in-progress' && 'bg-amber-400',
@@ -846,7 +846,7 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                                 )}>
                                   <IconComponent className="h-2.5 w-2.5" />
                                   {dynamicLabel}
-                                </span>
+                      </span>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-sm p-3">
                                 {/* Factor context */}
@@ -879,37 +879,37 @@ export function DealsTable({ deals, onPinDeal }: DealsTableProps) {
                         {whyTags.length === 0 && (
                           <span className="text-2xs text-muted-foreground">-</span>
                         )}
-                      </div>
-                    </td>
+                  </div>
+                </td>
 
                     {/* Action */}
-                    <td className="px-3 py-2.5 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(
-                          'h-7 gap-1 px-2 opacity-0 transition-opacity group-hover:opacity-100',
-                          deal.isPinned && 'opacity-100'
-                        )}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onPinDeal?.(deal.id);
-                        }}
-                      >
+                <td className="px-3 py-2.5 text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      'h-7 gap-1 px-2 opacity-0 transition-opacity group-hover:opacity-100',
+                      deal.isPinned && 'opacity-100'
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onPinDeal?.(deal.id);
+                    }}
+                  >
                         <Pin className={cn(
-                          'h-3 w-3',
-                          deal.isPinned && 'fill-primary text-primary'
+                        'h-3 w-3',
+                        deal.isPinned && 'fill-primary text-primary'
                         )} />
-                        <span className="text-xs">{deal.isPinned ? 'Pinned' : 'Pin'}</span>
-                      </Button>
-                    </td>
-                  </tr>
+                    <span className="text-xs">{deal.isPinned ? 'Pinned' : 'Pin'}</span>
+                  </Button>
+                </td>
+              </tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+          </tbody>
+        </table>
       </div>
+    </div>
     </TooltipProvider>
   );
 }

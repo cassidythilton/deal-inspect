@@ -61,7 +61,7 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
   };
 
   const hasPartner = !!(get('Primary Partner Role', 'PrimaryPartnerRole') || get('Partners Involved', 'PartnersInvolved'));
-  const partnerSignal: Deal['partnerSignal'] = hasPartner
+  const partnerSignal: Deal['partnerSignal'] = hasPartner 
     ? (get('Primary Partner Role', 'PrimaryPartnerRole') ? 'strong' : 'moderate')
     : 'none';
 
@@ -250,14 +250,14 @@ export function useDeals() {
   // ── Transform & enrich deals ──
   const deals: Deal[] = useMemo(() => {
     if (!opportunities) return [];
-
+    
     let matchCount = 0;
     let tdrMatchCount = 0;
     const unmatchedSEs = new Set<string>();
 
     const result = opportunities.map((opp) => {
       const deal = transformOpportunityToDeal(opp as Record<string, unknown>);
-
+      
       // Join: look up SE Manager for Sales Consultant
       if (deal.salesConsultant) {
         const mgr = seLookup.get(deal.salesConsultant.trim().toLowerCase());
@@ -274,8 +274,8 @@ export function useDeals() {
         const mgr = seLookup.get(deal.pocSalesConsultant.trim().toLowerCase());
         if (mgr) {
           deal.seManager = mgr;
-          matchCount++;
-        }
+        matchCount++;
+      }
       }
 
       deal.tdrScore = calculateTDRScore(deal);
@@ -296,10 +296,10 @@ export function useDeals() {
 
       // Enrich with intel indicator
       deal.hasIntel = dealsWithIntel.has(deal.id);
-
+      
       return deal;
     });
-
+    
     console.log(`[SE Join] Matched ${matchCount}/${result.length} deals to SE managers`);
     if (unmatchedSEs.size > 0) {
       console.log('[SE Join] Unmatched SEs:', Array.from(unmatchedSEs).slice(0, 10));
@@ -376,7 +376,7 @@ export function useDeals() {
         const currentFQ = String((opp as Record<string, unknown>)['Current FQ'] ?? (opp as Record<string, unknown>)['CurrentFQ'] ?? '');
         if (closeFQ && isValidQuarter(closeFQ)) quarters.add(closeFQ);
         if (currentFQ && isValidQuarter(currentFQ)) quarters.add(currentFQ);
-      }
+        }
     }
 
     // Remove anyone who appears in PoC from the Sales Engineers list
@@ -389,7 +389,7 @@ export function useDeals() {
     console.log(`[Filters] PoC Architects: ${pocSalesConsultants.size} — [${Array.from(pocSalesConsultants).join(', ')}]`);
     console.log(`[Filters] Forecast Managers: ${forecastManagers.size}`);
     console.log(`[Filters] SE mapping status: ${seMappingStatus}`);
-
+    
     return {
       seManagers: Array.from(seManagerSet).sort(),
       salesConsultants: Array.from(salesConsultants).sort(),

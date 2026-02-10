@@ -116,18 +116,18 @@ export default function TDRWorkspace() {
       {/* Header with Manager/SE pills */}
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1 text-muted-foreground"
-            onClick={() => navigate('/')}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            <span className="text-xs">Back</span>
-          </Button>
-          <div className="h-4 w-px bg-border" />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1 text-muted-foreground"
+          onClick={() => navigate('/')}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="text-xs">Back</span>
+        </Button>
+        <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{deal.account}</span>
+          <span className="text-sm font-medium">{deal.account}</span>
             <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
               {sessionStatusLabel}
             </span>
@@ -252,11 +252,11 @@ export default function TDRWorkspace() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="intel" className="flex-1 overflow-y-auto mt-0">
-              <TDRIntelligence
-                deal={deal}
-                readinessLevel={deal.riskLevel}
-                missingInfo={missingInfo}
-                riskFlags={riskFlags}
+          <TDRIntelligence
+            deal={deal}
+            readinessLevel={deal.riskLevel}
+            missingInfo={missingInfo}
+            riskFlags={riskFlags}
                 sessionId={session?.sessionId}
               />
             </TabsContent>
