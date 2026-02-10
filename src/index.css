@@ -220,3 +220,112 @@
     @apply border-border/50;
   }
 }
+
+/* ─── AG Grid TDR Theme ─────────────────────────────────────────────────── */
+/* Custom theme that matches the TDR design system: quiet, elegant, dense */
+
+.ag-theme-tdr {
+  /* Core colors mapped to TDR design tokens */
+  --ag-background-color: hsl(40 30% 99%);
+  --ag-header-background-color: hsl(40 30% 99%);
+  --ag-odd-row-background-color: transparent;
+  --ag-row-hover-color: hsl(161 50% 95% / 0.5);
+  --ag-selected-row-background-color: hsl(161 50% 95% / 0.3);
+  --ag-border-color: hsl(127 8% 88% / 0.6);
+  --ag-header-column-separator-color: hsl(127 8% 88% / 0.4);
+  --ag-row-border-color: hsl(127 8% 88% / 0.4);
+  --ag-foreground-color: hsl(281 19% 15%);
+  --ag-secondary-foreground-color: hsl(127 5% 45%);
+  --ag-header-foreground-color: hsl(127 5% 45%);
+  --ag-control-panel-background-color: hsl(40 30% 99%);
+  --ag-subheader-background-color: hsl(40 20% 97%);
+  --ag-range-selection-border-color: hsl(161 50% 45%);
+  --ag-input-focus-border-color: hsl(161 50% 45%);
+  --ag-checkbox-checked-color: hsl(152 73% 40%);
+  --ag-font-family: inherit;
+  --ag-font-size: 13px;
+  --ag-grid-size: 4px;
+  --ag-row-height: 44px;
+  --ag-header-height: 36px;
+  --ag-list-item-height: 28px;
+  --ag-cell-horizontal-padding: 12px;
+  --ag-header-column-separator-display: block;
+  --ag-header-column-separator-height: 50%;
+  --ag-header-column-separator-width: 1px;
+  --ag-borders: none;
+  --ag-wrapper-border-radius: 0;
+  --ag-card-radius: 6px;
+  --ag-card-shadow: 0 4px 16px hsl(220 20% 10% / 0.08);
+  --ag-icon-size: 14px;
+}
+
+/* Header text style — matches section-header */
+.ag-theme-tdr .ag-header-cell-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Remove the outer border from the grid root */
+.ag-theme-tdr .ag-root-wrapper {
+  border: none !important;
+  border-radius: 0;
+}
+
+/* Clean pagination styling */
+.ag-theme-tdr .ag-paging-panel {
+  border-top: 1px solid hsl(127 8% 88% / 0.6);
+  font-size: 12px;
+  color: hsl(127 5% 45%);
+  height: 36px;
+  padding: 0 12px;
+}
+
+.ag-theme-tdr .ag-paging-button {
+  cursor: pointer;
+  opacity: 0.7;
+}
+.ag-theme-tdr .ag-paging-button:hover {
+  opacity: 1;
+}
+
+/* Filter popup styling */
+.ag-theme-tdr .ag-filter-toolpanel {
+  background: hsl(40 30% 99%);
+}
+
+/* Row cursor */
+.ag-theme-tdr .ag-row {
+  cursor: pointer;
+}
+
+/* Cell focus — remove the blue outline */
+.ag-theme-tdr .ag-cell-focus,
+.ag-theme-tdr .ag-cell:focus {
+  outline: none !important;
+  border: none !important;
+}
+
+/* Column resize handle */
+.ag-theme-tdr .ag-header-cell-resize {
+  width: 4px;
+}
+
+/* Suppress icon noise but keep filter icons */
+.ag-theme-tdr .ag-header-cell-menu-button {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.ag-theme-tdr .ag-header-cell:hover .ag-header-cell-menu-button {
+  opacity: 0.6;
+}
+.ag-theme-tdr .ag-header-cell:hover .ag-header-cell-menu-button:hover {
+  opacity: 1;
+}
+
+/* Filter active indicator */
+.ag-theme-tdr .ag-header-cell-filtered .ag-header-cell-menu-button {
+  opacity: 1;
+  color: hsl(152 73% 40%);
+}

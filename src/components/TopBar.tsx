@@ -1,64 +1,52 @@
 /**
  * TopBar Component
- * Main filter bar with Manager, SE Manager, SE, Quarter, and Priority filters
+ * Simplified filter bar: Quarter scope + Agenda toggle.
  *
- * Dropdown styling: light, legible backgrounds — no dark fills.
- * Selected states use tinted backgrounds with subtle borders.
+ * Person-based filters (AE Manager, SE Manager, SE) moved into AG Grid columns.
+ * Priority filter → AG Grid TDR Score column filter.
+ * View toggle (Recommended / Agenda / All) → removed; Agenda is a toggle.
  */
 
-import { User, Users, Filter, X, Check, CheckCircle2 } from 'lucide-react';
+import { User, Filter, X, Check, Pin } from 'lucide-react';
 import {
   Select,
   SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
   SelectTrigger,
-  SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { ALLOWED_MANAGERS, TDR_PRIORITY_OPTIONS } from '@/lib/constants';
 
 export interface SEFilterOptions {
   seManagers: string[];
   salesConsultants: string[];
-  pocSalesConsultants: string[];
+  pocSalesConsultants?: string[];
   forecastManagers: string[];
   quarters: string[];
 }
 
 export interface SEFilterState {
-  selectedSEManager: string | null;  // SE Manager selection (dedicated dropdown)
-  selectedSE: string | null;         // Individual SE selection (with prefix se: or poc:)
-  selectedManager: string | null;    // Forecast Manager (AE Manager)
-  selectedQuarters: string[] | null; // Multi-select quarters
-  selectedPriority: string | null;   // TDR Priority filter
+  selectedSEManager: string | null;
+  selectedSE: string | null;
+  selectedManager: string | null;
+  selectedQuarters: string[] | null;
+  selectedPriority: string | null;
   includeCurrentQuarter: boolean;
+  showAgendaOnly?: boolean;
 }
 
 interface TopBarProps {
-  activeView?: 'recommended' | 'agenda' | 'all';
-  onViewChange?: (view: 'recommended' | 'agenda' | 'all') => void;
   seFilterOptions?: SEFilterOptions;
   seFilterState?: SEFilterState;
   onSEFilterChange?: (filters: Partial<SEFilterState>) => void;
   onRefresh?: () => void;
+  agendaCount?: number;
 }
 
-export function TopBar({ 
-  activeView, 
-  onViewChange,
+export function TopBar({
   seFilterOptions,
   seFilterState,
   onSEFilterChange,
-  onRefresh,
+  agendaCount = 0,
 }: TopBarProps) {
-  const views = [
-    { id: 'recommended' as const, label: 'Recommended' },
-    { id: 'agenda' as const, label: 'Agenda' },
-    { id: 'all' as const, label: 'All Eligible' },
-  ];
-
   // Sort quarters in descending order (newest first)
   const quarters = (seFilterOptions?.quarters || [])
     .slice()
@@ -73,15 +61,9 @@ export function TopBar({
       return b.localeCompare(a);
     });
 
-  // Get filter lists
-  const managers = ALLOWED_MANAGERS;
-  const salesEngineers = seFilterOptions?.salesConsultants || [];
-  const pocArchitects = seFilterOptions?.pocSalesConsultants || [];
-  const seManagers = seFilterOptions?.seManagers || [];
-
   // Multi-select quarter handling
   const selectedQuarters = seFilterState?.selectedQuarters || [];
-  
+
   const toggleQuarter = (quarter: string) => {
     const current = [...selectedQuarters];
     const idx = current.indexOf(quarter);
@@ -92,7 +74,7 @@ export function TopBar({
     }
     onSEFilterChange?.({ selectedQuarters: current.length > 0 ? current : null });
   };
-  
+
   const clearQuarters = () => {
     onSEFilterChange?.({ selectedQuarters: null });
   };
@@ -106,33 +88,21 @@ export function TopBar({
   const currentQuarter = getCurrentQuarter();
 
   // Quarter display text
-  const quarterDisplayText = selectedQuarters.length === 0 
+  const quarterDisplayText = selectedQuarters.length === 0
     ? 'All Quarters'
     : selectedQuarters.length === 1
     ? selectedQuarters[0]
-    : `${selectedQuarters.length} Quarters`;
+    : `${selectedQuarters.length} quarters`;
 
-  // Get display text for SE dropdown
-  const getSeDisplayText = () => {
-    if (!seFilterState?.selectedSE) return 'All SEs';
-    const val = seFilterState.selectedSE;
-    // Strip prefix
-    if (val.startsWith('se:')) return val.slice(3);
-    if (val.startsWith('poc:')) return val.slice(4);
-    return val;
-  };
-
-  // Has any SE-related data
-  const hasSeData = salesEngineers.length > 0 || pocArchitects.length > 0;
+  const showAgenda = seFilterState?.showAgendaOnly ?? false;
 
   return (
     <header className="flex h-12 items-center justify-between border-b border-border bg-card px-6">
-      {/* Left: Filters */}
-      <div className="flex items-center gap-2">
-        {/* Filters label */}
+      {/* Left: Scope filters */}
+      <div className="flex items-center gap-3">
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Filter className="h-3.5 w-3.5" />
-          <span className="text-2xs font-medium uppercase tracking-wide">Filters</span>
+          <span className="text-2xs font-medium uppercase tracking-wide">Scope</span>
         </div>
 
         {/* Quarter multi-select */}
@@ -142,22 +112,22 @@ export function TopBar({
             onValueChange={() => {}}
           >
             <SelectTrigger className={cn(
-              "h-7 w-32 text-2xs font-medium shadow-none gap-2 rounded-md border",
-              selectedQuarters.length > 0 
-                ? "border-emerald-500/50 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" 
-                : "border-border bg-secondary"
+              'h-7 w-32 text-2xs font-medium shadow-none gap-2 rounded-md border',
+              selectedQuarters.length > 0
+                ? 'border-emerald-500/50 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400'
+                : 'border-border bg-secondary'
             )}>
               <span className="truncate">{quarterDisplayText}</span>
               {selectedQuarters.length > 0 && (
-                <X 
-                  className="h-3.5 w-3.5 shrink-0 opacity-70 hover:opacity-100" 
+                <X
+                  className="h-3.5 w-3.5 shrink-0 opacity-70 hover:opacity-100"
                   onClick={(e) => {
                     e.stopPropagation();
                     clearQuarters();
                   }}
                 />
               )}
-          </SelectTrigger>
+            </SelectTrigger>
             <SelectContent className="min-w-[200px]">
               {quarters.map((q) => {
                 const isSelected = selectedQuarters.includes(q);
@@ -166,8 +136,8 @@ export function TopBar({
                   <div
                     key={q}
                     className={cn(
-                      "flex items-center gap-3 px-3 py-2 cursor-pointer text-sm hover:bg-accent rounded-md mx-1 my-0.5",
-                      isSelected && "bg-accent"
+                      'flex items-center gap-3 px-3 py-2 cursor-pointer text-sm hover:bg-accent rounded-md mx-1 my-0.5',
+                      isSelected && 'bg-accent'
                     )}
                     onClick={(e) => {
                       e.preventDefault();
@@ -176,8 +146,8 @@ export function TopBar({
                     }}
                   >
                     <div className={cn(
-                      "h-4 w-4 border-2 rounded flex items-center justify-center transition-colors",
-                      isSelected ? "bg-emerald-500 border-emerald-500" : "border-muted-foreground/40"
+                      'h-4 w-4 border-2 rounded flex items-center justify-center transition-colors',
+                      isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-muted-foreground/40'
                     )}>
                       {isSelected && <Check className="h-3 w-3 text-white" />}
                     </div>
@@ -204,174 +174,26 @@ export function TopBar({
                   </div>
                 </>
               )}
-          </SelectContent>
-        </Select>
-        </div>
-
-        {/* Include Current indicator */}
-        {seFilterState?.includeCurrentQuarter && (
-          <span className="text-2xs font-medium text-primary px-2 py-0.5 bg-primary/10 rounded-full">
-            Incl. Current
-          </span>
-        )}
-
-        <div className="h-4 w-px bg-border" />
-
-        {/* Manager (Forecast / AE Manager) dropdown */}
-        <Select 
-          value={seFilterState?.selectedManager || 'all'} 
-          onValueChange={(v) => onSEFilterChange?.({ selectedManager: v === 'all' ? null : v })}
-        >
-          <SelectTrigger className={cn(
-            "h-7 w-36 text-xs font-medium shadow-none border",
-            seFilterState?.selectedManager 
-              ? "border-emerald-500/50 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400" 
-              : "border-border bg-secondary"
-          )}>
-            <SelectValue placeholder="Manager" />
-          </SelectTrigger>
-          <SelectContent>
-            {managers.map((m) => (
-              <SelectItem key={m} value={m} className="text-xs">
-                {m}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-            <div className="h-4 w-px bg-border" />
-            
-        {/* SE group: SE Mgr, SE, PoC SE — inline with shared Users icon */}
-        <div className="flex items-center gap-1.5">
-          <Users className="h-3 w-3 text-muted-foreground" />
-
-          {/* SE Manager dropdown */}
-          {seManagers.length > 0 && (
-              <Select 
-              value={seFilterState?.selectedSEManager || 'all'} 
-              onValueChange={(v) => onSEFilterChange?.({ selectedSEManager: v === 'all' ? null : v })}
-              >
-                <SelectTrigger className={cn(
-                "h-7 w-28 text-2xs font-medium shadow-none border",
-                seFilterState?.selectedSEManager 
-                    ? "border-violet-500/50 bg-violet-500/5 text-violet-700 dark:text-violet-400" 
-                  : "border-border bg-secondary"
-                )}>
-                <SelectValue placeholder="SE Mgr" />
-                </SelectTrigger>
-                <SelectContent>
-                <SelectItem value="all" className="text-xs">All SE Mgrs</SelectItem>
-                {seManagers.map((mgr) => (
-                    <SelectItem key={mgr} value={mgr} className="text-xs">
-                      {mgr}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-          {/* Combined SE + PoC dropdown with groupings */}
-          {hasSeData && (
-              <Select 
-              value={seFilterState?.selectedSE || 'all'} 
-              onValueChange={(v) => onSEFilterChange?.({ selectedSE: v === 'all' ? null : v })}
-              >
-                <SelectTrigger className={cn(
-                "h-7 w-28 text-2xs font-medium shadow-none border",
-                seFilterState?.selectedSE 
-                  ? seFilterState.selectedSE.startsWith('poc:')
-                    ? "border-teal-500/50 bg-teal-500/5 text-teal-700 dark:text-teal-400" 
-                    : "border-sky-500/50 bg-sky-500/5 text-sky-700 dark:text-sky-400"
-                  : "border-border bg-secondary"
-                )}>
-                <SelectValue placeholder="All SEs">{getSeDisplayText()}</SelectValue>
-                </SelectTrigger>
-              <SelectContent className="max-h-[400px] min-w-[220px]">
-                <SelectItem value="all" className="text-xs font-medium">All SEs</SelectItem>
-
-                {salesEngineers.length > 0 && (
-                  <SelectGroup>
-                    <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
-                      Sales Engineers
-                    </SelectLabel>
-                    {salesEngineers.map((se) => (
-                      <SelectItem key={`se-${se}`} value={`se:${se}`} className="text-xs pl-4">
-                        {se}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                )}
-
-                {pocArchitects.length > 0 && (
-                  <SelectGroup>
-                    <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
-                      PoC Architects
-                    </SelectLabel>
-                    {pocArchitects.map((se) => (
-                      <SelectItem key={`poc-${se}`} value={`poc:${se}`} className="text-xs pl-4">
-                      {se}
-                    </SelectItem>
-                  ))}
-                  </SelectGroup>
-                )}
-                </SelectContent>
-              </Select>
-            )}
-        </div>
-
-        <div className="h-4 w-px bg-border" />
-
-        {/* TDR Priority Filter */}
-        <div className="flex items-center gap-1.5">
-          <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
-          <Select 
-            value={seFilterState?.selectedPriority || 'all'} 
-            onValueChange={(v) => onSEFilterChange?.({ selectedPriority: v === 'all' ? null : v })}
-          >
-            <SelectTrigger className={cn(
-              "h-7 w-32 text-xs font-medium shadow-none border",
-              seFilterState?.selectedPriority 
-                ? seFilterState.selectedPriority === 'critical'
-                  ? "border-red-500/50 bg-red-500/5 text-red-700 dark:text-red-400"
-                  : seFilterState.selectedPriority === 'high'
-                  ? "border-orange-500/50 bg-orange-500/5 text-orange-700 dark:text-orange-400"
-                  : "border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400"
-                : "border-border bg-secondary"
-            )}>
-              <SelectValue placeholder="All Deals" />
-            </SelectTrigger>
-            <SelectContent>
-              {TDR_PRIORITY_OPTIONS.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} className="text-xs">
-                  {opt.label}
-                </SelectItem>
-              ))}
             </SelectContent>
           </Select>
         </div>
-      </div>
 
-      {/* Center: View Toggle */}
-      {activeView && onViewChange ? (
-        <div className="flex items-center gap-0.5 rounded-md bg-secondary p-0.5">
-          {views.map((view) => (
-            <button
-              key={view.id}
-              onClick={() => onViewChange(view.id)}
-              className={cn(
-                'rounded px-3 py-1 text-xs font-medium transition-all',
-                activeView === view.id
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              {view.label}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div />
-      )}
+        <div className="h-4 w-px bg-border" />
+
+        {/* Agenda toggle */}
+        <button
+          onClick={() => onSEFilterChange?.({ showAgendaOnly: !showAgenda })}
+          className={cn(
+            'inline-flex items-center gap-1.5 h-7 px-3 rounded-md text-2xs font-medium transition-all border',
+            showAgenda
+              ? 'border-primary/50 bg-primary/10 text-primary'
+              : 'border-border bg-secondary text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Pin className={cn('h-3 w-3', showAgenda && 'fill-primary')} />
+          Agenda{agendaCount > 0 && <span className="tabular-nums">· {agendaCount}</span>}
+        </button>
+      </div>
 
       {/* Right: Profile */}
       <div className="flex items-center gap-2">

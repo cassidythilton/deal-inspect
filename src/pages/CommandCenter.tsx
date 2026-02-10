@@ -1,20 +1,20 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { TopBar, SEFilterState } from '@/components/TopBar';
 import { DealsTable } from '@/components/DealsTable';
+import { DealSearch } from '@/components/DealSearch';
 import { AgendaSection } from '@/components/AgendaSection';
 import { TopTDRCandidatesChart } from '@/components/charts/TopTDRCandidatesChart';
 import { TDRPriorityChart } from '@/components/charts/TDRPriorityChart';
 import { PipelineByCloseChart } from '@/components/charts/PipelineByCloseChart';
 import { mockDeals } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
-import { MAX_STAGE_AGE_DAYS, TDR_PRIORITY_THRESHOLDS, ALLOWED_MANAGERS } from '@/lib/constants';
+import { MAX_STAGE_AGE_DAYS, ALLOWED_MANAGERS } from '@/lib/constants';
 import { Deal } from '@/types/tdr';
-import { Info, Loader2, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { calculateTDRScore, getTopFactors, STAGE_TIMING } from '@/lib/tdrCriticalFactors';
+import { Info, Loader2 } from 'lucide-react';
+import { calculateTDRScore, getTopFactors } from '@/lib/tdrCriticalFactors';
 
-// Default manager on load
-const DEFAULT_MANAGER = ALLOWED_MANAGERS[0]; // Andrew Rich
+// Default manager on load — null = show all allowed managers
+const DEFAULT_MANAGER = null;
 
 // Get current quarter in format matching Domo data (e.g., "2026-Q1")
 const getCurrentQuarter = () => {
@@ -24,161 +24,96 @@ const getCurrentQuarter = () => {
 };
 
 export default function CommandCenter() {
-  const [activeView, setActiveView] = useState<'recommended' | 'agenda' | 'all'>('recommended');
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
   const [hasAppliedSuggestions, setHasAppliedSuggestions] = useState(false);
   const [seFilters, setSEFilters] = useState<SEFilterState>({
-    selectedSEManager: null,        // SE Manager filter
-    selectedSE: null,               // Individual SE filter
-    selectedManager: DEFAULT_MANAGER, // Default to first AE manager
-    selectedQuarters: [getCurrentQuarter()], // Default to current quarter
+    selectedSEManager: null,
+    selectedSE: null,
+    selectedManager: DEFAULT_MANAGER,
+    selectedQuarters: [getCurrentQuarter()],
     selectedPriority: null,
     includeCurrentQuarter: true,
+    showAgendaOnly: false,
   });
 
-  // Sprint 9/11: Portfolio Insights & Analyst removed from UI (CE functions still available)
-  
-  // Fetch deals from Domo (pre-filtered for stage age > 365 days)
+  // Fetch deals from Domo
   const {
     deals: domoDeals, filterOptions, isLoading, isDomoConnected, refetch,
     suggestedDealIds, aiRecommendations, aiStatus,
   } = useDeals();
-  
+
   // Auto-pin AI-suggested deals (once, on first load)
   useEffect(() => {
     if (suggestedDealIds.size > 0 && !hasAppliedSuggestions) {
       console.log(`[CommandCenter] Auto-pinning ${suggestedDealIds.size} AI-suggested deals`);
       setPinnedIds((prev) => {
         const next = new Set(prev);
-        for (const id of suggestedDealIds) {
-          next.add(id);
-        }
+        for (const id of suggestedDealIds) next.add(id);
         return next;
       });
       setHasAppliedSuggestions(true);
     }
   }, [suggestedDealIds, hasAppliedSuggestions]);
-  
+
   // Pre-filter to only deals from ALLOWED_MANAGERS
   const baseDeals = useMemo(() => {
     let deals: Deal[];
-    
     if (isDomoConnected && domoDeals.length > 0) {
       deals = domoDeals;
     } else {
-      // Fall back to mock data for local development
       deals = mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
     }
-    
-    // IMPORTANT: Only include deals from allowed managers
+
     const allowedSet = new Set(ALLOWED_MANAGERS.map(m => m.toLowerCase()));
-    const filtered = deals.filter((d) => {
-      const ownerLower = d.owner?.toLowerCase() || '';
-      return allowedSet.has(ownerLower);
-    });
-    
+    const filtered = deals.filter((d) => allowedSet.has(d.owner?.toLowerCase() || ''));
     console.log(`[CommandCenter] Filtered to ${filtered.length} deals from allowed managers (${ALLOWED_MANAGERS.join(', ')})`);
     return filtered;
   }, [domoDeals, isDomoConnected]);
 
-  // Apply all filters to deals
+  // All deals (unfiltered by manager) for the global search
+  const allDeals = useMemo(() => {
+    if (isDomoConnected && domoDeals.length > 0) return domoDeals;
+    return mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
+  }, [domoDeals, isDomoConnected]);
+
+  // Apply scope filters to deals
   const deals: Deal[] = useMemo(() => {
     let result = baseDeals.map((d) => ({
       ...d,
       isPinned: pinnedIds.has(d.id),
       agendaStatus: pinnedIds.has(d.id) ? (d.agendaStatus || 'draft') : undefined,
     }));
-    
-    // Apply SE Manager filter (separate from individual SE)
-    if (seFilters.selectedSEManager) {
-      result = result.filter((d) => d.seManager === seFilters.selectedSEManager);
-    }
-    
-    // Apply individual SE filter (Sales Engineer or PoC Architect)
-    if (seFilters.selectedSE) {
-      const seValue = seFilters.selectedSE;
-      if (seValue.startsWith('poc:')) {
-        // PoC Architect → filter on pocSalesConsultant field
-        const pocName = seValue.slice(4);
-        result = result.filter((d) => d.pocSalesConsultant === pocName);
-      } else if (seValue.startsWith('se:')) {
-        // Sales Engineer → filter on salesConsultant field
-        const seName = seValue.slice(3);
-        result = result.filter((d) => d.salesConsultant === seName);
-      } else {
-        // Legacy format without prefix — check both fields
-        result = result.filter((d) => d.salesConsultant === seValue || d.pocSalesConsultant === seValue);
-      }
-    }
-    
-    // Apply Manager filter
-    if (seFilters.selectedManager) {
-      result = result.filter((d) => d.owner === seFilters.selectedManager);
-    }
-    
-    // Apply Quarter filter (multi-select)
+
+    // Quarter filter (scope-level)
     if (seFilters.selectedQuarters && seFilters.selectedQuarters.length > 0) {
       result = result.filter((d) => seFilters.selectedQuarters!.includes(d.closeDateFQ || ''));
     }
-    
-    // Apply TDR Priority filter (based on tdrScore)
-    if (seFilters.selectedPriority && seFilters.selectedPriority !== 'all') {
-      result = result.filter((d) => {
-        const score = d.tdrScore ?? 0;
-        switch (seFilters.selectedPriority) {
-          case 'critical':
-            return score >= TDR_PRIORITY_THRESHOLDS.critical;
-          case 'high':
-            return score >= TDR_PRIORITY_THRESHOLDS.high && score < TDR_PRIORITY_THRESHOLDS.critical;
-          case 'medium':
-            return score >= TDR_PRIORITY_THRESHOLDS.medium && score < TDR_PRIORITY_THRESHOLDS.high;
-          case 'low':
-            return score < TDR_PRIORITY_THRESHOLDS.medium;
-          default:
-            return true;
-        }
-      });
+
+    // Agenda toggle — show only pinned deals
+    if (seFilters.showAgendaOnly) {
+      result = result.filter((d) => d.isPinned);
     }
-    
+
     return result;
   }, [baseDeals, pinnedIds, seFilters]);
 
   const pinnedDeals = deals.filter((d) => d.isPinned);
-  
-  // Build a lookup of AI recommendation data for pinned deals
+
+  // AI recommendation lookup
   const aiRecommendationMap = useMemo(() => {
     const map = new Map<string, typeof aiRecommendations[0]>();
-    for (const rec of aiRecommendations) {
-      map.set(rec.opportunityId, rec);
-    }
+    for (const rec of aiRecommendations) map.set(rec.opportunityId, rec);
     return map;
   }, [aiRecommendations]);
-  
-  // Recommended deals: Prioritize by critical factors score
-  // Key insight: Early-stage deals (Stage 2-3) are the SWEET SPOT for TDR
-  const recommendedDeals = useMemo(() => {
-    return deals
-      .map(d => ({
-        ...d,
-        tdrScore: d.tdrScore ?? calculateTDRScore(d),
-        factors: getTopFactors(d, 2),
-      }))
-      // Sort by TDR score (higher = more recommended)
-      .sort((a, b) => (b.tdrScore ?? 0) - (a.tdrScore ?? 0))
-      // Take top 10 for recommended view
-      .slice(0, 10);
-  }, [deals]);
-  
-  const filteredDeals = activeView === 'recommended'
-    ? recommendedDeals
-    : activeView === 'agenda'
-    ? pinnedDeals
-    : deals;
 
-  // Calculate metrics from actual deals
+  // Metrics
   const metrics = useMemo(() => {
+    const recommendedDeals = deals
+      .map(d => ({ ...d, tdrScore: d.tdrScore ?? calculateTDRScore(d) }))
+      .sort((a, b) => (b.tdrScore ?? 0) - (a.tdrScore ?? 0))
+      .slice(0, 10);
+
     const eligibleACV = deals.reduce((sum, d) => sum + d.acv, 0);
-    // Use the already-computed recommendedDeals which is sorted by TDR score
     const recommendedACV = recommendedDeals.reduce((sum, d) => sum + d.acv, 0);
     const agendaACV = pinnedDeals.reduce((sum, d) => sum + d.acv, 0);
     const atRiskDeals = deals.filter(d => d.riskLevel === 'red' || d.riskLevel === 'yellow');
@@ -198,7 +133,7 @@ export default function CommandCenter() {
       atRisk: { value: formatValue(atRiskACV), deals: atRiskDeals.length, critical: criticalCount },
     };
   }, [deals, pinnedDeals]);
-    
+
   const handleSEFilterChange = useCallback((filters: Partial<SEFilterState>) => {
     setSEFilters((prev) => ({ ...prev, ...filters }));
   }, []);
@@ -206,32 +141,26 @@ export default function CommandCenter() {
   const handlePinDeal = (id: string) => {
     setPinnedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
 
-
   return (
     <div className="flex min-h-screen flex-col">
-      <TopBar 
-        activeView={activeView} 
-        onViewChange={setActiveView}
+      <TopBar
         seFilterOptions={filterOptions}
         seFilterState={seFilters}
         onSEFilterChange={handleSEFilterChange}
         onRefresh={refetch}
+        agendaCount={pinnedDeals.length}
       />
-      
+
       <main className="flex-1 p-6 bg-background">
         <div className="mx-auto max-w-7xl space-y-4">
           {/* Zone 1: Metrics Row */}
           <section className="grid grid-cols-4 gap-3">
-            {/* Eligible ACV */}
             <div className="stat-card">
               <div className="flex items-center gap-1">
                 <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -243,23 +172,21 @@ export default function CommandCenter() {
               <div className="mt-0.5 text-xs text-muted-foreground">{metrics.eligible.deals} deals</div>
             </div>
 
-            {/* Recommended */}
             <div className="stat-card">
               <div className="flex items-center gap-1">
                 <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
                   RECOMMENDED
                 </span>
                 <Info className="h-3 w-3 text-muted-foreground/50" />
-                  </div>
+              </div>
               <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.recommended.value}</div>
-                  <div className="mt-0.5 flex items-center gap-2">
+              <div className="mt-0.5 flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">{metrics.recommended.deals} deals</span>
                 <div className="h-1.5 w-6 rounded-full bg-success" />
-                </div>
+              </div>
             </div>
 
-            {/* Agenda */}
-              <div className="stat-card">
+            <div className="stat-card">
               <div className="flex items-center gap-1">
                 <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
                   AGENDA
@@ -270,8 +197,7 @@ export default function CommandCenter() {
               <div className="mt-0.5 text-xs text-muted-foreground">{metrics.agenda.deals} deals pinned</div>
             </div>
 
-            {/* At-Risk */}
-              <div className="stat-card">
+            <div className="stat-card">
               <div className="flex items-center gap-1">
                 <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
                   AT-RISK
@@ -301,12 +227,19 @@ export default function CommandCenter() {
             </div>
           </section>
 
-          {/* Zone 3: Deals Table */}
+          {/* Zone 3: Grid Toolbar + Deals Table */}
           <section>
-            <DealsTable deals={filteredDeals} onPinDeal={handlePinDeal} />
+            {/* Grid Toolbar Row */}
+            <div className="flex items-center justify-between mb-2">
+              <DealSearch allDeals={allDeals} />
+              <span className="text-xs text-muted-foreground tabular-nums">
+                Showing {deals.length} deals
+              </span>
+            </div>
+            <DealsTable deals={deals} onPinDeal={handlePinDeal} />
           </section>
 
-          {/* Zone 5: Agenda */}
+          {/* Zone 4: Agenda */}
           <section>
             <AgendaSection
               pinnedDeals={pinnedDeals}
