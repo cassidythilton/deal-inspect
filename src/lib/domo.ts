@@ -28,7 +28,7 @@ export interface DomoOpportunity {
   'Type': string;
   'Deal Code': string | null;
   'Number of Competitors': number | null;
-  'Competitors': string | null;
+  'competitors': string | null;
   [key: string]: unknown;
 }
 
@@ -79,7 +79,7 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
   'SnowflakeTeamPicklist': 'Snowflake Team Picklist',
   'DomoForecastCategory': 'Domo Forecast Category',
   'NumberOfCompetitors': 'Number of Competitors',
-  'Competitors': 'Competitors',
+  'Competitors': 'competitors',
   'DealCode': 'Deal Code',
   'WebisteDomain': 'Webiste Domain',
 };

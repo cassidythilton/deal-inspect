@@ -52,7 +52,8 @@
         { "alias": "PocSalesConsultant", "columnName": "PoC Sales Consultant" },
         { "alias": "DealCode", "columnName": "Deal Code" },
         { "alias": "PrimaryPartnerRole", "columnName": "Primary Partner Role" },
-        { "alias": "WebisteDomain", "columnName": "Webiste Domain" }
+        { "alias": "WebisteDomain", "columnName": "Webiste Domain" },
+        { "alias": "Competitors", "columnName": "competitors" }
       ]
     },
     {
