@@ -228,36 +228,45 @@
 
 .ag-theme-tdr {
   /* Canvas — warm off-white, matching card background */
-  --ag-background-color: transparent;
-  --ag-header-background-color: transparent;
-  --ag-odd-row-background-color: transparent;
+  --ag-background-color: transparent !important;
+  --ag-header-background-color: transparent !important;
+  --ag-odd-row-background-color: transparent !important;
 
   /* Hover — subtle aubergine wash */
-  --ag-row-hover-color: hsl(281 10% 30% / 0.04);
-  --ag-selected-row-background-color: hsl(281 10% 30% / 0.08);
+  --ag-row-hover-color: hsl(281 10% 30% / 0.04) !important;
+  --ag-selected-row-background-color: hsl(281 10% 30% / 0.08) !important;
 
   /* Borders — nearly invisible hairlines */
-  --ag-border-color: transparent;
-  --ag-row-border-color: hsl(127 8% 88% / 0.35);
-  --ag-header-column-separator-display: none;
+  --ag-border-color: transparent !important;
+  --ag-row-border-color: hsl(127 8% 88% / 0.35) !important;
+  --ag-header-column-separator-display: none !important;
 
   /* Typography — soft aubergine-gray family */
-  --ag-foreground-color: hsl(281 10% 30%);
-  --ag-secondary-foreground-color: hsl(281 6% 50%);
-  --ag-header-foreground-color: hsl(281 6% 45%);
+  --ag-foreground-color: hsl(281 10% 30%) !important;
+  --ag-secondary-foreground-color: hsl(281 6% 50%) !important;
+  --ag-header-foreground-color: hsl(281 6% 45%) !important;
 
-  /* Metrics */
-  --ag-font-family: inherit;
-  --ag-font-size: 12px;
-  --ag-grid-size: 4px;
-  --ag-row-height: 64px;
-  --ag-header-height: 40px;
-  --ag-cell-horizontal-padding: 14px;
+  /* Metrics — !important to override Theming API defaults */
+  --ag-font-family: inherit !important;
+  --ag-font-size: 12px !important;
+  --ag-grid-size: 4px !important;
+  --ag-row-height: 64px !important;
+  --ag-header-height: 40px !important;
+  --ag-cell-horizontal-padding: 10px !important;
 
   /* Chrome suppression */
-  --ag-borders: none;
-  --ag-wrapper-border-radius: 0;
-  --ag-icon-size: 14px;
+  --ag-borders: none !important;
+  --ag-wrapper-border-radius: 0 !important;
+  --ag-icon-size: 14px !important;
+}
+
+/* Force font size on all cells — Theming API can override CSS vars */
+.ag-theme-tdr .ag-cell {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+.ag-theme-tdr .ag-header-cell {
+  font-size: 11px !important;
 }
 
 /* Header text — quiet uppercase, matches section-header */

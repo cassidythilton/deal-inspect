@@ -402,7 +402,7 @@ function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
-          'inline-flex items-center justify-center rounded-md px-2 py-0.5 text-[11px] font-bold tabular-nums cursor-help h-6 min-w-[32px]',
+          'inline-flex items-center justify-center rounded px-1.5 text-[11px] font-semibold tabular-nums cursor-help h-5 leading-5 min-w-[28px]',
           getTDRBadgeStyle(tdrScore)
         )}>
           {tdrScore}
