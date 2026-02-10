@@ -77,20 +77,20 @@ const FACTOR_ICONS: Record<string, LucideIcon> = {
 };
 
 const FACTOR_PILL_COLORS: Record<string, string> = {
-  cyan:      'bg-cyan-500/10 text-cyan-700 border border-cyan-500/20',
-  emerald:   'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20',
-  amber:     'bg-amber-500/10 text-amber-700 border border-amber-500/20',
-  violet:    'bg-violet-500/10 text-violet-700 border border-violet-500/20',
-  blue:      'bg-blue-500/10 text-blue-700 border border-blue-500/20',
-  orange:    'bg-orange-500/10 text-orange-700 border border-orange-500/20',
-  red:       'bg-red-500/10 text-red-700 border border-red-500/20',
-  secondary: 'bg-secondary text-muted-foreground',
+  cyan:      'bg-cyan-500/8 text-cyan-700 border border-cyan-500/15',
+  emerald:   'bg-emerald-500/8 text-emerald-700 border border-emerald-500/15',
+  amber:     'bg-amber-500/8 text-amber-700 border border-amber-500/15',
+  violet:    'bg-violet-500/8 text-violet-700 border border-violet-500/15',
+  blue:      'bg-blue-500/8 text-blue-700 border border-blue-500/15',
+  orange:    'bg-orange-500/8 text-orange-700 border border-orange-500/15',
+  red:       'bg-red-500/8 text-red-700 border border-red-500/15',
+  secondary: 'bg-secondary/50 text-muted-foreground',
 };
 
 const BRAND_PILL_STYLES = {
-  snowflake:  'border text-[#00B9ED] bg-[#00B9ED]/10 border-[#00B9ED]/20',
-  databricks: 'border text-[#CB2B1D] bg-[#CB2B1D]/10 border-[#CB2B1D]/20',
-  bigquery:   'border text-[#4285F4] bg-[#4285F4]/10 border-[#4285F4]/20',
+  snowflake:  'border text-[#00B9ED] bg-[#00B9ED]/8 border-[#00B9ED]/15',
+  databricks: 'border text-[#CB2B1D] bg-[#CB2B1D]/8 border-[#CB2B1D]/15',
+  bigquery:   'border text-[#4285F4] bg-[#4285F4]/8 border-[#4285F4]/15',
 } as const;
 
 const getFactorPillStyle = (color: string): string =>
@@ -107,9 +107,9 @@ function getBrandPillStyle(factor: CriticalFactor, deal: Deal): string | null {
 }
 
 const PILL_STYLES = {
-  emerald: 'bg-emerald-500/10 text-emerald-700 border border-emerald-500/20',
-  teal: 'bg-teal-500/10 text-teal-700 border border-teal-500/20',
-  amber: 'bg-amber-500/10 text-amber-700 border border-amber-500/20',
+  emerald: 'bg-emerald-500/8 text-emerald-700 border border-emerald-500/15',
+  teal: 'bg-teal-500/8 text-teal-700 border border-teal-500/15',
+  amber: 'bg-amber-500/8 text-amber-700 border border-amber-500/15',
 } as const;
 
 const getTDRBadgeStyle = (score: number): string => {
@@ -334,11 +334,11 @@ function StageBadgeCell({ data }: ICellRendererParams<Deal>) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
-          'inline-flex items-center gap-1 rounded px-1.5 py-[2px] text-[11px] font-medium cursor-help whitespace-nowrap',
+          'inline-flex items-center gap-[3px] rounded px-1 py-0 text-2xs font-medium cursor-help whitespace-nowrap leading-[20px]',
           getStageBadgeStyle(stageNum)
         )}>
           <CheckCircle2 className={cn(
-            'h-2.5 w-2.5 shrink-0',
+            'h-[9px] w-[9px] shrink-0',
             stageNum <= 2 ? 'text-emerald-600' : stageNum === 3 ? 'text-teal-600' : 'text-amber-600'
           )} />
           [{stageNum.toString().padStart(2, '0')}] {stageName}
@@ -540,7 +540,7 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
   const whyTags = getTopFactors(data, 2);
   if (whyTags.length === 0) return <span className="text-2xs text-muted-foreground">-</span>;
   return (
-    <div className="flex flex-wrap gap-[5px]">
+    <div className="flex flex-wrap gap-1">
       {whyTags.map((factor, i) => {
         const IconComponent = FACTOR_ICONS[factor.icon] || Zap;
         const dynamicLabel = getDynamicFactorLabel(factor, data);
@@ -550,10 +550,10 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
           <Tooltip key={i}>
             <TooltipTrigger asChild>
               <span className={cn(
-                'inline-flex items-center gap-[3px] cursor-help rounded px-[5px] py-[1px] text-[10px] font-medium',
+                'inline-flex items-center gap-[2px] cursor-help rounded px-1 py-0 text-2xs font-medium leading-[20px]',
                 pillStyle
               )}>
-                <IconComponent className="h-[9px] w-[9px]" />
+                <IconComponent className="h-2 w-2" />
                 {dynamicLabel}
               </span>
             </TooltipTrigger>
