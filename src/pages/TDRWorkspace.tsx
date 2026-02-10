@@ -7,11 +7,12 @@ import { TDRChat } from '@/components/TDRChat';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
 import { useTDRSession } from '@/hooks/useTDRSession';
+import { tdrReadout } from '@/lib/tdrReadout';
 
 export default function TDRWorkspace() {
   const [searchParams] = useSearchParams();
@@ -84,6 +85,23 @@ export default function TDRWorkspace() {
     ? ['Competitive pressure identified']
     : ['Critical timeline risk', 'Budget constraints'];
 
+  // Sprint 13: Export Readout
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExportReadout = useCallback(async () => {
+    if (!session?.sessionId || session.sessionId.startsWith('local-') || session.sessionId.startsWith('fallback-')) return;
+    setExportLoading(true);
+    setExportError(null);
+    try {
+      await tdrReadout.downloadReadout(session.sessionId, deal.account);
+    } catch (err) {
+      console.error('[TDRWorkspace] Export readout failed:', err);
+      setExportError(String(err));
+    }
+    setExportLoading(false);
+  }, [session?.sessionId, deal.account]);
+
   // Session status pill
   const sessionStatusLabel = session
     ? session.sessionId.startsWith('fallback-') || session.sessionId.startsWith('local-')
@@ -128,6 +146,21 @@ export default function TDRWorkspace() {
                 <Save className="h-3 w-3" />
                 saving...
               </span>
+            )}
+            {/* Sprint 13: Export Readout */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs ml-2"
+              onClick={handleExportReadout}
+              disabled={exportLoading || !session?.sessionId || session?.sessionId.startsWith('local-') || session?.sessionId.startsWith('fallback-')}
+              title="Export a polished PDF readout of this TDR"
+            >
+              {exportLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
+              Export PDF
+            </Button>
+            {exportError && (
+              <span className="text-2xs text-destructive ml-1" title={exportError}>Export failed</span>
             )}
           </div>
         </div>
