@@ -10,22 +10,22 @@
    - Teal:       #59C9A5 → 161 50% 57%
    - Sage:       #5B6C5D → 127 9% 39%
    - Plum:       #3B2C35 → 324 15% 20%
-   - Aubergine:  #2A1F2D → 281 19% 15% (sidebar bg), 281 10% 30% (text foreground)
+   - Aubergine:  #2A1F2D → 281 19% 15% (sidebar bg), 281 6% 42% (text foreground)
 */
 
 @layer base {
   :root {
     /* Canvas - warm off-white with subtle warmth */
     --background: 40 20% 97%;
-    --foreground: 281 10% 30%;
+    --foreground: 281 6% 42%;
 
     /* Cards - clean white with warmth */
     --card: 40 30% 99%;
-    --card-foreground: 281 10% 30%;
+    --card-foreground: 281 6% 42%;
 
     /* Popovers */
     --popover: 40 30% 99%;
-    --popover-foreground: 281 10% 30%;
+    --popover-foreground: 281 6% 42%;
 
     /* Primary - deep plum (elegant accent) */
     --primary: 324 15% 20%;
@@ -74,7 +74,7 @@
     --sidebar-background: 281 19% 15%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 281 10% 30%;
+    --sidebar-primary-foreground: 281 6% 42%;
     --sidebar-accent: 281 19% 22%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 281 15% 22%;
@@ -233,8 +233,8 @@
   --ag-odd-row-background-color: transparent !important;
 
   /* Hover — subtle aubergine wash */
-  --ag-row-hover-color: hsl(281 10% 30% / 0.04) !important;
-  --ag-selected-row-background-color: hsl(281 10% 30% / 0.08) !important;
+  --ag-row-hover-color: hsl(281 6% 42% / 0.04) !important;
+  --ag-selected-row-background-color: hsl(281 6% 42% / 0.07) !important;
 
   /* Borders — nearly invisible hairlines */
   --ag-border-color: transparent !important;
@@ -242,9 +242,9 @@
   --ag-header-column-separator-display: none !important;
 
   /* Typography — soft aubergine-gray family */
-  --ag-foreground-color: hsl(281 10% 30%) !important;
-  --ag-secondary-foreground-color: hsl(281 6% 50%) !important;
-  --ag-header-foreground-color: hsl(281 6% 45%) !important;
+  --ag-foreground-color: hsl(281 6% 42%) !important;
+  --ag-secondary-foreground-color: hsl(281 4% 55%) !important;
+  --ag-header-foreground-color: hsl(281 4% 50%) !important;
 
   /* Metrics — !important to override Theming API defaults */
   --ag-font-family: inherit !important;
@@ -266,15 +266,21 @@
   line-height: 1.4 !important;
 }
 .ag-theme-tdr .ag-header-cell {
-  font-size: 11px !important;
+  font-size: 10px !important;
+}
+/* Prevent header text ellipsis in narrow columns */
+.ag-theme-tdr .ag-header-cell-text {
+  overflow: visible !important;
+  text-overflow: clip !important;
 }
 
 /* Header text — quiet uppercase, matches section-header */
 .ag-theme-tdr .ag-header-cell-label {
-  font-size: 11px;
+  font-size: 10px !important;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  overflow: visible !important;
 }
 
 /* Remove ALL grid wrapper borders */
@@ -299,7 +305,7 @@
 .ag-theme-tdr .ag-paging-panel {
   border-top: 1px solid hsl(127 8% 88% / 0.4);
   font-size: 11px;
-  color: hsl(281 8% 48%);
+  color: hsl(281 4% 55%);
   height: 36px;
   padding: 0 16px;
 }
