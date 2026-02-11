@@ -5,6 +5,7 @@ import {
   ListTodo,
   FileSearch,
   History,
+  BarChart3,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +17,7 @@ const navItems = [
   { id: 'agenda', label: 'Agenda', icon: ListTodo, path: '/agenda' },
   { id: 'workspace', label: 'TDR Workspace', icon: FileSearch, path: '/workspace' },
   { id: 'history', label: 'History', icon: History, path: '/history' },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/analytics' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
 ];
 

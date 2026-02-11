@@ -4529,27 +4529,16 @@ Conversation resets when the page is refreshed or the user clicks a "New questio
 | `getTDRAnalyticsData` | (none) | `{ success, rows: [...] }` (object) | Input: none, Output: object |
 | `askTDRAnalytics` | `question` (string) | `{ success, sql, columns, rows, answer, chartHint }` (object) | Input: text, Output: object |
 
-**Files Changed (updated with NLQ):**
+**Files Changed (actual implementation):**
 
 | File | Change |
 |------|--------|
-| `src/pages/TDRAnalytics.tsx` | **New** — full analytics page with NLQ bar, 4 stat cards, 8 charts, 1 detail table |
-| `src/components/AnalyticsNLQ.tsx` | **New** — natural language query bar with answer display, auto-chart, conversation state |
-| `src/components/charts/AutoChart.tsx` | **New** — dynamic chart renderer (bar/donut/line/table) based on `chartHint` and result shape |
-| `src/components/charts/PlatformDonutChart.tsx` | **New** — cloud platform distribution donut |
-| `src/components/charts/EntryLayerBarChart.tsx` | **New** — entry layer horizontal bar |
-| `src/components/charts/CompetitorBarChart.tsx` | **New** — top competitors horizontal bar |
-| `src/components/charts/RiskCategoryBarChart.tsx` | **New** — risk category horizontal bar |
-| `src/components/charts/VerdictDonutChart.tsx` | **New** — verdict distribution donut |
-| `src/components/charts/TDRTrendChart.tsx` | **New** — TDR volume + verdict stacked area |
-| `src/components/charts/UseCaseBarChart.tsx` | **New** — Domo use cases horizontal bar |
-| `src/components/charts/DifferentiatorBarChart.tsx` | **New** — key differentiators horizontal bar |
-| `src/components/AppSidebar.tsx` | Add "Analytics" nav item (icon: `BarChart3` from lucide) |
-| `src/App.tsx` | Add `/analytics` route |
-| `src/lib/snowflakeStore.ts` | Add `getTDRAnalyticsData()` method |
-| `src/lib/cortexAi.ts` | Add `askTDRAnalytics()` method |
-| `manifest.json` | Add `getTDRAnalyticsData` and `askTDRAnalytics` to `packageMapping` |
-| `codeengine/consolidated-sprint4-5.js` | Add `getTDRAnalyticsData` and `askTDRAnalytics` functions |
+| `src/pages/TDRAnalytics.tsx` | ✅ **New** — full analytics page with NLQ hero bar (askAnalyst), 4 stat cards, 6 chart sections (donut + horizontal bar), auto-chart for NLQ results, result table, SQL viewer, question history, suggested questions, empty state |
+| `src/components/AppSidebar.tsx` | ✅ Add "Analytics" nav item (icon: `BarChart3` from lucide) |
+| `src/App.tsx` | ✅ Add `/analytics` route with lazy-loaded `TDRAnalytics` component |
+| `src/lib/cortexAi.ts` | (existing `askAnalyst` from Sprint 11 reused — no new CE function needed) |
+
+> **Implementation Note:** Rather than creating 10+ separate chart component files as originally planned, the analytics page was consolidated into a single `TDRAnalytics.tsx` with inline chart sub-components (`StatCard`, `HBarSection`, `DonutSection`, `AutoChart`, `ResultTable`). This keeps the code co-located and simpler to maintain. Charts are populated via `askAnalyst` CE function queries against `V_TDR_ANALYTICS`. As more TDR data accumulates, the charts will progressively fill in.
 
 **Snowflake Semantic View (Tier B — Future Sprint):**
 
