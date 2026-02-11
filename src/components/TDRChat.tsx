@@ -22,6 +22,7 @@ import {
   Snowflake,
   Search,
   Cpu,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +37,8 @@ import {
   type ProviderIconKey,
 } from '@/config/llmProviders';
 import type { Deal, TDRStep } from '@/types/tdr';
+import { filesetIntel } from '@/lib/filesetIntel';
+import { getAppSettings } from '@/lib/appSettings';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -244,6 +247,8 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
   const [showProviderMenu, setShowProviderMenu] = useState(false);
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [totalTokens, setTotalTokens] = useState({ in: 0, out: 0 });
+  const [includeKB, setIncludeKB] = useState(true);
+  const [kbContext, setKbContext] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -326,11 +331,29 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
       setMessages((prev) => [...prev, userMsg]);
 
       try {
+        // Sprint 19: If KB toggle is on, prepend fileset context to message
+        let enrichedMessage = text;
+        if (includeKB && kbContext) {
+          enrichedMessage = `${kbContext}\n\n---\nUser Question: ${text}`;
+        } else if (includeKB && (getAppSettings().filesetIds ?? []).length > 0) {
+          // Try to fetch KB context on the fly for this question
+          try {
+            const kbResults = await filesetIntel.search(text);
+            if (kbResults.matches.length > 0) {
+              const ctx = filesetIntel.buildChatContext(kbResults.matches);
+              setKbContext(ctx);
+              enrichedMessage = `${ctx}\n\n---\nUser Question: ${text}`;
+            }
+          } catch (kbErr) {
+            console.warn('[TDRChat] KB search failed, sending without context:', kbErr);
+          }
+        }
+
         const result: SendMessageResult = await tdrChat.sendMessage({
           sessionId,
           opportunityId: deal.id,
           accountName: deal.account,
-          userMessage: text,
+          userMessage: enrichedMessage,
           provider,
           model: modelId,
           contextStep: activeStep?.id,
@@ -677,9 +700,26 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
           </Button>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="text-[9px] text-slate-600">
-            Shift+Enter for new line
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] text-slate-600">
+              Shift+Enter for new line
+            </span>
+            {/* Sprint 19: Knowledge Base toggle */}
+            {(getAppSettings().filesetIds ?? []).length > 0 && (
+              <button
+                onClick={() => setIncludeKB(!includeKB)}
+                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] transition-colors ${
+                  includeKB
+                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                    : 'bg-[#221D38] text-slate-600 border border-[#2a2540]'
+                }`}
+                title={includeKB ? 'Knowledge base context included' : 'Knowledge base context excluded'}
+              >
+                <BookOpen className="h-2.5 w-2.5" />
+                KB
+              </button>
+            )}
+          </div>
           {activeStep && (
             <span className="text-[9px] text-slate-600">
               Context: {activeStep.title}

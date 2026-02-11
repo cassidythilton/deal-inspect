@@ -26,6 +26,10 @@ import {
   Loader2,
   ShieldAlert,
   Database,
+  BookOpen,
+  Plus,
+  X,
+  FolderSearch,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,6 +56,8 @@ import {
 import { accountIntel } from '@/lib/accountIntel';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
 import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
+import { filesetIntel } from '@/lib/filesetIntel';
+import type { FilesetMetadata } from '@/lib/filesetIntel';
 
 export default function Settings() {
   // ─── State ──────────────────────────────────────────────────────────────────
@@ -59,6 +65,13 @@ export default function Settings() {
   const [managerText, setManagerText] = useState('');
   const [competitorsText, setCompetitorsText] = useState('');
   const [isDirty, setIsDirty] = useState(false);
+
+  // ── Fileset Configuration (Sprint 19) ──
+  const [newFilesetId, setNewFilesetId] = useState('');
+  const [filesetMeta, setFilesetMeta] = useState<FilesetMetadata[]>([]);
+  const [filesetLoading, setFilesetLoading] = useState(false);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [availableFilesets, setAvailableFilesets] = useState<FilesetMetadata[]>([]);
 
   // ── Account Intelligence Usage ──
   const [usageStats, setUsageStats] = useState<Record<string, unknown> | null>(null);
@@ -75,11 +88,28 @@ export default function Settings() {
     setUsageLoading(false);
   }, []);
 
+  // Load fileset metadata
+  const loadFilesetMeta = useCallback(async () => {
+    if ((settings.filesetIds ?? []).length === 0) {
+      setFilesetMeta([]);
+      return;
+    }
+    setFilesetLoading(true);
+    try {
+      const metas = await filesetIntel.getConfiguredFilesets();
+      setFilesetMeta(metas);
+    } catch (err) {
+      console.warn('[Settings] Failed to load fileset metadata:', err);
+    }
+    setFilesetLoading(false);
+  }, [settings.filesetIds]);
+
   // Sync manager text + competitors text on mount + load usage stats
   useEffect(() => {
     setManagerText(settings.allowedManagers.join('\n'));
     setCompetitorsText((settings.dangerousCompetitors ?? []).join('\n'));
     loadUsageStats();
+    loadFilesetMeta();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -96,6 +126,41 @@ export default function Settings() {
   };
 
   const parsedCompetitors = parseManagerList(competitorsText); // reuse the same line parser
+
+  const handleAddFileset = () => {
+    const id = newFilesetId.trim();
+    if (!id) return;
+    const current = settings.filesetIds ?? [];
+    if (current.includes(id)) {
+      toast('Duplicate', { description: 'This fileset ID is already configured.' });
+      return;
+    }
+    updateSetting('filesetIds', [...current, id]);
+    setNewFilesetId('');
+    setIsDirty(true);
+  };
+
+  const handleRemoveFileset = (idToRemove: string) => {
+    const current = settings.filesetIds ?? [];
+    updateSetting('filesetIds', current.filter((id) => id !== idToRemove));
+    setFilesetMeta((prev) => prev.filter((m) => m.id !== idToRemove));
+    setIsDirty(true);
+  };
+
+  const handleDiscoverFilesets = async () => {
+    setDiscoverLoading(true);
+    try {
+      const discovered = await filesetIntel.discoverFilesets();
+      setAvailableFilesets(discovered);
+      if (discovered.length === 0) {
+        toast('No Filesets Found', { description: 'No filesets were discovered in this Domo instance.' });
+      }
+    } catch (err) {
+      console.warn('[Settings] Failed to discover filesets:', err);
+      toast('Discovery Failed', { description: 'Could not discover filesets. Ensure you have permissions.' });
+    }
+    setDiscoverLoading(false);
+  };
 
   const handleSave = () => {
     const patch: Partial<AppSettings> = {
@@ -333,7 +398,155 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* ── 6. Account Intelligence ─────────────────────────────────── */}
+          {/* ── 6. Knowledge Base Filesets (Sprint 19) ─────────────────── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-muted-foreground" />
+                <CardTitle>Knowledge Base Filesets</CardTitle>
+              </div>
+              <CardDescription>
+                Configure Domo filesets containing partner playbooks, competitive battle cards,
+                and other reference documents. These are searched automatically during TDR sessions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Add fileset input */}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter fileset ID (e.g. 6d0776f7-cafe-47c0-...)"
+                  value={newFilesetId}
+                  onChange={(e) => setNewFilesetId(e.target.value)}
+                  className="flex-1 font-mono text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddFileset();
+                    }
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddFileset}
+                  disabled={!newFilesetId.trim()}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+
+              {/* Discover button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+                onClick={handleDiscoverFilesets}
+                disabled={discoverLoading}
+              >
+                {discoverLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <FolderSearch className="h-4 w-4" />
+                )}
+                Discover Available Filesets
+              </Button>
+
+              {/* Discovered filesets */}
+              {availableFilesets.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Available Filesets:</p>
+                  <div className="max-h-48 overflow-y-auto space-y-1 rounded-md border p-2">
+                    {availableFilesets.map((fs) => {
+                      const isConfigured = (settings.filesetIds ?? []).includes(fs.id);
+                      return (
+                        <div
+                          key={fs.id}
+                          className="flex items-center justify-between rounded-md px-2 py-1.5 hover:bg-muted/50"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">{fs.name}</p>
+                            <p className="text-xs text-muted-foreground font-mono truncate">{fs.id}</p>
+                          </div>
+                          {isConfigured ? (
+                            <Badge variant="secondary" className="text-xs shrink-0 ml-2">Added</Badge>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 shrink-0 ml-2"
+                              onClick={() => {
+                                updateSetting('filesetIds', [...(settings.filesetIds ?? []), fs.id]);
+                                setIsDirty(true);
+                              }}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Add
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Configured filesets */}
+              {(settings.filesetIds ?? []).length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Configured ({(settings.filesetIds ?? []).length}):
+                  </p>
+                  <div className="space-y-1.5">
+                    {(settings.filesetIds ?? []).map((id) => {
+                      const meta = filesetMeta.find((m) => m.id === id);
+                      return (
+                        <div
+                          key={id}
+                          className="flex items-center justify-between rounded-md border px-3 py-2"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium truncate">
+                              {meta?.name || `Fileset ${id.substring(0, 8)}...`}
+                            </p>
+                            <p className="text-xs text-muted-foreground font-mono truncate">{id}</p>
+                            {meta?.fileCount !== undefined && (
+                              <p className="text-xs text-muted-foreground">
+                                {meta.fileCount} files
+                                {meta.lastUpdated ? ` · Updated ${new Date(meta.lastUpdated).toLocaleDateString()}` : ''}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 shrink-0 ml-2 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemoveFileset(id)}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  No filesets configured. Add a fileset ID or use Discover to find available filesets.
+                </p>
+              )}
+
+              <div className="flex items-start gap-2 text-xs text-muted-foreground pt-2 border-t">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <span>
+                  Filesets are searched automatically when opening a TDR. Results appear in the
+                  Intelligence panel and can be included in chat context.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── 7. Account Intelligence ─────────────────────────────────── */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">

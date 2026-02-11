@@ -140,15 +140,15 @@ The final solution has four distinct layers. Each layer is independently valuabl
 │   forecastsmagic ──────┤────────────────► React SPA             │
 │   wcpweekly ───────────┘                   │                    │
 │                                            │                    │
-│   AppDB (TDRSessions) ◄──► /domo/datastores/v1/...             │
+│   AppDB (TDRSessions) ◄──► /domo/datastores/v1/...              │
 │                                            │                    │
-│   Domo AI ◄──────────── /domo/ai/v1/text/chat                  │
+│   Domo AI ◄──────────── /domo/ai/v1/text/chat                   │
 │   (17-factor TDR prompt)                   │                    │
 │                                            ▼                    │
 │                              ┌──────────────────────┐           │
-│                              │  TDR Deal Inspection  │           │
-│                              │  React + TS + Vite    │           │
-│                              └──────────────────────┘           │
+│                              │  TDR Deal Inspection  │          │
+│                              │  React + TS + Vite    │          │
+│                              └──────────────────────┘           │ 
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -4648,7 +4648,7 @@ When no TDR sessions have been extracted yet:
 
 ---
 
-### Sprint 19 — Fileset Intelligence Layer 🔲
+### Sprint 19 — Fileset Intelligence Layer ✅
 
 > **Goal:** Integrate Domo filesets (unstructured PDFs — partner playbooks, competitive battle cards) into the TDR experience via Cortex AI analysis.
 > **Risk to app:** Low — additive feature. No existing behavior changes.
@@ -4745,7 +4745,7 @@ const files = await domo.get(`/domo/files/v1/filesets/${filesetId}/files`);
 | `src/components/TDRChat.tsx` | Add "Include Knowledge Base" toggle, fileset context injection |
 | `src/lib/tdrCriticalFactors.ts` | Add `filesetMatchSignal` to Post-TDR Score (Sprint 18 integration) |
 
-**Definition of Done:** Opening a TDR auto-searches configured filesets for relevant content. Results displayed in Intelligence panel. Chat can reference fileset content. Settings allows adding/removing filesets.
+**Definition of Done:** ✅ Opening a TDR auto-searches configured filesets for relevant content. Results displayed in Intelligence panel under "Knowledge Base" section with document titles, excerpts, relevance scores, and "View Source" links. Chat has "Include Knowledge Base" toggle that injects fileset context into LLM prompts. Settings page allows adding/removing fileset IDs with metadata display (name, file count, status). `filesetMatchSignal` feeds into Post-TDR Score (0/+2/+5 based on match strength). All fileset API calls handle multiple payload formats for Domo API compatibility. `dist/manifest.json` updated to v1.37.0 with all 30 Code Engine function mappings.
 
 ---
 

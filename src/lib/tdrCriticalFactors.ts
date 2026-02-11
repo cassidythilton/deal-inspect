@@ -535,6 +535,8 @@ export interface PostTDRScoreContext {
   completedStepCount?: number;
   /** Total TDR steps */
   totalStepCount?: number;
+  /** Sprint 19: Fileset match signal — 'strong' | 'partial' | 'none' */
+  filesetMatchSignal?: 'strong' | 'partial' | 'none';
 }
 
 export interface PostTDRScoreBreakdown {
@@ -543,6 +545,8 @@ export interface PostTDRScoreBreakdown {
   enrichmentDepth: number;
   tdrInputCompleteness: number;
   riskAwareness: number;
+  /** Sprint 19: Fileset match signal score (0, 2, or 5) */
+  filesetMatchSignal: number;
   totalPostTDR: number;
 }
 
@@ -600,8 +604,14 @@ export function calculatePostTDRScore(
   else if (riskCount >= 2) riskAwareness = 3;
   else if (riskCount >= 1) riskAwareness = 2;
 
+  // ── Fileset Match Signal (0-5) — Sprint 19 ───────────────────────────
+  // Battle cards / playbooks for named competitors = higher readiness
+  let filesetMatchSignalScore = 0;
+  if (context.filesetMatchSignal === 'strong') filesetMatchSignalScore = 5;
+  else if (context.filesetMatchSignal === 'partial') filesetMatchSignalScore = 2;
+
   const totalPostTDR = Math.max(0, Math.min(100,
-    preTDRScore + namedCompetitorThreat + enrichmentDepth + tdrInputCompleteness + riskAwareness
+    preTDRScore + namedCompetitorThreat + enrichmentDepth + tdrInputCompleteness + riskAwareness + filesetMatchSignalScore
   ));
 
   return {
@@ -610,6 +620,7 @@ export function calculatePostTDRScore(
     enrichmentDepth,
     tdrInputCompleteness,
     riskAwareness,
+    filesetMatchSignal: filesetMatchSignalScore,
     totalPostTDR,
   };
 }

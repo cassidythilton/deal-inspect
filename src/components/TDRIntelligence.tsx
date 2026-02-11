@@ -60,6 +60,8 @@ import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, Sent
 import { calculateTDRScore, calculatePostTDRScore, getPriorityFromScore } from '@/lib/tdrCriticalFactors';
 import type { PostTDRScoreBreakdown } from '@/lib/tdrCriticalFactors';
 import { getAppSettings } from '@/lib/appSettings';
+import { filesetIntel } from '@/lib/filesetIntel';
+import type { FilesetSearchResult, FilesetSummary } from '@/lib/filesetIntel';
 
 interface TDRIntelligenceProps {
   deal?: Deal;
@@ -255,6 +257,12 @@ export function TDRIntelligence({
   const [similarDeals, setSimilarDeals] = useState<{ opportunityId: string; accountName: string; similarityScore: number; sessionId?: string }[]>([]);
   const [similarDealsLoading, setSimilarDealsLoading] = useState(false);
 
+  // ── Sprint 19: Fileset Intelligence ──
+  const [filesetResults, setFilesetResults] = useState<FilesetSearchResult | null>(null);
+  const [filesetSummary, setFilesetSummary] = useState<FilesetSummary | null>(null);
+  const [filesetLoading, setFilesetLoading] = useState(false);
+  const [filesetSearched, setFilesetSearched] = useState(false);
+
   // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
   useEffect(() => {
     if (deal?.websiteDomain) {
@@ -318,6 +326,79 @@ export function TDRIntelligence({
 
     loadCachedBrief();
   }, [sessionId, briefCacheLoaded]);
+
+  // ── Sprint 19: Auto-search filesets when deal opens ──
+  useEffect(() => {
+    if (filesetSearched || !deal) return;
+    const settings = getAppSettings();
+    if ((settings.filesetIds ?? []).length === 0) return;
+
+    setFilesetSearched(true);
+    setFilesetLoading(true);
+
+    const doSearch = async () => {
+      try {
+        const competitors = deal.competitors
+          ? (Array.isArray(deal.competitors) ? deal.competitors : [deal.competitors])
+          : [];
+        const result = await filesetIntel.searchByDealContext({
+          accountName: deal.account,
+          competitors: competitors as string[],
+          partnerPlatform: deal.partnersInvolved || undefined,
+          cloudPlatform: deal.snowflakeTeam || undefined,
+          industry: undefined,
+        });
+        setFilesetResults(result);
+
+        if (result.matches.length > 0) {
+          const dealContext = `${deal.account} — ${deal.stage} — ACV $${(deal.acv ?? 0).toLocaleString()}`;
+          const summary = await filesetIntel.getIntelligenceSummary(
+            result,
+            dealContext,
+            competitors as string[]
+          );
+          setFilesetSummary(summary);
+          console.log(`[FilesetIntel] Auto-search complete: ${result.matches.length} matches, signal: ${summary.matchSignal}`);
+        }
+      } catch (err) {
+        console.warn('[FilesetIntel] Auto-search failed:', err);
+      }
+      setFilesetLoading(false);
+    };
+
+    doSearch();
+  }, [deal, filesetSearched]);
+
+  // ── Sprint 19: Manual fileset re-search ──
+  const handleFilesetSearch = useCallback(async () => {
+    if (!deal) return;
+    setFilesetLoading(true);
+    try {
+      const competitors = deal.competitors
+        ? (Array.isArray(deal.competitors) ? deal.competitors : [deal.competitors])
+        : [];
+      const result = await filesetIntel.searchByDealContext({
+        accountName: deal.account,
+        competitors: competitors as string[],
+        partnerPlatform: deal.partnersInvolved || undefined,
+        cloudPlatform: deal.snowflakeTeam || undefined,
+      });
+      setFilesetResults(result);
+
+      if (result.matches.length > 0) {
+        const dealContext = `${deal.account} — ${deal.stage} — ACV $${(deal.acv ?? 0).toLocaleString()}`;
+        const summary = await filesetIntel.getIntelligenceSummary(
+          result,
+          dealContext,
+          competitors as string[]
+        );
+        setFilesetSummary(summary);
+      }
+    } catch (err) {
+      console.warn('[FilesetIntel] Manual search failed:', err);
+    }
+    setFilesetLoading(false);
+  }, [deal]);
 
   // ── Sumble Enrichment ──
   const handleEnrichSumble = useCallback(async () => {
@@ -606,6 +687,7 @@ export function TDRIntelligence({
             domoUseCases: extractionResult?.structured?.DOMO_USE_CASES ?? [],
             completedStepCount,
             totalStepCount,
+            filesetMatchSignal: filesetSummary?.matchSignal ?? 'none',
           });
         }
 
@@ -653,8 +735,8 @@ export function TDRIntelligence({
                 </div>
                 {/* Progress bar */}
                 <div className="h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
-                  <div
-                    className={cn(
+        <div
+          className={cn(
                       'h-full rounded-full transition-all duration-500',
                       priority === 'CRITICAL' ? 'bg-red-500/70' :
                       priority === 'HIGH' ? 'bg-emerald-500/70' :
@@ -677,6 +759,7 @@ export function TDRIntelligence({
                   { label: 'Enrichment Depth', value: postBreakdown.enrichmentDepth, max: 5 },
                   { label: 'TDR Completeness', value: postBreakdown.tdrInputCompleteness, max: 10 },
                   { label: 'Risk Awareness', value: postBreakdown.riskAwareness, max: 5 },
+                  { label: 'Knowledge Base', value: postBreakdown.filesetMatchSignal, max: 5 },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-2 text-2xs">
                     <span className="text-slate-500 w-28 shrink-0">{item.label}</span>
@@ -1705,6 +1788,116 @@ export function TDRIntelligence({
               )}
             </div>
           )}
+
+          {/* ── Sprint 19: Knowledge Base (Fileset Intelligence) ── */}
+          <div className="mt-3 pt-3 border-t border-[#322b4d]">
+            <div className="flex items-center justify-between">
+              <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Knowledge Base</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-2xs text-slate-500 hover:text-slate-300 hover:bg-[#221d38]"
+                onClick={handleFilesetSearch}
+                disabled={filesetLoading}
+                title="Search configured filesets for relevant content"
+              >
+                {filesetLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <BookOpen className="h-3 w-3" />}
+              </Button>
+            </div>
+
+            {filesetLoading && (
+              <div className="flex items-center gap-2 mt-2 text-slate-400">
+                <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
+                <span className="text-2xs">Searching knowledge base...</span>
+              </div>
+            )}
+
+            {filesetSummary && !filesetLoading && (
+              <div className="mt-2 space-y-2">
+                {/* Match signal badge */}
+                <div className="flex items-center gap-1.5">
+                  <div className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                    filesetSummary.matchSignal === 'strong'
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                      : filesetSummary.matchSignal === 'partial'
+                        ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                        : 'bg-slate-500/15 text-slate-500 border border-slate-500/25'
+                  )}>
+                    {filesetSummary.matchSignal === 'strong' ? '● Strong Match' :
+                     filesetSummary.matchSignal === 'partial' ? '● Partial Match' : '○ No Match'}
+                  </div>
+                  <span className="text-[10px] text-slate-600">
+                    {filesetResults?.totalMatches ?? 0} docs
+                  </span>
+                </div>
+
+                {/* Relevant documents */}
+                {filesetSummary.relevantDocuments.length > 0 && (
+                  <div className="space-y-1">
+                    {filesetSummary.relevantDocuments.slice(0, 4).map((doc, i) => (
+                      <div key={i} className="group rounded-md bg-[#221d38] border border-[#322b4d] px-2.5 py-1.5">
+                        <div className="flex items-center justify-between">
+                          <p className="text-2xs font-medium text-slate-300 truncate">{doc.title}</p>
+                          <span className={cn(
+                            'text-[10px] font-medium tabular-nums',
+                            doc.relevance >= 80 ? 'text-emerald-400' :
+                            doc.relevance >= 50 ? 'text-amber-400' : 'text-slate-500'
+                          )}>
+                            {doc.relevance}%
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{doc.excerpt}</p>
+                        <p className="text-[9px] text-slate-700 mt-0.5">{doc.source}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Competitive/Partner insights */}
+                {(filesetSummary.competitorInsights.length > 0 || filesetSummary.partnerInsights.length > 0) && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {filesetSummary.competitorInsights.slice(0, 3).map((ins, i) => (
+                      <span key={`c${i}`} className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                        {ins.length > 30 ? ins.substring(0, 30) + '...' : ins}
+                      </span>
+                    ))}
+                    {filesetSummary.partnerInsights.slice(0, 3).map((ins, i) => (
+                      <span key={`p${i}`} className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                        {ins.length > 30 ? ins.substring(0, 30) + '...' : ins}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* AI Summary */}
+                {filesetSummary.summary && (
+                  <div className="mt-1 rounded-md bg-[#1e1a30] border border-[#322b4d] p-2">
+                    <p className="text-[10px] font-medium text-amber-400 mb-1">AI Summary</p>
+                    <div className="text-[10px] text-slate-400 leading-relaxed">
+                      {renderMarkdownBlock(filesetSummary.summary, 'fs')}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!filesetLoading && !filesetSummary && filesetSearched && (
+              <p className="mt-1 text-2xs text-slate-600 italic">
+                {(getAppSettings().filesetIds ?? []).length === 0
+                  ? 'No filesets configured — add filesets in Settings'
+                  : 'No relevant documents found in knowledge base'}
+              </p>
+            )}
+
+            {!filesetLoading && !filesetSearched && (
+              <p className="mt-1 text-2xs text-slate-600 italic">
+                {(getAppSettings().filesetIds ?? []).length === 0
+                  ? 'Add filesets in Settings to enable knowledge base'
+                  : 'Click the book icon to search knowledge base'}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -1813,8 +2006,8 @@ export function TDRIntelligence({
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <Info className="h-3.5 w-3.5 text-slate-600" />
             <span>No significant risks identified</span>
-          </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* ────────────────────────────────────────────────────────────
@@ -1886,7 +2079,7 @@ export function TDRIntelligence({
             Analytics Extraction
           </p>
           {extractionResult?.success ? (
-            <div className="space-y-2">
+        <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-emerald-400">
                 <CheckCircle className="h-3.5 w-3.5" />
                 <span>Extracted successfully</span>
