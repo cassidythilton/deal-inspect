@@ -19,23 +19,20 @@ import {
 import type { ReadoutPayload, ReadoutTheme } from './readoutTypes';
 import { DEFAULT_THEME } from './readoutTypes';
 
-// ─── Font Registration ───────────────────────────────────────────────────────
+// ─── Font Configuration ──────────────────────────────────────────────────────
+// Use built-in Helvetica font family — no network download, no woff2 subsetting,
+// no DataView overflow. Helvetica is embedded in every PDF reader and looks clean.
 
-Font.register({
-  family: 'Inter',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuI6fAZ9hiA.woff2', fontWeight: 600 },
-    { src: 'https://fonts.gstatic.com/s/inter/v13/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuFuYAZ9hiA.woff2', fontWeight: 700 },
-  ],
-});
+Font.registerHyphenationCallback((word) => [word]); // Disable hyphenation to avoid glyph issues
+
+const PDF_FONT = 'Helvetica';
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const createStyles = (theme: ReadoutTheme) =>
   StyleSheet.create({
     page: {
-      fontFamily: 'Inter',
+      fontFamily: PDF_FONT,
       fontSize: 10,
       color: '#433650',
       paddingTop: 60,
@@ -44,7 +41,7 @@ const createStyles = (theme: ReadoutTheme) =>
     },
     // Cover page
     coverPage: {
-      fontFamily: 'Inter',
+      fontFamily: PDF_FONT,
       backgroundColor: theme.secondaryColor,
       color: '#ffffff',
       display: 'flex',
@@ -241,10 +238,35 @@ const createStyles = (theme: ReadoutTheme) =>
     },
   });
 
+// ─── Helper: Text sanitizer for PDF-safe rendering ──────────────────────────
+// Normalizes Unicode characters to ASCII equivalents to prevent font subsetting
+// crashes (DataView RangeError) when glyphs aren't in the built-in font table.
+
+function sanitize(text: string): string {
+  return text
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")   // smart single quotes -> '
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')    // smart double quotes -> "
+    .replace(/\u2026/g, '...')                        // ellipsis
+    .replace(/\u2013/g, '-')                          // en dash
+    .replace(/\u2014/g, '--')                         // em dash
+    .replace(/\u2192/g, '->')                         // right arrow
+    .replace(/\u2190/g, '<-')                         // left arrow
+    .replace(/\u2022/g, '-')                          // bullet (we render our own)
+    .replace(/\u00BD/g, '1/2')                        // fraction half
+    .replace(/\u00B0/g, ' deg')                       // degree
+    .replace(/\u2122/g, '(TM)')                       // trademark
+    .replace(/\u00A9/g, '(c)')                        // copyright
+    .replace(/\u00AE/g, '(R)')                        // registered
+    .replace(/\u00B7/g, '-')                          // middle dot
+    .replace(/\u2212/g, '-')                          // minus sign
+    .replace(/\u00D7/g, 'x')                          // multiplication sign
+    .replace(/[^\x20-\x7E\n\r\t]/g, '');             // strip any remaining non-ASCII
+}
+
 // ─── Helper: Format date ────────────────────────────────────────────────────
 
 function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '--';
   try {
     const d = new Date(dateStr);
     return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -257,17 +279,20 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 }
 
-/** Safely convert any value to a renderable string (prevents React #31 on objects) */
+/** Safely convert any value to a renderable, sanitized string */
 function safeString(val: unknown): string {
-  if (val === null || val === undefined) return '—';
-  if (typeof val === 'string') return val;
+  if (val === null || val === undefined) return '--';
+  if (typeof val === 'string') return sanitize(val);
   if (typeof val === 'number' || typeof val === 'boolean') return String(val);
   if (Array.isArray(val)) return val.map(safeString).join(', ');
   if (typeof val === 'object') {
-    try { return JSON.stringify(val); } catch { return '[object]'; }
+    try { return sanitize(JSON.stringify(val)); } catch { return '[object]'; }
   }
   return String(val);
 }
+
+/** Shorthand: sanitize a string for direct use in <Text> */
+const s = (text: string) => sanitize(text);
 
 /** Check if a value is a flat array of strings (safe for tag rendering) */
 function isStringArray(val: unknown): val is string[] {
@@ -288,7 +313,7 @@ function groupInputsByStep(inputs: ReadoutPayload['inputs']): Map<string, { fiel
 // ─── Helper: render multiline text ──────────────────────────────────────────
 
 function MultilineText({ text, styles }: { text: string; styles: ReturnType<typeof createStyles> }) {
-  const paragraphs = text.split('\n\n').filter(Boolean);
+  const paragraphs = sanitize(text).split('\n\n').filter(Boolean);
   return (
     <>
       {paragraphs.map((para, i) => {
@@ -311,7 +336,7 @@ function MultilineText({ text, styles }: { text: string; styles: ReturnType<type
                 if (line.startsWith('- ')) {
                   return (
                     <View key={j} style={styles.listItem}>
-                      <Text style={styles.bullet}>•</Text>
+                      <Text style={styles.bullet}>-</Text>
                       <Text style={styles.listText}>{line.slice(2).replace(/\*\*/g, '')}</Text>
                     </View>
                   );
@@ -332,7 +357,7 @@ function MultilineText({ text, styles }: { text: string; styles: ReturnType<type
 function PageHeader({ accountName, theme, styles }: { accountName: string; theme: ReadoutTheme; styles: ReturnType<typeof createStyles> }) {
   return (
     <View style={styles.header} fixed>
-      <Text>{theme.confidentialityLabel} — {accountName}</Text>
+      <Text>{s(theme.confidentialityLabel)} - {s(accountName)}</Text>
       <Text>Generated by TDR Deal Inspection</Text>
     </View>
   );
@@ -360,12 +385,12 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
   const inputsByStep = groupInputsByStep(inputs);
 
   return (
-    <Document title={`TDR Readout — ${session.accountName}`} author="TDR Deal Inspection" subject="Technical Deal Review">
+    <Document title={`TDR Readout - ${s(session.accountName)}`} author="TDR Deal Inspection" subject="Technical Deal Review">
       {/* ── Cover Page ── */}
       <Page size="A4" style={styles.coverPage}>
         <Text style={styles.coverLabel}>Technical Deal Review</Text>
-        <Text style={styles.coverTitle}>{session.accountName}</Text>
-        <Text style={styles.coverSubtitle}>{session.opportunityName}</Text>
+        <Text style={styles.coverTitle}>{s(session.accountName)}</Text>
+        <Text style={styles.coverSubtitle}>{s(session.opportunityName)}</Text>
 
         <View style={styles.coverMeta}>
           <View>
@@ -374,11 +399,11 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           </View>
           <View>
             <Text style={styles.coverMetaItem}>Stage</Text>
-            <Text style={styles.coverMetaValue}>{session.stage}</Text>
+            <Text style={styles.coverMetaValue}>{s(session.stage)}</Text>
           </View>
           <View>
             <Text style={styles.coverMetaItem}>Status</Text>
-            <Text style={styles.coverMetaValue}>{session.status}</Text>
+            <Text style={styles.coverMetaValue}>{s(session.status)}</Text>
           </View>
           <View>
             <Text style={styles.coverMetaItem}>Iteration</Text>
@@ -389,7 +414,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         <View style={[styles.coverMeta, { marginTop: 20 }]}>
           <View>
             <Text style={styles.coverMetaItem}>Owner</Text>
-            <Text style={styles.coverMetaValue}>{session.owner}</Text>
+            <Text style={styles.coverMetaValue}>{s(session.owner)}</Text>
           </View>
           <View>
             <Text style={styles.coverMetaItem}>Created</Text>
@@ -398,13 +423,13 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           {session.outcome && (
             <View>
               <Text style={styles.coverMetaItem}>Outcome</Text>
-              <Text style={styles.coverMetaValue}>{session.outcome}</Text>
+              <Text style={styles.coverMetaValue}>{s(session.outcome)}</Text>
             </View>
           )}
         </View>
 
         <Text style={styles.coverConfidential}>
-          {theme.confidentialityLabel} · {formatDate(payload.generatedAt)} · Do not distribute without authorization
+          {s(theme.confidentialityLabel)} - {formatDate(payload.generatedAt)} - Do not distribute without authorization
         </Text>
       </Page>
 
@@ -420,20 +445,20 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           <Text style={styles.emptySection}>TDR brief not yet generated. Generate a brief from the TDR Workspace to populate this section.</Text>
         )}
         {brief && (
-          <Text style={styles.smallText}>Model: {brief.modelUsed} · Generated: {formatDate(brief.createdAt)}</Text>
+          <Text style={styles.smallText}>Model: {s(brief.modelUsed)} - Generated: {formatDate(brief.createdAt)}</Text>
         )}
 
         {/* ── §2 Deal Context & Stakes ── */}
-        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>2. Deal Context & Stakes</Text>
+        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>2. Deal Context and Stakes</Text>
         {inputsByStep.size > 0 ? (
           <>
             {Array.from(inputsByStep.entries()).map(([stepId, fields]) => (
               <View key={stepId} style={styles.card}>
-                <Text style={styles.sectionSubtitle}>Step: {stepId}</Text>
+                <Text style={styles.sectionSubtitle}>Step: {s(stepId)}</Text>
                 {fields.map((f, j) => (
                   <View key={j} style={{ marginBottom: 4 }}>
-                    <Text style={[styles.smallText, { fontWeight: 600 }]}>{f.fieldId}</Text>
-                    <Text style={styles.bodyText}>{f.value}</Text>
+                    <Text style={[styles.smallText, { fontWeight: 600 }]}>{s(f.fieldId)}</Text>
+                    <Text style={styles.bodyText}>{s(f.value)}</Text>
                   </View>
                 ))}
               </View>
@@ -458,15 +483,15 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
             <View style={styles.table}>
               <View style={styles.tableRow}>
                 <Text style={[styles.tableCell, { fontWeight: 600 }]}>Industry</Text>
-                <Text style={styles.tableCell}>{orgProfile.industry || '—'}</Text>
+                <Text style={styles.tableCell}>{s(orgProfile.industry || '--')}</Text>
                 <Text style={[styles.tableCell, { fontWeight: 600 }]}>Employees</Text>
-                <Text style={styles.tableCell}>{orgProfile.totalEmployees?.toLocaleString() || '—'}</Text>
+                <Text style={styles.tableCell}>{orgProfile.totalEmployees?.toLocaleString() || '--'}</Text>
               </View>
               <View style={styles.tableRow}>
                 <Text style={[styles.tableCell, { fontWeight: 600 }]}>Location</Text>
-                <Text style={styles.tableCell}>{[orgProfile.hqState, orgProfile.hqCountry].filter(Boolean).join(', ') || '—'}</Text>
+                <Text style={styles.tableCell}>{s([orgProfile.hqState, orgProfile.hqCountry].filter(Boolean).join(', ') || '--')}</Text>
                 <Text style={[styles.tableCell, { fontWeight: 600 }]}>Source</Text>
-                <Text style={styles.tableCell}>Sumble · {formatDate(orgProfile.pulledAt)}</Text>
+                <Text style={styles.tableCell}>Sumble - {formatDate(orgProfile.pulledAt)}</Text>
               </View>
             </View>
           </View>
@@ -505,7 +530,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
             ) : (
               <Text style={styles.emptySection}>No technology data available.</Text>
             )}
-            <Text style={styles.smallText}>Source: Sumble · {formatDate(sumble.pulledAt)}</Text>
+            <Text style={styles.smallText}>Source: Sumble - {formatDate(sumble.pulledAt)}</Text>
           </View>
         )}
 
@@ -513,7 +538,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         {perplexity && (
           <View style={styles.card}>
             <Text style={styles.sectionSubtitle}>Research Summary</Text>
-            <Text style={styles.bodyText}>{perplexity.summary}</Text>
+            <Text style={styles.bodyText}>{s(perplexity.summary)}</Text>
 
             {isStringArray(perplexity.recentInitiatives) && perplexity.recentInitiatives.length > 0 && (
               <>
@@ -548,7 +573,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
               </>
             )}
 
-            <Text style={styles.smallText}>Source: Perplexity · {formatDate(perplexity.pulledAt)}</Text>
+            <Text style={styles.smallText}>Source: Perplexity - {formatDate(perplexity.pulledAt)}</Text>
           </View>
         )}
 
@@ -572,8 +597,8 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
             </View>
             {classifiedFindings.findings.map((f, i) => (
               <View key={i} style={styles.tableRow}>
-                <Text style={[styles.tableCell, { flex: 2 }]}>{f.finding}</Text>
-                <Text style={styles.tableCell}>{f.category.replace(/_/g, ' ')}</Text>
+                <Text style={[styles.tableCell, { flex: 2 }]}>{s(f.finding)}</Text>
+                <Text style={styles.tableCell}>{s(f.category.replace(/_/g, ' '))}</Text>
               </View>
             ))}
           </View>
@@ -633,15 +658,15 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
 
             {hiringSignals && (
               <View style={styles.card}>
-                <Text style={styles.sectionSubtitle}>Hiring Signals — {hiringSignals.jobCount} active data/tech roles</Text>
-                <Text style={styles.smallText}>Source: Sumble · {formatDate(hiringSignals.pulledAt)}</Text>
+                <Text style={styles.sectionSubtitle}>Hiring Signals - {hiringSignals.jobCount} active data/tech roles</Text>
+                <Text style={styles.smallText}>Source: Sumble - {formatDate(hiringSignals.pulledAt)}</Text>
               </View>
             )}
 
             {keyPeople && (
               <View style={styles.card}>
-                <Text style={styles.sectionSubtitle}>Key People — {keyPeople.peopleCount} relevant contacts identified</Text>
-                <Text style={styles.smallText}>Source: Sumble · {formatDate(keyPeople.pulledAt)}</Text>
+                <Text style={styles.sectionSubtitle}>Key People - {keyPeople.peopleCount} relevant contacts identified</Text>
+                <Text style={styles.smallText}>Source: Sumble - {formatDate(keyPeople.pulledAt)}</Text>
               </View>
             )}
           </>
@@ -661,11 +686,11 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
             <View key={i} style={[styles.card, { backgroundColor: msg.role === 'user' ? '#f0f4ff' : '#f8fafc' }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
                 <Text style={[styles.smallText, { fontWeight: 600, color: msg.role === 'user' ? '#3b82f6' : '#6929C4' }]}>
-                  {msg.role === 'user' ? 'User' : `AI (${msg.provider}/${msg.model})`}
+                  {msg.role === 'user' ? 'User' : `AI (${s(msg.provider)}/${s(msg.model)})`}
                 </Text>
                 <Text style={styles.smallText}>{formatDate(msg.createdAt)}</Text>
               </View>
-              <Text style={styles.bodyText}>{msg.content}</Text>
+              <Text style={styles.bodyText}>{s(msg.content)}</Text>
             </View>
           ))}
         </Page>
@@ -676,7 +701,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         <PageHeader accountName={session.accountName} theme={theme} styles={styles} />
         <PageFooter generatedAt={payload.generatedAt} styles={styles} />
 
-        <Text style={styles.sectionTitle}>8. Appendix — Generation Metadata</Text>
+        <Text style={styles.sectionTitle}>8. Appendix - Generation Metadata</Text>
 
         <View style={styles.table}>
           <View style={styles.tableRow}>
@@ -728,7 +753,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         </View>
 
         <Text style={[styles.smallText, { marginTop: 20, textAlign: 'center' }]}>
-          — End of TDR Readout —
+          -- End of TDR Readout --
         </Text>
       </Page>
     </Document>
