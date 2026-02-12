@@ -378,7 +378,9 @@
     },
     {
       "alias": "getSlackChannels",
-      "parameters": [],
+      "parameters": [
+        { "alias": "placeholder", "type": "string", "nullable": true, "isList": false, "children": null }
+      ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],

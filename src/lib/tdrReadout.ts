@@ -255,7 +255,7 @@ export const tdrReadout = {
       ] };
     }
     try {
-      const raw = await callCodeEngine<unknown>('getSlackChannels', {});
+      const raw = await callCodeEngine<unknown>('getSlackChannels', { placeholder: 'list' });
       const result = extractResult(raw);
       return {
         success: result.success as boolean,
