@@ -258,6 +258,23 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 }
 
+/** Safely convert any value to a renderable string (prevents React #31 on objects) */
+function safeString(val: unknown): string {
+  if (val === null || val === undefined) return '—';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (Array.isArray(val)) return val.map(safeString).join(', ');
+  if (typeof val === 'object') {
+    try { return JSON.stringify(val); } catch { return '[object]'; }
+  }
+  return String(val);
+}
+
+/** Check if a value is a flat array of strings (safe for tag rendering) */
+function isStringArray(val: unknown): val is string[] {
+  return Array.isArray(val) && val.every(item => typeof item === 'string');
+}
+
 // ─── Helper: Group inputs by step ───────────────────────────────────────────
 
 function groupInputsByStep(inputs: ReadoutPayload['inputs']): Map<string, { fieldId: string; value: string }[]> {
@@ -460,23 +477,32 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         {sumble && (
           <View style={styles.card}>
             <Text style={styles.sectionSubtitle}>Technology Stack</Text>
-            {Array.isArray(sumble.technologies) ? (
+            {isStringArray(sumble.technologies) ? (
               <View style={styles.tagRow}>
-                {(sumble.technologies as string[]).map((tech, i) => (
+                {sumble.technologies.map((tech, i) => (
                   <Text key={i} style={styles.tag}>{tech}</Text>
                 ))}
               </View>
-            ) : sumble.technologies && typeof sumble.technologies === 'object' ? (
-              Object.entries(sumble.technologies).map(([cat, techs]) => (
-                <View key={cat} style={{ marginBottom: 4 }}>
-                  <Text style={[styles.smallText, { fontWeight: 600 }]}>{cat}</Text>
-                  <View style={styles.tagRow}>
-                    {(techs as string[]).map((tech, i) => (
-                      <Text key={i} style={styles.tag}>{tech}</Text>
-                    ))}
+            ) : sumble.technologies && typeof sumble.technologies === 'object' && !Array.isArray(sumble.technologies) ? (
+              (() => {
+                // Only render entries where values are string arrays (category → tech list)
+                const entries = Object.entries(sumble.technologies as Record<string, unknown>).filter(
+                  ([, v]) => isStringArray(v)
+                );
+                if (entries.length === 0) {
+                  return <Text style={styles.bodyText}>{safeString(sumble.technologies)}</Text>;
+                }
+                return entries.map(([cat, techs]) => (
+                  <View key={cat} style={{ marginBottom: 4 }}>
+                    <Text style={[styles.smallText, { fontWeight: 600 }]}>{cat}</Text>
+                    <View style={styles.tagRow}>
+                      {(techs as string[]).map((tech, i) => (
+                        <Text key={i} style={styles.tag}>{tech}</Text>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              ))
+                ));
+              })()
             ) : (
               <Text style={styles.emptySection}>No technology data available.</Text>
             )}
@@ -490,35 +516,35 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
             <Text style={styles.sectionSubtitle}>Research Summary</Text>
             <Text style={styles.bodyText}>{perplexity.summary}</Text>
 
-            {perplexity.recentInitiatives && perplexity.recentInitiatives.length > 0 && (
+            {isStringArray(perplexity.recentInitiatives) && perplexity.recentInitiatives.length > 0 && (
               <>
                 <Text style={[styles.sectionSubtitle, { fontSize: 10 }]}>Recent Initiatives</Text>
                 {perplexity.recentInitiatives.map((item, i) => (
                   <View key={i} style={styles.listItem}>
                     <Text style={styles.bullet}>•</Text>
-                    <Text style={styles.listText}>{item}</Text>
+                    <Text style={styles.listText}>{safeString(item)}</Text>
                   </View>
                 ))}
               </>
             )}
 
-            {perplexity.competitiveLandscape && perplexity.competitiveLandscape.length > 0 && (
+            {isStringArray(perplexity.competitiveLandscape) && perplexity.competitiveLandscape.length > 0 && (
               <>
                 <Text style={[styles.sectionSubtitle, { fontSize: 10 }]}>Competitive Landscape</Text>
                 {perplexity.competitiveLandscape.map((item, i) => (
                   <View key={i} style={styles.listItem}>
                     <Text style={styles.bullet}>•</Text>
-                    <Text style={styles.listText}>{item}</Text>
+                    <Text style={styles.listText}>{safeString(item)}</Text>
                   </View>
                 ))}
               </>
             )}
 
-            {perplexity.citations && perplexity.citations.length > 0 && (
+            {isStringArray(perplexity.citations) && perplexity.citations.length > 0 && (
               <>
                 <Text style={[styles.sectionSubtitle, { fontSize: 10 }]}>Citations</Text>
                 {perplexity.citations.map((url, i) => (
-                  <Text key={i} style={[styles.smallText, { color: '#2563eb' }]}>{url}</Text>
+                  <Text key={i} style={[styles.smallText, { color: '#2563eb' }]}>{safeString(url)}</Text>
                 ))}
               </>
             )}
@@ -561,37 +587,37 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
 
         {extractedEntities ? (
           <View>
-            {extractedEntities.competitors && extractedEntities.competitors.length > 0 && (
+            {isStringArray(extractedEntities.competitors) && extractedEntities.competitors.length > 0 && (
               <View style={{ marginBottom: 6 }}>
                 <Text style={[styles.smallText, { fontWeight: 600 }]}>Competitors</Text>
                 <View style={styles.tagRow}>
-                  {extractedEntities.competitors.map((c, i) => <Text key={i} style={styles.tag}>{c}</Text>)}
+                  {extractedEntities.competitors.map((c, i) => <Text key={i} style={styles.tag}>{safeString(c)}</Text>)}
                 </View>
               </View>
             )}
-            {extractedEntities.technologies && extractedEntities.technologies.length > 0 && (
+            {isStringArray(extractedEntities.technologies) && extractedEntities.technologies.length > 0 && (
               <View style={{ marginBottom: 6 }}>
                 <Text style={[styles.smallText, { fontWeight: 600 }]}>Technologies</Text>
                 <View style={styles.tagRow}>
-                  {extractedEntities.technologies.map((t, i) => <Text key={i} style={styles.tag}>{t}</Text>)}
+                  {extractedEntities.technologies.map((t, i) => <Text key={i} style={styles.tag}>{safeString(t)}</Text>)}
                 </View>
               </View>
             )}
-            {extractedEntities.executives && extractedEntities.executives.length > 0 && (
+            {isStringArray(extractedEntities.executives) && extractedEntities.executives.length > 0 && (
               <View style={{ marginBottom: 6 }}>
                 <Text style={[styles.smallText, { fontWeight: 600 }]}>Key Executives</Text>
                 <View style={styles.tagRow}>
-                  {extractedEntities.executives.map((e, i) => <Text key={i} style={styles.tag}>{e}</Text>)}
+                  {extractedEntities.executives.map((e, i) => <Text key={i} style={styles.tag}>{safeString(e)}</Text>)}
                 </View>
               </View>
             )}
-            {extractedEntities.timelines && extractedEntities.timelines.length > 0 && (
+            {isStringArray(extractedEntities.timelines) && extractedEntities.timelines.length > 0 && (
               <View style={{ marginBottom: 6 }}>
                 <Text style={[styles.smallText, { fontWeight: 600 }]}>Timelines</Text>
                 {extractedEntities.timelines.map((t, i) => (
                   <View key={i} style={styles.listItem}>
                     <Text style={styles.bullet}>•</Text>
-                    <Text style={styles.listText}>{t}</Text>
+                    <Text style={styles.listText}>{safeString(t)}</Text>
                   </View>
                 ))}
               </View>
