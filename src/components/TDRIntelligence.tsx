@@ -24,7 +24,6 @@ import {
   CheckCircle,
   FileText,
   Link,
-  Save,
   Sparkles,
   Building2,
   Users,
@@ -36,7 +35,6 @@ import {
   ExternalLink,
   RefreshCw,
   Cpu,
-  Database,
   Layers,
   History,
   Briefcase,
@@ -53,7 +51,7 @@ import {
   Zap,
   ClipboardList,
 } from 'lucide-react';
-import { TDRSummaryModal } from './TDRSummaryModal';
+// TDRSummaryModal removed — superseded by Cortex Brief, Action Plan, and Readout
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
 import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 import { accountIntel } from '@/lib/accountIntel';
@@ -462,7 +460,6 @@ export function TDRIntelligence({
   completedStepCount = 0,
   totalStepCount = 9,
 }: TDRIntelligenceProps) {
-  const [showSummary, setShowSummary] = useState(false);
 
   // ── Account Intelligence State ──
   const [domain, setDomain] = useState('');
@@ -2608,10 +2605,8 @@ export function TDRIntelligence({
                   <span>Complexity: {extractionResult.structured.DEAL_COMPLEXITY}</span>
                 )}
               </div>
-              <Button
-                variant="outline"
-                className="w-full gap-2 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white"
-                size="sm"
+              <button
+                className="flex items-center gap-1 text-[10px] text-slate-600 hover:text-slate-300 transition-colors mt-1"
                 disabled={extractionLoading}
                 onClick={async () => {
                   setExtractionLoading(true);
@@ -2626,12 +2621,12 @@ export function TDRIntelligence({
                 }}
               >
                 {extractionLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-2.5 w-2.5" />
                 )}
                 Re-extract
-              </Button>
+              </button>
             </div>
           ) : extractionResult && !extractionResult.success ? (
             <div className="space-y-2">
@@ -2640,10 +2635,8 @@ export function TDRIntelligence({
                 <span>Extraction failed</span>
               </div>
               <p className="text-[10px] text-slate-600 break-all">{extractionResult.error}</p>
-              <Button
-                variant="outline"
-                className="w-full gap-2 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white"
-                size="sm"
+              <button
+                className="flex items-center gap-1 text-[10px] text-slate-600 hover:text-slate-300 transition-colors mt-1"
                 disabled={extractionLoading}
                 onClick={async () => {
                   setExtractionLoading(true);
@@ -2658,12 +2651,12 @@ export function TDRIntelligence({
                 }}
               >
                 {extractionLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-2.5 w-2.5" />
                 )}
                 Retry
-              </Button>
+              </button>
             </div>
           ) : null}
         </div>
@@ -2711,14 +2704,10 @@ export function TDRIntelligence({
               {/* View full action plan dialog */}
               <Dialog open={actionPlanOpen} onOpenChange={setActionPlanOpen}>
                 <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 border-violet-500/30 text-violet-300 hover:bg-violet-500/10 hover:text-violet-200"
-                    size="sm"
-                  >
-                    <ClipboardList className="h-3.5 w-3.5" />
-                    View Full Action Plan
-                  </Button>
+                  <button className="flex items-center gap-1 text-[10px] text-violet-400/80 hover:text-violet-300 transition-colors mt-1">
+                    <ClipboardList className="h-2.5 w-2.5" />
+                    View full plan
+                  </button>
                 </DialogTrigger>
                 <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-[#1a1528] border-[#362f50] text-slate-200">
                   <DialogHeader className="pb-3 border-b border-[#322b4d]">
@@ -2782,10 +2771,8 @@ export function TDRIntelligence({
                 <span>Generation failed</span>
               </div>
               <p className="text-[10px] text-slate-600 break-all">{actionPlanResult.error}</p>
-              <Button
-                variant="outline"
-                className="w-full gap-2 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white"
-                size="sm"
+              <button
+                className="flex items-center gap-1 text-[10px] text-slate-600 hover:text-slate-300 transition-colors mt-1"
                 disabled={actionPlanLoading}
                 onClick={async () => {
                   setActionPlanLoading(true);
@@ -2799,17 +2786,16 @@ export function TDRIntelligence({
                 }}
               >
                 {actionPlanLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className="h-2.5 w-2.5" />
                 )}
                 Retry
-              </Button>
+              </button>
             </div>
           ) : (
-            <Button
-              className="w-full gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/20"
-              size="sm"
+            <button
+              className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-md text-[11px] font-medium text-violet-300 border border-violet-500/25 bg-violet-500/5 hover:bg-violet-500/10 hover:text-violet-200 transition-all disabled:opacity-40"
               disabled={actionPlanLoading}
               onClick={async () => {
                 setActionPlanLoading(true);
@@ -2824,60 +2810,20 @@ export function TDRIntelligence({
             >
               {actionPlanLoading ? (
                 <>
-                  <CortexLogo className="h-3.5 w-3.5 animate-pulse" />
-                  <span>Synthesizing all data...</span>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Synthesizing...
                 </>
               ) : (
                 <>
-                  <Zap className="h-3.5 w-3.5" />
+                  <Zap className="h-3 w-3" />
                   Generate Action Plan
                 </>
               )}
-            </Button>
+            </button>
           )}
         </div>
       )}
 
-      {/* ────────────────────────────────────────────────────────────
-          ACTION BUTTONS
-          ──────────────────────────────────────────────────────────── */}
-      <div className="mt-auto px-5 py-4">
-        <div className="space-y-2">
-          <Button
-            variant="outline"
-            className="w-full gap-2 border-[#362f50] text-slate-300 hover:bg-[#221d38] hover:text-white"
-            size="sm"
-          >
-            <Save className="h-3.5 w-3.5" />
-            Save Draft
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full gap-2 border-[#362f50] text-slate-300 hover:bg-[#221d38] hover:text-white"
-            size="sm"
-          >
-            <CheckCircle className="h-3.5 w-3.5" />
-            Finalize TDR
-          </Button>
-          <Button
-            className="w-full gap-2 bg-blue-600 text-white hover:bg-blue-500"
-            size="sm"
-            onClick={() => setShowSummary(true)}
-          >
-            <Sparkles className="h-3.5 w-3.5" />
-            Generate Summary
-          </Button>
-        </div>
-      </div>
-
-      {/* Summary Modal */}
-      {deal && (
-        <TDRSummaryModal
-          deal={deal}
-          isOpen={showSummary}
-          onClose={() => setShowSummary(false)}
-        />
-      )}
     </div>
   );
 }
