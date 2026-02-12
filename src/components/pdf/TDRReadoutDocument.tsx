@@ -143,7 +143,7 @@ const createStyles = (theme: ReadoutTheme) =>
     coverLabel: {
       fontSize: 11,
       fontWeight: 600,
-      color: theme.accentColor,
+      color: '#9CB8E3',             // Domo blue — matches Domo brand
       letterSpacing: 2,
       textTransform: 'uppercase',
       marginBottom: 12,
@@ -606,16 +606,42 @@ function MultilineBody({ text, styles }: { text: string; styles: ReturnType<type
 }
 
 // ─── SVG Logos for PDF (react-pdf Svg components) ────────────────────────────
+// Derived from the official brand SVG files for accurate representation.
 
-function SnowflakeIcon({ size = 12 }: { size?: number }) {
+/** Official Snowflake crystal logo (from snowflake 2.svg, viewBox 191x191) */
+function SnowflakeLogo({ size = 16, color = '#2CB3EA' }: { size?: number; color?: string }) {
   return (
-    <Svg viewBox="0 0 24 24" width={size} height={size}>
-      <Path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07" stroke="#29B5E8" strokeWidth={2} strokeLinecap="round" />
-      <Circle cx={12} cy={12} r={2} fill="#29B5E8" />
+    <Svg viewBox="0 0 191 191" width={size} height={size}>
+      <Path d="M119.375 0C123.77 0 127.333 3.563 127.333 7.958V41.652L155.072 25.009C158.841 22.748 163.73 23.97 165.991 27.739C168.253 31.508 167.03 36.396 163.261 38.658L123.47 62.533C121.011 64.008 117.949 64.046 115.454 62.634C112.959 61.221 111.417 58.576 111.417 55.708V7.958C111.417 3.563 114.98 0 119.375 0Z" fill={color} />
+      <Path d="M75.553 128.366C78.048 129.779 79.59 132.425 79.589 135.292L79.587 183.041C79.587 187.437 76.024 191 71.628 191C67.233 191 63.67 187.436 63.671 183.041L63.672 149.348L35.935 165.991C32.166 168.252 27.278 167.03 25.016 163.261C22.755 159.493 23.977 154.604 27.746 152.342L67.537 128.467C69.995 126.992 73.058 126.954 75.553 128.366Z" fill={color} />
+      <Path d="M79.587 7.959C79.587 3.563 76.024 0 71.629 0C67.233 0 63.67 3.563 63.67 7.958L63.669 41.652L35.933 25.009C32.164 22.748 27.276 23.97 25.014 27.738C22.753 31.507 23.975 36.396 27.744 38.657L67.532 62.532C69.991 64.008 73.053 64.046 75.548 62.634C78.043 61.221 79.585 58.576 79.586 55.709L79.587 7.959Z" fill={color} />
+      <Path d="M115.45 128.366C117.945 126.954 121.007 126.992 123.465 128.467L163.257 152.342C167.026 154.603 168.248 159.492 165.986 163.261C163.725 167.03 158.837 168.252 155.068 165.991L127.33 149.347V183.041C127.33 187.437 123.766 191 119.371 191C114.976 191 111.413 187.437 111.413 183.041V135.291C111.413 132.424 112.954 129.779 115.45 128.366Z" fill={color} />
+      <Path d="M12.054 64.802C8.285 62.541 3.396 63.763 1.135 67.532C-1.126 71.301 0.096 76.19 3.865 78.451L32.298 95.51L3.868 112.551C0.098 114.81 -1.126 119.698 1.134 123.468C3.393 127.238 8.281 128.463 12.051 126.202L51.864 102.339C54.262 100.901 55.73 98.311 55.731 95.514C55.731 92.719 54.264 90.127 51.866 88.688L12.054 64.802Z" fill={color} />
+      <Path d="M189.872 67.534C192.132 71.304 190.908 76.192 187.139 78.452L158.71 95.497L187.136 112.565C190.904 114.827 192.125 119.716 189.862 123.484C187.6 127.253 182.711 128.474 178.943 126.211L139.145 102.315C136.749 100.876 135.283 98.285 135.284 95.489C135.285 92.694 136.752 90.104 139.15 88.667L178.954 64.801C182.724 62.541 187.612 63.765 189.872 67.534Z" fill={color} />
+      <Path fillRule="evenodd" clipRule="evenodd" d="M101.129 73.956C98.021 70.848 92.982 70.848 89.874 73.956L73.958 89.872C70.85 92.981 70.85 98.019 73.958 101.128L89.874 117.044C92.982 120.152 98.021 120.152 101.129 117.044L117.046 101.128C120.154 98.019 120.154 92.981 117.046 89.872L101.129 73.956ZM90.84 95.5L95.502 90.838L100.164 95.5L95.502 100.162L90.84 95.5Z" fill={color} />
     </Svg>
   );
 }
 
+/** Official Cortex logo — pentagon with node circles (from cortex_logo.svg, viewBox 176x171) */
+function CortexLogo({ size = 16, color = '#2CB3EA' }: { size?: number; color?: string }) {
+  return (
+    <Svg viewBox="0 0 176 171" width={size} height={size * (171 / 176)}>
+      {/* Pentagon wireframe */}
+      <Path d="M23.21 116.031L80.08 28.211L152.29 75.061L126.5 147.081L23.21 116.031Z" stroke={color} strokeWidth={8} fill="none" />
+      {/* Top node (open circle) */}
+      <Circle cx={80.08} cy={28.21} r={23.21} fill="#ffffff" stroke={color} strokeWidth={10} />
+      {/* Right node */}
+      <Circle cx={152.29} cy={75.06} r={23.21} fill={color} />
+      {/* Bottom-right node */}
+      <Circle cx={126.5} cy={147.08} r={23.21} fill={color} />
+      {/* Left node */}
+      <Circle cx={23.21} cy={116.03} r={23.21} fill={color} />
+    </Svg>
+  );
+}
+
+/** Deal Inspect shield icon */
 function ShieldIcon({ size = 14 }: { size?: number }) {
   return (
     <Svg viewBox="0 0 24 24" width={size} height={size}>
@@ -633,6 +659,7 @@ function ShieldIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+/** Domo "D" logo */
 function DomoIcon({ size = 14, color = '#9CB8E3' }: { size?: number; color?: string }) {
   return (
     <Svg viewBox="0 0 76 76" width={size} height={size}>
@@ -663,10 +690,11 @@ function PageHeader({ accountName, styles }: { accountName: string; styles: Retu
 function PageFooter({ generatedAt, styles }: { generatedAt: string; styles: ReturnType<typeof createStyles> }) {
   return (
     <View style={styles.footer} fixed>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
         <DomoIcon size={8} color="#94a3b8" />
         <Text style={{ fontSize: 6.5, color: '#cbd5e1' }}>+</Text>
-        <SnowflakeIcon size={8} />
+        <SnowflakeLogo size={8} color="#94a3b8" />
+        <CortexLogo size={8} color="#94a3b8" />
         <Text style={{ fontSize: 6.5, color: '#94a3b8' }}>Powered by Snowflake Cortex</Text>
       </View>
       <Text render={({ pageNumber, totalPages }) => `${formatDate(generatedAt)}  |  Page ${pageNumber} of ${totalPages}`} />
@@ -706,7 +734,9 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
 
         <Text style={styles.coverLabel}>Technical Deal Review</Text>
         <Text style={styles.coverTitle}>{s(session.accountName)}</Text>
-        <Text style={styles.coverSubtitle}>{s(session.opportunityName)}</Text>
+        <Text style={styles.coverSubtitle}>
+          {s(session.stage)} {session.outcome ? `- ${s(session.outcome)}` : ''} | Iteration #{session.iteration}
+        </Text>
 
         <View style={styles.coverMeta}>
           <View>
@@ -746,12 +776,12 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
 
         {/* Platform logos */}
         <View style={styles.coverPoweredBy}>
-          <DomoIcon size={12} color="#94a3b8" />
+          <DomoIcon size={14} color="#64748b" />
           <Text style={styles.poweredByText}>Built on Domo</Text>
-          <Text style={{ color: '#475569', fontSize: 7 }}>|</Text>
-          <SnowflakeIcon size={10} />
-          <Text style={styles.poweredByText}>Powered by</Text>
-          <Text style={styles.poweredByBrand}>Snowflake Cortex</Text>
+          <Text style={{ color: '#475569', fontSize: 7, marginHorizontal: 4 }}>|</Text>
+          <SnowflakeLogo size={12} color="#64748b" />
+          <CortexLogo size={12} color="#64748b" />
+          <Text style={styles.poweredByText}>Powered by Snowflake Cortex</Text>
         </View>
 
         <Text style={styles.coverConfidential}>
@@ -769,7 +799,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           <>
             <MultilineText text={normalizeContent(brief.content)} styles={styles} />
             <View style={styles.aiBadge}>
-              <SnowflakeIcon size={8} />
+              <CortexLogo size={9} />
               <Text style={styles.aiBadgeText}>
                 Generated via Snowflake Cortex ({s(brief.modelUsed)}) - {formatDate(brief.createdAt)}
               </Text>
@@ -1019,7 +1049,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           <Text style={styles.sectionTitle}>{nextSection()}. Strategic Action Plan</Text>
           <MultilineText text={normalizeContent(actionPlan.content)} styles={styles} />
           <View style={styles.aiBadge}>
-            <SnowflakeIcon size={8} />
+            <CortexLogo size={9} />
             <Text style={styles.aiBadgeText}>
               Synthesized via Snowflake Cortex ({s(actionPlan.modelUsed)}) - {formatDate(actionPlan.createdAt)}
             </Text>
@@ -1115,9 +1145,10 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
             <ShieldIcon size={16} />
             <Text style={{ fontSize: 10, fontWeight: 700, color: '#6929C4' }}>Deal Inspect</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <DomoIcon size={16} color="#6b7280" />
-            <SnowflakeIcon size={14} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <DomoIcon size={18} color="#6b7280" />
+            <SnowflakeLogo size={16} color="#6b7280" />
+            <CortexLogo size={16} color="#6b7280" />
           </View>
           <Text style={{ fontSize: 8, color: '#94a3b8', textAlign: 'center' }}>
             Technical Deal Review platform built on Domo, powered by Snowflake Cortex AI
