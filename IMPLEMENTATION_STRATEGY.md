@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 3.8 · **Date:** February 10, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18
+**Status:** In Progress · **Version:** Draft 3.9 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18, 19, 19.5, 20, 22, 23
 
 ---
 
@@ -5106,7 +5106,7 @@ The Cortex AI Knowledge Base summary was rendering as a single dense paragraph. 
 
 ---
 
-### Sprint 20 — Hero Metrics & Nav Cleanup 🔲
+### Sprint 20 — Hero Metrics & Nav Cleanup ✅ COMPLETE (Feb 12 2026)
 
 > **Goal:** Rethink the Command Center top metrics and charts to align with TDR objectives. Clean up left nav redundancy.
 > **Risk to app:** Medium — changes the main dashboard experience. No backend changes.
@@ -5165,6 +5165,80 @@ The Cortex AI Knowledge Base summary was rendering as a single dense paragraph. 
 | `src/App.tsx` | Remove `/agenda` route |
 
 **Definition of Done:** Command Center shows TDR-aligned metrics. Every stat card and chart answers a question an SE manager would actually ask. Left nav has no redundancy.
+
+**Sprint 20 Implementation Notes (Feb 12 2026):**
+
+**Part A: Nav Cleanup**
+- Removed `/agenda` route from `App.tsx`
+- Removed "Agenda" nav item from `AppSidebar.tsx` (the Agenda Section remains on the Command Center page, accessible via the pin/star workflow)
+- Removed `/agenda` from `MainLayout.tsx` page titles
+
+**Part B: New Stat Cards (4)**
+
+| Card | Icon | Metric | Tooltip |
+|------|------|--------|---------|
+| **TDR Queue** | `ShieldAlert` (purple) | High/Critical deals with no completed TDR | "These need your attention" |
+| **Competitive** | `Swords` (rose) | Deals with named competitors | "Use KB battle cards" |
+| **Partner Pipeline** | `Handshake` (blue) | Deals with Snowflake team / partner influence | "Cloud Amplifier pipeline" |
+| **Stale Deals** | `Clock` (amber) | Deals >60 days in same stage | "May need intervention" |
+
+Each card shows deal count + ACV and has an explanatory Radix tooltip on hover.
+
+**Part C: New Charts (3)**
+
+| Chart | Type | Component | What It Shows |
+|-------|------|-----------|---------------|
+| **TDR Coverage** | Donut | `TDRCoverageChart.tsx` (new) | Reviewed vs In-Progress vs Unreviewed, with center % label and ACV breakdown |
+| **Score Distribution** | Bar | `ScoreDistributionChart.tsx` (new) | Deal count by score bracket (Critical/High/Medium/Low) with color coding |
+| **Close Urgency** | Stacked Area | `CloseUrgencyChart.tsx` (new) | ACV by close month, split by TDR review status (Reviewed vs Unreviewed) |
+
+**Part D: Removed Charts**
+The old `TopTDRCandidatesChart`, `TDRPriorityChart`, and `PipelineByCloseChart` are no longer imported by `CommandCenter.tsx`. Their source files remain in the repo as reference but are unused dead code.
+
+**All Files Changed (Sprint 20):**
+
+| File | Change |
+|------|--------|
+| `src/pages/CommandCenter.tsx` | Complete rewrite: new stat cards, new charts, TDR-aligned metrics |
+| `src/components/charts/TDRCoverageChart.tsx` | **NEW** — Donut: Reviewed / In-Progress / Unreviewed |
+| `src/components/charts/ScoreDistributionChart.tsx` | **NEW** — Bar: deal count by score bracket |
+| `src/components/charts/CloseUrgencyChart.tsx` | **NEW** — Stacked area: ACV by close month by TDR status |
+| `src/components/AppSidebar.tsx` | Removed Agenda nav item, removed `ListTodo` import |
+| `src/App.tsx` | Removed `/agenda` route |
+| `src/layouts/MainLayout.tsx` | Removed `/agenda` from page titles |
+
+---
+
+### Sprint 23 — KB Insights Cleanup + KB Tooltip ✅ COMPLETE (Feb 12 2026)
+
+> **Goal:** Make Knowledge Base insight badges more meaningful (replace generic "Insights in: document" with clean document names) and add a rich tooltip to the KB toggle button in chat showing configured fileset names.
+> **Risk to app:** Low — cosmetic UX improvements only.
+> **Effort:** ~0.5 day
+> **Dependencies:** Sprint 19.5 (Cortex KB Summarization), Sprint 22 (Branding)
+
+**Part A: KB Insight Badge Cleanup** (`src/lib/filesetIntel.ts`)
+- Replaced vague "Insights in: [filename]" badges with cleaned document names
+- Strip file extensions (`.pdf`, `.docx`, `.pptx`, `.txt`)
+- Replace hyphens/underscores with spaces
+- Remove generic keywords ("competitive", "battle card", "playbook", etc.)
+- Deduplicate entries
+
+**Part B: Insight Badge Icons** (`src/components/TDRIntelligence.tsx`)
+- Added `Target` icon prefix to competitive insight badges (rose)
+- Added `UserCheck` icon prefix to partner insight badges (blue)
+
+**Part C: KB Toggle Rich Tooltip** (`src/components/TDRChat.tsx`)
+- Replaced native `title` attribute with Radix UI `Tooltip` on the KB button
+- Tooltip shows: header with active/off status, list of configured fileset names with amber diamond bullets, and a footer hint
+- Derives fileset names from `filesetConfig` in settings
+
+**All Files Changed (Sprint 23):**
+
+| File | Change |
+|------|--------|
+| `src/lib/filesetIntel.ts` | Cleaner document name extraction for insight badges |
+| `src/components/TDRIntelligence.tsx` | `Target` and `UserCheck` icons on competitive/partner insight badges |
+| `src/components/TDRChat.tsx` | Rich Radix UI Tooltip on KB toggle button with fileset names |
 
 ---
 
@@ -5333,13 +5407,18 @@ Sprint 22 — Frontier Models + Branding ✅       │
     │  (claude-4-sonnet, Cortex branding, UX)  │
     │                                           │
     ▼                                           │
-Sprint 20 — Hero Metrics & Nav (1–2 days)      │
-    (depends on S18)                            │
-                                                ▼
-                                Sprint 21 — Action Plan Synthesis (2–3 days)
-                                    (depends on S17.5 + S18 + S19 + S19.5 + S22)
-                                    THE CAPSTONE — synthesizes everything
-                                    (now uses frontier models for best results)
+Sprint 23 — KB Insights + KB Tooltip ✅          │
+    │  (cleaner insight names, rich KB tooltip) │
+    │                                           │
+    ▼                                           │
+Sprint 20 — Hero Metrics & Nav ✅               │
+    │  (TDR-aligned stat cards + new charts)    │
+    │                                           │
+    ▼                                           ▼
+Sprint 21 — Action Plan Synthesis (2–3 days)
+    (depends on S17.5 + S18 + S19 + S19.5 + S22)
+    THE CAPSTONE — synthesizes everything
+    (now uses frontier models for best results)
 ```
 
 **Total estimated effort:** ~12-16 days of focused development
@@ -5353,9 +5432,10 @@ Sprint 20 — Hero Metrics & Nav (1–2 days)      │
 | S19: Fileset Intelligence | ✅ with S17.5/6 | None | 2-3 days | ✅ |
 | S18: TDR Score v2 | No | S17.5 + S19 | 2 days | ✅ |
 | S19.5: Cortex KB Summarization | ✅ with S22 | S19 | 1 day | ✅ |
-| **S22: Frontier Model Upgrade** | ✅ with S20 | None | 0.5 day | 🔲 Next |
-| **S20: Hero Metrics & Nav** | ✅ with S22 | S18 | 1-2 days | 🔲 |
-| **S21: Action Plan Synthesis** | ✅ with S20 | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | 🔲 |
+| **S22: Frontier Model Upgrade** | ✅ with S20 | None | 0.5 day | ✅ |
+| **S23: KB Insights + KB Tooltip** | ✅ with S22 | S19.5 + S22 | 0.5 day | ✅ |
+| **S20: Hero Metrics & Nav** | ✅ with S22 | S18 | 1-2 days | ✅ |
+| **S21: Action Plan Synthesis** | — | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | 🔲 Next |
 
 ---
 

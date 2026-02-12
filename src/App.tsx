@@ -23,7 +23,6 @@ const App = () => (
           <Route element={<MainLayout />}>
             <Route path="/" element={<CommandCenter />} />
             <Route path="/workspace" element={<TDRWorkspace />} />
-            <Route path="/agenda" element={<CommandCenter />} />
             <Route path="/history" element={<TDRHistory />} />
             <Route path="/analytics" element={<TDRAnalytics />} />
             <Route path="/settings" element={<Settings />} />

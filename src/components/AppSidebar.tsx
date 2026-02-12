@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  ListTodo,
   FileSearch,
   History,
   BarChart3,
@@ -17,7 +16,6 @@ import { PoweredByCortexBadge } from '@/components/CortexBranding';
 
 const navItems = [
   { id: 'command', label: 'Command Center', icon: LayoutDashboard, path: '/' },
-  { id: 'agenda', label: 'Agenda', icon: ListTodo, path: '/agenda' },
   { id: 'workspace', label: 'TDR Workspace', icon: FileSearch, path: '/workspace' },
   { id: 'history', label: 'History', icon: History, path: '/history' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/analytics' },

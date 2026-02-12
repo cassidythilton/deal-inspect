@@ -3,7 +3,6 @@ import { Outlet, useLocation } from 'react-router-dom';
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Command Center',
-  '/agenda': 'Agenda',
   '/workspace': 'TDR Workspace',
   '/history': 'History',
   '/analytics': 'Analytics',

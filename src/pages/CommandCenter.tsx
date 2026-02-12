@@ -1,17 +1,39 @@
+/**
+ * Command Center — Sprint 20: Hero Metrics & Nav Cleanup
+ *
+ * Rebuilt dashboard with TDR-aligned stat cards and charts.
+ * Every metric answers a question an SE Manager would actually ask.
+ *
+ * Stat Cards: TDR Queue, Competitive Battles, Partner Pipeline, Stale Deals
+ * Charts: TDR Coverage (donut), Score Distribution (bar), Close Urgency (area)
+ */
+
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { TopBar, SEFilterState } from '@/components/TopBar';
 import { DealsTable } from '@/components/DealsTable';
 import { DealSearch } from '@/components/DealSearch';
 import { AgendaSection } from '@/components/AgendaSection';
-import { TopTDRCandidatesChart } from '@/components/charts/TopTDRCandidatesChart';
-import { TDRPriorityChart } from '@/components/charts/TDRPriorityChart';
-import { PipelineByCloseChart } from '@/components/charts/PipelineByCloseChart';
+import { TDRCoverageChart } from '@/components/charts/TDRCoverageChart';
+import { ScoreDistributionChart } from '@/components/charts/ScoreDistributionChart';
+import { CloseUrgencyChart } from '@/components/charts/CloseUrgencyChart';
 import { mockDeals } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
 import { MAX_STAGE_AGE_DAYS, ALLOWED_MANAGERS } from '@/lib/constants';
 import { Deal } from '@/types/tdr';
-import { Info, Loader2 } from 'lucide-react';
-import { calculateTDRScore, getTopFactors } from '@/lib/tdrCriticalFactors';
+import {
+  ShieldAlert,
+  Swords,
+  Handshake,
+  Clock,
+  Loader2,
+} from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { calculateTDRScore, TDR_PRIORITY_THRESHOLDS_NEW } from '@/lib/tdrCriticalFactors';
 
 // Default manager on load — first allowed manager
 const DEFAULT_MANAGER: string = ALLOWED_MANAGERS[0];
@@ -21,6 +43,14 @@ const getCurrentQuarter = () => {
   const now = new Date();
   const q = Math.floor(now.getMonth() / 3) + 1;
   return `${now.getFullYear()}-Q${q}`;
+};
+
+const STALE_THRESHOLD_DAYS = 60;
+
+const formatValue = (val: number) => {
+  if (val >= 1000000) return `$${(val / 1000000).toFixed(2)}M`;
+  if (val >= 1000) return `$${Math.round(val / 1000)}K`;
+  return `$${val}`;
 };
 
 export default function CommandCenter() {
@@ -66,7 +96,6 @@ export default function CommandCenter() {
 
     const allowedSet = new Set(ALLOWED_MANAGERS.map(m => m.toLowerCase()));
     const filtered = deals.filter((d) => allowedSet.has(d.owner?.toLowerCase() || ''));
-    console.log(`[CommandCenter] Filtered to ${filtered.length} deals from allowed managers (${ALLOWED_MANAGERS.join(', ')})`);
     return filtered;
   }, [domoDeals, isDomoConnected]);
 
@@ -122,10 +151,8 @@ export default function CommandCenter() {
   }, [baseDeals, pinnedIds, seFilters]);
 
   // ── Displayed deals: what AG Grid actually shows after its column filters ──
-  // Defaults to the TopBar-filtered `deals`; updated by AG Grid's onFilterChanged.
   const [displayedDeals, setDisplayedDeals] = useState<Deal[]>([]);
 
-  // When TopBar-filtered deals change, reset displayedDeals until AG Grid reports back
   useEffect(() => {
     setDisplayedDeals(deals);
   }, [deals]);
@@ -134,7 +161,7 @@ export default function CommandCenter() {
     setDisplayedDeals(displayed);
   }, []);
 
-  // Pinned deals come from the displayed set (so charts & metrics reflect the grid)
+  // Pinned deals come from the displayed set
   const pinnedDeals = displayedDeals.filter((d) => d.isPinned);
 
   // AI recommendation lookup
@@ -144,33 +171,45 @@ export default function CommandCenter() {
     return map;
   }, [aiRecommendations]);
 
-  // Metrics — driven by displayedDeals (reflects both TopBar + AG Grid filters)
+  // ── Sprint 20: TDR-aligned metrics ──
   const metrics = useMemo(() => {
-    const recommendedDeals = displayedDeals
-      .map(d => ({ ...d, tdrScore: d.tdrScore ?? calculateTDRScore(d) }))
-      .sort((a, b) => (b.tdrScore ?? 0) - (a.tdrScore ?? 0))
-      .slice(0, 10);
+    const scored = displayedDeals.map(d => ({
+      ...d,
+      score: d.tdrScore ?? calculateTDRScore(d),
+    }));
 
-    const eligibleACV = displayedDeals.reduce((sum, d) => sum + d.acv, 0);
-    const recommendedACV = recommendedDeals.reduce((sum, d) => sum + d.acv, 0);
-    const agendaACV = pinnedDeals.reduce((sum, d) => sum + d.acv, 0);
-    const atRiskDeals = displayedDeals.filter(d => d.riskLevel === 'red' || d.riskLevel === 'yellow');
-    const atRiskACV = atRiskDeals.reduce((sum, d) => sum + d.acv, 0);
-    const criticalCount = displayedDeals.filter(d => d.riskLevel === 'red').length;
+    // TDR Queue: HIGH/CRITICAL-scored deals with no completed TDR session
+    const tdrQueue = scored.filter(d =>
+      d.score >= TDR_PRIORITY_THRESHOLDS_NEW.high &&
+      !d.tdrSessions?.some(s => s.status === 'completed')
+    );
+    const queueACV = tdrQueue.reduce((s, d) => s + d.acv, 0);
 
-    const formatValue = (val: number) => {
-      if (val >= 1000000) return `$${(val / 1000000).toFixed(2)}M`;
-      if (val >= 1000) return `$${Math.round(val / 1000)}K`;
-      return `$${val}`;
-    };
+    // Competitive Battles: deals with named competitors
+    const competitiveDeals = displayedDeals.filter(d =>
+      (d.competitors && d.competitors.trim().length > 0) || (d.numCompetitors && d.numCompetitors > 0)
+    );
+    const competitiveACV = competitiveDeals.reduce((s, d) => s + d.acv, 0);
+
+    // Partner Pipeline: deals with Snowflake team or partner influence
+    const partnerDeals = displayedDeals.filter(d =>
+      (d.snowflakeTeam && d.snowflakeTeam.trim().length > 0 && d.snowflakeTeam !== 'None') ||
+      d.partnerInfluence === 'Yes' ||
+      (d.partnersInvolved && d.partnersInvolved.trim().length > 0)
+    );
+    const partnerACV = partnerDeals.reduce((s, d) => s + d.acv, 0);
+
+    // Stale Deals: stage age > threshold
+    const staleDeals = displayedDeals.filter(d => d.stageAge && d.stageAge > STALE_THRESHOLD_DAYS);
+    const staleACV = staleDeals.reduce((s, d) => s + d.acv, 0);
 
     return {
-      eligible: { value: formatValue(eligibleACV), deals: displayedDeals.length },
-      recommended: { value: formatValue(recommendedACV), deals: recommendedDeals.length },
-      agenda: { value: formatValue(agendaACV), deals: pinnedDeals.length },
-      atRisk: { value: formatValue(atRiskACV), deals: atRiskDeals.length, critical: criticalCount },
+      queue: { count: tdrQueue.length, acv: queueACV },
+      competitive: { count: competitiveDeals.length, acv: competitiveACV },
+      partner: { count: partnerDeals.length, acv: partnerACV },
+      stale: { count: staleDeals.length, acv: staleACV },
     };
-  }, [displayedDeals, pinnedDeals]);
+  }, [displayedDeals]);
 
   const handleSEFilterChange = useCallback((filters: Partial<SEFilterState>) => {
     setSEFilters((prev) => ({ ...prev, ...filters }));
@@ -186,112 +225,145 @@ export default function CommandCenter() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <TopBar
-        seFilterOptions={filterOptions}
-        seFilterState={seFilters}
-        onSEFilterChange={handleSEFilterChange}
-        onRefresh={refetch}
-        agendaCount={pinnedDeals.length}
-      />
+    <TooltipProvider delayDuration={150}>
+      <div className="flex min-h-screen flex-col">
+        <TopBar
+          seFilterOptions={filterOptions}
+          seFilterState={seFilters}
+          onSEFilterChange={handleSEFilterChange}
+          onRefresh={refetch}
+          agendaCount={pinnedDeals.length}
+        />
 
-      <main className="flex-1 p-6 bg-background">
-        <div className="mx-auto max-w-7xl space-y-4">
-          {/* Zone 1: Metrics Row */}
-          <section className="grid grid-cols-4 gap-3">
-            <div className="stat-card">
-              <div className="flex items-center gap-1">
-                <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
-                  ELIGIBLE ACV
+        <main className="flex-1 p-6 bg-background">
+          <div className="mx-auto max-w-7xl space-y-4">
+            {/* Zone 1: TDR-Aligned Stat Cards */}
+            <section className="grid grid-cols-4 gap-3">
+              {/* TDR Queue */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="stat-card cursor-help group">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldAlert className="h-3.5 w-3.5 text-purple-500/70" />
+                      <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                        TDR Queue
+                      </span>
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.queue.count}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {formatValue(metrics.queue.acv)} pipeline
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-xs">High/Critical-scored deals with <strong>no completed TDR session</strong>. These need your attention.</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Competitive Battles */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="stat-card cursor-help group">
+                    <div className="flex items-center gap-1.5">
+                      <Swords className="h-3.5 w-3.5 text-rose-400/70" />
+                      <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Competitive
+                      </span>
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.competitive.count}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {formatValue(metrics.competitive.acv)} at stake
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-xs">Deals with <strong>named competitors</strong>. Use KB battle cards and TDR competitive analysis.</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Partner Pipeline */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="stat-card cursor-help group">
+                    <div className="flex items-center gap-1.5">
+                      <Handshake className="h-3.5 w-3.5 text-blue-400/70" />
+                      <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Partner Pipeline
+                      </span>
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.partner.count}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {formatValue(metrics.partner.acv)} co-sell
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-xs">Deals with <strong>Snowflake team involvement</strong>, partner influence, or named partners. Cloud Amplifier pipeline.</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Stale Deals */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="stat-card cursor-help group">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-amber-500/70" />
+                      <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Stale Deals
+                      </span>
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.stale.count}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {formatValue(metrics.stale.acv)} · &gt;{STALE_THRESHOLD_DAYS}d in stage
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-xs">Deals stuck in the <strong>same stage for {STALE_THRESHOLD_DAYS}+ days</strong>. May need intervention or pipeline hygiene.</p>
+                </TooltipContent>
+              </Tooltip>
+            </section>
+
+            {/* Zone 2: Charts Row */}
+            <section className="grid grid-cols-3 gap-3">
+              <div className="stat-card">
+                <TDRCoverageChart deals={displayedDeals} />
+              </div>
+              <div className="stat-card">
+                <ScoreDistributionChart deals={displayedDeals} />
+              </div>
+              <div className="stat-card">
+                <CloseUrgencyChart deals={displayedDeals} />
+              </div>
+            </section>
+
+            {/* Zone 3: Grid Toolbar + Deals Table */}
+            <section>
+              <div className="flex items-center justify-between mb-2">
+                <DealSearch allDeals={allDeals} />
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  Showing {displayedDeals.length}{displayedDeals.length !== deals.length ? ` of ${deals.length}` : ''} deals
                 </span>
-                <Info className="h-3 w-3 text-muted-foreground/50" />
               </div>
-              <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.eligible.value}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">{metrics.eligible.deals} deals</div>
-            </div>
+              <DealsTable
+                deals={deals}
+                onPinDeal={handlePinDeal}
+                onDisplayedRowsChange={handleDisplayedRowsChange}
+              />
+            </section>
 
-            <div className="stat-card">
-              <div className="flex items-center gap-1">
-                <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
-                  RECOMMENDED
-                </span>
-                <Info className="h-3 w-3 text-muted-foreground/50" />
-              </div>
-              <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.recommended.value}</div>
-              <div className="mt-0.5 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">{metrics.recommended.deals} deals</span>
-                <div className="h-1.5 w-6 rounded-full bg-success" />
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="flex items-center gap-1">
-                <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
-                  AGENDA
-                </span>
-                <Info className="h-3 w-3 text-muted-foreground/50" />
-              </div>
-              <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.agenda.value}</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">{metrics.agenda.deals} deals pinned</div>
-            </div>
-
-            <div className="stat-card">
-              <div className="flex items-center gap-1">
-                <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
-                  AT-RISK
-                </span>
-                <Info className="h-3 w-3 text-muted-foreground/50" />
-              </div>
-              <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.atRisk.value}</div>
-              <div className="mt-0.5 flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {metrics.atRisk.critical} critical · {metrics.atRisk.deals - metrics.atRisk.critical} at risk
-                </span>
-                <div className="h-1.5 w-6 rounded-full bg-destructive" />
-              </div>
-            </div>
-          </section>
-
-          {/* Zone 2: Charts Row — driven by displayedDeals (TopBar + AG Grid filters) */}
-          <section className="grid grid-cols-3 gap-3">
-            <div className="stat-card">
-              <TopTDRCandidatesChart deals={displayedDeals} />
-            </div>
-            <div className="stat-card">
-              <TDRPriorityChart deals={displayedDeals} />
-            </div>
-            <div className="stat-card">
-              <PipelineByCloseChart deals={displayedDeals} />
-            </div>
-          </section>
-
-          {/* Zone 3: Grid Toolbar + Deals Table */}
-          <section>
-            {/* Grid Toolbar Row */}
-            <div className="flex items-center justify-between mb-2">
-              <DealSearch allDeals={allDeals} />
-              <span className="text-xs text-muted-foreground tabular-nums">
-                Showing {displayedDeals.length}{displayedDeals.length !== deals.length ? ` of ${deals.length}` : ''} deals
-              </span>
-            </div>
-            <DealsTable
-              deals={deals}
-              onPinDeal={handlePinDeal}
-              onDisplayedRowsChange={handleDisplayedRowsChange}
-            />
-          </section>
-
-          {/* Zone 4: Agenda */}
-          <section>
-            <AgendaSection
-              pinnedDeals={pinnedDeals}
-              suggestedDealIds={suggestedDealIds}
-              aiRecommendationMap={aiRecommendationMap}
-              aiStatus={aiStatus}
-            />
-          </section>
-        </div>
-      </main>
-    </div>
+            {/* Zone 4: Agenda */}
+            <section>
+              <AgendaSection
+                pinnedDeals={pinnedDeals}
+                suggestedDealIds={suggestedDealIds}
+                aiRecommendationMap={aiRecommendationMap}
+                aiStatus={aiStatus}
+              />
+            </section>
+          </div>
+        </main>
+      </div>
+    </TooltipProvider>
   );
 }
