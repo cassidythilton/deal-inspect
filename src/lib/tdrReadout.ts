@@ -125,6 +125,7 @@ const MOCK_READOUT: ReadoutPayload = {
     peopleSummary: null,
     pulledAt: new Date(Date.now() - 5 * 86400000).toISOString(),
   },
+  actionPlan: null,
   generatedAt: new Date().toISOString(),
 };
 

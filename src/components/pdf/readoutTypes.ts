@@ -76,6 +76,12 @@ export interface ReadoutKeyPeople {
   pulledAt: string;
 }
 
+export interface ReadoutActionPlan {
+  content: string;
+  modelUsed: string;
+  createdAt: string;
+}
+
 export interface ReadoutPayload {
   success: boolean;
   error?: string;
@@ -86,6 +92,7 @@ export interface ReadoutPayload {
   brief: ReadoutBrief | null;
   classifiedFindings: { findings?: { finding: string; category: string }[] } | null;
   extractedEntities: { competitors?: string[]; technologies?: string[]; executives?: string[]; budgets?: string[]; timelines?: string[] } | null;
+  actionPlan: ReadoutActionPlan | null;
   chatHighlights: ReadoutChatMessage[];
   orgProfile: ReadoutOrgProfile | null;
   hiringSignals: ReadoutHiringSignals | null;
