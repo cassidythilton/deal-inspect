@@ -1,7 +1,7 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.25.0",
+  "version": "1.38.0",
   "datasetsMapping": [
     {
       "dataSetId": "79b2d8a2-2b91-41db-b1d2-532fc008f14c",
@@ -52,7 +52,8 @@
         { "alias": "PocSalesConsultant", "columnName": "PoC Sales Consultant" },
         { "alias": "DealCode", "columnName": "Deal Code" },
         { "alias": "PrimaryPartnerRole", "columnName": "Primary Partner Role" },
-        { "alias": "WebisteDomain", "columnName": "Webiste Domain" }
+        { "alias": "WebisteDomain", "columnName": "Webiste Domain" },
+        { "alias": "Competitors", "columnName": "competitors" }
       ]
     },
     {
@@ -186,6 +187,149 @@
         { "alias": "month", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
       "output": { "alias": "stats", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getDealsWithIntel",
+      "parameters": [],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getLatestBrief",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "generateTDRBrief",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "classifyFindings",
+      "parameters": [
+        { "alias": "pullId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "extractEntities",
+      "parameters": [
+        { "alias": "pullId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "sendChatMessage",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "userMessage", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "provider", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "model", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "contextStep", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "createdBy", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "assistantContent", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "includeKnowledgeBase", "type": "string", "nullable": true, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getChatHistory",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getPortfolioInsights",
+      "parameters": [
+        { "alias": "manager", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "summarizeIntelHistory",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getSentimentTrend",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "enrichSumbleOrg",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "domain", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "enrichSumbleJobs",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "domain", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "enrichSumblePeople",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "domain", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "findSimilarDeals",
+      "parameters": [
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "askAnalyst",
+      "parameters": [
+        { "alias": "question", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "assembleTDRReadout",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "extractStructuredTDR",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "summarizeKBResults",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "documentTexts", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],
   "size": {

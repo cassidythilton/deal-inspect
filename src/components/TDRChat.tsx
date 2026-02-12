@@ -705,20 +705,30 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
               Shift+Enter for new line
             </span>
             {/* Sprint 19: Knowledge Base toggle */}
-            {(getAppSettings().filesetIds ?? []).length > 0 && (
-              <button
-                onClick={() => setIncludeKB(!includeKB)}
-                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] transition-colors ${
-                  includeKB
-                    ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
-                    : 'bg-[#221D38] text-slate-600 border border-[#2a2540]'
-                }`}
-                title={includeKB ? 'Knowledge base context included' : 'Knowledge base context excluded'}
-              >
-                <BookOpen className="h-2.5 w-2.5" />
-                KB
-              </button>
-            )}
+            {(() => {
+              const kbSettings = getAppSettings();
+              const kbIds = kbSettings.filesetIds ?? [];
+              if (kbIds.length === 0) return null;
+              const nameMap = kbSettings.filesetNameMap ?? {};
+              const filesetNames = kbIds.map((id) => nameMap[id] || `Fileset ${id.substring(0, 8)}…`);
+              const tooltipText = includeKB
+                ? `KB included:\n${filesetNames.map((n) => `• ${n}`).join('\n')}`
+                : `KB excluded (${filesetNames.length} fileset${filesetNames.length > 1 ? 's' : ''} available)`;
+              return (
+                <button
+                  onClick={() => setIncludeKB(!includeKB)}
+                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] transition-colors ${
+                    includeKB
+                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                      : 'bg-[#221D38] text-slate-600 border border-[#2a2540]'
+                  }`}
+                  title={tooltipText}
+                >
+                  <BookOpen className="h-2.5 w-2.5" />
+                  KB{kbIds.length > 1 ? ` (${kbIds.length})` : ''}
+                </button>
+              );
+            })()}
           </div>
           {activeStep && (
             <span className="text-[9px] text-slate-600">

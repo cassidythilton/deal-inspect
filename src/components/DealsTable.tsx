@@ -125,11 +125,11 @@ const getStageBadgeStyle = (stageNum: number): string => {
   return PILL_STYLES.amber;
 };
 
-const formatCurrency = (value: number) => {
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `$${Math.round(value / 1000)}K`;
-  return `$${value}`;
-};
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `$${Math.round(value / 1000)}K`;
+    return `$${value}`;
+  };
 
 const getStageNumber = (stage: string): number => {
   const match = stage.match(/^(\d+):/);
@@ -150,7 +150,7 @@ const getShortStageName = (stage: string): string => {
   if (lower.includes('negotiat')) return 'Negotiating';
   if (lower.includes('closing') || lower.includes('close')) return 'Closing';
   return stage.replace(/^\d+:\s*/, '').substring(0, 12);
-};
+  };
 
 function getPartnerIcon(deal: Deal): { Icon: LucideIcon; colorClass: string } {
   const partner = (deal.partnersInvolved ?? '').toLowerCase();
@@ -331,7 +331,7 @@ function DealAccountCell({ data }: ICellRendererParams<Deal>) {
           </span>
         )}
       </div>
-    </div>
+                  </div>
   );
 }
 
@@ -351,7 +351,7 @@ function StageBadgeCell({ data }: ICellRendererParams<Deal>) {
             stageNum <= 2 ? 'text-emerald-600' : stageNum === 3 ? 'text-teal-600' : 'text-amber-600'
           )} />
           [{stageNum.toString().padStart(2, '0')}] {stageName}
-        </span>
+                  </span>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-md p-4">
         <p className="text-sm font-medium text-foreground mb-1">
@@ -384,7 +384,7 @@ function AgeDaysCell({ data }: ICellRendererParams<Deal>) {
   return (
     <span className={cn('text-xs font-medium tabular-nums', colorClass)}>
       {data.stageAge ? `${data.stageAge}d` : '-'}
-    </span>
+                  </span>
   );
 }
 
@@ -409,7 +409,7 @@ function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
           hasPostTDR && 'ring-1 ring-violet-500/30'
         )}>
           {displayScore}
-        </span>
+                  </span>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-md p-4">
         <div className="space-y-2">
@@ -484,9 +484,9 @@ function TDRDotsCell({ data }: ICellRendererParams<Deal>) {
       <TooltipTrigger asChild>
         <div className="inline-flex items-center gap-[3px] cursor-help">
           {dots.map((status, i) => (
-            <span
-              key={i}
-              className={cn(
+                      <span
+                        key={i}
+                        className={cn(
                 'block h-[6px] w-[6px] rounded-full',
                 status === 'completed' && 'bg-emerald-500',
                 status === 'in-progress' && 'bg-amber-400',
@@ -583,7 +583,7 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
               )}>
                 <IconComponent className="h-2 w-2" />
                 {dynamicLabel}
-              </span>
+                      </span>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-md p-4">
               <p className="text-sm text-foreground leading-relaxed mb-2">{dynamicDesc}</p>
@@ -610,7 +610,7 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
           </Tooltip>
         );
       })}
-    </div>
+                  </div>
   );
 }
 
@@ -651,22 +651,22 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
   const PinActionCell = useCallback(({ data }: ICellRendererParams<Deal>) => {
     if (!data) return null;
     return (
-      <Button
-        variant="ghost"
-        size="sm"
+                  <Button
+                    variant="ghost"
+                    size="sm"
         data-pin-btn
-        className={cn(
+                    className={cn(
           'h-7 gap-1 px-2',
           data.isPinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        )}
-        onClick={(e) => {
-          e.stopPropagation();
+                    )}
+                    onClick={(e) => {
+                      e.stopPropagation();
           onPinDeal?.(data.id);
-        }}
-      >
+                    }}
+                  >
         <Pin className={cn('h-3 w-3', data.isPinned && 'fill-primary text-primary')} />
         <span className="text-xs">{data.isPinned ? 'Pinned' : 'Pin'}</span>
-      </Button>
+                  </Button>
     );
   }, [onPinDeal]);
 
@@ -867,8 +867,8 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
             tooltipShowDelay={0}
             enableCellTextSelection={false}
           />
-        </div>
       </div>
+    </div>
     </TooltipProvider>
   );
 }

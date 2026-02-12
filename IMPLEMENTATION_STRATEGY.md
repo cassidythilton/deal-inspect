@@ -2771,6 +2771,56 @@ cortex
 # "Build a Streamlit app on TDR_CHAT_MESSAGES showing message counts by provider"
 ```
 
+### 16.6 Best Practices — Lessons from Active Development
+
+> **Key insight:** Cortex Code CLI is not just a future tool — it is actively used during development and should be the **first choice** for any Snowflake-related inquiry. It is faster and more accurate than web searches for Snowflake-specific questions because it has direct access to official Snowflake documentation and your account's live metadata.
+
+**Proven use cases (from actual development sessions):**
+
+| What We Needed | How We Used Cortex CLI | Result |
+|---------------|----------------------|--------|
+| List all available AI_COMPLETE models | `cortex -p "List all available Snowflake Cortex AI_COMPLETE models grouped by provider"` | Got the complete, current model list in seconds — including `claude-4-opus`, `claude-4-sonnet`, `openai-gpt-4.1`, `openai-o4-mini`, and confirmation that Gemini is NOT available on Cortex |
+| Verify model capabilities | `cortex -p "Is openai-gpt-4.1 the latest OpenAI model available? Is claude-4-opus the best Anthropic model?"` | Confirmed model rankings and availability without guessing |
+
+**Best practice rules:**
+
+1. **Use Cortex CLI before web search.** For any question about Snowflake capabilities, available models, SQL syntax, Cortex functions, or account metadata — ask Cortex CLI first. It knows Snowflake better than any web search.
+
+2. **Use `-p` flag for non-interactive queries.** The `-p` (print) flag runs a single query and exits — perfect for scripted or CI use:
+   ```bash
+   cortex -p "What tables exist in TDR_APP.TDR_DATA?"
+   cortex -p "Show me the schema of CORTEX_ANALYSIS_RESULTS"
+   cortex -p "What Cortex AI_COMPLETE models are available in my region?"
+   ```
+
+3. **Use Cortex CLI for live data validation.** After deploying Code Engine changes, verify data was written correctly:
+   ```bash
+   cortex -p "Show the 5 most recent rows in API_USAGE_LOG where SERVICE = 'cortex'"
+   cortex -p "Count TDR_SESSIONS by STATUS"
+   ```
+
+4. **Use Cortex CLI to test prompts before Code Engine.** Before writing a new `AI_COMPLETE` call in Code Engine, test the prompt interactively:
+   ```bash
+   cortex -p "SELECT AI_COMPLETE('claude-4-sonnet', 'You are a TDR analyst. Summarize: ...')"
+   ```
+
+5. **Use Cortex CLI for schema operations.** Creating tables, adding columns, granting permissions — all can be done conversationally:
+   ```bash
+   cortex -p "Add a column MODEL_USED VARCHAR(100) to CORTEX_ANALYSIS_RESULTS if it doesn't exist"
+   ```
+
+6. **Connection config lives at `~/.snowflake/connections.toml`.** The current connection uses `externalbrowser` auth (SSO). For non-interactive use (`-p` flag), ensure a recent browser session is active.
+
+**Reference:** [Cortex Code CLI Documentation](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code-cli)
+
+**Cortex Code CLI supported models (for the CLI agent itself):**
+- `auto` — automatically selects the best available model (default)
+- `claude-sonnet-4-5` — highest quality
+- `claude-4-sonnet` — balanced
+- `claude-opus-4-5` — premium
+
+> **Note:** These are the models that power the Cortex Code CLI *agent itself* — not to be confused with the AI_COMPLETE models available for application use (which include OpenAI and other providers). The CLI agent uses Claude models to understand your requests and orchestrate Snowflake operations.
+
 ---
 
 ## 17. Implementation Phases
@@ -3476,6 +3526,65 @@ Scoring adjustments:
 - Two-call pattern: `files.uploadV2` (upload PDF) → `chat.postMessage` (send Block Kit message with file permalink)
 - Rate limits: 1 msg/sec per channel (well above our needs)
 
+**Step 0: Create Slack App via Manifest**
+
+Before any Slack integration can work, a Slack App must be created in the target workspace. Use the **Slack App Manifest** approach (https://api.slack.com/apps → "Create New App" → "From an app manifest") with the following manifest:
+
+```json
+{
+    "display_information": {
+        "name": "TDR Deal Inspect",
+        "description": "Technical Deal Review readout distribution — pushes AI-generated executive summaries and PDF readouts to Slack channels from the Domo TDR app.",
+        "long_description": "TDR Deal Inspect integrates with the Domo-based Technical Deal Review (TDR) application to distribute completed deal review readouts to Slack. When an SE Manager completes a TDR, they can push an AI-generated executive summary and a professionally formatted PDF readout directly to a designated Slack channel. The bot posts a rich Block Kit message containing the deal summary (account name, ACV, stage, decision, reviewer, TDR score), an AI-written 3-5 sentence executive overview, and the attached PDF artifact. This eliminates the manual copy-paste workflow and ensures leadership has immediate visibility into deal review outcomes.",
+        "background_color": "#1a1a2e"
+    },
+    "features": {
+        "bot_user": {
+            "display_name": "TDR Deal Inspect",
+            "always_online": false
+        }
+    },
+    "oauth_config": {
+        "scopes": {
+            "bot": [
+                "chat:write",
+                "chat:write.public",
+                "files:write",
+                "files:read",
+                "channels:read",
+                "groups:read"
+            ]
+        }
+    },
+    "settings": {
+        "org_deploy_enabled": false,
+        "socket_mode_enabled": false,
+        "is_hosted": false,
+        "token_rotation_enabled": false
+    }
+}
+```
+
+**Manifest scope rationale:**
+
+| Scope | Why |
+|-------|-----|
+| `chat:write` | Post Block Kit messages to channels the bot is a member of |
+| `chat:write.public` | Post to public channels without being explicitly invited (convenience for initial setup) |
+| `files:write` | Upload PDF readout attachments via `files.uploadV2` |
+| `files:read` | Read file permalink after upload to include in the message |
+| `channels:read` | Fetch list of public channels for the channel picker in Settings |
+| `groups:read` | Fetch list of private channels the bot is a member of (for the channel picker) |
+
+**Setup steps (manual, one-time):**
+1. Go to https://api.slack.com/apps → "Create New App" → "From an app manifest"
+2. Select the target Slack workspace
+3. Paste the manifest JSON above
+4. Click "Create" → "Install to Workspace" → Authorize
+5. Copy the **Bot User OAuth Token** (`xoxb-...`) from "OAuth & Permissions"
+6. In Domo: create a new Account of type "Abstract Credential Store" with the token value
+7. In `consolidated-sprint4-5.js`: configure the Account ID in the Slack integration section
+
 **AI Executive Summary Generation**
 - [ ] Build Code Engine function `generateReadoutSummary`:
   - Input: `sessionId` (string)
@@ -3569,6 +3678,21 @@ Scoring adjustments:
 | **17.5** | **Structured TDR Analytics Extraction Pipeline** | ✅ Complete | Feb 10, 2026 | Sprint 17 | **Analytics** |
 | **17.6** | **TDR Portfolio Analytics Page + NLQ** | ✅ Complete | Feb 10, 2026 | Sprint 17.5 | **Analytics / UX** |
 | **18** | **TDR Score v2 (Pre-TDR & Post-TDR)** | ✅ Complete | Feb 10, 2026 | Sprints 17.5 + 6.5 | **Scoring** |
+| **16** | **Fix Similar Deals** | ✅ Complete | Feb 10, 2026 | None | **Bug Fix** |
+| **19** | **Fileset Intelligence Layer** | ✅ Complete | Feb 11, 2026 | None | **Knowledge Base** |
+| **19.5** | **Cortex KB Summarization & Fileset UX** | ✅ Complete | Feb 11, 2026 | Sprint 19 | **AI / UX** |
+| **22** | **Frontier Model Upgrade** | 🔲 Planned | — | None | **AI / Config** |
+| **20** | **Hero Metrics & Nav Cleanup** | 🔲 Planned | — | Sprint 18 | **UX** |
+| **21** | **Action Plan Synthesis (CAPSTONE)** | 🔲 Planned | — | S17.5+S18+S19+S19.5+S22 | **AI / Artifact** |
+| **14** | **TDR Readout: Slack Distribution** | ⏸ Paused | — | Sprint 13 | **Distribution** |
+
+**Post-Sprint Bug Fixes (Feb 11, 2026):**
+- Sprint 19 — Fixed `discoverFilesets()` API response parsing: Domo API returned filesets under `fileSets` (camelCase) key but code expected `filesets` (lowercase). Added robust multi-key fallback.
+- Sprint 19 — Fixed fileset persistence: `updateSetting()` only updated React state, not `localStorage`. Added `persistFileset` helper that calls `saveAppSettings()` immediately.
+- Sprint 19 — Added fileset name search, display by name, and `filesetNameMap` in `appSettings.ts`.
+- Sprint 19.5 — Added `summarizeKBResults` Code Engine function using Cortex `AI_COMPLETE` with TDR-Framework-aware prompt.
+- Sprint 19.5 — Added collapsible document rows in KB listing and "View in Domo" deep links.
+- Sprint 19.5 — Added KB tooltip in TDR Chat showing configured fileset names.
 
 **Post-Sprint Bug Fixes (Feb 10, 2026):**
 - Fixed `getSentimentTrend` crash: `AI_SENTIMENT` returns NULL for sessions without inputs → `parseFloat(null)` → NaN → serialized as `null` in JSON → `.toFixed()` crash. Added null-filtering in handler and `?? 0` fallback at render.
@@ -4749,6 +4873,202 @@ const files = await domo.get(`/domo/files/v1/filesets/${filesetId}/files`);
 
 ---
 
+### Sprint 19.5 — Cortex KB Summarization & Fileset UX 🔲
+
+> **Goal:** Route the Knowledge Base AI summary through the configured Snowflake Cortex integration (via Code Engine) instead of the generic Domo AI text generation endpoint. Make the summary TDR-Framework-aware by incorporating session context, competitor landscape, and the 10-step TDR evaluation model. Add "View in Domo" deep links from fileset document listings.
+> **Risk to app:** Low — enhances existing KB feature. Domo AI fallback preserved.
+> **Effort:** ~1 day
+> **Dependencies:** Sprint 19 (Fileset Intelligence Layer)
+
+**Problem Statement:**
+Sprint 19 implemented KB summarization via `/domo/ai/v1/text/generation` — a generic, stateless endpoint with no access to deal context stored in Snowflake. The resulting summaries are generic and disconnected from the TDR Framework's 10-step evaluation model. They don't reference the deal's specific competitors, partner platform, or architecture story because that data lives in Snowflake, not in the fileset documents.
+
+**Solution: Cortex Code Engine Function**
+
+A new Code Engine function `summarizeKBResults` receives fileset document excerpts and a TDR session ID, then:
+
+1. **Pulls session context** from `TDR_SESSIONS` (account name, ACV, stage, status)
+2. **Pulls competitive landscape** from `ACCOUNT_INTEL_PERPLEXITY` (if available)
+3. **Constructs a TDR-Framework-aware prompt** that maps insights to the 10 TDR evaluation steps:
+   - Opportunity Overview, Technical Environment, Competition, Architecture, Use Cases, Partner Alignment, Risks & Blockers, Decision Process, Next Steps, Thesis
+4. **Calls `AI_COMPLETE`** with the full context via `CORTEX_MODELS.brief` (llama3.3-70b)
+5. **Stores the result** in `CORTEX_ANALYSIS_RESULTS` with `ANALYSIS_TYPE = 'kb_summary'`
+6. **Logs usage** to `API_USAGE_LOG` with `SERVICE = 'cortex'`, `ACTION = 'kb_summary'`
+
+**Frontend Integration:**
+
+The frontend `summarizeResults()` function in `filesetIntel.ts` now:
+1. Tries the Cortex Code Engine function first (when `sessionId` is available)
+2. Falls back to `/domo/ai/v1/text/generation` if Code Engine fails or no session ID
+3. Passes `sessionId` from `TDRIntelligence.tsx` through `getIntelligenceSummary()`
+
+**Fileset Document Deep Links:**
+
+Each document in the expanded fileset listing now includes a "View in Domo" link that opens the source document in the Domo datacenter:
+- URL pattern: `{domoInstance}/datacenter/filesets/{filesetId}/preview/{encodedFileName}`
+- The Domo instance origin is derived from `document.referrer` (the parent iframe)
+- `filesetId` is now carried through the `FilesetSummary.relevantDocuments` data model
+
+**Cortex Prompt Structure:**
+```
+You are a senior Solutions Engineering strategist at Domo, conducting a TDR.
+
+The TDR Framework evaluates deals across 10 key dimensions:
+1. Opportunity Overview   6. Partner Alignment
+2. Technical Environment  7. Risks & Blockers
+3. Competition            8. Decision Process
+4. Architecture           9. Next Steps
+5. Use Cases             10. Thesis
+
+DEAL CONTEXT: {session data from Snowflake}
+COMPETITIVE LANDSCAPE: {from Perplexity intel}
+KNOWLEDGE BASE DOCUMENTS: {fileset excerpts with titles, relevance, sources}
+
+Provide summary organized by:
+1. Competitive Intelligence — battle card tactics
+2. Partner & Platform Guidance — playbook guidance
+3. Technical Positioning — architectural patterns
+4. Recommended Actions — specific SE actions
+```
+
+**Files Changed:**
+
+| File | Change |
+|------|--------|
+| `codeengine/consolidated-sprint4-5.js` | **New function:** `summarizeKBResults(sessionId, documentTexts)` — Cortex AI_COMPLETE with TDR-Framework-aware prompt |
+| `manifest.json` | Add `summarizeKBResults` to `packageMapping` (2 params: sessionId, documentTexts) |
+| `src/lib/filesetIntel.ts` | `summarizeResults()` now tries Code Engine first, falls back to Domo AI. `getIntelligenceSummary()` accepts optional `sessionId`. `FilesetSummary.relevantDocuments` includes `filesetId`. |
+| `src/components/TDRIntelligence.tsx` | Passes `sessionId` to `getIntelligenceSummary()`. Expanded document view includes "View in Domo" deep link with `ExternalLink` icon. |
+
+**Snowflake Tables Used:**
+- **Read:** `TDR_SESSIONS` (session context), `ACCOUNT_INTEL_PERPLEXITY` (competitive landscape)
+- **Write:** `CORTEX_ANALYSIS_RESULTS` (kb_summary result), `API_USAGE_LOG` (usage tracking)
+
+**Definition of Done:** KB AI summary is generated via Cortex `AI_COMPLETE` through Code Engine when a session ID is available. Summary references TDR Framework dimensions and incorporates deal-specific context from Snowflake. Domo AI fallback works when Code Engine is unavailable. Documents in the fileset listing have "View in Domo" deep links. Result stored in `CORTEX_ANALYSIS_RESULTS`, usage logged to `API_USAGE_LOG`. Manifest version bumped to 1.38.0.
+
+---
+
+### Sprint 22 — Frontier Model Upgrade 🔲
+
+> **Goal:** Replace all open-source / legacy Cortex models with best-in-breed frontier models from OpenAI and Anthropic. Every AI operation in the app — chat, TDR briefs, classification, entity extraction, KB summarization, analyst queries — should use the newest, most capable models available on Snowflake Cortex.
+> **Risk to app:** Low — configuration change. All AI_COMPLETE call signatures are identical regardless of model. If a model is unavailable in a region, Cortex cross-region inference handles fallback automatically.
+> **Effort:** ~0.5 days
+> **Dependencies:** None — can be applied at any time. Best done before Sprint 21 (Action Plan Synthesis) to ensure the capstone sprint uses the strongest models.
+
+**Problem Statement:**
+The app currently uses legacy open-source models for all AI operations:
+- **Chat:** Defaults to `llama3.3-70b` with options including `llama3.1-405b`, `mistral-large2`, `claude-3-5-sonnet`, and `snowflake-arctic`
+- **TDR Briefs, KB Summarization, askAnalyst:** All hardcoded to `llama3.3-70b` via `CORTEX_MODELS.brief`
+- **Classification & Entity Extraction:** Hardcoded to `llama3.1-8b` — a tiny 8B-parameter model doing work that frontier models would do significantly better
+- **Chat fallback:** Hardcoded `model || 'llama3.3-70b'` in `sendChatMessage`
+
+These are fine for prototyping but are not best-in-breed. Snowflake Cortex now offers frontier models from OpenAI and Anthropic that dramatically outperform these open-source alternatives on reasoning, instruction following, and structured output quality.
+
+**Available Frontier Models (Snowflake Cortex AI_COMPLETE):**
+
+| Provider | Model ID | Capability | Cost Tier |
+|----------|----------|-----------|-----------|
+| **Anthropic** | `claude-4-opus` | Most capable model available. Deep reasoning, complex analysis, nuanced output. | high |
+| **Anthropic** | `claude-4-sonnet` | Excellent reasoning with fast response. Best balance of capability and speed. | medium |
+| **OpenAI** | `openai-gpt-4.1` | Latest GPT. Strong all-around: coding, analysis, structured output. | high |
+| **OpenAI** | `openai-o4-mini` | Reasoning-optimized, cost-efficient. Great for classification and extraction tasks. | medium |
+
+**Not Available:**
+- **Google Gemini:** Not currently supported on Snowflake Cortex AI_COMPLETE. Will be added to the model selector when Snowflake adds Gemini support.
+
+**Removed Models:**
+- `llama3.3-70b` — replaced by `claude-4-sonnet` (better reasoning)
+- `llama3.1-405b` — replaced by `claude-4-opus` (more capable, lower latency)
+- `llama3.1-8b` — replaced by `openai-o4-mini` (vastly better at classification/extraction)
+- `mistral-large2` — replaced by `openai-gpt-4.1` (stronger all-around)
+- `claude-3-5-sonnet` — replaced by `claude-4-sonnet` (two generations newer)
+- `snowflake-arctic` — removed (not competitive)
+
+**Solution — 4 Parts:**
+
+**Part A: Chat Model Selector** (`src/config/llmProviders.ts`)
+
+Replace the Cortex model list. New default: `claude-4-sonnet`.
+
+```typescript
+models: [
+  { id: 'claude-4-sonnet',   label: 'Claude 4 Sonnet',   description: 'Fast, excellent reasoning',      costTier: 'medium' },
+  { id: 'claude-4-opus',     label: 'Claude 4 Opus',     description: 'Most capable, deep reasoning',   costTier: 'high' },
+  { id: 'openai-gpt-4.1',   label: 'GPT-4.1',           description: 'Latest GPT, strong all-around',  costTier: 'high' },
+  { id: 'openai-o4-mini',   label: 'OpenAI o4-mini',    description: 'Reasoning-optimized, efficient',  costTier: 'medium' },
+],
+defaultModelId: 'claude-4-sonnet',
+```
+
+**Part B: Code Engine Backend** (`CORTEX_MODELS` in `consolidated-sprint4-5.js`)
+
+```javascript
+const CORTEX_MODELS = {
+  brief:    'claude-4-sonnet',   // TDR briefs, KB summary, askAnalyst, action plan (was llama3.3-70b)
+  classify: 'openai-o4-mini',   // Classification tasks (was llama3.1-8b)
+  embed:    'e5-base-v2',       // Embeddings — unchanged (not a generative model)
+  extract:  'openai-o4-mini',   // Entity extraction (was llama3.1-8b)
+};
+```
+
+**Part C: Chat Default Fallback** (in `sendChatMessage`)
+
+```javascript
+// Before:
+const modelId = model || 'llama3.3-70b';
+// After:
+const modelId = model || 'claude-4-sonnet';
+```
+
+Also update the return statement fallback:
+```javascript
+// Before:
+model: model || (provider === 'cortex' ? 'llama3.3-70b' : 'sonar'),
+// After:
+model: model || (provider === 'cortex' ? 'claude-4-sonnet' : 'sonar'),
+```
+
+**Part D: Gemini Future-Proofing**
+
+Google Gemini is not currently available on Snowflake Cortex. When Snowflake adds Gemini support, add it to the model selector:
+```typescript
+// Future — when Gemini becomes available on Cortex:
+{ id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Google frontier model', costTier: 'high' },
+```
+
+**Impact Audit — Every AI_COMPLETE Call in the App:**
+
+| Function | Current Model | New Model | Change Type |
+|----------|--------------|-----------|-------------|
+| `generateTDRBrief` | `CORTEX_MODELS.brief` → `llama3.3-70b` | `claude-4-sonnet` | Via config |
+| `classifyFindings` | `CORTEX_MODELS.classify` → `llama3.1-8b` | `openai-o4-mini` | Via config |
+| `extractEntities` | `CORTEX_MODELS.extract` → `llama3.1-8b` | `openai-o4-mini` | Via config |
+| `sendChatMessage` (Cortex) | `model \|\| 'llama3.3-70b'` | `model \|\| 'claude-4-sonnet'` | Direct edit |
+| `askAnalyst` (SQL gen) | `CORTEX_MODELS.brief` → `llama3.3-70b` | `claude-4-sonnet` | Via config |
+| `askAnalyst` (answer) | `CORTEX_MODELS.brief` → `llama3.3-70b` | `claude-4-sonnet` | Via config |
+| `summarizeKBResults` | `CORTEX_MODELS.brief` → `llama3.3-70b` | `claude-4-sonnet` | Via config |
+| `extractStructuredTDR` | `CORTEX_MODELS.brief` → `llama3.3-70b` | `claude-4-sonnet` | Via config |
+| `findSimilarDeals` | `CORTEX_MODELS.embed` → `e5-base-v2` | `e5-base-v2` | **No change** (embedding) |
+| Chat model selector | 5 legacy models | 4 frontier models | Frontend config |
+
+**What Stays Unchanged:**
+- **Perplexity provider** (`sonar`, `sonar-pro`) — separate web-grounded search provider, not Cortex
+- **Domo AI provider** — native Domo AI, not Cortex
+- **`e5-base-v2` embedding model** — embedding models are a different category; `e5-base-v2` is the standard Cortex embedding model
+- **All API call signatures** — `AI_COMPLETE(model, prompt)` is identical regardless of model name
+- **All prompt engineering** — prompts work across models (frontier models follow instructions better, not worse)
+
+**Files Changed:**
+
+| File | Change |
+|------|--------|
+| `src/config/llmProviders.ts` | Replace Cortex model list: 4 frontier models, default `claude-4-sonnet` |
+| `codeengine/consolidated-sprint4-5.js` | Update `CORTEX_MODELS` config object. Update `sendChatMessage` fallback defaults. |
+
+**Definition of Done:** Every AI operation in the app uses a frontier model from OpenAI or Anthropic. The chat model selector shows only `claude-4-sonnet`, `claude-4-opus`, `openai-gpt-4.1`, `openai-o4-mini`. No Llama, Mistral, or Arctic models remain in the codebase. `CORTEX_MODELS.brief` = `claude-4-sonnet`, `CORTEX_MODELS.classify` = `openai-o4-mini`, `CORTEX_MODELS.extract` = `openai-o4-mini`. Gemini noted as future addition when Snowflake adds support.
+
+---
+
 ### Sprint 20 — Hero Metrics & Nav Cleanup 🔲
 
 > **Goal:** Rethink the Command Center top metrics and charts to align with TDR objectives. Clean up left nav redundancy.
@@ -4816,7 +5136,7 @@ const files = await domo.get(`/domo/files/v1/filesets/${filesetId}/files`);
 > **Goal:** After TDR completion, use Cortex AI to synthesize ALL captured data — SE inputs, deal metadata, Perplexity research, Sumble enrichment, fileset battle cards/playbooks, chat highlights, classified findings, extracted entities, and Post-TDR Score — into a comprehensive, tailored action plan for the SE/AE.
 > **Risk to app:** Low — additive feature. Enhances the readout without changing existing behavior.
 > **Effort:** ~2-3 days
-> **Dependencies:** Sprint 17 (lean TDR inputs), Sprint 18 (Post-TDR Score), Sprint 19 (fileset intelligence)
+> **Dependencies:** Sprint 17 (lean TDR inputs), Sprint 18 (Post-TDR Score), Sprint 19 (fileset intelligence), Sprint 19.5 (Cortex KB summarization)
 
 **Problem Statement:**
 Today's `assembleTDRReadout` is a **data aggregator** — it pulls from 9 Snowflake tables and renders each source in its own PDF section. The data is displayed as-is: raw SE inputs in §2, raw Sumble data in §3, raw chat messages in §7. Nobody is connecting the dots. The TDR Brief (§1) is the closest thing to synthesis, but it was designed before filesets, Post-TDR scoring, and named competitor intelligence existed. It's a summary, not an action plan.
@@ -4962,22 +5282,30 @@ Sprint 17.5 — Structured TDR Analytics (1 day) ✅ │
 Sprint 17.6 — TDR Analytics Page + NLQ ✅        │
     │  (visualization of V_TDR_ANALYTICS)       │
     │                                           │
-    │  Sprint 19 — Fileset Intelligence         │
+    │  Sprint 19 — Fileset Intelligence ✅      │
     │  (2–3 days, parallel with S17.5/6) ──────┤
-    │                                           │
-    ▼                                           ▼
+    │         │                                 │
+    ▼         ▼                                 │
 Sprint 18 — TDR Score v2 (2 days) ✅     ──────┤
-    │  (depends on S17.5 + S19)                 │
+    │                                           │
+    │  Sprint 19.5 — Cortex KB Summary (1 day)  │
+    │  (depends on S19) ───────────────────────┤
+    │                                           │
+    ▼                                           │
+Sprint 22 — Frontier Model Upgrade (0.5 day)   │
+    │  (claude-4-sonnet, openai-gpt-4.1, etc.) │
+    │                                           │
     ▼                                           │
 Sprint 20 — Hero Metrics & Nav (1–2 days)      │
     (depends on S18)                            │
                                                 ▼
                                 Sprint 21 — Action Plan Synthesis (2–3 days)
-                                    (depends on S17.5 + S18 + S19)
+                                    (depends on S17.5 + S18 + S19 + S19.5 + S22)
                                     THE CAPSTONE — synthesizes everything
+                                    (now uses frontier models for best results)
 ```
 
-**Total estimated effort:** ~10-14 days of focused development
+**Total estimated effort:** ~12-16 days of focused development
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -4985,10 +5313,12 @@ Sprint 20 — Hero Metrics & Nav (1–2 days)      │
 | S17: Lean TDR Refactor | ✅ with S19 | None | 2-3 days | ✅ |
 | S17.5: Structured TDR Analytics | ✅ with S19 | S17 | 1 day | ✅ |
 | S17.6: TDR Portfolio Analytics Page | Sequential | S17.5 | 1.5 days | ✅ |
-| **S19: Fileset Intelligence** | ✅ with S20 | None | 2-3 days | 🔲 Next |
+| S19: Fileset Intelligence | ✅ with S17.5/6 | None | 2-3 days | ✅ |
 | S18: TDR Score v2 | No | S17.5 + S19 | 2 days | ✅ |
-| **S20: Hero Metrics & Nav** | ✅ with S21 | S18 | 1-2 days | 🔲 |
-| **S21: Action Plan Synthesis** | ✅ with S20 | S17.5 + S18 + S19 | 2-3 days | 🔲 |
+| S19.5: Cortex KB Summarization | ✅ with S22 | S19 | 1 day | ✅ |
+| **S22: Frontier Model Upgrade** | ✅ with S20 | None | 0.5 day | 🔲 Next |
+| **S20: Hero Metrics & Nav** | ✅ with S22 | S18 | 1-2 days | 🔲 |
+| **S21: Action Plan Synthesis** | ✅ with S20 | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | 🔲 |
 
 ---
 
@@ -5167,7 +5497,7 @@ Specific charts planned:
 ├── 📎 TDR-Readout-AccountName-2026-02-09.pdf
 ```
 
-The Slack Bot requires OAuth scopes: `chat:write`, `files:write`, `channels:read`. The bot token is stored as a Domo Account (same pattern as Sumble/Perplexity API keys).
+The Slack Bot requires OAuth scopes: `chat:write`, `chat:write.public`, `files:write`, `files:read`, `channels:read`, `groups:read`. The Slack App is created via **App Manifest** (see Sprint 14 for the full manifest JSON and setup steps). The bot token (`xoxb-...`) is stored as a Domo Account (same pattern as Sumble/Perplexity API keys).
 
 ### 21.7 Snowflake Schema Additions
 
@@ -5264,10 +5594,15 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 **Why it matters independently:** Even if nothing else changes, the readout transforms a TDR from a transient work session into a permanent artifact. It's the document that gets attached to a deal review email, shared in a leadership Slack channel, or pulled up six months later during renewal prep. It closes the loop: every other pillar generates value *during* the TDR; this pillar packages that value for consumption *after* the TDR.
 **Key outcome:** The app produces a deliverable.
 
-### Pillar 7: Unstructured Knowledge (Sprint 19)
-**What:** Domo filesets — PDFs containing partner playbooks, competitive battle cards, co-sell guides — are made searchable and actionable within the TDR experience. When an SE opens a TDR, the app auto-searches configured filesets for content relevant to the deal's competitors, partner platform, and cloud strategy. Results surface in the Intelligence panel and enrich the chat context.
-**Why it matters independently:** Even without any other enrichment, filesets turn the TDR into a context-aware experience. An SE reviewing a Sigma competitive deal gets the Sigma battle card surfaced automatically. An SE reviewing a Snowflake co-sell deal gets the Snowflake partner playbook. The knowledge that exists in scattered PDFs becomes instantly accessible at the point of decision.
-**Key outcome:** The app knows the playbook.
+### Pillar 7: Unstructured Knowledge (Sprints 19, 19.5)
+**What:** Domo filesets — PDFs containing partner playbooks, competitive battle cards, co-sell guides — are made searchable and actionable within the TDR experience. When an SE opens a TDR, the app auto-searches configured filesets for content relevant to the deal's competitors, partner platform, and cloud strategy. Results surface in the Intelligence panel and enrich the chat context. Sprint 19.5 enhances the KB summary by routing it through Cortex AI_COMPLETE with full TDR session context and a TDR-Framework-aware prompt, and adds deep links to source documents in the Domo datacenter.
+**Why it matters independently:** Even without any other enrichment, filesets turn the TDR into a context-aware experience. An SE reviewing a Sigma competitive deal gets the Sigma battle card surfaced automatically. An SE reviewing a Snowflake co-sell deal gets the Snowflake partner playbook. The knowledge that exists in scattered PDFs becomes instantly accessible at the point of decision. With Cortex integration, the summary is grounded in deal-specific context from Snowflake.
+**Key outcome:** The app knows the playbook — and connects it to the deal.
+
+### Pillar 8: Frontier Model Strategy (Sprint 22)
+**What:** Every AI operation in the app — chat, TDR briefs, classification, entity extraction, KB summarization, analyst queries — is upgraded from legacy open-source models (Llama, Mistral, Arctic) to best-in-breed frontier models from OpenAI (`openai-gpt-4.1`, `openai-o4-mini`) and Anthropic (`claude-4-opus`, `claude-4-sonnet`). Google Gemini will be added when Snowflake Cortex adds support.
+**Why it matters independently:** Model quality is the single biggest lever for AI output quality. Frontier models produce dramatically better TDR briefs, more accurate entity extraction, more insightful KB summaries, and more useful chat responses. This is a force multiplier for every other pillar.
+**Key outcome:** The app uses the best AI available — period.
 
 ### Pillar 8: Lean Operating Model (Sprint 17)
 **What:** The 9-step TDR is compressed into 5 required sections + optional extras. A Thesis field ("Why does Domo belong?") is always visible. Fields are replaced with forcing questions. The target is 30 minutes, not 90.

@@ -20,6 +20,8 @@ export interface AppSettings {
   dangerousCompetitors: string[];
   /** Sprint 19: Domo fileset IDs for Knowledge Base */
   filesetIds: string[];
+  /** Sprint 19: ID → display name mapping for configured filesets */
+  filesetNameMap: Record<string, string>;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -55,6 +57,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     'ThoughtSpot',
   ],
   filesetIds: [],
+  filesetNameMap: {},
 };
 
 const STORAGE_KEY = 'tdrAppSettings';

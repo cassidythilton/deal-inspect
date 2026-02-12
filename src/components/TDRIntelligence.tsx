@@ -49,6 +49,7 @@ import {
   Target,
   UserCheck,
   Linkedin,
+  ChevronDown,
 } from 'lucide-react';
 import { TDRSummaryModal } from './TDRSummaryModal';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
@@ -262,6 +263,7 @@ export function TDRIntelligence({
   const [filesetSummary, setFilesetSummary] = useState<FilesetSummary | null>(null);
   const [filesetLoading, setFilesetLoading] = useState(false);
   const [filesetSearched, setFilesetSearched] = useState(false);
+  const [expandedDocs, setExpandedDocs] = useState<Set<number>>(new Set());
 
   // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
   useEffect(() => {
@@ -355,7 +357,8 @@ export function TDRIntelligence({
           const summary = await filesetIntel.getIntelligenceSummary(
             result,
             dealContext,
-            competitors as string[]
+            competitors as string[],
+            sessionId
           );
           setFilesetSummary(summary);
           console.log(`[FilesetIntel] Auto-search complete: ${result.matches.length} matches, signal: ${summary.matchSignal}`);
@@ -390,7 +393,8 @@ export function TDRIntelligence({
         const summary = await filesetIntel.getIntelligenceSummary(
           result,
           dealContext,
-          competitors as string[]
+          competitors as string[],
+          sessionId
         );
         setFilesetSummary(summary);
       }
@@ -398,7 +402,7 @@ export function TDRIntelligence({
       console.warn('[FilesetIntel] Manual search failed:', err);
     }
     setFilesetLoading(false);
-  }, [deal]);
+  }, [deal, sessionId]);
 
   // ── Sumble Enrichment ──
   const handleEnrichSumble = useCallback(async () => {
@@ -1832,25 +1836,13 @@ export function TDRIntelligence({
                   </span>
                 </div>
 
-                {/* Relevant documents */}
-                {filesetSummary.relevantDocuments.length > 0 && (
-                  <div className="space-y-1">
-                    {filesetSummary.relevantDocuments.slice(0, 4).map((doc, i) => (
-                      <div key={i} className="group rounded-md bg-[#221d38] border border-[#322b4d] px-2.5 py-1.5">
-                        <div className="flex items-center justify-between">
-                          <p className="text-2xs font-medium text-slate-300 truncate">{doc.title}</p>
-                          <span className={cn(
-                            'text-[10px] font-medium tabular-nums',
-                            doc.relevance >= 80 ? 'text-emerald-400' :
-                            doc.relevance >= 50 ? 'text-amber-400' : 'text-slate-500'
-                          )}>
-                            {doc.relevance}%
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-2">{doc.excerpt}</p>
-                        <p className="text-[9px] text-slate-700 mt-0.5">{doc.source}</p>
-                      </div>
-                    ))}
+                {/* AI Summary — shown first, above document listing */}
+                {filesetSummary.summary && (
+                  <div className="rounded-md bg-[#1e1a30] border border-[#322b4d] p-2">
+                    <p className="text-[10px] font-medium text-amber-400 mb-1">AI Summary</p>
+                    <div className="text-[10px] text-slate-400 leading-relaxed">
+                      {renderMarkdownBlock(filesetSummary.summary, 'fs')}
+                    </div>
                   </div>
                 )}
 
@@ -1870,13 +1862,61 @@ export function TDRIntelligence({
                   </div>
                 )}
 
-                {/* AI Summary */}
-                {filesetSummary.summary && (
-                  <div className="mt-1 rounded-md bg-[#1e1a30] border border-[#322b4d] p-2">
-                    <p className="text-[10px] font-medium text-amber-400 mb-1">AI Summary</p>
-                    <div className="text-[10px] text-slate-400 leading-relaxed">
-                      {renderMarkdownBlock(filesetSummary.summary, 'fs')}
-                    </div>
+                {/* Relevant documents — collapsed by default */}
+                {filesetSummary.relevantDocuments.length > 0 && (
+                  <div className="space-y-0.5">
+                    {filesetSummary.relevantDocuments.slice(0, 6).map((doc, i) => {
+                      const isExpanded = expandedDocs.has(i);
+                      return (
+                        <button
+                          key={i}
+                          className="w-full text-left rounded-md bg-[#221d38] border border-[#322b4d] px-2.5 py-1 hover:border-[#3d3560] transition-colors"
+                          onClick={() => {
+                            setExpandedDocs((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(i)) next.delete(i);
+                              else next.add(i);
+                              return next;
+                            });
+                          }}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <ChevronDown className={cn(
+                              'h-2.5 w-2.5 shrink-0 text-slate-600 transition-transform',
+                              !isExpanded && '-rotate-90'
+                            )} />
+                            <p className="text-2xs font-medium text-slate-300 truncate flex-1">{doc.title}</p>
+                            <span className={cn(
+                              'text-[10px] font-medium tabular-nums shrink-0',
+                              doc.relevance >= 80 ? 'text-emerald-400' :
+                              doc.relevance >= 50 ? 'text-amber-400' : 'text-slate-500'
+                            )}>
+                              {doc.relevance}%
+                            </span>
+                          </div>
+                          {isExpanded && (
+                            <div className="mt-1 ml-4">
+                              <p className="text-[10px] text-slate-500 line-clamp-3">{doc.excerpt}</p>
+                              <div className="flex items-center justify-between mt-0.5">
+                                <p className="text-[9px] text-slate-700">{doc.source}</p>
+                                {doc.filesetId && (
+                                  <a
+                                    href={`${(() => { try { return document.referrer ? new URL(document.referrer).origin : ''; } catch { return ''; } })()}/datacenter/filesets/${doc.filesetId}/preview/${encodeURIComponent(doc.title)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-0.5 text-[9px] text-blue-400 hover:text-blue-300 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="h-2.5 w-2.5" />
+                                    View in Domo
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

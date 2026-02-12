@@ -56,6 +56,7 @@ export interface FilesetSummary {
     relevance: number;
     excerpt: string;
     source: string;
+    filesetId: string;
   }>;
   competitorInsights: string[];
   partnerInsights: string[];
@@ -214,15 +215,52 @@ function buildDealSearchQuery(context: {
 }
 
 /**
- * Summarize fileset results using Domo AI text generation.
+ * Summarize fileset results using Cortex AI via Code Engine.
+ * Falls back to Domo AI text generation if Code Engine call fails.
+ *
+ * @param matches   - Fileset search matches
+ * @param dealContext - Deal context string
+ * @param sessionId  - Optional TDR session ID for Cortex context enrichment
  */
 async function summarizeResults(
   matches: FilesetMatch[],
-  dealContext: string
+  dealContext: string,
+  sessionId?: string
 ): Promise<string> {
   const domo = getDomo();
   if (!domo || matches.length === 0) return '';
 
+  // Build structured document payload for Code Engine
+  const documentPayload = matches.slice(0, 6).map((m) => ({
+    title: m.metadata.fileName || m.metadata.path || 'Unknown',
+    text: m.content.text,
+    relevance: Math.round(m.score * 100),
+    source: m.filesetInfo.name,
+  }));
+
+  // Try Cortex via Code Engine first (Sprint 19.5)
+  if (sessionId) {
+    try {
+      console.log('[FilesetIntel] Summarizing via Cortex Code Engine (sessionId:', sessionId, ')');
+      const result = (await domo.post('/domo/codeengine/v2/packages/execute', {
+        functionName: 'summarizeKBResults',
+        parameters: {
+          sessionId,
+          documentTexts: JSON.stringify(documentPayload),
+        },
+      })) as { success?: boolean; summary?: string; error?: string };
+
+      if (result?.success && result?.summary) {
+        console.log('[FilesetIntel] Cortex KB summary received:', result.summary.length, 'chars');
+        return result.summary;
+      }
+      console.warn('[FilesetIntel] Cortex KB summary returned empty or failed:', result?.error);
+    } catch (err) {
+      console.warn('[FilesetIntel] Cortex Code Engine summarization failed, falling back to Domo AI:', err);
+    }
+  }
+
+  // Fallback: Domo AI text generation (original approach)
   const documentTexts = matches
     .slice(0, 6)
     .map((m, i) => `[Doc ${i + 1}: ${m.metadata.fileName || m.metadata.path || 'Unknown'}]\n${m.content.text}`)
@@ -400,14 +438,15 @@ export const filesetIntel = {
   async getIntelligenceSummary(
     searchResult: FilesetSearchResult,
     dealContext: string,
-    competitors: string[]
+    competitors: string[],
+    sessionId?: string
   ): Promise<FilesetSummary> {
     const matchSignal = evaluateMatchSignal(searchResult.matches, competitors);
 
     // Only summarize if we have meaningful matches
     let summary = '';
     if (searchResult.matches.length > 0 && matchSignal !== 'none') {
-      summary = await summarizeResults(searchResult.matches, dealContext);
+      summary = await summarizeResults(searchResult.matches, dealContext, sessionId);
     }
 
     const relevantDocuments = searchResult.matches.slice(0, 5).map((m) => ({
@@ -415,6 +454,7 @@ export const filesetIntel = {
       relevance: Math.round(m.score * 100),
       excerpt: m.content.text.substring(0, 200) + (m.content.text.length > 200 ? '...' : ''),
       source: m.filesetInfo.name,
+      filesetId: m.filesetInfo.id,
     }));
 
     // Extract competitor/partner insights from match content
@@ -483,30 +523,79 @@ export const filesetIntel = {
 
   /**
    * Discover available filesets in the Domo instance.
+   * Tries multiple endpoints and response formats for Domo API compatibility.
    */
   async discoverFilesets(): Promise<FilesetMetadata[]> {
     const domo = getDomo();
-    if (!domo) return [];
-
-    try {
-      const response = (await domo.post('/domo/files/v1/filesets/search?offset=0', {})) as {
-        filesets?: Array<Record<string, unknown>>;
-        results?: Array<Record<string, unknown>>;
-      };
-
-      const filesets = response?.filesets || response?.results || [];
-      return filesets.map((fs) => ({
-        id: (fs.id as string) || (fs.filesetId as string) || '',
-        name: (fs.name as string) || (fs.title as string) || 'Unknown',
-        description: (fs.description as string) || undefined,
-        fileCount: (fs.fileCount as number) || undefined,
-        lastUpdated: (fs.updatedAt as string) || undefined,
-        status: 'active',
-      }));
-    } catch (err) {
-      console.warn('[FilesetIntel] Failed to discover filesets:', err);
+    if (!domo) {
+      console.warn('[FilesetIntel] discoverFilesets: No domo SDK available');
       return [];
     }
+
+    // Multiple endpoints to try — Domo API can vary by environment
+    const endpointsToTry = [
+      { method: 'POST' as const, url: '/domo/files/v1/filesets/search?offset=0', body: {} },
+      { method: 'GET' as const, url: '/domo/files/v1/filesets?offset=0', body: null },
+      { method: 'GET' as const, url: '/domo/files/v1/filesets', body: null },
+    ];
+
+    for (const endpoint of endpointsToTry) {
+      try {
+        console.log(`[FilesetIntel] Trying ${endpoint.method} ${endpoint.url}...`);
+
+        let response: unknown;
+        if (endpoint.method === 'POST') {
+          response = await domo.post(endpoint.url, endpoint.body ?? {});
+        } else {
+          response = await domo.get(endpoint.url);
+        }
+
+        console.log(`[FilesetIntel] Response from ${endpoint.url}:`, response);
+
+        // Extract filesets from all known response shapes
+        // The Domo API can return: fileSets (camelCase), filesets, results, data, items, or a direct array
+        const resp = response as Record<string, unknown> | unknown[] | null;
+        let rawFilesets: Array<Record<string, unknown>> = [];
+
+        if (resp && (resp as Record<string, unknown>).fileSets) {
+          rawFilesets = (resp as Record<string, unknown>).fileSets as Array<Record<string, unknown>>;
+        } else if (resp && (resp as Record<string, unknown>).filesets) {
+          rawFilesets = (resp as Record<string, unknown>).filesets as Array<Record<string, unknown>>;
+        } else if (resp && Array.isArray(resp)) {
+          rawFilesets = resp as Array<Record<string, unknown>>;
+        } else if (resp && (resp as Record<string, unknown>).results) {
+          rawFilesets = (resp as Record<string, unknown>).results as Array<Record<string, unknown>>;
+        } else if (resp && (resp as Record<string, unknown>).data && Array.isArray((resp as Record<string, unknown>).data)) {
+          rawFilesets = (resp as Record<string, unknown>).data as Array<Record<string, unknown>>;
+        } else if (resp && (resp as Record<string, unknown>).items && Array.isArray((resp as Record<string, unknown>).items)) {
+          rawFilesets = (resp as Record<string, unknown>).items as Array<Record<string, unknown>>;
+        }
+
+        console.log(`[FilesetIntel] Extracted ${rawFilesets.length} raw filesets from response`);
+
+        if (rawFilesets.length > 0) {
+          const mapped = rawFilesets
+            .map((fs) => ({
+              id: (fs.id as string) || (fs.filesetId as string) || '',
+              name: (fs.name as string) || (fs.title as string) || 'Unknown',
+              description: (fs.description as string) || undefined,
+              fileCount: (fs.fileCount as number) || (fs.file_count as number) || undefined,
+              lastUpdated: (fs.updatedAt as string) || (fs.lastModified as string) || (fs.last_modified as string) || undefined,
+              status: 'active' as const,
+            }))
+            .filter((fs) => fs.id); // Filter out entries with no ID
+
+          console.log(`[FilesetIntel] Discovered ${mapped.length} filesets (with valid IDs)`);
+          return mapped;
+        }
+      } catch (err) {
+        console.log(`[FilesetIntel] Failed with ${endpoint.method} ${endpoint.url}:`, err);
+        continue; // Try next endpoint
+      }
+    }
+
+    console.warn('[FilesetIntel] All fileset discovery endpoints failed or returned empty');
+    return [];
   },
 
   /**
