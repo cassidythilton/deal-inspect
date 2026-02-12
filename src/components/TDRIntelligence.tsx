@@ -493,11 +493,18 @@ export function TDRIntelligence({
   // ── Sprint 17.5: Structured Extraction State ──
   const [extractionResult, setExtractionResult] = useState<StructuredExtractResult | null>(null);
   const [extractionLoading, setExtractionLoading] = useState(false);
+  const [extractionCacheLoaded, setExtractionCacheLoaded] = useState(false);
+  const [extractionDate, setExtractionDate] = useState<string>('');
 
   // ── Sprint 21: Action Plan State ──
   const [actionPlanResult, setActionPlanResult] = useState<ActionPlanResult | null>(null);
   const [actionPlanLoading, setActionPlanLoading] = useState(false);
   const [actionPlanOpen, setActionPlanOpen] = useState(false);
+  const [actionPlanCacheLoaded, setActionPlanCacheLoaded] = useState(false);
+
+  // ── Sprint 24: KB Summary Cache State ──
+  const [kbSummaryCacheLoaded, setKbSummaryCacheLoaded] = useState(false);
+  const [kbSummaryDate, setKbSummaryDate] = useState<string>('');
 
   // ── Sprint 6.5: Deep Intelligence State ──
   const [sumbleOrgData, setSumbleOrgData] = useState<SumbleOrgData | null>(null);
@@ -596,6 +603,71 @@ export function TDRIntelligence({
     loadCachedBrief();
   }, [sessionId, briefCacheLoaded]);
 
+  // ── Load cached action plan on mount ──
+  useEffect(() => {
+    if (!sessionId || actionPlanCacheLoaded) return;
+    setActionPlanCacheLoaded(true);
+
+    const loadCachedActionPlan = async () => {
+      try {
+        const cached = await cortexAi.getLatestActionPlan(sessionId);
+        if (cached.hasPlan && cached.actionPlan) {
+          setActionPlanResult({
+            success: true,
+            actionPlan: cached.actionPlan,
+            modelUsed: cached.modelUsed,
+            createdAt: cached.createdAt,
+            cached: true,
+          });
+          console.log('[TDRIntelligence] Loaded cached action plan from', cached.createdAt);
+        }
+      } catch (err) {
+        console.warn('[TDRIntelligence] Failed to load cached action plan:', err);
+      }
+    };
+
+    loadCachedActionPlan();
+  }, [sessionId, actionPlanCacheLoaded]);
+
+  // ── Load cached extraction on mount, auto-extract if none ──
+  useEffect(() => {
+    if (!sessionId || extractionCacheLoaded) return;
+    setExtractionCacheLoaded(true);
+
+    const loadCachedExtraction = async () => {
+      try {
+        const cached = await cortexAi.getLatestExtraction(sessionId);
+        if (cached.hasExtract && cached.structured) {
+          setExtractionResult({
+            success: true,
+            extractId: cached.extractId,
+            structured: cached.structured,
+          });
+          setExtractionDate(cached.extractedAt || '');
+          console.log('[TDRIntelligence] Loaded cached extraction from', cached.extractedAt);
+        } else {
+          // No cached extraction — auto-extract silently
+          console.log('[TDRIntelligence] No cached extraction, auto-extracting...');
+          setExtractionLoading(true);
+          try {
+            const result = await cortexAi.extractStructuredTDR(sessionId);
+            setExtractionResult(result);
+            if (result.success) {
+              setExtractionDate(new Date().toISOString());
+            }
+          } catch (extractErr) {
+            console.warn('[TDRIntelligence] Auto-extraction failed:', extractErr);
+          }
+          setExtractionLoading(false);
+        }
+      } catch (err) {
+        console.warn('[TDRIntelligence] Failed to load cached extraction:', err);
+      }
+    };
+
+    loadCachedExtraction();
+  }, [sessionId, extractionCacheLoaded]);
+
   // ── Sprint 19: Auto-search filesets when deal opens ──
   useEffect(() => {
     if (filesetSearched || !deal) return;
@@ -639,19 +711,43 @@ export function TDRIntelligence({
     doSearch();
   }, [deal, filesetSearched]);
 
-  // ── Sprint 19.5: Re-trigger Cortex summarization when sessionId arrives ──
-  // The auto-search above may fire before sessionId is loaded from Snowflake,
-  // causing the summary to use the Domo AI fallback. This effect re-runs
-  // summarization via Cortex ONCE when sessionId becomes available.
+  // ── Sprint 19.5 + Sprint 24: Load cached KB summary first, only re-summarize if no cache ──
   useEffect(() => {
     if (!sessionId || !filesetResults || filesetResults.matches.length === 0 || !deal) return;
-    if (!filesetSummary || filesetSummary.summary === '') return;
-    // Only attempt Cortex re-summarization once to prevent infinite loops
     if (filesetCortexAttempted) return;
 
     setFilesetCortexAttempted(true);
-    console.log('[FilesetIntel] sessionId now available — re-summarizing via Cortex (one-time)');
-    const reSummarize = async () => {
+
+    const loadOrSummarize = async () => {
+      // 1. Check cache first — avoids burning Cortex tokens on every load
+      if (!kbSummaryCacheLoaded) {
+        try {
+          const cached = await cortexAi.getCachedKBSummary(sessionId);
+          if (cached.hasSummary && cached.summary) {
+            setFilesetSummary(prev => prev ? {
+              ...prev,
+              summary: cached.summary!,
+              cortexModelUsed: cached.modelUsed || prev.cortexModelUsed,
+            } : {
+              matchSignal: 'partial' as const,
+              summary: cached.summary!,
+              keyInsights: [],
+              cortexModelUsed: cached.modelUsed || '',
+            });
+            setKbSummaryDate(cached.createdAt || '');
+            setKbSummaryCacheLoaded(true);
+            console.log('[FilesetIntel] Loaded cached KB summary from', cached.createdAt);
+            return; // Don't re-summarize
+          }
+        } catch (err) {
+          console.warn('[FilesetIntel] Cache check failed, will re-summarize:', err);
+        }
+        setKbSummaryCacheLoaded(true);
+      }
+
+      // 2. No cache found — generate fresh via Cortex
+      if (!filesetSummary || filesetSummary.summary === '') return;
+      console.log('[FilesetIntel] No cached KB summary — summarizing via Cortex');
       try {
         const competitors = deal.competitors
           ? (Array.isArray(deal.competitors) ? deal.competitors : [deal.competitors])
@@ -664,13 +760,15 @@ export function TDRIntelligence({
           sessionId
         );
         setFilesetSummary(summary);
-        console.log(`[FilesetIntel] Cortex re-summarization complete: signal=${summary.matchSignal}`);
+        setKbSummaryDate(new Date().toISOString());
+        console.log(`[FilesetIntel] Cortex summarization complete: signal=${summary.matchSignal}`);
       } catch (err) {
-        console.warn('[FilesetIntel] Cortex re-summarization failed:', err);
+        console.warn('[FilesetIntel] Cortex summarization failed:', err);
       }
     };
-    reSummarize();
-  }, [sessionId, filesetResults, filesetSummary, deal, filesetCortexAttempted]);
+
+    loadOrSummarize();
+  }, [sessionId, filesetResults, filesetSummary, deal, filesetCortexAttempted, kbSummaryCacheLoaded]);
 
   // ── Sprint 19: Manual fileset re-search ──
   const handleFilesetSearch = useCallback(async () => {
@@ -2160,7 +2258,41 @@ export function TDRIntelligence({
                 {/* AI Summary — shown first, above document listing */}
                 {filesetSummary.summary && (
                   <div className="rounded-md bg-[#1e1a30] border border-[#322b4d] p-2.5">
-                    <p className="text-[10px] font-medium text-cyan-400 mb-2 flex items-center gap-1"><CortexLogo className="h-2.5 w-2.5" /> Cortex AI Summary</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] font-medium text-cyan-400 flex items-center gap-1"><CortexLogo className="h-2.5 w-2.5" /> Cortex AI Summary</p>
+                      <div className="flex items-center gap-2">
+                        {kbSummaryDate && (
+                          <span className="text-[9px] text-slate-600">{new Date(kbSummaryDate).toLocaleDateString()}</span>
+                        )}
+                        <button
+                          className="text-[9px] text-slate-600 hover:text-cyan-400 flex items-center gap-0.5 transition-colors"
+                          title="Refresh KB summary (re-run Cortex)"
+                          onClick={async () => {
+                            if (!deal || !filesetResults || filesetResults.matches.length === 0) return;
+                            setFilesetLoading(true);
+                            try {
+                              const competitors = deal.competitors
+                                ? (Array.isArray(deal.competitors) ? deal.competitors : [deal.competitors])
+                                : [];
+                              const dealContext = `${deal.account} — ${deal.stage} — ACV $${(deal.acv ?? 0).toLocaleString()}`;
+                              const summary = await filesetIntel.getIntelligenceSummary(
+                                filesetResults,
+                                dealContext,
+                                competitors as string[],
+                                sessionId
+                              );
+                              setFilesetSummary(summary);
+                              setKbSummaryDate(new Date().toISOString());
+                            } catch (err) {
+                              console.warn('[FilesetIntel] Manual refresh failed:', err);
+                            }
+                            setFilesetLoading(false);
+                          }}
+                        >
+                          <RefreshCw className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    </div>
                     <div className="text-[10px] text-slate-400 leading-relaxed space-y-2">
                       {formatKBSummary(filesetSummary.summary)}
                     </div>
@@ -2448,11 +2580,19 @@ export function TDRIntelligence({
             </p>
             <SnowflakePill label="Snowflake" />
           </div>
-          {extractionResult?.success ? (
+          {extractionLoading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Extracting analytics...</span>
+            </div>
+          ) : extractionResult?.success ? (
         <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-emerald-400">
                 <CheckCircle className="h-3.5 w-3.5" />
                 <span>Extracted successfully</span>
+                {extractionDate && (
+                  <span className="text-[9px] text-slate-600 ml-auto">{new Date(extractionDate).toLocaleDateString()}</span>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-1 text-[10px] text-slate-500">
                 {extractionResult.structured?.NAMED_COMPETITORS && extractionResult.structured.NAMED_COMPETITORS.length > 0 && (
@@ -2478,6 +2618,7 @@ export function TDRIntelligence({
                   try {
                     const result = await cortexAi.extractStructuredTDR(sessionId);
                     setExtractionResult(result);
+                    if (result.success) setExtractionDate(new Date().toISOString());
                   } catch (err) {
                     console.error('[TDRIntelligence] Re-extraction failed:', err);
                   }
@@ -2509,6 +2650,7 @@ export function TDRIntelligence({
                   try {
                     const result = await cortexAi.extractStructuredTDR(sessionId);
                     setExtractionResult(result);
+                    if (result.success) setExtractionDate(new Date().toISOString());
                   } catch (err) {
                     console.error('[TDRIntelligence] Retry extraction failed:', err);
                   }
@@ -2523,36 +2665,7 @@ export function TDRIntelligence({
                 Retry
               </Button>
             </div>
-          ) : (
-            <Button
-              variant="outline"
-              className="w-full gap-2 border-[#362f50] text-slate-300 hover:bg-[#221d38] hover:text-white"
-              size="sm"
-              disabled={extractionLoading}
-              onClick={async () => {
-                setExtractionLoading(true);
-                try {
-                  const result = await cortexAi.extractStructuredTDR(sessionId);
-                  setExtractionResult(result);
-                } catch (err) {
-                  console.error('[TDRIntelligence] Extraction failed:', err);
-                }
-                setExtractionLoading(false);
-              }}
-            >
-              {extractionLoading ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Extracting...
-                </>
-              ) : (
-                <>
-                  <Database className="h-3.5 w-3.5" />
-                  Extract Analytics
-                </>
-              )}
-            </Button>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -2569,8 +2682,8 @@ export function TDRIntelligence({
               </p>
               <CortexPill label="Cortex" />
             </div>
-            {actionPlanResult?.cached && (
-              <span className="text-[9px] text-slate-600">Cached</span>
+            {actionPlanResult?.success && actionPlanResult.createdAt && (
+              <span className="text-[9px] text-slate-600">{new Date(actionPlanResult.createdAt).toLocaleDateString()}</span>
             )}
           </div>
 
@@ -2579,9 +2692,9 @@ export function TDRIntelligence({
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-emerald-400">
                 <CheckCircle className="h-3.5 w-3.5" />
-                <span>Action plan generated</span>
-                {actionPlanResult.modelUsed && (
-                  <span className="text-[9px] text-slate-600 ml-auto">{actionPlanResult.modelUsed}</span>
+                <span>Action plan {actionPlanResult.cached ? 'loaded' : 'generated'}</span>
+                {actionPlanResult.createdAt && (
+                  <span className="text-[9px] text-slate-600 ml-auto">{new Date(actionPlanResult.createdAt).toLocaleDateString()}</span>
                 )}
               </div>
 

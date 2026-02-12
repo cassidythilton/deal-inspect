@@ -754,5 +754,102 @@ export const cortexAi = {
       return { success: false, error: String(err) };
     }
   },
+
+  // ── Sprint 24 prep: Cache-only loaders (no generation / token burn) ──
+
+  /**
+   * Load the cached action plan for a session without generating a new one.
+   */
+  async getLatestActionPlan(sessionId: string): Promise<ActionPlanResult & { hasPlan?: boolean }> {
+    if (!isDomoEnvironment()) {
+      return { ...MOCK_ACTION_PLAN, hasPlan: true, cached: true, createdAt: new Date().toISOString() };
+    }
+    try {
+      const raw = await callCodeEngine<unknown>('getLatestActionPlan', { sessionId });
+      const result = extractResult(raw) as Record<string, unknown>;
+      if (result.hasPlan === false) {
+        return { success: true, hasPlan: false };
+      }
+      return {
+        success: true,
+        hasPlan: true,
+        actionPlan: (result.actionPlan as string) || '',
+        modelUsed: (result.modelUsed as string) || '',
+        createdAt: (result.createdAt as string) || '',
+        cached: true,
+      };
+    } catch (err: unknown) {
+      console.warn('[CortexAI] getLatestActionPlan failed:', err);
+      return { success: false, hasPlan: false };
+    }
+  },
+
+  /**
+   * Load the cached structured extraction for a session without re-extracting.
+   */
+  async getLatestExtraction(sessionId: string): Promise<StructuredExtractResult & { hasExtract?: boolean; extractedAt?: string }> {
+    if (!isDomoEnvironment()) {
+      return {
+        success: true,
+        hasExtract: true,
+        extractId: 'mock-cached',
+        structured: {
+          THESIS: 'Mock thesis', STRATEGIC_VALUE: 'High', CLOUD_PLATFORM: 'Snowflake',
+          ENTRY_LAYER: 'Data Integration', VERDICT: 'Proceed',
+          NAMED_COMPETITORS: ['Tableau', 'Power BI'],
+          NAMED_TECHNOLOGIES: ['Snowflake', 'dbt'],
+          RISK_CATEGORIES: ['competitive_displacement'],
+          DOMO_USE_CASES: ['Dashboards', 'MagicETL'],
+          DEAL_COMPLEXITY: 'Moderate',
+          ARCHITECTURAL_PATTERN: 'warehouse-first',
+          extractionModel: 'llama3.3-70b', extractionVersion: 'v1',
+        },
+        extractedAt: new Date().toISOString(),
+      };
+    }
+    try {
+      const raw = await callCodeEngine<unknown>('getLatestExtraction', { sessionId });
+      const result = extractResult(raw) as Record<string, unknown>;
+      if (result.hasExtract === false) {
+        return { success: true, hasExtract: false };
+      }
+      return {
+        success: true,
+        hasExtract: true,
+        extractId: (result.extractId as string) || '',
+        structured: result.structured as StructuredExtractResult['structured'],
+        extractedAt: (result.extractedAt as string) || '',
+      };
+    } catch (err: unknown) {
+      console.warn('[CortexAI] getLatestExtraction failed:', err);
+      return { success: true, hasExtract: false };
+    }
+  },
+
+  /**
+   * Load the cached KB summary for a session without re-summarizing.
+   */
+  async getCachedKBSummary(sessionId: string): Promise<{ success: boolean; hasSummary?: boolean; summary?: string; modelUsed?: string; createdAt?: string }> {
+    if (!isDomoEnvironment()) {
+      return { success: true, hasSummary: false };
+    }
+    try {
+      const raw = await callCodeEngine<unknown>('getCachedKBSummary', { sessionId });
+      const result = extractResult(raw) as Record<string, unknown>;
+      if (result.hasSummary === false) {
+        return { success: true, hasSummary: false };
+      }
+      return {
+        success: true,
+        hasSummary: true,
+        summary: (result.summary as string) || '',
+        modelUsed: (result.modelUsed as string) || '',
+        createdAt: (result.createdAt as string) || '',
+      };
+    } catch (err: unknown) {
+      console.warn('[CortexAI] getCachedKBSummary failed:', err);
+      return { success: true, hasSummary: false };
+    }
+  },
 };
 
