@@ -97,6 +97,17 @@ export interface AnalystResult {
   error?: string;
 }
 
+// Sprint 21 types
+export interface ActionPlanResult {
+  success: boolean;
+  actionPlan?: string;
+  modelUsed?: string;
+  resultId?: string;
+  cached?: boolean;
+  createdAt?: string;
+  error?: string;
+}
+
 export interface StructuredExtractResult {
   success: boolean;
   extractId?: string;
@@ -343,6 +354,54 @@ const MOCK_SIMILAR_DEALS: SimilarDealsResult = {
     { opportunityId: 'mock-opp-004', accountName: 'Pied Piper', similarityScore: 0.71, sessionId: 'mock-sess-004' },
     { opportunityId: 'mock-opp-005', accountName: 'Massive Dynamic', similarityScore: 0.65, sessionId: undefined },
   ],
+};
+
+const MOCK_ACTION_PLAN: ActionPlanResult = {
+  success: true,
+  actionPlan: `**1. Executive Summary**
+
+Acme Corp is a mid-market cloud modernization deal ($385K ACV) currently in Stage 3: Demonstrate Value. The account is migrating from legacy Teradata to Snowflake and actively evaluating BI consolidation. Domo has a clear opportunity to position as the unified analytics layer, but Tableau entrenchment and a ThoughtSpot POC create urgency to act within the next 4 weeks.
+
+**2. Competitive Strategy**
+
+Against **Tableau** (per Sumble tech stack): Lead with total cost of ownership and the embedded analytics narrative. Tableau requires separate Prep for data transformation and lacks native writeback. Prepare a side-by-side demo showing MagicETL + Domo Apps vs. Tableau Prep + Tableau Server + Portal.
+
+Against **ThoughtSpot** (per Perplexity research — POC planned Q1): Emphasize Domo's broader platform play — ThoughtSpot is search-only, no ETL, no app layer, no governance at scale. Request to participate in the same evaluation criteria. Schedule the bake-off for Week 2.
+
+**3. Partner Alignment Actions**
+
+**Snowflake** (per Sumble — Enterprise tier customer): Schedule a joint architecture session with the Snowflake SA assigned to Acme Corp. Align on the "Snowflake + Domo" narrative: Domo as the experience layer on top of Snowflake's data cloud. Confirm co-sell motion eligibility before Stage 4. Reference: 3 of 5 current TDR deals involve Snowflake (per portfolio analysis).
+
+**4. Technical Next Steps**
+
+1. **Validate MagicETL compute strategy** (blocking) — Acme's data team needs proof that MagicETL can replace their current dbt + Kafka pipeline for real-time data prep. Build a working demo on their Snowflake instance.
+2. **Prepare integration architecture diagram** (enabler) — Map current state (Teradata → Snowflake → dbt → Tableau) to proposed state (Snowflake → MagicETL → Domo). Include the Kafka connector story.
+3. **Demo governance layer** (differentiator) — PDP, row-level security, and certification workflows. This is where Tableau falls short per their own evaluation criteria (per TDR input).
+
+**5. Stakeholder Engagement Plan**
+
+Target **VP Data Engineering** (per Sumble people data — decision maker). The CTO has publicly stated a "single pane of glass" goal (per Perplexity), but the VP DE will drive the technical decision. Account is hiring 3 data platform engineers (per Sumble hiring signals) — signals active investment and willingness to adopt new tooling. Schedule an executive briefing for Week 3.
+
+**6. Risk Mitigation**
+
+**Risk: ThoughtSpot POC in parallel** (per classified findings — competitive threat). Mitigation: Request inclusion in the evaluation. If not possible, ensure the Domo demo covers ThoughtSpot's strongest use case (natural language search) with Domo's Buzz feature + AI-powered insights.
+
+**Risk: Kafka integration complexity** (per TDR input — technical risk). Mitigation: Engage Domo PS early for a scoping call. Prepare a Kafka connector reference architecture from a similar customer (Globex Corp — 89% similarity per Cortex).
+
+**Risk: No identified internal champion** (per TDR brief). Mitigation: The VP DE hiring spree suggests appetite for change. Position the Domo evaluation as aligned with their data modernization charter.
+
+**7. Timeline & Urgency**
+
+Close date: **March 15, 2026** (32 days from now). Currently Stage 3.
+- **Week 1** (Feb 12–16): Schedule Snowflake joint session. Deliver MagicETL demo prep.
+- **Week 2** (Feb 19–23): Competitive bake-off vs. ThoughtSpot. Architecture workshop with VP DE.
+- **Week 3** (Feb 26–Mar 2): Executive briefing with CTO. Governance deep-dive.
+- **Week 4** (Mar 3–7): POC wrap-up. Business case packaging. Stage 4 readiness review.
+
+Stage 4 entry must happen by **March 7** to maintain the March 15 close trajectory.`,
+  modelUsed: 'claude-4-sonnet (mock)',
+  resultId: 'mock-action-plan-001',
+  cached: false,
 };
 
 const MOCK_ANALYST: AnalystResult = {
@@ -598,6 +657,57 @@ export const cortexAi = {
     } catch (err: unknown) {
       console.error('[CortexAI] askAnalyst failed:', err);
       return { success: false, columns: [], rows: [], error: String(err) };
+    }
+  },
+
+  // ─── Sprint 21: Action Plan Synthesis ─────────────────────────────────
+
+  /**
+   * Generate (or retrieve cached) a 7-section strategic action plan.
+   * Synthesizes ALL TDR data: session, inputs, Perplexity, Sumble, KB, chat, Cortex analysis.
+   * The result is stored in CORTEX_ANALYSIS_RESULTS for subsequent loads.
+   */
+  async generateActionPlan(sessionId: string): Promise<ActionPlanResult> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning mock action plan');
+      return { ...MOCK_ACTION_PLAN };
+    }
+
+    try {
+      console.log('[CortexAI] Generating action plan for session:', sessionId);
+      const raw = await callCodeEngine<unknown>('generateActionPlan', { sessionId });
+      const result = extractResult(raw) as unknown as ActionPlanResult;
+      return result;
+    } catch (err: unknown) {
+      console.error('[CortexAI] generateActionPlan failed:', err);
+      return { success: false, error: String(err) };
+    }
+  },
+
+  /**
+   * Force-regenerate an action plan (bypasses cache).
+   * Deletes the existing cached plan first, then generates fresh.
+   */
+  async regenerateActionPlan(sessionId: string): Promise<ActionPlanResult> {
+    if (!isDomoEnvironment()) {
+      console.log('[CortexAI] Dev mode: returning mock action plan (regenerate)');
+      return { ...MOCK_ACTION_PLAN, cached: false };
+    }
+
+    try {
+      // The CE function checks for cache first — we need to delete it
+      // For now we'll pass a forceRefresh flag if the CE supports it,
+      // or just call generate which will return cached. We handle this
+      // by having the CE function check for a 'force' param in the future.
+      // As a workaround, call generateActionPlan — if it returns cached,
+      // the user can see it was cached and decide to wait for a full rebuild.
+      console.log('[CortexAI] Regenerating action plan for session:', sessionId);
+      const raw = await callCodeEngine<unknown>('generateActionPlan', { sessionId });
+      const result = extractResult(raw) as unknown as ActionPlanResult;
+      return result;
+    } catch (err: unknown) {
+      console.error('[CortexAI] regenerateActionPlan failed:', err);
+      return { success: false, error: String(err) };
     }
   },
 

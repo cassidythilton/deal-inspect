@@ -50,6 +50,8 @@ import {
   UserCheck,
   Linkedin,
   ChevronDown,
+  Zap,
+  ClipboardList,
 } from 'lucide-react';
 import { TDRSummaryModal } from './TDRSummaryModal';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
@@ -57,7 +59,7 @@ import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 import { accountIntel } from '@/lib/accountIntel';
 import type { SumbleEnrichment, PerplexityResearch, SumbleOrgData, SumbleJobData, SumblePeopleData } from '@/lib/accountIntel';
 import { cortexAi, parseBriefSections, FINDING_CATEGORY_STYLES } from '@/lib/cortexAi';
-import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, SentimentDataPoint, StructuredExtractResult } from '@/lib/cortexAi';
+import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, SentimentDataPoint, StructuredExtractResult, ActionPlanResult } from '@/lib/cortexAi';
 import { calculateTDRScore, calculatePostTDRScore, getPriorityFromScore } from '@/lib/tdrCriticalFactors';
 import type { PostTDRScoreBreakdown } from '@/lib/tdrCriticalFactors';
 import { getAppSettings } from '@/lib/appSettings';
@@ -323,6 +325,11 @@ export function TDRIntelligence({
   // ── Sprint 17.5: Structured Extraction State ──
   const [extractionResult, setExtractionResult] = useState<StructuredExtractResult | null>(null);
   const [extractionLoading, setExtractionLoading] = useState(false);
+
+  // ── Sprint 21: Action Plan State ──
+  const [actionPlanResult, setActionPlanResult] = useState<ActionPlanResult | null>(null);
+  const [actionPlanLoading, setActionPlanLoading] = useState(false);
+  const [actionPlanOpen, setActionPlanOpen] = useState(false);
 
   // ── Sprint 6.5: Deep Intelligence State ──
   const [sumbleOrgData, setSumbleOrgData] = useState<SumbleOrgData | null>(null);
@@ -2374,6 +2381,169 @@ export function TDRIntelligence({
                 <>
                   <Database className="h-3.5 w-3.5" />
                   Extract Analytics
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* ────────────────────────────────────────────────────────────
+          ACTION PLAN (Sprint 21)
+          ──────────────────────────────────────────────────────────── */}
+      {sessionId && (
+        <div className="border-b border-[#2a2540] px-5 py-4">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Zap className="h-3 w-3 text-violet-400" />
+              <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+                Strategic Action Plan
+              </p>
+              <CortexPill label="Cortex" />
+            </div>
+            {actionPlanResult?.cached && (
+              <span className="text-[9px] text-slate-600">Cached</span>
+            )}
+          </div>
+
+          {/* Show action plan preview if available */}
+          {actionPlanResult?.success && actionPlanResult.actionPlan ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-emerald-400">
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>Action plan generated</span>
+                {actionPlanResult.modelUsed && (
+                  <span className="text-[9px] text-slate-600 ml-auto">{actionPlanResult.modelUsed}</span>
+                )}
+              </div>
+
+              {/* Preview: first 3 lines */}
+              <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">
+                {actionPlanResult.actionPlan
+                  .replace(/\*\*/g, '')
+                  .replace(/^1\.\s*/m, '')
+                  .substring(0, 200)}...
+              </p>
+
+              {/* View full action plan dialog */}
+              <Dialog open={actionPlanOpen} onOpenChange={setActionPlanOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 border-violet-500/30 text-violet-300 hover:bg-violet-500/10 hover:text-violet-200"
+                    size="sm"
+                  >
+                    <ClipboardList className="h-3.5 w-3.5" />
+                    View Full Action Plan
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#1a1528] border-[#362f50] text-slate-200">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-lg">
+                      <Zap className="h-5 w-5 text-violet-400" />
+                      Strategic Action Plan
+                      {actionPlanResult.cached && (
+                        <span className="text-[10px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded-full font-normal">cached</span>
+                      )}
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-500 text-xs">
+                      {deal?.accountName} — Synthesized from all TDR data sources via Cortex AI
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-5 mt-4 text-xs text-slate-400 leading-relaxed">
+                    {renderMarkdownBlock(actionPlanResult.actionPlan, 'ap')}
+                  </div>
+
+                  {/* Regenerate button inside dialog */}
+                  <div className="mt-6 pt-4 border-t border-[#322b4d] flex items-center justify-between">
+                    <span className="text-[10px] text-slate-600">
+                      {actionPlanResult.modelUsed && `Model: ${actionPlanResult.modelUsed}`}
+                      {actionPlanResult.createdAt && ` · ${new Date(actionPlanResult.createdAt).toLocaleString()}`}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white"
+                      disabled={actionPlanLoading}
+                      onClick={async () => {
+                        setActionPlanLoading(true);
+                        try {
+                          const result = await cortexAi.regenerateActionPlan(sessionId);
+                          setActionPlanResult(result);
+                        } catch (err) {
+                          console.error('[TDRIntelligence] Action plan regeneration failed:', err);
+                        }
+                        setActionPlanLoading(false);
+                      }}
+                    >
+                      {actionPlanLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                      Regenerate
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+          ) : actionPlanResult && !actionPlanResult.success ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-amber-400">
+                <AlertCircle className="h-3.5 w-3.5" />
+                <span>Generation failed</span>
+              </div>
+              <p className="text-[10px] text-slate-600 break-all">{actionPlanResult.error}</p>
+              <Button
+                variant="outline"
+                className="w-full gap-2 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white"
+                size="sm"
+                disabled={actionPlanLoading}
+                onClick={async () => {
+                  setActionPlanLoading(true);
+                  try {
+                    const result = await cortexAi.generateActionPlan(sessionId);
+                    setActionPlanResult(result);
+                  } catch (err) {
+                    console.error('[TDRIntelligence] Action plan retry failed:', err);
+                  }
+                  setActionPlanLoading(false);
+                }}
+              >
+                {actionPlanLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                Retry
+              </Button>
+            </div>
+          ) : (
+            <Button
+              className="w-full gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-500 hover:to-purple-500 shadow-lg shadow-violet-500/20"
+              size="sm"
+              disabled={actionPlanLoading}
+              onClick={async () => {
+                setActionPlanLoading(true);
+                try {
+                  const result = await cortexAi.generateActionPlan(sessionId);
+                  setActionPlanResult(result);
+                } catch (err) {
+                  console.error('[TDRIntelligence] Action plan generation failed:', err);
+                }
+                setActionPlanLoading(false);
+              }}
+            >
+              {actionPlanLoading ? (
+                <>
+                  <CortexLogo className="h-3.5 w-3.5 animate-pulse" />
+                  <span>Synthesizing all data...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="h-3.5 w-3.5" />
+                  Generate Action Plan
                 </>
               )}
             </Button>

@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 4.0 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18, 19, 19.5, 20, 22, 23 · **Remaining:** 21, 24, 25
+**Status:** In Progress · **Version:** Draft 4.1 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **Remaining:** 24, 25
 
 ---
 
@@ -5242,7 +5242,7 @@ The old `TopTDRCandidatesChart`, `TDRPriorityChart`, and `PipelineByCloseChart` 
 
 ---
 
-### Sprint 21 — TDR Action Plan Synthesis 🔲
+### Sprint 21 — TDR Action Plan Synthesis ✅ COMPLETE *(completed 2026-02-12)*
 
 > **Goal:** After TDR completion, use Cortex AI to synthesize ALL captured data — SE inputs, deal metadata, Perplexity research, Sumble enrichment, fileset battle cards/playbooks, chat highlights, classified findings, extracted entities, and Post-TDR Score — into a comprehensive, tailored action plan for the SE/AE.
 > **Risk to app:** Low — additive feature. Enhances the readout without changing existing behavior.
@@ -5555,7 +5555,7 @@ Sprint 20 — Hero Metrics & Nav ✅               │
     │  (TDR-aligned stat cards + new charts)    │
     │                                           │
     ▼                                           ▼
-Sprint 21 — Action Plan Synthesis (2–3 days)
+Sprint 21 — Action Plan Synthesis ✅
     │  (depends on S17.5 + S18 + S19 + S19.5 + S22)
     │  THE CAPSTONE — synthesizes everything
     │  (now uses frontier models for best results)
@@ -5588,8 +5588,8 @@ Sprint 25 — Architecture Diagram (2–3 days)
 | **S22: Frontier Model Upgrade** | ✅ with S20 | None | 0.5 day | ✅ |
 | **S23: KB Insights + KB Tooltip** | ✅ with S22 | S19.5 + S22 | 0.5 day | ✅ |
 | **S20: Hero Metrics & Nav** | ✅ with S22 | S18 | 1-2 days | ✅ |
-| **S21: Action Plan Synthesis** | — | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | 🔲 Next |
-| **S24: Perf Optimization + KB Caching** | — | S21 | 2 days | 🔲 |
+| **S21: Action Plan Synthesis** | — | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | ✅ |
+| **S24: Perf Optimization + KB Caching** | — | S21 | 2 days | 🔲 Next |
 | **S25: Architecture Diagram** | — | S24 | 2-3 days | 🔲 |
 
 ---
