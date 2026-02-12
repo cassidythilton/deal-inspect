@@ -263,6 +263,7 @@ export function TDRIntelligence({
   const [filesetSummary, setFilesetSummary] = useState<FilesetSummary | null>(null);
   const [filesetLoading, setFilesetLoading] = useState(false);
   const [filesetSearched, setFilesetSearched] = useState(false);
+  const [filesetCortexAttempted, setFilesetCortexAttempted] = useState(false);
   const [expandedDocs, setExpandedDocs] = useState<Set<number>>(new Set());
 
   // Pre-fill domain: prefer real data from Webiste Domain field, fall back to heuristic
@@ -375,22 +376,15 @@ export function TDRIntelligence({
   // ── Sprint 19.5: Re-trigger Cortex summarization when sessionId arrives ──
   // The auto-search above may fire before sessionId is loaded from Snowflake,
   // causing the summary to use the Domo AI fallback. This effect re-runs
-  // summarization via Cortex once sessionId becomes available.
+  // summarization via Cortex ONCE when sessionId becomes available.
   useEffect(() => {
     if (!sessionId || !filesetResults || filesetResults.matches.length === 0 || !deal) return;
-    // Only re-summarize if we have results but the summary was generated without Cortex
-    // (i.e., the initial auto-search ran before sessionId was available)
     if (!filesetSummary || filesetSummary.summary === '') return;
+    // Only attempt Cortex re-summarization once to prevent infinite loops
+    if (filesetCortexAttempted) return;
 
-    // Check if we already have a Cortex-generated summary (avoid duplicate calls)
-    // The marker is the presence of "Competitive Intelligence" or "Partner" headers from the Cortex prompt
-    const isCortexSummary = filesetSummary.summary.includes('**Competitive Intelligence**') ||
-      filesetSummary.summary.includes('**Partner') ||
-      filesetSummary.summary.includes('**Technical Positioning**') ||
-      filesetSummary.summary.includes('**Recommended Actions**');
-    if (isCortexSummary) return;
-
-    console.log('[FilesetIntel] sessionId now available — re-summarizing via Cortex');
+    setFilesetCortexAttempted(true);
+    console.log('[FilesetIntel] sessionId now available — re-summarizing via Cortex (one-time)');
     const reSummarize = async () => {
       try {
         const competitors = deal.competitors
@@ -410,7 +404,7 @@ export function TDRIntelligence({
       }
     };
     reSummarize();
-  }, [sessionId, filesetResults, filesetSummary, deal]);
+  }, [sessionId, filesetResults, filesetSummary, deal, filesetCortexAttempted]);
 
   // ── Sprint 19: Manual fileset re-search ──
   const handleFilesetSearch = useCallback(async () => {
