@@ -254,6 +254,174 @@ function formatKBSummary(raw: string): React.ReactNode {
   );
 }
 
+// ── Section metadata for Action Plan sections ────────────────────────────────
+const AP_SECTION_META: Record<string, { icon: typeof Briefcase; color: string; bg: string }> = {
+  'executive summary':           { icon: Briefcase,    color: 'text-violet-400',  bg: 'bg-violet-500/10' },
+  'competitive strategy':        { icon: Target,       color: 'text-amber-400',   bg: 'bg-amber-500/10' },
+  'partner alignment actions':   { icon: Users,        color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
+  'partner alignment':           { icon: Users,        color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
+  'technical next steps':        { icon: Layers,       color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  'stakeholder engagement plan': { icon: UserCheck,    color: 'text-blue-400',    bg: 'bg-blue-500/10' },
+  'stakeholder engagement':      { icon: UserCheck,    color: 'text-blue-400',    bg: 'bg-blue-500/10' },
+  'risk mitigation':             { icon: AlertCircle,  color: 'text-rose-400',    bg: 'bg-rose-500/10' },
+  'timeline & urgency':          { icon: TrendingUp,   color: 'text-orange-400',  bg: 'bg-orange-500/10' },
+  'timeline urgency':            { icon: TrendingUp,   color: 'text-orange-400',  bg: 'bg-orange-500/10' },
+};
+
+function getSectionMeta(title: string) {
+  const lower = title.toLowerCase().replace(/[^a-z\s&]/g, '').trim();
+  for (const [key, meta] of Object.entries(AP_SECTION_META)) {
+    if (lower.includes(key) || key.includes(lower)) return meta;
+  }
+  return { icon: ClipboardList, color: 'text-slate-400', bg: 'bg-slate-500/10' };
+}
+
+/**
+ * Render an action plan string into executive-formatted, sectioned output.
+ * Handles: literal \\n, numbered section headers (**1. Title**), bold/italic, bullets, numbered lists.
+ */
+function renderActionPlan(raw: string): React.ReactNode {
+  if (!raw) return null;
+
+  // 1. Normalize literal \n to real newlines
+  let text = raw.replace(/\\n/g, '\n').trim();
+
+  // 2. Split into sections by numbered headers: "1. Title" or "**1. Title**"
+  //    Pattern: optional **, digit(s), dot, space, title text, optional **, then newline or end
+  const sectionRegex = /\*{0,2}(\d+)\.\s+([\w\s&'–—\-:]+?)\*{0,2}\s*\n/g;
+  const sections: { num: string; title: string; content: string; startIdx: number }[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = sectionRegex.exec(text)) !== null) {
+    sections.push({
+      num: match[1],
+      title: match[2].trim().replace(/\*+$/, ''),
+      content: '',
+      startIdx: match.index + match[0].length,
+    });
+  }
+
+  // If no sections found, fall back to renderMarkdownBlock
+  if (sections.length === 0) {
+    return renderMarkdownBlock(text, 'ap');
+  }
+
+  // Fill content for each section (from end of header to start of next header)
+  for (let i = 0; i < sections.length; i++) {
+    const endIdx = i + 1 < sections.length
+      ? text.lastIndexOf(sections[i + 1].num + '.', sections[i + 1].startIdx)
+      : text.length;
+    // Find the actual start of the next header marker (go back to find ** or digit)
+    const nextHeaderStart = i + 1 < sections.length
+      ? text.substring(0, sections[i + 1].startIdx).search(new RegExp(`\\*{0,2}${sections[i + 1].num}\\.\\s`))
+      : text.length;
+    sections[i].content = text.substring(sections[i].startIdx, nextHeaderStart > 0 ? nextHeaderStart : endIdx).trim();
+  }
+
+  return (
+    <div className="space-y-5">
+      {sections.map((section) => {
+        const meta = getSectionMeta(section.title);
+        const Icon = meta.icon;
+
+        return (
+          <div
+            key={`ap-s${section.num}`}
+            className={cn(
+              'rounded-lg border border-[#322b4d]/60 overflow-hidden',
+            )}
+          >
+            {/* Section header */}
+            <div className={cn('flex items-center gap-2.5 px-4 py-2.5', meta.bg)}>
+              <div className={cn('flex items-center justify-center w-6 h-6 rounded-md', meta.bg)}>
+                <Icon className={cn('h-3.5 w-3.5', meta.color)} />
+              </div>
+              <h3 className={cn('text-[13px] font-semibold tracking-wide', meta.color)}>
+                {section.title}
+              </h3>
+              <span className="text-[10px] text-slate-600 ml-auto font-mono">§{section.num}</span>
+            </div>
+
+            {/* Section content */}
+            <div className="px-4 py-3 text-[12px] text-slate-300 leading-[1.7] space-y-2">
+              {renderActionPlanContent(section.content)}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Render the body of one action plan section.
+ * Handles paragraphs, numbered sub-items (1. 2. 3.), bullets, and bold/italic.
+ */
+function renderActionPlanContent(text: string): React.ReactNode {
+  if (!text) return null;
+
+  const lines = text.split('\n');
+  const elements: React.ReactNode[] = [];
+  let paraBuffer: string[] = [];
+  let numberedBuffer: { num: string; text: string }[] = [];
+
+  const flushPara = () => {
+    if (paraBuffer.length === 0) return;
+    const raw = paraBuffer.join(' ');
+    elements.push(
+      <p key={`p${elements.length}`} className="text-slate-300">
+        {renderInline(raw)}
+      </p>
+    );
+    paraBuffer = [];
+  };
+
+  const flushNumbered = () => {
+    if (numberedBuffer.length === 0) return;
+    elements.push(
+      <ol key={`ol${elements.length}`} className="space-y-1.5 pl-1">
+        {numberedBuffer.map((item, j) => (
+          <li key={j} className="flex gap-2">
+            <span className="text-violet-400/70 font-semibold text-[11px] mt-px min-w-[16px]">{item.num}.</span>
+            <span className="flex-1">{renderInline(item.text)}</span>
+          </li>
+        ))}
+      </ol>
+    );
+    numberedBuffer = [];
+  };
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Numbered sub-item: "1. text" or "2. text"
+    const numberedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+    // Bullet: "- text" or "• text"
+    const bulletMatch = trimmed.match(/^[-*•]\s+(.*)$/);
+
+    if (numberedMatch && numberedMatch[1] !== '0') {
+      flushPara();
+      numberedBuffer.push({ num: numberedMatch[1], text: numberedMatch[2] });
+    } else if (bulletMatch) {
+      flushPara();
+      flushNumbered();
+      // Treat bullets as simple list items in the numbered buffer
+      numberedBuffer.push({ num: '•', text: bulletMatch[1] });
+    } else if (trimmed === '') {
+      flushNumbered();
+      flushPara();
+    } else {
+      flushNumbered();
+      paraBuffer.push(trimmed);
+    }
+  }
+
+  flushNumbered();
+  flushPara();
+
+  return <>{elements}</>;
+}
+
 /** Render inline markdown: **bold** and *italic* */
 function renderInline(text: string): React.ReactNode {
   // Split on **bold** and *italic* markers
@@ -2420,8 +2588,10 @@ export function TDRIntelligence({
               {/* Preview: first 3 lines */}
               <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">
                 {actionPlanResult.actionPlan
+                  .replace(/\\n/g, ' ')
                   .replace(/\*\*/g, '')
-                  .replace(/^1\.\s*/m, '')
+                  .replace(/^\d+\.\s*[A-Za-z &]+/m, '')
+                  .trim()
                   .substring(0, 200)}...
               </p>
 
@@ -2437,22 +2607,26 @@ export function TDRIntelligence({
                     View Full Action Plan
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#1a1528] border-[#362f50] text-slate-200">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-lg">
-                      <Zap className="h-5 w-5 text-violet-400" />
-                      Strategic Action Plan
-                      {actionPlanResult.cached && (
-                        <span className="text-[10px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded-full font-normal">cached</span>
-                      )}
+                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-[#1a1528] border-[#362f50] text-slate-200">
+                  <DialogHeader className="pb-3 border-b border-[#322b4d]">
+                    <DialogTitle className="flex items-center gap-2.5 text-base">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/15">
+                        <Zap className="h-4 w-4 text-violet-400" />
+                      </div>
+                      <div>
+                        <span className="text-slate-100">Strategic Action Plan</span>
+                        {actionPlanResult.cached && (
+                          <span className="ml-2 text-[10px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded-full font-normal align-middle">cached</span>
+                        )}
+                      </div>
                     </DialogTitle>
-                    <DialogDescription className="text-slate-500 text-xs">
+                    <DialogDescription className="text-slate-500 text-xs mt-1">
                       {deal?.accountName} — Synthesized from all TDR data sources via Cortex AI
                     </DialogDescription>
                   </DialogHeader>
 
-                  <div className="space-y-5 mt-4 text-xs text-slate-400 leading-relaxed">
-                    {renderMarkdownBlock(actionPlanResult.actionPlan, 'ap')}
+                  <div className="mt-4">
+                    {renderActionPlan(actionPlanResult.actionPlan)}
                   </div>
 
                   {/* Regenerate button inside dialog */}
