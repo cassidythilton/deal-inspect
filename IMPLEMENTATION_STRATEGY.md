@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 4.1 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **Remaining:** 24, 25
+**Status:** In Progress · **Version:** Draft 4.2 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **In Progress:** 24 · **Remaining:** 25
 
 ---
 
@@ -5377,7 +5377,7 @@ Generate the action plan in these 7 sections:
 
 ---
 
-### Sprint 24 — Performance Optimization & KB Summary Caching 🔲
+### Sprint 24 — Performance Optimization & KB Summary Caching 🟡 IN PROGRESS
 
 > **Goal:** Audit the full app for performance bottlenecks, dead code, unused datasets, and redundant API calls. The headline deliverable is **caching Cortex KB summaries to Snowflake** so they are not regenerated on every deal load — the single largest unnecessary cost and latency source in the current app.
 > **Risk to app:** Low — optimization and cleanup, no new user-facing features. Improves load times, reduces Cortex AI token spend, and shrinks the bundle.
@@ -5437,6 +5437,44 @@ Cache invalidation rules:
 | Various files | Remove dead imports, unused functions, orphaned components. |
 
 **Definition of Done:** KB summaries load from Snowflake cache on repeat visits (< 200ms vs. 5-10s for live Cortex call). "Refresh" button forces regeneration. Bundle size reduced by ≥ 15%. Zero unused datasets in manifest. Zero orphaned component files.
+
+**Progress (Sprint 24 — Workstream 1: COMPLETE ✅, Feb 12 2026):**
+
+Workstream 1 (Cache-first loading) was completed ahead of schedule as part of Sprint 21 post-completion improvements:
+
+| Deliverable | Status |
+|-------------|--------|
+| `getCachedKBSummary` Code Engine function — lightweight cache-only query | ✅ |
+| `getLatestActionPlan` Code Engine function — loads cached plan without generating | ✅ |
+| `getLatestExtraction` Code Engine function — loads cached structured extraction | ✅ |
+| Frontend auto-loads cached KB summary on deal open (checks Snowflake first, only calls Cortex if no cache) | ✅ |
+| Frontend auto-loads cached action plan on deal open with date stamp | ✅ |
+| Frontend auto-loads cached analytics extraction on deal open; auto-extracts if none exists | ✅ |
+| KB summary: date stamp + refresh button (↻) in header | ✅ |
+| Action plan: "loaded" vs "generated" status + date stamp | ✅ |
+| Analytics extraction: date stamp + compact re-extract link | ✅ |
+| Removed dead "Save Draft" button (no handler — inputs auto-save) | ✅ |
+| Removed dead "Finalize TDR" button (no handler — Final Outcome dropdown handles this) | ✅ |
+| Removed obsolete "Generate Summary" button + `TDRSummaryModal` (superseded by Cortex Brief, Action Plan, Readout) | ✅ |
+| Compacted Re-extract, View Full Plan, Retry buttons from chunky full-width to subtle inline links | ✅ |
+| Generate Action Plan button: refined from aggressive gradient to subtle violet-bordered style | ✅ |
+| 3 new manifest function mappings (`getLatestActionPlan`, `getLatestExtraction`, `getCachedKBSummary`) | ✅ |
+| Version: 1.43.0 | ✅ |
+
+**Remaining (Workstream 2 & 3):**
+
+| Workstream | Task | Status |
+|------------|------|--------|
+| **WS2: Dead Code Cleanup** | Audit manifest datasets — remove unused mappings | 🔲 |
+| **WS2: Dead Code Cleanup** | Cross-reference CE functions vs. frontend calls — flag unused | 🔲 |
+| **WS2: Dead Code Cleanup** | Remove orphaned chart components (Sprint 20 replacements) | 🔲 |
+| **WS2: Dead Code Cleanup** | Tree-shake dead imports, unused types, legacy utilities | 🔲 |
+| **WS2: Dead Code Cleanup** | Audit `package.json` for unused npm packages | 🔲 |
+| **WS3: Runtime Performance** | Memoization audit (`useMemo`/`useCallback` on expensive computations) | 🔲 |
+| **WS3: Runtime Performance** | Lazy loading verification (react-pdf, ag-grid, heavy pages) | 🔲 |
+| **WS3: Runtime Performance** | API call deduplication (prevent duplicate session/input loads) | 🔲 |
+| **WS3: Runtime Performance** | Snowflake SQL query optimization (column projection, LIMIT, indexes) | 🔲 |
+| **WS3: Runtime Performance** | Bundle size analysis with `vite-bundle-visualizer` — target < 1.5MB | 🔲 |
 
 ---
 
@@ -5561,9 +5599,9 @@ Sprint 21 — Action Plan Synthesis ✅
     │  (now uses frontier models for best results)
     │
     ▼
-Sprint 24 — Perf Optimization + KB Caching (2 days)
-    │  (depends on S21 — optimize after all features exist)
-    │  Cache KB summaries to Snowflake, dead code audit,
+Sprint 24 — Perf Optimization + KB Caching 🟡 IN PROGRESS
+    │  WS1 COMPLETE: cache-first loading for KB/AP/Extraction
+    │  WS2+WS3 REMAINING: dead code audit, perf optimization,
     │  bundle size reduction, API call deduplication
     │
     ▼
