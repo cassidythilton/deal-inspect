@@ -358,6 +358,7 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
           model: modelId,
           contextStep: activeStep?.id,
           createdBy: 'current-user',
+          includeKnowledgeBase: includeKB,
         });
 
         if (result.success && result.content) {

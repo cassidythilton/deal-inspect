@@ -33,6 +33,7 @@ export interface SendMessageParams {
   model: string;
   contextStep?: string;
   createdBy?: string;
+  includeKnowledgeBase?: boolean;
 }
 
 export interface SendMessageResult {
@@ -165,6 +166,7 @@ export const tdrChat = {
       model,
       contextStep,
       createdBy,
+      includeKnowledgeBase,
     } = params;
 
     // Dev mode — return mock
@@ -202,6 +204,7 @@ export const tdrChat = {
           contextStep: contextStep || '',
           createdBy: createdBy || 'current-user',
           assistantContent,
+          includeKnowledgeBase: includeKnowledgeBase ? 'true' : 'false',
         });
         const result = extractResult(raw) as SendMessageResult;
         return { ...result, content: result.content || assistantContent };
@@ -224,6 +227,7 @@ export const tdrChat = {
         contextStep: contextStep || '',
         createdBy: createdBy || 'current-user',
         assistantContent: '',
+        includeKnowledgeBase: includeKnowledgeBase ? 'true' : 'false',
       });
       const result = extractResult(raw) as SendMessageResult;
       return result;
