@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 4.3 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **In Progress:** 24 · **Remaining:** 24 (WS2+3), 26, 25
+**Status:** In Progress · **Version:** Draft 4.4 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **In Progress:** 24 · **Remaining:** 24 (WS2+3), 26, 25
 
 ---
 
@@ -3510,6 +3510,22 @@ Scoring adjustments:
 - `sql/bootstrap.sql` — Added `TDR_READOUTS` and `TDR_DISTRIBUTIONS` tables (tables 10–11)
 
 **Definition of Done:** ✅ One-click PDF generation from TDR Workspace. The PDF tells a coherent executive-ready story from deal context through final recommendation. Every section is sourced from real persisted data. The readout is the canonical artifact of record — not a summary, not a snapshot. Code-split loading ensures the react-pdf library doesn't bloat the initial bundle.
+
+**Post-Sprint PDF Readout Improvements (Feb 12, 2026):**
+
+| Improvement | Detail |
+|-------------|--------|
+| **Action Plan as centerpiece** | Promoted to Section 2 (after Executive Summary). SE/AE Quick Actions card auto-parses action plan prose to extract role-specific actions with capitalized first letters. |
+| **TDR Framework + KB intel in prompt** | `generateActionPlan` prompt now includes all 10 TDR Framework dimensions and the cached Knowledge Base summary as intelligence sources. |
+| **Font stability** | Switched from woff2 `Inter` to built-in `Helvetica` to eliminate `DataView RangeError` font subsetting crashes. Added `sanitize()` to strip non-ASCII characters. |
+| **Tech stack rendering** | `assembleTDRReadout` normalizes Sumble `TECHNOLOGIES` objects to clean `string[]`. Added `TECH_CATEGORIES` for categorized display. |
+| **Category-colored pills** | Tech stack pills match UI colors per category (CRM=orange, BI=blue, ERP=indigo, etc.) via `PDF_TECH_CATEGORY_COLORS` map. |
+| **Markdown parsing** | `MultilineText` handles `## headings`, `**N. Title**` bold-numbered patterns, and `### subheadings`. `MultilineBody` handles numbered sub-items. |
+| **Branding** | Domo, Snowflake, and Cortex SVG logos integrated into cover page, footer, AI badges, and appendix. "TECHNICAL DEAL REVIEW" label uses Domo blue. |
+| **Cover subtitle** | Changed from duplicative account name to "Prepared by [owner] · [stage] · [date]". |
+| **Input dedup** | Frontend `groupInputsByStep()` keeps only latest entry per (stepId, fieldId) by `savedAt`. |
+| **Content normalization** | `normalizeContent()` strips wrapping quotes, converts literal `\n` to newlines, handles escaped `\"`. |
+| **Logo SVG** | Created `public/dealinspect-logo.svg` — standalone DealInspect brand mark. |
 
 ---
 
