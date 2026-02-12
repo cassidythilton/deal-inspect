@@ -372,6 +372,46 @@ export function TDRIntelligence({
     doSearch();
   }, [deal, filesetSearched]);
 
+  // ── Sprint 19.5: Re-trigger Cortex summarization when sessionId arrives ──
+  // The auto-search above may fire before sessionId is loaded from Snowflake,
+  // causing the summary to use the Domo AI fallback. This effect re-runs
+  // summarization via Cortex once sessionId becomes available.
+  useEffect(() => {
+    if (!sessionId || !filesetResults || filesetResults.matches.length === 0 || !deal) return;
+    // Only re-summarize if we have results but the summary was generated without Cortex
+    // (i.e., the initial auto-search ran before sessionId was available)
+    if (!filesetSummary || filesetSummary.summary === '') return;
+
+    // Check if we already have a Cortex-generated summary (avoid duplicate calls)
+    // The marker is the presence of "Competitive Intelligence" or "Partner" headers from the Cortex prompt
+    const isCortexSummary = filesetSummary.summary.includes('**Competitive Intelligence**') ||
+      filesetSummary.summary.includes('**Partner') ||
+      filesetSummary.summary.includes('**Technical Positioning**') ||
+      filesetSummary.summary.includes('**Recommended Actions**');
+    if (isCortexSummary) return;
+
+    console.log('[FilesetIntel] sessionId now available — re-summarizing via Cortex');
+    const reSummarize = async () => {
+      try {
+        const competitors = deal.competitors
+          ? (Array.isArray(deal.competitors) ? deal.competitors : [deal.competitors])
+          : [];
+        const dealContext = `${deal.account} — ${deal.stage} — ACV $${(deal.acv ?? 0).toLocaleString()}`;
+        const summary = await filesetIntel.getIntelligenceSummary(
+          filesetResults,
+          dealContext,
+          competitors as string[],
+          sessionId
+        );
+        setFilesetSummary(summary);
+        console.log(`[FilesetIntel] Cortex re-summarization complete: signal=${summary.matchSignal}`);
+      } catch (err) {
+        console.warn('[FilesetIntel] Cortex re-summarization failed:', err);
+      }
+    };
+    reSummarize();
+  }, [sessionId, filesetResults, filesetSummary, deal]);
+
   // ── Sprint 19: Manual fileset re-search ──
   const handleFilesetSearch = useCallback(async () => {
     if (!deal) return;
