@@ -826,7 +826,8 @@ export function TDRIntelligence({
 
         return (
           <div className="border-b border-[#2a2540] px-5 py-4">
-            <div className="flex items-center justify-between mb-2">
+            {/* Header row */}
+            <div className="flex items-center justify-between mb-3">
               <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
                 TDR Score
               </p>
@@ -840,48 +841,55 @@ export function TDRIntelligence({
               </span>
             </div>
 
-            {/* Score gauge */}
-            <div className="flex items-center gap-3 mb-2">
-              <div className={cn(
-                'flex items-center justify-center rounded-lg h-12 w-14 font-bold text-lg tabular-nums',
-                priority === 'CRITICAL' ? 'bg-red-500/15 text-red-400 border border-red-500/25' :
-                priority === 'HIGH' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
-                priority === 'MEDIUM' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25' :
-                'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+            {/* Compact score row */}
+            <div className="flex items-center gap-3">
+              {/* Score number — refined, compact */}
+              <span className={cn(
+                'text-xl font-bold tabular-nums',
+                priority === 'CRITICAL' ? 'text-violet-300' :
+                priority === 'HIGH' ? 'text-violet-400' :
+                priority === 'MEDIUM' ? 'text-amber-400' :
+                'text-slate-400'
               )}>
                 {displayScore}
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className={cn(
-                    'font-semibold',
-                    priority === 'CRITICAL' ? 'text-red-400' :
-                    priority === 'HIGH' ? 'text-emerald-400' :
-                    priority === 'MEDIUM' ? 'text-amber-400' :
-                    'text-slate-400'
-                  )}>{priority}</span>
-                  <span className="text-slate-600 text-2xs">/100</span>
-                </div>
-                {/* Progress bar */}
-                <div className="h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
-        <div
-          className={cn(
-                      'h-full rounded-full transition-all duration-500',
-                      priority === 'CRITICAL' ? 'bg-red-500/70' :
-                      priority === 'HIGH' ? 'bg-emerald-500/70' :
-                      priority === 'MEDIUM' ? 'bg-amber-500/70' :
-                      'bg-slate-500/50'
-                    )}
-                    style={{ width: `${displayScore}%` }}
+              </span>
+
+              {/* Priority label */}
+              <span className={cn(
+                'rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
+                priority === 'CRITICAL' ? 'bg-violet-500/15 text-violet-300' :
+                priority === 'HIGH' ? 'bg-violet-500/10 text-violet-400' :
+                priority === 'MEDIUM' ? 'bg-amber-500/10 text-amber-400' :
+                'bg-slate-500/10 text-slate-500'
+              )}>
+                {priority}
+              </span>
+
+              {/* Thin progress bar — fills remaining space */}
+              <div className="flex-1 flex items-center gap-2">
+                <div className="flex-1 h-1 rounded-full bg-[#2a2540] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700 ease-out"
+                    style={{
+                      width: `${displayScore}%`,
+                      background: priority === 'CRITICAL'
+                        ? 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))'
+                        : priority === 'HIGH'
+                        ? 'linear-gradient(90deg, hsl(263, 60%, 50%), hsl(280, 50%, 45%))'
+                        : priority === 'MEDIUM'
+                        ? 'linear-gradient(90deg, hsl(38, 65%, 50%), hsl(45, 60%, 55%))'
+                        : 'hsl(260, 10%, 40%)',
+                    }}
                   />
                 </div>
+                <span className="text-2xs text-slate-600 tabular-nums shrink-0">/100</span>
               </div>
             </div>
 
-            {/* Post-TDR breakdown (only show when we have post data) */}
+            {/* Post-TDR breakdown — refined, subtle */}
             {postBreakdown && (
-              <div className="mt-3 pt-3 border-t border-[#322b4d] space-y-1.5">
-                <p className="text-2xs text-slate-600 mb-1">Score Breakdown</p>
+              <div className="mt-3 pt-3 border-t border-[#2a2540]/60 space-y-1">
+                <p className="text-[9px] uppercase tracking-wider text-slate-600 mb-1.5">Breakdown</p>
                 {[
                   { label: 'Pre-TDR Base', value: postBreakdown.preTDRScore, max: 100 },
                   { label: 'Competitor Threat', value: postBreakdown.namedCompetitorThreat, max: 10 },
@@ -892,13 +900,21 @@ export function TDRIntelligence({
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-2 text-2xs">
                     <span className="text-slate-500 w-28 shrink-0">{item.label}</span>
-                    <div className="flex-1 h-1 rounded-full bg-[#2a2540] overflow-hidden">
+                    <div className="flex-1 h-[3px] rounded-full bg-[#2a2540] overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-violet-500/50 transition-all"
-                        style={{ width: `${item.max > 0 ? (item.value / item.max) * 100 : 0}%` }}
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${item.max > 0 ? (item.value / item.max) * 100 : 0}%`,
+                          background: item.value > 0
+                            ? 'linear-gradient(90deg, hsl(263, 70%, 55%), hsl(280, 50%, 50%))'
+                            : 'hsl(260, 10%, 30%)',
+                        }}
                       />
                     </div>
-                    <span className="text-slate-400 tabular-nums w-10 text-right font-medium">
+                    <span className={cn(
+                      'tabular-nums w-8 text-right text-2xs font-medium',
+                      item.value > 0 ? 'text-violet-400' : 'text-slate-600'
+                    )}>
                       +{item.value}
                     </span>
                   </div>

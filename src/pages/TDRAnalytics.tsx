@@ -12,6 +12,7 @@ import {
   PieChart, Pie, Cell, Legend, LabelList,
 } from 'recharts';
 import { cortexAi, AnalystResult } from '@/lib/cortexAi';
+import { snowflakeStore, SnowflakeSession } from '@/lib/snowflakeStore';
 import { Info, Search, Loader2, Sparkles, Table2, BarChart3, MessageSquareText, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -343,43 +344,52 @@ export default function TDRAnalytics() {
     setChartsLoading(true);
 
     try {
-      // Fire multiple analyst queries in parallel for chart data
-      const [competitorsRes, sessionsRes] = await Promise.allSettled([
-        cortexAi.askAnalyst('List all named competitors across all TDR structured extracts. Show competitor name and count of how many deals mention them, ordered by count descending. Limit to top 10.'),
-        cortexAi.askAnalyst('Show a summary: count of total sessions, count where status is completed, count where status is in-progress, and average ACV across all sessions.'),
-      ]);
+      // PRIMARY: Get session data directly from Snowflake (deterministic, no NLQ)
+      const sessions: SnowflakeSession[] = await snowflakeStore.getAllSessions();
+      console.log(`[TDRAnalytics] Loaded ${sessions.length} sessions from Snowflake`);
 
+      const completedSessions = sessions.filter(s => s.status === 'completed');
+      const inProgressSessions = sessions.filter(s => s.status === 'in-progress');
+      const totalTDRs = sessions.length;
+      const completedTDRs = completedSessions.length;
+      const inProgressTDRs = inProgressSessions.length;
+      const totalACV = sessions.reduce((sum, s) => sum + (s.acv || 0), 0);
+      const avgACV = totalTDRs > 0 ? Math.round(totalACV / totalTDRs) : 0;
+      const proceedRate = totalTDRs > 0 ? `${Math.round((completedTDRs / totalTDRs) * 100)}%` : '—';
+
+      // SECONDARY: Try NLQ for competitor data (best-effort, non-blocking)
       const competitors: { name: string; count: number }[] = [];
-      if (competitorsRes.status === 'fulfilled' && competitorsRes.value.success && competitorsRes.value.rows.length > 0) {
-        for (const row of competitorsRes.value.rows) {
-          const vals = Object.values(row);
-          if (vals.length >= 2) {
-            competitors.push({ name: String(vals[0]), count: Number(vals[1]) || 0 });
+      try {
+        const competitorsRes = await cortexAi.askAnalyst(
+          'List all named competitors across all TDR structured extracts. Show competitor name and count of how many deals mention them, ordered by count descending. Limit to top 10.'
+        );
+        if (competitorsRes.success && competitorsRes.rows.length > 0) {
+          for (const row of competitorsRes.rows) {
+            const vals = Object.values(row);
+            if (vals.length >= 2) {
+              competitors.push({ name: String(vals[0]), count: Number(vals[1]) || 0 });
+            }
           }
         }
+      } catch (nlqErr) {
+        console.warn('[TDRAnalytics] NLQ competitor query failed (non-fatal):', nlqErr);
       }
 
-      let totalTDRs = 0, completedTDRs = 0, inProgressTDRs = 0, avgACV = 0;
-      if (sessionsRes.status === 'fulfilled' && sessionsRes.value.success && sessionsRes.value.rows.length > 0) {
-        const r = sessionsRes.value.rows[0];
-        const vals = Object.values(r).map(Number);
-        totalTDRs = vals[0] || 0;
-        completedTDRs = vals[1] || 0;
-        inProgressTDRs = vals[2] || 0;
-        avgACV = vals[3] || 0;
+      // Build verdict distribution from session outcomes
+      const outcomeMap = new Map<string, number>();
+      for (const s of sessions) {
+        const label = s.status === 'completed' ? (s.outcome || 'Completed') : 'In Progress';
+        outcomeMap.set(label, (outcomeMap.get(label) || 0) + 1);
       }
-
-      const proceedRate = totalTDRs > 0 ? `${Math.round((completedTDRs / totalTDRs) * 100)}%` : '—';
 
       setChartData({
         competitors,
         platforms: [],  // Will populate as more TDR data accumulates
         entryLayers: [],
         risks: [],
-        verdicts: [
-          { name: 'Completed', value: completedTDRs },
-          { name: 'In Progress', value: inProgressTDRs },
-        ].filter((d) => d.value > 0),
+        verdicts: Array.from(outcomeMap.entries())
+          .map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value }))
+          .filter((d) => d.value > 0),
         useCases: [],
         stats: { totalTDRs, completedTDRs, inProgressTDRs, avgACV, proceedRate },
       });
@@ -450,7 +460,8 @@ export default function TDRAnalytics() {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="mx-auto max-w-7xl space-y-5">
 
         {/* ── NLQ Hero Bar ─────────────────────────────────────────────────── */}
         <section className="rounded-lg border bg-[#1B1630] p-5">
@@ -671,6 +682,7 @@ export default function TDRAnalytics() {
             </p>
           </div>
         )}
+        </div>
       </main>
     </div>
   );
