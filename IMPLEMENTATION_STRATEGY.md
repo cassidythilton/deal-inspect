@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 3.9 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18, 19, 19.5, 20, 22, 23
+**Status:** In Progress · **Version:** Draft 4.0 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18, 19, 19.5, 20, 22, 23 · **Remaining:** 21, 24, 25
 
 ---
 
@@ -5377,6 +5377,146 @@ Generate the action plan in these 7 sections:
 
 ---
 
+### Sprint 24 — Performance Optimization & KB Summary Caching 🔲
+
+> **Goal:** Audit the full app for performance bottlenecks, dead code, unused datasets, and redundant API calls. The headline deliverable is **caching Cortex KB summaries to Snowflake** so they are not regenerated on every deal load — the single largest unnecessary cost and latency source in the current app.
+> **Risk to app:** Low — optimization and cleanup, no new user-facing features. Improves load times, reduces Cortex AI token spend, and shrinks the bundle.
+> **Effort:** ~2 days
+> **Dependencies:** Sprint 21 (Action Plan — so all features exist before optimizing), Sprint 19.5 (Cortex KB Summarization)
+
+**Problem Statement:**
+The app has grown across 23+ sprints. Features were added iteratively, and some artifacts remain from earlier architectures: unused datasets in the manifest, orphaned functions, dead imports, and API calls that run unconditionally. The most impactful issue is the **Knowledge Base Cortex Summary**: every time a deal is loaded, the app calls Cortex `AI_COMPLETE` to summarize KB search results — even if the KB documents and deal context haven't changed. A single TDR load triggers 1-3 Cortex calls (KB summary, TDR brief, classification) that could be served from cache.
+
+**Solution — Three Workstreams:**
+
+**Workstream 1: KB Summary Caching (Cortex → Snowflake)**
+
+| Component | Change |
+|-----------|--------|
+| `CORTEX_ANALYSIS_RESULTS` table | Store KB summaries with `analysis_type: 'kb_summary'`, keyed by `session_id` + hash of fileset IDs + search terms |
+| `summarizeKBResults` (Code Engine) | Before calling Cortex: check `CORTEX_ANALYSIS_RESULTS` for a cached summary matching the same session + fileset config. If found and < 24h old, return cached. If not, generate and store. |
+| `filesetIntel.ts` (frontend) | Accept cached summaries from CE response. Show "Cached · Generated {time}" badge. Add "↻ Refresh" button that forces a fresh Cortex call (bypasses cache). |
+| `TDRIntelligence.tsx` | Display cache status indicator (cached vs. live). "Refresh" button triggers re-summarization with `forceRefresh: true` param. |
+
+Cache invalidation rules:
+- Cache is keyed on: `session_id` + sorted fileset IDs + search query hash
+- TTL: 24 hours (configurable in Settings)
+- Manual override: "Refresh" button always bypasses cache
+- If deal metadata changes significantly (competitor, partner, stage change), cache is auto-invalidated
+
+**Workstream 2: Dead Code & Unused Asset Cleanup**
+
+| Area | Audit Scope |
+|------|-------------|
+| **Datasets (`manifest.json`)** | Identify datasets referenced in `packageMapping` that are never called from the frontend. Remove unused mappings. |
+| **Code Engine functions** | Cross-reference all CE functions against frontend `cortexAi.ts`, `snowflakeStore.ts`, `filesetIntel.ts` calls. Flag functions with zero frontend invocations. |
+| **Frontend imports** | Tree-shake dead imports. Remove unused component files, orphaned utility functions, and legacy type definitions. |
+| **Legacy chart components** | Old chart files (e.g., `PipelineByCloseChart.tsx`, `TopTDRCandidatesChart.tsx`, `TDRPriorityChart.tsx`) replaced in Sprint 20 — verify they are no longer imported and remove if dead. |
+| **CSS / Tailwind** | Audit for unused CSS classes and redundant utility definitions. |
+| **Dependencies (`package.json`)** | Identify npm packages that are no longer imported anywhere in the source. |
+
+**Workstream 3: Runtime Performance**
+
+| Optimization | Description |
+|--------------|-------------|
+| **Memoization audit** | Ensure expensive computations (deal scoring, chart data transforms, TDR score breakdowns) use `useMemo` / `useCallback` appropriately. |
+| **Lazy loading** | Verify that heavy pages (TDR Analytics, Settings) and large libraries (react-pdf, ag-grid) are code-split via `React.lazy`. |
+| **API call deduplication** | Prevent duplicate `getAllSessions`, `getLatestInputs`, and `getStepInputHistory` calls when navigating between tabs in the TDR Workspace. |
+| **Snowflake query optimization** | Review CE SQL queries for missing indexes, unnecessary `SELECT *`, and opportunities to use `LIMIT` or column projection. |
+| **Bundle size** | Analyze with `vite-bundle-visualizer`. Target: reduce main chunk below 1.5MB (currently ~2.2MB). |
+
+**Frontend Changes:**
+
+| File | Change |
+|------|--------|
+| `src/lib/filesetIntel.ts` | Add `forceRefresh` param to `summarizeResults()`. Check for cached summary before calling CE. |
+| `src/components/TDRIntelligence.tsx` | Add cache status badge + "Refresh" button to KB Summary section. |
+| `src/lib/cortexAi.ts` | Add `getCachedKBSummary()` method. |
+| `codeengine/consolidated-sprint4-5.js` | Enhance `summarizeKBResults` with cache-check-before-generate logic. |
+| `manifest.json` | Remove unused dataset/package mappings. |
+| Various files | Remove dead imports, unused functions, orphaned components. |
+
+**Definition of Done:** KB summaries load from Snowflake cache on repeat visits (< 200ms vs. 5-10s for live Cortex call). "Refresh" button forces regeneration. Bundle size reduced by ≥ 15%. Zero unused datasets in manifest. Zero orphaned component files.
+
+---
+
+### Sprint 25 — Interactive Architecture Diagram 🔲
+
+> **Goal:** Build an interactive, exportable architecture diagram in a new app tab that visualizes the full system: data flows, Snowflake tables, Cortex AI models, enrichment providers (Sumble, Perplexity), Domo infrastructure (datasets, filesets, Code Engine), and key user workflows. The diagram must match the app's dark purple/violet design language and be exportable to PDF.
+> **Risk to app:** Low — purely additive, read-only visualization tab. No changes to existing functionality.
+> **Effort:** ~2-3 days
+> **Dependencies:** Sprint 21 (Action Plan — so the diagram captures the complete architecture)
+
+**Problem Statement:**
+The app now spans 9+ pillars, 25+ sprints, and dozens of integrations. There is no visual representation of how the pieces connect. Stakeholders (Snowflake SAs, Domo executives, engineering leads) need a single diagram that shows:
+- What data flows where
+- Which Snowflake Cortex models power which features
+- How Domo Code Engine, datasets, and filesets fit together
+- Where external APIs (Sumble, Perplexity) plug in
+- The end-to-end user workflow from deal selection → TDR → action plan → readout
+
+**Solution: D2-Rendered Architecture Diagram Tab**
+
+**Rendering Library Selection:**
+
+| Library | Strengths | Fit |
+|---------|-----------|-----|
+| **D2 (d2lang)** | Purpose-built for architecture diagrams. Declarative DSL. Auto-layout. Supports layers, icons, styles. Can render to SVG. | ✅ Best fit — designed exactly for this use case |
+| **Mermaid.js** | Widely supported, markdown-friendly. Limited styling control. | ❌ Too constrained for custom branding |
+| **React Flow** | Interactive node graphs. Great for editable diagrams. | ❌ Overkill — we need a read-only architecture view |
+| **Excalidraw** | Whiteboard-style, hand-drawn aesthetic. | ❌ Wrong aesthetic for a professional architecture diagram |
+
+**Recommendation:** Use **D2** compiled to SVG at build time (or via a lightweight WASM runtime). If D2 WASM integration proves complex, fall back to **pre-rendered SVG** generated from D2 source, embedded as a React component with interactive zoom/pan via a library like `react-zoom-pan-pinch`.
+
+**Diagram Layers (5 views):**
+
+| Layer | Shows | Key Elements |
+|-------|-------|-------------|
+| **1. System Overview** | High-level architecture blocks | Experience Layer (React SPA) → Intelligence Layer (Code Engine) → Persistence Layer (Snowflake) → External APIs |
+| **2. Snowflake Data Model** | All Snowflake tables and views | `TDR_SESSIONS`, `TDR_STEP_INPUTS`, `TDR_CHAT_MESSAGES`, `ACCOUNT_INTEL_SUMBLE`, `ACCOUNT_INTEL_PERPLEXITY`, `CORTEX_ANALYSIS_RESULTS`, `API_USAGE_LOG`, `V_TDR_ANALYTICS`, `TDR_READOUTS`, `TDR_DISTRIBUTIONS` |
+| **3. Cortex AI Model Map** | Which Cortex function + model powers which feature | `AI_COMPLETE` (claude-4-sonnet → briefs, action plans), `AI_CLASSIFY` (claude-4-sonnet → risk findings), `AI_EXTRACT` (claude-4-sonnet → entities), `AI_EMBED` (snowflake-arctic-embed-l-v2.0 → similarity), Cortex Analyst (NLQ → SQL), Cortex Search (hybrid retrieval) |
+| **4. Enrichment Pipeline** | External data flow | Sumble (org → tech → jobs → people) → cache in Snowflake. Perplexity (sonar-pro → research) → cache in Snowflake. Domo Filesets (PDF query → chunk → Cortex summarize) → cache in Snowflake. |
+| **5. User Workflow** | End-to-end journey | Deal Selection → TDR Workspace → (SE Inputs + Auto-Enrichment + Chat) → Scoring → Action Plan → PDF Readout → Slack Distribution |
+
+**UI Design:**
+
+| Element | Spec |
+|---------|------|
+| **Tab location** | New sidebar nav item: "Architecture" with `Network` or `Boxes` Lucide icon |
+| **Background** | Match app background: `hsl(260, 30%, 8%)` dark purple |
+| **Node styling** | Rounded rectangles with violet borders (`hsl(263, 84%, 55%)`), dark fill, white text. Snowflake nodes use the Snowflake logo. Cortex nodes use the Cortex logo. |
+| **Edge styling** | Smooth curved lines, semi-transparent violet. Animated pulse for "live" data flows. |
+| **Layer switcher** | Pill toggle at top: "Overview · Data Model · Cortex AI · Enrichment · Workflow" |
+| **Zoom/Pan** | `react-zoom-pan-pinch` for smooth interaction. Fit-to-screen button. |
+| **Export** | "Export PDF" button renders the current layer view to a PDF page via `@react-pdf/renderer` or `html2canvas` + `jsPDF`. |
+| **Branding** | Snowflake logo, Cortex logo, Domo logo, Sumble logo, Perplexity logo placed on their respective nodes. App title + version in header. |
+
+**Frontend Changes:**
+
+| File | Change |
+|------|--------|
+| `src/pages/ArchitectureDiagram.tsx` | **New** — Main page component. Layer switcher, zoom controls, export button. |
+| `src/components/architecture/SystemOverview.tsx` | **New** — Layer 1 SVG diagram component. |
+| `src/components/architecture/DataModelDiagram.tsx` | **New** — Layer 2 Snowflake tables + relationships. |
+| `src/components/architecture/CortexModelMap.tsx` | **New** — Layer 3 AI model → feature mapping. |
+| `src/components/architecture/EnrichmentPipeline.tsx` | **New** — Layer 4 external API data flows. |
+| `src/components/architecture/WorkflowDiagram.tsx` | **New** — Layer 5 end-to-end user journey. |
+| `src/components/architecture/diagramStyles.ts` | **New** — Shared styling constants matching app theme. |
+| `src/components/AppSidebar.tsx` | Add "Architecture" nav item. |
+| `src/App.tsx` | Add `/architecture` route. |
+| `src/layouts/MainLayout.tsx` | Add "Architecture" to `PAGE_TITLES`. |
+
+**PDF Export Spec:**
+- Each layer renders as a single landscape PDF page
+- "Export All" option generates a multi-page PDF with all 5 layers
+- PDF uses the same dark theme as the app (not a white-background printout)
+- Title page: "TDR Deal Inspection — System Architecture" + version + date
+- Footer: "Generated by TDR Deal Inspection · Confidential"
+
+**Definition of Done:** A new "Architecture" tab renders an interactive, zoomable architecture diagram with 5 switchable layers. Each layer accurately represents the current system. The diagram uses the app's violet/purple design language with proper Snowflake, Cortex, Domo, Sumble, and Perplexity branding. Export to PDF produces a clean, professional document suitable for stakeholder presentations.
+
+---
+
 ### Sprint Execution Order & Dependencies
 
 ```
@@ -5416,12 +5556,25 @@ Sprint 20 — Hero Metrics & Nav ✅               │
     │                                           │
     ▼                                           ▼
 Sprint 21 — Action Plan Synthesis (2–3 days)
-    (depends on S17.5 + S18 + S19 + S19.5 + S22)
-    THE CAPSTONE — synthesizes everything
-    (now uses frontier models for best results)
+    │  (depends on S17.5 + S18 + S19 + S19.5 + S22)
+    │  THE CAPSTONE — synthesizes everything
+    │  (now uses frontier models for best results)
+    │
+    ▼
+Sprint 24 — Perf Optimization + KB Caching (2 days)
+    │  (depends on S21 — optimize after all features exist)
+    │  Cache KB summaries to Snowflake, dead code audit,
+    │  bundle size reduction, API call deduplication
+    │
+    ▼
+Sprint 25 — Architecture Diagram (2–3 days)
+    (depends on S24 — diagram reflects final clean architecture)
+    Interactive 5-layer system diagram, PDF export,
+    Snowflake/Cortex/Domo/enrichment visualization
+    THE FINAL DELIVERABLE
 ```
 
-**Total estimated effort:** ~12-16 days of focused development
+**Total estimated effort:** ~16-21 days of focused development
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -5436,6 +5589,8 @@ Sprint 21 — Action Plan Synthesis (2–3 days)
 | **S23: KB Insights + KB Tooltip** | ✅ with S22 | S19.5 + S22 | 0.5 day | ✅ |
 | **S20: Hero Metrics & Nav** | ✅ with S22 | S18 | 1-2 days | ✅ |
 | **S21: Action Plan Synthesis** | — | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | 🔲 Next |
+| **S24: Perf Optimization + KB Caching** | — | S21 | 2 days | 🔲 |
+| **S25: Architecture Diagram** | — | S24 | 2-3 days | 🔲 |
 
 ---
 
@@ -5731,6 +5886,16 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 **Why it matters independently:** This is the payoff for everything else. Every other pillar *generates* intelligence. This pillar *converts* that intelligence into action. Without it, the SE/AE still has to read through raw data and figure out what to do. With it, they open the PDF and the first thing they see is: "Here's exactly what to do next, in what order, and why."
 **Key outcome:** The app tells you what to do.
 
+### Pillar 10: Performance & Caching (Sprint 24)
+**What:** A full-stack audit of the app — dead code removal, unused dataset cleanup, bundle optimization, and most critically: **caching Cortex KB summaries to Snowflake** so they persist across sessions rather than regenerating on every deal load. A "Refresh" button gives the user explicit control over when to invoke a fresh Cortex call.
+**Why it matters independently:** Even without any new features, this pillar makes the existing app faster, cheaper, and leaner. KB summaries load in < 200ms from Snowflake cache instead of 5-10s from a live Cortex call. The bundle shrinks by ≥ 15%. Dead code and orphaned datasets are eliminated, reducing maintenance surface area. Cortex AI token spend drops significantly as redundant calls are eliminated.
+**Key outcome:** The app is fast, lean, and cost-efficient.
+
+### Pillar 11: Architecture Visualization (Sprint 25) — THE FINAL DELIVERABLE
+**What:** An interactive, multi-layer architecture diagram rendered in a dedicated app tab. Five switchable views — System Overview, Snowflake Data Model, Cortex AI Model Map, Enrichment Pipeline, and User Workflow — each rendered as a styled SVG matching the app's dark violet design language. Every Snowflake table, every Cortex model, every Code Engine function, every external API, and every user workflow is visualized with proper branding (Snowflake, Cortex, Domo, Sumble, Perplexity logos). The diagram is exportable to PDF for stakeholder presentations.
+**Why it matters independently:** This is the meta-deliverable. It documents everything the other ten pillars built. When a Snowflake SA asks "What does your app do?", you open this tab. When a Domo executive asks "How is Cortex being used?", you export the Cortex layer. When a new engineer joins the project, they have a visual map of the entire system. It transforms institutional knowledge into a shareable artifact.
+**Key outcome:** The app explains itself.
+
 ### The Flywheel
 
 ```
@@ -5779,9 +5944,11 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 | Pillars 1–6 (+ Readout) | A complete deal intelligence platform that produces executive-ready artifacts |
 | Pillars 1–7 (+ Knowledge Base) | A knowledge-augmented TDR system — battle cards and playbooks surface automatically at the point of decision |
 | Pillars 1–8 (+ Lean Model) | A fast, focused TDR that takes 30 minutes and produces structured intelligence |
-| All 9 Pillars (+ Action Plan) | **The complete platform:** every data source, every AI capability, every enrichment — synthesized into a specific, tailored action plan that tells the SE/AE exactly what to do next |
+| Pillars 1–9 (+ Action Plan) | **The complete platform:** every data source, every AI capability, every enrichment — synthesized into a specific, tailored action plan that tells the SE/AE exactly what to do next |
+| Pillars 1–10 (+ Performance) | A production-grade platform — cached intelligence, lean bundle, zero waste. Every Cortex call is intentional, every byte justified. |
+| All 11 Pillars (+ Architecture Diagram) | **The documented platform:** the system explains itself. Stakeholders see the architecture, Snowflake SAs see Cortex usage, new engineers see the full map. The app is both the product and its own documentation. |
 
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 9 is the capstone: it converts everything the other eight pillars generate into a single actionable artifact — the strategic action plan that leads the PDF readout and drives the next steps in the deal.
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 9 is the capstone: it converts everything the other eight pillars generate into a single actionable artifact. Pillar 10 hardens the platform for production. Pillar 11 makes the architecture visible and shareable — the final deliverable that documents everything.
 
 ---
 
