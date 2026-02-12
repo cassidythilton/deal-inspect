@@ -330,11 +330,11 @@ const createStyles = (theme: ReadoutTheme) =>
       padding: 6,
       flex: 1,
     },
-    // Tags
+    // Tags (default — used for non-categorized tags)
     tag: {
       fontSize: 8,
-      color: theme.primaryColor,
-      backgroundColor: '#f0ebff',
+      color: '#475569',
+      backgroundColor: '#f1f5f9',
       paddingHorizontal: 6,
       paddingVertical: 2,
       borderRadius: 3,
@@ -342,8 +342,8 @@ const createStyles = (theme: ReadoutTheme) =>
       marginBottom: 4,
     },
     tagRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
       marginVertical: 4,
     },
     // Cards
@@ -751,6 +751,25 @@ function PageFooter({ generatedAt, styles }: { generatedAt: string; styles: Retu
 // Parses the action plan prose to extract role-specific quick actions for the
 // visual summary card at the top of the action plan section.
 
+// ─── Tech category colors for PDF (matches UI TECH_CATEGORY_STYLES) ─────────
+// Maps category keys to { bg, text } hex values matching Tailwind palette.
+
+const PDF_TECH_CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
+  CRM:    { bg: '#fff7ed', text: '#c2410c' },   // orange
+  BI:     { bg: '#eff6ff', text: '#1d4ed8' },   // blue
+  DW:     { bg: '#f5f3ff', text: '#6d28d9' },   // violet
+  ETL:    { bg: '#fffbeb', text: '#b45309' },   // amber
+  Cloud:  { bg: '#ecfeff', text: '#0e7490' },   // cyan
+  ML:     { bg: '#ecfdf5', text: '#047857' },   // emerald
+  ERP:    { bg: '#eef2ff', text: '#4338ca' },   // indigo
+  DevOps: { bg: '#fff1f2', text: '#be123c' },   // rose
+  Other:  { bg: '#f1f5f9', text: '#475569' },   // slate
+};
+
+function getCategoryColor(category: string): { bg: string; text: string } {
+  return PDF_TECH_CATEGORY_COLORS[category] || PDF_TECH_CATEGORY_COLORS.Other;
+}
+
 /** Capitalize the first character of a string */
 function capitalize(str: string): string {
   if (!str) return str;
@@ -1056,34 +1075,49 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         {sumble && (
           <View style={styles.card} wrap={false}>
             <Text style={styles.sectionSubtitle}>Technology Stack</Text>
-            {isStringArray(sumble.technologies) && sumble.technologies.length > 0 ? (
-              <View style={styles.tagRow}>
-                {sumble.technologies.map((tech: string, i: number) => (
-                  <Text key={i} style={styles.tag}>{sanitize(tech)}</Text>
-                ))}
-              </View>
-            ) : sumble.techCategories && typeof sumble.techCategories === 'object' && Object.keys(sumble.techCategories).length > 0 ? (
-              (() => {
-                const entries = Object.entries(sumble.techCategories as Record<string, unknown>).filter(
-                  ([, v]) => isStringArray(v) && (v as string[]).length > 0
-                );
-                if (entries.length === 0) {
-                  return <Text style={styles.emptySection}>No technology data available.</Text>;
-                }
-                return entries.map(([cat, techs]) => (
-                  <View key={cat} style={{ marginBottom: 4 }}>
-                    <Text style={[styles.smallText, { fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }]}>{sanitize(cat)}</Text>
-                    <View style={styles.tagRow}>
-                      {(techs as string[]).map((tech, i) => (
-                        <Text key={i} style={styles.tag}>{sanitize(tech)}</Text>
-                      ))}
-                    </View>
+            {(() => {
+              // Prefer categorized display (matches UI layout with category labels)
+              const cats = sumble.techCategories && typeof sumble.techCategories === 'object'
+                ? Object.entries(sumble.techCategories as Record<string, unknown>).filter(
+                    ([, v]) => isStringArray(v) && (v as string[]).length > 0
+                  )
+                : [];
+
+              if (cats.length > 0) {
+                return (
+                  <View>
+                    {cats.map(([cat, techs]) => {
+                      const color = getCategoryColor(cat);
+                      return (
+                        <View key={cat} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+                          <Text style={{ fontSize: 7.5, color: '#64748b', width: 55, fontWeight: 600 }}>{sanitize(cat)}</Text>
+                          <View style={styles.tagRow}>
+                            {(techs as string[]).map((tech, i) => (
+                              <Text key={i} style={[styles.tag, { backgroundColor: color.bg, color: color.text }]}>
+                                {sanitize(tech)}
+                              </Text>
+                            ))}
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
-                ));
-              })()
-            ) : (
-              <Text style={styles.emptySection}>No technology data available.</Text>
-            )}
+                );
+              }
+
+              // Fallback: flat list with default styling
+              if (isStringArray(sumble.technologies) && sumble.technologies.length > 0) {
+                return (
+                  <View style={styles.tagRow}>
+                    {sumble.technologies.map((tech: string, i: number) => (
+                      <Text key={i} style={styles.tag}>{sanitize(tech)}</Text>
+                    ))}
+                  </View>
+                );
+              }
+
+              return <Text style={styles.emptySection}>No technology data available.</Text>;
+            })()}
             <Text style={styles.smallText}>Source: Sumble - {formatDate(sumble.pulledAt)}</Text>
           </View>
         )}
