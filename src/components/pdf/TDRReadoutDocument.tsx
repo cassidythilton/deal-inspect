@@ -18,7 +18,6 @@ import {
   Font,
   Svg,
   Path,
-  G,
   Circle,
 } from '@react-pdf/renderer';
 import type { ReadoutPayload, ReadoutTheme } from './readoutTypes';
@@ -485,15 +484,51 @@ function isStringArray(val: unknown): val is string[] {
   return Array.isArray(val) && val.every(item => typeof item === 'string');
 }
 
-// ─── Helper: Group inputs by step ───────────────────────────────────────────
+// ─── Helper: Normalize AI-generated content ────────────────────────────────
+// Cortex and other LLMs often return content with literal \n escapes,
+// wrapping quotes, and markdown artifacts. Clean it all up.
+
+function normalizeContent(text: string): string {
+  let out = text;
+  // Strip wrapping double-quotes (JSON string artifacts)
+  if (out.startsWith('"') && out.endsWith('"')) {
+    out = out.slice(1, -1);
+  }
+  // Convert literal \n to actual newlines (JSON-escaped newlines from Snowflake)
+  out = out.replace(/\\n/g, '\n');
+  // Convert literal \t to spaces
+  out = out.replace(/\\t/g, '  ');
+  // Strip escaped quotes
+  out = out.replace(/\\"/g, '"');
+  return out.trim();
+}
+
+// ─── Helper: Group inputs by step (with frontend dedup) ─────────────────────
+// Deduplicates inputs: for each (stepId, fieldId) pair, keeps only the latest
+// entry (by savedAt). This acts as a safety net — the backend SQL also deduplicates,
+// but this ensures clean rendering even if the CE hasn't been redeployed yet.
 
 function groupInputsByStep(inputs: ReadoutPayload['inputs']): Map<string, { fieldId: string; value: string }[]> {
-  const map = new Map<string, { fieldId: string; value: string }[]>();
+  // 1. Dedup: keep only latest entry per (stepId, fieldId)
+  const latest = new Map<string, ReadoutPayload['inputs'][0]>();
   for (const input of inputs) {
+    const key = `${input.stepId}::${input.fieldId}`;
+    const existing = latest.get(key);
+    if (!existing || (input.savedAt && existing.savedAt && input.savedAt > existing.savedAt)) {
+      latest.set(key, input);
+    }
+  }
+  const deduped = Array.from(latest.values());
+
+  // 2. Group by step
+  const map = new Map<string, { fieldId: string; value: string }[]>();
+  for (const input of deduped) {
+    if (!input.value || !input.value.trim()) continue; // Skip empty values
     if (!map.has(input.stepId)) map.set(input.stepId, []);
     map.get(input.stepId)!.push({ fieldId: input.fieldId, value: input.value });
   }
-  // Sort by STEP_ORDER
+
+  // 3. Sort by STEP_ORDER
   const sorted = new Map<string, { fieldId: string; value: string }[]>();
   for (const stepId of STEP_ORDER) {
     if (map.has(stepId)) sorted.set(stepId, map.get(stepId)!);
@@ -598,6 +633,17 @@ function ShieldIcon({ size = 14 }: { size?: number }) {
   );
 }
 
+function DomoIcon({ size = 14, color = '#9CB8E3' }: { size?: number; color?: string }) {
+  return (
+    <Svg viewBox="0 0 76 76" width={size} height={size}>
+      <Path
+        d="M76 76H0V47.46H6.64C9.61 47.46 12.28 46.18 14.12 44.15C15.28 42.87 16.1 41.28 16.46 39.53C17.39 44.05 21.43 47.46 26.28 47.46C31.13 47.46 35.17 44.05 36.1 39.52V47.46H39.42V35.61L46.12 42.24L52.79 35.61V47.46H56.16V39.52C57.09 44.05 61.13 47.46 65.98 47.46C71.51 47.46 76 43.03 76 37.55C76 32.08 71.52 27.64 65.98 27.64C61.13 27.64 57.09 31.05 56.16 35.58V27.64L46.12 37.55L36.1 27.64V35.58C35.17 31.05 31.13 27.64 26.28 27.64C21.43 27.64 17.38 31.05 16.46 35.58C16.1 33.82 15.28 32.24 14.12 30.95C12.28 28.92 9.61 27.64 6.64 27.64H0V0H76V76ZM26.28 30.93C29.97 30.93 32.96 33.9 32.96 37.55C32.96 41.2 29.97 44.17 26.28 44.17C22.59 44.17 19.59 41.2 19.59 37.55C19.59 33.9 22.59 30.93 26.28 30.93ZM65.98 30.93C69.67 30.93 72.67 33.9 72.67 37.55C72.67 41.2 69.67 44.17 65.98 44.17C62.29 44.17 59.3 41.2 59.3 37.55C59.3 33.9 62.29 30.93 65.98 30.93ZM7.08 30.95C10.57 31.17 13.33 34.04 13.33 37.55C13.33 41.06 10.57 43.93 7.08 44.15H3.32V30.95H7.08Z"
+        fill={color}
+      />
+    </Svg>
+  );
+}
+
 // ─── Header & Footer ────────────────────────────────────────────────────────
 
 function PageHeader({ accountName, styles }: { accountName: string; styles: ReturnType<typeof createStyles> }) {
@@ -618,6 +664,8 @@ function PageFooter({ generatedAt, styles }: { generatedAt: string; styles: Retu
   return (
     <View style={styles.footer} fixed>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        <DomoIcon size={8} color="#94a3b8" />
+        <Text style={{ fontSize: 6.5, color: '#cbd5e1' }}>+</Text>
         <SnowflakeIcon size={8} />
         <Text style={{ fontSize: 6.5, color: '#94a3b8' }}>Powered by Snowflake Cortex</Text>
       </View>
@@ -696,8 +744,11 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           )}
         </View>
 
-        {/* Powered by Snowflake Cortex */}
+        {/* Platform logos */}
         <View style={styles.coverPoweredBy}>
+          <DomoIcon size={12} color="#94a3b8" />
+          <Text style={styles.poweredByText}>Built on Domo</Text>
+          <Text style={{ color: '#475569', fontSize: 7 }}>|</Text>
           <SnowflakeIcon size={10} />
           <Text style={styles.poweredByText}>Powered by</Text>
           <Text style={styles.poweredByBrand}>Snowflake Cortex</Text>
@@ -716,7 +767,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         <Text style={styles.sectionTitle}>{nextSection()}. Executive Summary</Text>
         {brief ? (
           <>
-            <MultilineText text={brief.content} styles={styles} />
+            <MultilineText text={normalizeContent(brief.content)} styles={styles} />
             <View style={styles.aiBadge}>
               <SnowflakeIcon size={8} />
               <Text style={styles.aiBadgeText}>
@@ -743,7 +794,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
                 {fields.map((f, j) => (
                   <View key={j} style={{ marginBottom: 6 }}>
                     <Text style={styles.fieldLabel}>{humanizeFieldId(f.fieldId)}</Text>
-                    <Text style={styles.fieldValue}>{s(f.value)}</Text>
+                    <Text style={styles.fieldValue}>{s(normalizeContent(f.value))}</Text>
                   </View>
                 ))}
               </View>
@@ -822,7 +873,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         {perplexity && (
           <View style={styles.card} wrap={false}>
             <Text style={styles.sectionSubtitle}>Research Summary</Text>
-            <Text style={styles.bodyText}>{s(perplexity.summary)}</Text>
+            <Text style={styles.bodyText}>{s(normalizeContent(perplexity.summary))}</Text>
 
             {isStringArray(perplexity.recentInitiatives) && perplexity.recentInitiatives.length > 0 && (
               <>
@@ -966,7 +1017,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           <PageFooter generatedAt={payload.generatedAt} styles={styles} />
 
           <Text style={styles.sectionTitle}>{nextSection()}. Strategic Action Plan</Text>
-          <MultilineText text={actionPlan.content} styles={styles} />
+          <MultilineText text={normalizeContent(actionPlan.content)} styles={styles} />
           <View style={styles.aiBadge}>
             <SnowflakeIcon size={8} />
             <Text style={styles.aiBadgeText}>
@@ -993,7 +1044,7 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
                 </Text>
                 <Text style={styles.smallText}>{formatDate(msg.createdAt)}</Text>
               </View>
-              <Text style={styles.bodyText}>{s(msg.content)}</Text>
+              <Text style={styles.bodyText}>{s(normalizeContent(msg.content))}</Text>
             </View>
           ))}
         </Page>
@@ -1025,7 +1076,9 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           </View>
           <View style={styles.tableRow}>
             <Text style={[styles.tableCell, { fontWeight: 600 }]}>Input Fields</Text>
-            <Text style={[styles.tableCell, { flex: 3 }]}>{inputs.length} fields across {inputsByStep.size} steps</Text>
+            <Text style={[styles.tableCell, { flex: 3 }]}>
+              {Array.from(inputsByStep.values()).reduce((sum, fields) => sum + fields.length, 0)} fields across {inputsByStep.size} steps
+            </Text>
           </View>
           <View style={styles.tableRow}>
             <Text style={[styles.tableCell, { fontWeight: 600 }]}>Intel Sources</Text>
@@ -1058,9 +1111,13 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
 
         {/* Platform attribution */}
         <View style={{ marginTop: 24, alignItems: 'center' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <ShieldIcon size={16} />
             <Text style={{ fontSize: 10, fontWeight: 700, color: '#6929C4' }}>Deal Inspect</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <DomoIcon size={16} color="#6b7280" />
+            <SnowflakeIcon size={14} />
           </View>
           <Text style={{ fontSize: 8, color: '#94a3b8', textAlign: 'center' }}>
             Technical Deal Review platform built on Domo, powered by Snowflake Cortex AI
