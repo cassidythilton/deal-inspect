@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 4.2 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **In Progress:** 24 · **Remaining:** 25
+**Status:** In Progress · **Version:** Draft 4.2 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **In Progress:** 24 · **Remaining:** 14, 24 (WS2+3), 26, 25
 
 ---
 
@@ -3728,7 +3728,7 @@ Sprint 17 ── Sprint 17.5 ──┬── Sprint 17.6 (Analytics + NLQ)
 
 ---
 
-### Sprint 15 — AG Grid Table, Deal Search & Filter Rethink 🔄
+### Sprint 15 — AG Grid Table, Deal Search & Filter Rethink ✅ COMPLETE
 
 > **Goal:** Replace the static HTML deals table with an interactive AG Grid table, add a global deal search, and rationalize the TopBar filters by moving person-based filters into the grid columns.
 > **Risk to app:** Low — frontend-only changes. No backend, Code Engine, or Snowflake changes.
@@ -4873,7 +4873,7 @@ const files = await domo.get(`/domo/files/v1/filesets/${filesetId}/files`);
 
 ---
 
-### Sprint 19.5 — Cortex KB Summarization & Fileset UX 🔲
+### Sprint 19.5 — Cortex KB Summarization & Fileset UX ✅ COMPLETE *(completed 2026-02-12)*
 
 > **Goal:** Route the Knowledge Base AI summary through the configured Snowflake Cortex integration (via Code Engine) instead of the generic Domo AI text generation endpoint. Make the summary TDR-Framework-aware by incorporating session context, competitor landscape, and the 10-step TDR evaluation model. Add "View in Domo" deep links from fileset document listings.
 > **Risk to app:** Low — enhances existing KB feature. Domo AI fallback preserved.
@@ -5377,6 +5377,101 @@ Generate the action plan in these 7 sections:
 
 ---
 
+### Sprint 26 — Intelligence Panel UX Review & Consolidation 🔲
+
+> **Goal:** Perform a comprehensive usability audit of the TDR Intelligence panel (right modal). After 23+ sprints of iterative feature additions, the panel has accumulated ~20 distinct sections, multiple enrichment trigger buttons, heavy branding elements, and visible-but-low-value subsections. This sprint consolidates, simplifies, and refines the panel into a cohesive, intuitive experience — ready for executive demonstrations and daily SE workflow.
+> **Risk to app:** Medium — this is a structural UX refactor of the most information-dense surface in the app. Careful attention to not lose functionality while simplifying the interface.
+> **Effort:** ~2-3 days
+> **Dependencies:** Sprint 14 (Slack Distribution — so the panel is feature-complete before redesigning), Sprint 21 (Action Plan), Sprint 24 WS1 (Caching — so cached state badges are finalized)
+
+**Problem Statement:**
+
+The Intelligence panel has been the primary surface for feature delivery across the app's lifecycle. Each sprint added new sections vertically: Sumble enrichment, Perplexity research, Cortex Brief, classified findings, extracted entities, sentiment trend, similar deals, knowledge base, analytics extraction, action plan, TDR score, deal team, readiness, risks, missing info, evidence, and final outcome. The result is a **~2,800-line component** with:
+
+1. **Fragmented Sumble interactions** — 4 separate enrichment buttons (`Sumble Enrich`, `Org Profile`, `Jobs`, `People`) that call 4 different API endpoints. Users see these as disjointed; they want "enrich this account" as one action.
+2. **Heavy branding** — Snowflake logos, Cortex pills, Sumble icons, and Perplexity icons appear throughout, often with colored backgrounds. What started as "make Snowflake professionals notice Cortex" has become visual noise at the section level.
+3. **Analytics Extraction as a visible section** — The structured extraction panel shows a status badge but no actual data in the panel itself. The extraction feeds the Portfolio Analytics page, not the Intelligence panel. Its presence here is confusing — it should happen automatically behind the scenes.
+4. **No clear information hierarchy** — A first-time user scanning the panel can't distinguish "what's critical" from "what's supplementary." The Action Plan (most actionable) sits below multiple raw data sections.
+5. **Section ordering doesn't match workflow** — The panel mixes decision-making outputs (Action Plan, TDR Score, Brief) with raw data feeds (tech stack, hiring signals, web research) with administrative controls (Final Outcome, domain input).
+
+**Solution — Five Workstreams:**
+
+**Workstream 1: Sumble Enrichment Consolidation**
+
+| Current State | Target State |
+|---------------|--------------|
+| 4 separate buttons: "Sumble Enrich", "Org Profile", "Jobs", "People" | **One button: "Enrich Account"** — triggers all 4 Sumble API calls in parallel |
+| User must discover and click each button separately | Single click enriches everything; individual sections load progressively |
+| If one fails, user doesn't know which | Unified status: "Enriching... (3/4 complete)" with per-section indicators |
+| "Refresh Sumble" vs "Sumble Enrich" labeling confusion | "Enrich Account" (first time) → "Refresh" (subsequent) |
+
+Backend: No Code Engine changes — frontend calls all 4 endpoints (`enrichSumble`, `enrichSumbleOrg`, `enrichSumbleJobs`, `enrichSumblePeople`) in `Promise.allSettled()`.
+
+**Workstream 2: Branding Reduction**
+
+| Current State | Target State |
+|---------------|--------------|
+| `<CortexPill>` and `<SnowflakePill>` badges on multiple sections | Remove section-level branding pills entirely |
+| Cortex/Snowflake logos in section headers | **Icons only** — small (14px) Cortex snowflake or Snowflake logo as a subtle indicator next to section titles that use Cortex, no text labels |
+| Colored branding backgrounds (violet/blue glows) | Neutral section headers; branding expressed through the app's overall design language, not per-section decoration |
+| Sumble/Perplexity icons on every subsection | **One "Powered by" line** at the bottom of the enrichment block: `Powered by Sumble · Perplexity · Snowflake Cortex` with small icons |
+
+**Workstream 3: Analytics Extraction — Move Behind the Scenes**
+
+| Current State | Target State |
+|---------------|--------------|
+| Visible "Analytics Extraction" section with status badge | **Remove from panel entirely** |
+| User must understand what extraction is | Extraction runs automatically when a TDR is loaded (if no cached extraction exists) — already implemented in Sprint 24 WS1 |
+| "Re-extract" button visible in panel | Move to Settings or TDR Analytics page footer (for advanced users) |
+| Extraction status/date shown in Intelligence panel | Status only shown in TDR Portfolio Analytics page header (where the data is actually consumed) |
+
+**Workstream 4: Section Reordering & Information Hierarchy**
+
+Reorder the panel sections by **decision value** (most actionable at top, raw data below, admin at bottom):
+
+| Order | Section | Rationale |
+|-------|---------|-----------|
+| 1 | **Account Header** (name, deal info, domain) | Context — always visible |
+| 2 | **TDR Score** (Pre/Post) | Quick signal — is this deal critical? |
+| 3 | **Strategic Action Plan** | Most actionable output — what to do next |
+| 4 | **Cortex TDR Brief** | AI-synthesized narrative |
+| 5 | **Knowledge Base** (fileset search + Cortex summary) | Relevant battle cards / playbooks |
+| 6 | **Account Intelligence** (consolidated Sumble + Perplexity) | Collapsible enrichment data — org profile, tech stack, hiring, people, web research |
+| 7 | **AI Analysis** (classified findings, extracted entities) | Cortex-processed insights |
+| 8 | **Sentiment & Similar Deals** | Supplementary context |
+| 9 | **Risk Flags & Missing Information** | Deal hygiene |
+| 10 | **Final Outcome & Deal Team** | Administrative |
+
+Key changes:
+- **Combine** Sumble subsections (Technographic Signals, Tech Stack, Hiring Signals, Deep Intelligence, Org Profile, Hiring Signals, Key People) into **one collapsible "Account Intelligence"** block with tabs or accordion
+- **Combine** Perplexity (Web Research) into the same Account Intelligence block as a tab
+- **Combine** Classified Findings + Extracted Entities into **one "AI Analysis"** block
+- **Combine** Sentiment + Similar Deals into one supplementary block
+- **Collapsible sections** — sections 6-10 default collapsed; sections 1-5 default expanded
+
+**Workstream 5: Visual Refinement**
+
+| Area | Change |
+|------|--------|
+| Section dividers | Consistent thin borders, uniform padding (px-4 py-3) |
+| Section headers | Uniform style: `text-[11px] uppercase tracking-widest text-slate-500 font-semibold` |
+| Collapse/expand | ChevronDown/Up toggle on each section; remember state per session |
+| Empty states | Consistent: light italic text + single CTA, no large empty boxes |
+| Loading states | Uniform skeleton/spinner pattern across all sections |
+| Font sizes | Harmonize: section labels 11px, content 12px, metadata 10px |
+
+**Frontend Changes:**
+
+| File | Change |
+|------|--------|
+| `src/components/TDRIntelligence.tsx` | Major refactor: reorder sections, consolidate Sumble buttons, remove analytics extraction section, reduce branding, add collapsible blocks |
+| `src/components/CortexBranding.tsx` | Simplify: remove `CortexPill` and `SnowflakePill` exports, keep icon-only variants |
+| `src/lib/accountIntel.ts` | Add `enrichAll(opportunityId, accountName, domain)` convenience method that calls all 4 Sumble endpoints in parallel |
+
+**Definition of Done:** The Intelligence panel has a clear information hierarchy (decision outputs at top, raw data below, admin at bottom). Account enrichment is a single click. Branding is expressed through subtle icons, not colored pills on every section. Analytics Extraction is invisible to the user (runs automatically). The panel renders cleanly with no "wall of buttons" or "branding overload" feeling. A Snowflake SA seeing the panel for the first time can immediately identify what's important.
+
+---
+
 ### Sprint 24 — Performance Optimization & KB Summary Caching 🟡 IN PROGRESS
 
 > **Goal:** Audit the full app for performance bottlenecks, dead code, unused datasets, and redundant API calls. The headline deliverable is **caching Cortex KB summaries to Snowflake** so they are not regenerated on every deal load — the single largest unnecessary cost and latency source in the current app.
@@ -5599,6 +5694,18 @@ Sprint 21 — Action Plan Synthesis ✅
     │  (now uses frontier models for best results)
     │
     ▼
+Sprint 14 — Slack Distribution ⏸ PAUSED
+    │  (resume when Slack App created)
+    │  Push PDF + AI summary to Slack channels
+    │
+    ▼
+Sprint 26 — Intelligence Panel UX Review 🔲
+    │  (depends on S14 — panel must be feature-complete first)
+    │  Consolidate Sumble buttons, reduce branding,
+    │  hide analytics extraction, reorder sections,
+    │  visual refinement
+    │
+    ▼
 Sprint 24 — Perf Optimization + KB Caching 🟡 IN PROGRESS
     │  WS1 COMPLETE: cache-first loading for KB/AP/Extraction
     │  WS2+WS3 REMAINING: dead code audit, perf optimization,
@@ -5612,7 +5719,7 @@ Sprint 25 — Architecture Diagram (2–3 days)
     THE FINAL DELIVERABLE
 ```
 
-**Total estimated effort:** ~16-21 days of focused development
+**Total estimated effort:** ~20-26 days of focused development
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -5627,8 +5734,10 @@ Sprint 25 — Architecture Diagram (2–3 days)
 | **S23: KB Insights + KB Tooltip** | ✅ with S22 | S19.5 + S22 | 0.5 day | ✅ |
 | **S20: Hero Metrics & Nav** | ✅ with S22 | S18 | 1-2 days | ✅ |
 | **S21: Action Plan Synthesis** | — | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | ✅ |
-| **S24: Perf Optimization + KB Caching** | — | S21 | 2 days | 🔲 Next |
-| **S25: Architecture Diagram** | — | S24 | 2-3 days | 🔲 |
+| **S14: Slack Distribution** | — | S13 | 2-3 days | ⏸ Paused |
+| **S26: Intelligence Panel UX** | — | S14 + S21 + S24-WS1 | 2-3 days | 🔲 |
+| **S24: Perf Optimization** | — | S21 | 2 days | 🟡 WS1 done |
+| **S25: Architecture Diagram** | — | S24 + S26 | 2-3 days | 🔲 |
 
 ---
 
@@ -5929,9 +6038,14 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 **Why it matters independently:** Even without any new features, this pillar makes the existing app faster, cheaper, and leaner. KB summaries load in < 200ms from Snowflake cache instead of 5-10s from a live Cortex call. The bundle shrinks by ≥ 15%. Dead code and orphaned datasets are eliminated, reducing maintenance surface area. Cortex AI token spend drops significantly as redundant calls are eliminated.
 **Key outcome:** The app is fast, lean, and cost-efficient.
 
-### Pillar 11: Architecture Visualization (Sprint 25) — THE FINAL DELIVERABLE
+### Pillar 11: UX Cohesion (Sprint 26) — THE POLISH
+**What:** A comprehensive usability audit and redesign of the Intelligence panel — the most information-dense surface in the app. Consolidates 4 separate Sumble enrichment buttons into one "Enrich Account" action. Reduces branding from colored pills on every section to subtle icon-only indicators. Moves Analytics Extraction behind the scenes (auto-runs, invisible to user). Reorders sections by decision value: Action Plan and TDR Score at top, raw data feeds in collapsible middle sections, administrative controls at bottom.
+**Why it matters independently:** Even without any new features, this pillar transforms the user experience from "wall of features accumulated over 23 sprints" to "cohesive intelligence dashboard designed for daily workflow." A first-time user can scan the panel and immediately find what matters. A returning user doesn't waste clicks on 4 separate enrichment buttons.
+**Key outcome:** The app feels designed, not assembled.
+
+### Pillar 12: Architecture Visualization (Sprint 25) — THE FINAL DELIVERABLE
 **What:** An interactive, multi-layer architecture diagram rendered in a dedicated app tab. Five switchable views — System Overview, Snowflake Data Model, Cortex AI Model Map, Enrichment Pipeline, and User Workflow — each rendered as a styled SVG matching the app's dark violet design language. Every Snowflake table, every Cortex model, every Code Engine function, every external API, and every user workflow is visualized with proper branding (Snowflake, Cortex, Domo, Sumble, Perplexity logos). The diagram is exportable to PDF for stakeholder presentations.
-**Why it matters independently:** This is the meta-deliverable. It documents everything the other ten pillars built. When a Snowflake SA asks "What does your app do?", you open this tab. When a Domo executive asks "How is Cortex being used?", you export the Cortex layer. When a new engineer joins the project, they have a visual map of the entire system. It transforms institutional knowledge into a shareable artifact.
+**Why it matters independently:** This is the meta-deliverable. It documents everything the other eleven pillars built. When a Snowflake SA asks "What does your app do?", you open this tab. When a Domo executive asks "How is Cortex being used?", you export the Cortex layer. When a new engineer joins the project, they have a visual map of the entire system. It transforms institutional knowledge into a shareable artifact.
 **Key outcome:** The app explains itself.
 
 ### The Flywheel
@@ -5984,9 +6098,10 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 | Pillars 1–8 (+ Lean Model) | A fast, focused TDR that takes 30 minutes and produces structured intelligence |
 | Pillars 1–9 (+ Action Plan) | **The complete platform:** every data source, every AI capability, every enrichment — synthesized into a specific, tailored action plan that tells the SE/AE exactly what to do next |
 | Pillars 1–10 (+ Performance) | A production-grade platform — cached intelligence, lean bundle, zero waste. Every Cortex call is intentional, every byte justified. |
-| All 11 Pillars (+ Architecture Diagram) | **The documented platform:** the system explains itself. Stakeholders see the architecture, Snowflake SAs see Cortex usage, new engineers see the full map. The app is both the product and its own documentation. |
+| Pillars 1–11 (+ UX Cohesion) | A polished platform — the Intelligence panel feels designed, not assembled. One-click enrichment, clear hierarchy, no branding noise. |
+| All 12 Pillars (+ Architecture Diagram) | **The documented platform:** the system explains itself. Stakeholders see the architecture, Snowflake SAs see Cortex usage, new engineers see the full map. The app is both the product and its own documentation. |
 
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 9 is the capstone: it converts everything the other eight pillars generate into a single actionable artifact. Pillar 10 hardens the platform for production. Pillar 11 makes the architecture visible and shareable — the final deliverable that documents everything.
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 9 is the capstone: it converts everything the other eight pillars generate into a single actionable artifact. Pillar 10 hardens the platform for production. Pillar 11 polishes the most critical surface in the app. Pillar 12 makes the architecture visible and shareable — the final deliverable that documents everything.
 
 ---
 
