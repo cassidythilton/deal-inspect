@@ -8,12 +8,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Sparkles, Check } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Share2, Sparkles, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
 import { useTDRSession } from '@/hooks/useTDRSession';
 import { tdrReadout } from '@/lib/tdrReadout';
+import { TDRShareDialog } from '@/components/TDRShareDialog';
 import { CortexLogo, SnowflakeLogo } from '@/components/CortexBranding';
 
 /** Debounce delay for thesis auto-save */
@@ -156,6 +157,9 @@ export default function TDRWorkspace() {
   const [exportLoading, setExportLoading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
+  // Sprint 14: Slack Share
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
   const handleExportReadout = useCallback(async () => {
     if (!session?.sessionId || session.sessionId.startsWith('local-') || session.sessionId.startsWith('fallback-')) return;
     setExportLoading(true);
@@ -225,6 +229,18 @@ export default function TDRWorkspace() {
             >
               {exportLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
               Export PDF
+            </Button>
+            {/* Sprint 14: Share to Slack */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => setShareDialogOpen(true)}
+              disabled={!session?.sessionId || session?.sessionId.startsWith('local-') || session?.sessionId.startsWith('fallback-')}
+              title="Share this TDR readout to Slack"
+            >
+              <Share2 className="h-3 w-3" />
+              Share
             </Button>
             {exportError && (
               <span className="text-2xs text-destructive ml-1" title={exportError}>Export failed</span>
@@ -367,6 +383,14 @@ export default function TDRWorkspace() {
           </Tabs>
         </aside>
       </div>
+
+      {/* Sprint 14: Slack Share Dialog */}
+      <TDRShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        sessionId={session?.sessionId || ''}
+        accountName={deal.account}
+      />
     </div>
   );
 }

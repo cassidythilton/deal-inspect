@@ -22,6 +22,8 @@ export interface AppSettings {
   filesetIds: string[];
   /** Sprint 19: ID → display name mapping for configured filesets */
   filesetNameMap: Record<string, string>;
+  /** Sprint 14: Default Slack channel for readout distribution */
+  slackDefaultChannel?: string;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {

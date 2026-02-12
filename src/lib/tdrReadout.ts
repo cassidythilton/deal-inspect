@@ -128,6 +128,32 @@ const MOCK_READOUT: ReadoutPayload = {
   generatedAt: new Date().toISOString(),
 };
 
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+export interface SlackChannel {
+  id: string;
+  name: string;
+  isPrivate: boolean;
+  memberCount: number;
+}
+
+export interface SlackDistributionResult {
+  success: boolean;
+  messageTs?: string;
+  fileId?: string;
+  channelName?: string;
+  distributionId?: string;
+  error?: string;
+}
+
+export interface ReadoutSummaryResult {
+  success: boolean;
+  summary?: string;
+  modelUsed?: string;
+  cached?: boolean;
+  error?: string;
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export const tdrReadout = {
@@ -190,6 +216,127 @@ export const tdrReadout = {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  },
+
+  // ─── Sprint 14: Slack Distribution ──────────────────────────────────────────
+
+  /**
+   * Generate an AI-written executive summary for Slack distribution.
+   */
+  async generateReadoutSummary(sessionId: string): Promise<ReadoutSummaryResult> {
+    if (!isDomoEnvironment()) {
+      return { success: true, summary: 'Acme Corp is a $125K mid-market deal at Stage 3, positioning Domo as the unified analytics layer replacing a fragmented Tableau/ThoughtSpot stack. Key technical alignment on Snowflake + embedded analytics. Recommend scheduling architecture workshop and engaging CTO as champion before ThoughtSpot POC in Q1 2026.', cached: false };
+    }
+    try {
+      const raw = await callCodeEngine<unknown>('generateReadoutSummary', { sessionId });
+      const result = extractResult(raw);
+      return {
+        success: result.success as boolean,
+        summary: result.summary as string || '',
+        modelUsed: result.modelUsed as string || '',
+        cached: result.cached as boolean || false,
+        error: result.error as string | undefined,
+      };
+    } catch (err) {
+      console.error('[Readout] generateReadoutSummary failed:', err);
+      return { success: false, error: String(err) };
+    }
+  },
+
+  /**
+   * Fetch available Slack channels for the channel picker.
+   */
+  async getSlackChannels(): Promise<{ success: boolean; channels: SlackChannel[]; error?: string }> {
+    if (!isDomoEnvironment()) {
+      return { success: true, channels: [
+        { id: 'C1234', name: 'tdr-readouts', isPrivate: false, memberCount: 15 },
+        { id: 'C5678', name: 'se-team', isPrivate: false, memberCount: 28 },
+        { id: 'G9012', name: 'deal-reviews', isPrivate: true, memberCount: 8 },
+      ] };
+    }
+    try {
+      const raw = await callCodeEngine<unknown>('getSlackChannels', {});
+      const result = extractResult(raw);
+      return {
+        success: result.success as boolean,
+        channels: (result.channels as SlackChannel[]) || [],
+        error: result.error as string | undefined,
+      };
+    } catch (err) {
+      console.error('[Readout] getSlackChannels failed:', err);
+      return { success: false, channels: [], error: String(err) };
+    }
+  },
+
+  /**
+   * Distribute a TDR readout to a Slack channel.
+   * Uploads PDF attachment + posts Block Kit message with AI summary.
+   */
+  async distributeToSlack(
+    sessionId: string,
+    channel: string,
+    summary: string,
+    pdfBase64: string,
+  ): Promise<SlackDistributionResult> {
+    if (!isDomoEnvironment()) {
+      return { success: true, messageTs: '1234567890.123456', channelName: channel, distributionId: 'mock-dist-001' };
+    }
+    try {
+      const raw = await callCodeEngine<unknown>('distributeToSlack', { sessionId, channel, summary, pdfBase64 });
+      const result = extractResult(raw);
+      return {
+        success: result.success as boolean,
+        messageTs: result.messageTs as string | undefined,
+        fileId: result.fileId as string | undefined,
+        channelName: result.channelName as string | undefined,
+        distributionId: result.distributionId as string | undefined,
+        error: result.error as string | undefined,
+      };
+    } catch (err) {
+      console.error('[Readout] distributeToSlack failed:', err);
+      return { success: false, error: String(err) };
+    }
+  },
+
+  /**
+   * Full share workflow: assemble → generate PDF → generate summary → send to Slack.
+   */
+  async shareToSlack(
+    sessionId: string,
+    channel: string,
+    accountName: string,
+    customSummary?: string,
+  ): Promise<SlackDistributionResult> {
+    // 1. Assemble readout
+    const payload = await this.assembleReadout(sessionId);
+    if (!payload.success) {
+      return { success: false, error: payload.error || 'Failed to assemble readout data' };
+    }
+
+    // 2. Generate PDF as base64
+    let pdfBase64 = '';
+    try {
+      const blob = await this.generatePDF(payload);
+      const arrayBuffer = await blob.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      pdfBase64 = btoa(binary);
+    } catch (pdfErr) {
+      console.warn('[Readout] PDF generation failed, sending without attachment:', pdfErr);
+    }
+
+    // 3. Generate or use custom summary
+    let summary = customSummary || '';
+    if (!summary) {
+      const summaryResult = await this.generateReadoutSummary(sessionId);
+      summary = summaryResult.summary || `TDR Readout for ${accountName}`;
+    }
+
+    // 4. Distribute
+    return this.distributeToSlack(sessionId, channel, summary, pdfBase64);
   },
 };
 
