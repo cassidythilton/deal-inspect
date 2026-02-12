@@ -236,7 +236,6 @@ const createStyles = (theme: ReadoutTheme) =>
     },
     emptySection: {
       fontSize: 9,
-      fontStyle: 'italic',
       color: '#9ca3af',
       paddingVertical: 8,
     },
