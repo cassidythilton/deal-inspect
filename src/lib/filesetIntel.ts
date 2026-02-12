@@ -242,19 +242,19 @@ async function summarizeResults(
   if (sessionId) {
     try {
       console.log('[FilesetIntel] Summarizing via Cortex Code Engine (sessionId:', sessionId, ')');
-      const result = (await domo.post('/domo/codeengine/v2/packages/execute', {
-        functionName: 'summarizeKBResults',
-        parameters: {
-          sessionId,
-          documentTexts: JSON.stringify(documentPayload),
-        },
-      })) as { success?: boolean; summary?: string; error?: string };
+      const result = (await domo.post('/domo/codeengine/v2/packages/summarizeKBResults', {
+        sessionId,
+        documentTexts: JSON.stringify(documentPayload),
+      })) as { success?: boolean; summary?: string; error?: string; result?: { success?: boolean; summary?: string; error?: string } };
 
-      if (result?.success && result?.summary) {
-        console.log('[FilesetIntel] Cortex KB summary received:', result.summary.length, 'chars');
-        return result.summary;
+      // Code Engine wraps response in { result: { ... } } — unwrap it
+      const inner = result?.result || result;
+      console.log('[FilesetIntel] Cortex KB raw response:', JSON.stringify(result).substring(0, 300));
+      if (inner?.success && inner?.summary) {
+        console.log('[FilesetIntel] Cortex KB summary received:', inner.summary.length, 'chars');
+        return inner.summary;
       }
-      console.warn('[FilesetIntel] Cortex KB summary returned empty or failed:', result?.error);
+      console.warn('[FilesetIntel] Cortex KB summary returned empty or failed:', inner?.error);
     } catch (err) {
       console.warn('[FilesetIntel] Cortex Code Engine summarization failed, falling back to Domo AI:', err);
     }
