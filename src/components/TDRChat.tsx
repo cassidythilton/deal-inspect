@@ -24,6 +24,12 @@ import {
   Cpu,
   BookOpen,
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import {
   tdrChat,
@@ -720,29 +726,55 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
             <span className="text-[9px] text-slate-600">
               Shift+Enter for new line
             </span>
-            {/* Sprint 19: Knowledge Base toggle */}
+            {/* Sprint 19/22: Knowledge Base toggle with styled tooltip */}
             {(() => {
               const kbSettings = getAppSettings();
               const kbIds = kbSettings.filesetIds ?? [];
               if (kbIds.length === 0) return null;
               const nameMap = kbSettings.filesetNameMap ?? {};
               const filesetNames = kbIds.map((id) => nameMap[id] || `Fileset ${id.substring(0, 8)}…`);
-              const tooltipText = includeKB
-                ? `KB included:\n${filesetNames.map((n) => `• ${n}`).join('\n')}`
-                : `KB excluded (${filesetNames.length} fileset${filesetNames.length > 1 ? 's' : ''} available)`;
               return (
-                <button
-                  onClick={() => setIncludeKB(!includeKB)}
-                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] transition-colors ${
-                    includeKB
-                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
-                      : 'bg-[#221D38] text-slate-600 border border-[#2a2540]'
-                  }`}
-                  title={tooltipText}
-                >
-                  <BookOpen className="h-2.5 w-2.5" />
-                  KB{kbIds.length > 1 ? ` (${kbIds.length})` : ''}
-                </button>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setIncludeKB(!includeKB)}
+                        className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] transition-colors ${
+                          includeKB
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                            : 'bg-[#221D38] text-slate-600 border border-[#2a2540]'
+                        }`}
+                      >
+                        <BookOpen className="h-2.5 w-2.5" />
+                        KB{kbIds.length > 1 ? ` (${kbIds.length})` : ''}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="top"
+                      className="max-w-[240px] bg-[#1a1730] border border-[#2a2540] text-slate-300 p-0 rounded-lg shadow-xl"
+                    >
+                      <div className="px-3 py-2">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <BookOpen className="h-3 w-3 text-amber-400" />
+                          <span className="text-[10px] font-semibold text-amber-400">
+                            Knowledge Base {includeKB ? '· Active' : '· Off'}
+                          </span>
+                        </div>
+                        <div className="space-y-1">
+                          {filesetNames.map((name, i) => (
+                            <div key={i} className="flex items-start gap-1.5 text-[10px] text-slate-400">
+                              <span className="text-amber-500/60 mt-px">◆</span>
+                              <span className="leading-tight">{name}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-2 pt-1.5 border-t border-[#2a2540] text-[9px] text-slate-500">
+                          Click to {includeKB ? 'exclude' : 'include'} KB context in chat
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               );
             })()}
           </div>

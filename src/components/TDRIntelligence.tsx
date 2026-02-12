@@ -1980,13 +1980,15 @@ export function TDRIntelligence({
                 {(filesetSummary.competitorInsights.length > 0 || filesetSummary.partnerInsights.length > 0) && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {filesetSummary.competitorInsights.slice(0, 3).map((ins, i) => (
-                      <span key={`c${i}`} className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                        {ins.length > 30 ? ins.substring(0, 30) + '...' : ins}
+                      <span key={`c${i}`} className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] bg-rose-500/10 text-rose-400 border border-rose-500/20" title={ins}>
+                        <Target className="h-2 w-2 shrink-0" />
+                        {ins.length > 28 ? ins.substring(0, 28) + '…' : ins}
                       </span>
                     ))}
                     {filesetSummary.partnerInsights.slice(0, 3).map((ins, i) => (
-                      <span key={`p${i}`} className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                        {ins.length > 30 ? ins.substring(0, 30) + '...' : ins}
+                      <span key={`p${i}`} className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20" title={ins}>
+                        <Users className="h-2 w-2 shrink-0" />
+                        {ins.length > 28 ? ins.substring(0, 28) + '…' : ins}
                       </span>
                     ))}
                   </div>

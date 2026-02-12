@@ -471,22 +471,30 @@ export const filesetIntel = {
     // Extract competitor/partner insights from match content
     const competitorInsights: string[] = [];
     const partnerInsights: string[] = [];
+    const seenCompDocs = new Set<string>();
+    const seenPartnerDocs = new Set<string>();
 
     for (const match of searchResult.matches.slice(0, 5)) {
       const text = match.content.text.toLowerCase();
-      const fileName = (match.metadata.fileName || '').toLowerCase();
+      const rawName = match.metadata.fileName || '';
+      const fileName = rawName.toLowerCase();
+      // Create a short readable label from the filename (strip extension, truncate)
+      const shortName = rawName.replace(/\.[^.]+$/, '').replace(/^.*[\\/]/, '');
 
-      if (fileName.includes('battle') || fileName.includes('competitive') || fileName.includes('vs')) {
-        competitorInsights.push(match.metadata.fileName || 'Competitive document found');
+      // Competitive signals — from filename or content
+      const isCompetitiveFile = fileName.includes('battle') || fileName.includes('competitive') || fileName.includes('vs') || fileName.includes('compete');
+      const hasCompetitiveContent = text.includes('competitive') || text.includes('differentiator') || text.includes('vs ') || text.includes('battle card');
+      if ((isCompetitiveFile || hasCompetitiveContent) && !seenCompDocs.has(fileName)) {
+        seenCompDocs.add(fileName);
+        competitorInsights.push(shortName || 'Competitive intel');
       }
-      if (fileName.includes('partner') || fileName.includes('playbook') || fileName.includes('co-sell')) {
-        partnerInsights.push(match.metadata.fileName || 'Partner playbook found');
-      }
-      // Also check content
-      if (text.includes('competitive') || text.includes('differentiator')) {
-        if (!competitorInsights.includes(match.metadata.fileName || '')) {
-          competitorInsights.push(`Insights in: ${match.metadata.fileName || 'document'}`);
-        }
+
+      // Partner signals — from filename or content
+      const isPartnerFile = fileName.includes('partner') || fileName.includes('playbook') || fileName.includes('co-sell') || fileName.includes('cosell');
+      const hasPartnerContent = text.includes('partner playbook') || text.includes('co-sell') || text.includes('joint pov');
+      if ((isPartnerFile || hasPartnerContent) && !seenPartnerDocs.has(fileName)) {
+        seenPartnerDocs.add(fileName);
+        partnerInsights.push(shortName || 'Partner playbook');
       }
     }
 
