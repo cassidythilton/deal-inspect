@@ -618,7 +618,7 @@ function SnowflakeLogo({ size = 16, color = '#2CB3EA' }: { size?: number; color?
       <Path d="M115.45 128.366C117.945 126.954 121.007 126.992 123.465 128.467L163.257 152.342C167.026 154.603 168.248 159.492 165.986 163.261C163.725 167.03 158.837 168.252 155.068 165.991L127.33 149.347V183.041C127.33 187.437 123.766 191 119.371 191C114.976 191 111.413 187.437 111.413 183.041V135.291C111.413 132.424 112.954 129.779 115.45 128.366Z" fill={color} />
       <Path d="M12.054 64.802C8.285 62.541 3.396 63.763 1.135 67.532C-1.126 71.301 0.096 76.19 3.865 78.451L32.298 95.51L3.868 112.551C0.098 114.81 -1.126 119.698 1.134 123.468C3.393 127.238 8.281 128.463 12.051 126.202L51.864 102.339C54.262 100.901 55.73 98.311 55.731 95.514C55.731 92.719 54.264 90.127 51.866 88.688L12.054 64.802Z" fill={color} />
       <Path d="M189.872 67.534C192.132 71.304 190.908 76.192 187.139 78.452L158.71 95.497L187.136 112.565C190.904 114.827 192.125 119.716 189.862 123.484C187.6 127.253 182.711 128.474 178.943 126.211L139.145 102.315C136.749 100.876 135.283 98.285 135.284 95.489C135.285 92.694 136.752 90.104 139.15 88.667L178.954 64.801C182.724 62.541 187.612 63.765 189.872 67.534Z" fill={color} />
-      <Path fillRule="evenodd" clipRule="evenodd" d="M101.129 73.956C98.021 70.848 92.982 70.848 89.874 73.956L73.958 89.872C70.85 92.981 70.85 98.019 73.958 101.128L89.874 117.044C92.982 120.152 98.021 120.152 101.129 117.044L117.046 101.128C120.154 98.019 120.154 92.981 117.046 89.872L101.129 73.956ZM90.84 95.5L95.502 90.838L100.164 95.5L95.502 100.162L90.84 95.5Z" fill={color} />
+      <Path fillRule="evenodd" d="M101.129 73.956C98.021 70.848 92.982 70.848 89.874 73.956L73.958 89.872C70.85 92.981 70.85 98.019 73.958 101.128L89.874 117.044C92.982 120.152 98.021 120.152 101.129 117.044L117.046 101.128C120.154 98.019 120.154 92.981 117.046 89.872L101.129 73.956ZM90.84 95.5L95.502 90.838L100.164 95.5L95.502 100.162L90.84 95.5Z" fill={color} />
     </Svg>
   );
 }
@@ -698,6 +698,110 @@ function PageFooter({ generatedAt, styles }: { generatedAt: string; styles: Retu
         <Text style={{ fontSize: 6.5, color: '#94a3b8' }}>Powered by Snowflake Cortex</Text>
       </View>
       <Text render={({ pageNumber, totalPages }) => `${formatDate(generatedAt)}  |  Page ${pageNumber} of ${totalPages}`} />
+    </View>
+  );
+}
+
+// ─── SE / AE Quick Actions Extraction ────────────────────────────────────────
+// Parses the action plan prose to extract role-specific quick actions for the
+// visual summary card at the top of the action plan section.
+
+function extractQuickActions(content: string): { se: string[]; ae: string[]; timeline: string[] } {
+  const se: string[] = [];
+  const ae: string[] = [];
+  const timeline: string[] = [];
+
+  // Match "SE should/must/needs to..." and "AE should/must/needs to..." patterns
+  const sentences = content.split(/[.!]\s+/);
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed || trimmed.length < 20) continue;
+
+    // Extract SE actions
+    const seMatch = trimmed.match(/\b(?:SE|Solutions Engineer|the SE)\s+(?:should|must|needs? to|will)\s+(.{20,})/i);
+    if (seMatch && se.length < 4) {
+      se.push(seMatch[0].replace(/^(?:the\s+)?SE\s+/i, '').trim());
+    }
+
+    // Extract AE actions
+    const aeMatch = trimmed.match(/\b(?:AE|Account Executive|the AE)\s+(?:should|must|needs? to|will)\s+(.{20,})/i);
+    if (aeMatch && ae.length < 4) {
+      ae.push(aeMatch[0].replace(/^(?:the\s+)?AE\s+/i, '').trim());
+    }
+
+    // Extract timeline items
+    const timeMatch = trimmed.match(/\b(?:within\s+(?:one|two|three|1|2|3)\s+weeks?|immediately|this\s+week|next\s+(?:week|meeting)|two\s+weeks?|30[\s-]day)/i);
+    if (timeMatch && timeline.length < 3) {
+      const shortSentence = trimmed.length > 120 ? trimmed.substring(0, 117) + '...' : trimmed;
+      timeline.push(shortSentence);
+    }
+  }
+
+  return { se, ae, timeline };
+}
+
+/** Renders the SE/AE Quick Actions card at the top of the action plan section */
+function ActionPlanQuickActions({ content, styles }: { content: string; styles: ReturnType<typeof createStyles> }) {
+  const { se, ae, timeline } = extractQuickActions(content);
+
+  if (se.length === 0 && ae.length === 0) return null;
+
+  return (
+    <View style={{
+      backgroundColor: '#f0f4ff',
+      borderWidth: 1,
+      borderColor: '#c7d2fe',
+      borderRadius: 6,
+      padding: 12,
+      marginBottom: 12,
+    }} wrap={false}>
+      <Text style={{ fontSize: 10, fontWeight: 700, color: '#3730a3', marginBottom: 8, letterSpacing: 0.5 }}>
+        QUICK REFERENCE — PRESCRIBED NEXT ACTIONS
+      </Text>
+
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        {/* SE Column */}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#6929C4' }} />
+            <Text style={{ fontSize: 8, fontWeight: 700, color: '#6929C4', letterSpacing: 0.5 }}>SE MUST DO</Text>
+          </View>
+          {se.length > 0 ? se.map((action, i) => (
+            <View key={i} style={styles.listItem}>
+              <Text style={{ width: 12, fontSize: 8, color: '#6929C4', fontWeight: 700 }}>{i + 1}.</Text>
+              <Text style={{ fontSize: 8, lineHeight: 1.4, color: '#374151', flex: 1 }}>{sanitize(action)}</Text>
+            </View>
+          )) : (
+            <Text style={{ fontSize: 8, color: '#9ca3af' }}>See full plan below</Text>
+          )}
+        </View>
+
+        {/* AE Column */}
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#2563eb' }} />
+            <Text style={{ fontSize: 8, fontWeight: 700, color: '#2563eb', letterSpacing: 0.5 }}>AE MUST DO</Text>
+          </View>
+          {ae.length > 0 ? ae.map((action, i) => (
+            <View key={i} style={styles.listItem}>
+              <Text style={{ width: 12, fontSize: 8, color: '#2563eb', fontWeight: 700 }}>{i + 1}.</Text>
+              <Text style={{ fontSize: 8, lineHeight: 1.4, color: '#374151', flex: 1 }}>{sanitize(action)}</Text>
+            </View>
+          )) : (
+            <Text style={{ fontSize: 8, color: '#9ca3af' }}>See full plan below</Text>
+          )}
+        </View>
+      </View>
+
+      {/* Timeline strip */}
+      {timeline.length > 0 && (
+        <View style={{ marginTop: 8, borderTopWidth: 0.5, borderTopColor: '#c7d2fe', paddingTop: 6 }}>
+          <Text style={{ fontSize: 7, fontWeight: 700, color: '#4338ca', letterSpacing: 0.5, marginBottom: 3 }}>KEY DEADLINES</Text>
+          {timeline.map((t, i) => (
+            <Text key={i} style={{ fontSize: 7.5, color: '#4b5563', lineHeight: 1.4 }}>- {sanitize(t)}</Text>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -809,6 +913,35 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           <Text style={styles.emptySection}>TDR brief not yet generated. Generate a brief from the TDR Workspace to populate this section.</Text>
         )}
       </Page>
+
+      {/* ── Strategic Action Plan (Section 2 — the centerpiece) ── */}
+      {actionPlan && actionPlan.content && (
+        <Page size="A4" style={styles.page} wrap>
+          <PageHeader accountName={session.accountName} styles={styles} />
+          <PageFooter generatedAt={payload.generatedAt} styles={styles} />
+
+          <Text style={styles.sectionTitle}>{nextSection()}. Prescribed Action Plan</Text>
+
+          {/* SE / AE Quick Actions Card */}
+          <ActionPlanQuickActions content={normalizeContent(actionPlan.content)} styles={styles} />
+
+          <View style={styles.sectionDivider} />
+
+          {/* Full Action Plan */}
+          <Text style={[styles.sectionSubtitle, { marginTop: 0, marginBottom: 8 }]}>Full Action Plan</Text>
+          <MultilineText text={normalizeContent(actionPlan.content)} styles={styles} />
+
+          <View style={styles.aiBadge}>
+            <CortexLogo size={9} />
+            <Text style={styles.aiBadgeText}>
+              Synthesized via Snowflake Cortex ({s(actionPlan.modelUsed)}) - {formatDate(actionPlan.createdAt)}
+            </Text>
+          </View>
+          <Text style={[styles.smallText, { marginTop: 4 }]}>
+            Sources: TDR inputs, Sumble enrichment, Perplexity research, Knowledge Base, Cortex AI chat, classified findings
+          </Text>
+        </Page>
+      )}
 
       {/* ── Deal Context & Stakes (TDR Step Inputs) ── */}
       <Page size="A4" style={styles.page} wrap>
@@ -1039,23 +1172,6 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
           </>
         )}
       </Page>
-
-      {/* ── Action Plan (if available) ── */}
-      {actionPlan && actionPlan.content && (
-        <Page size="A4" style={styles.page} wrap>
-          <PageHeader accountName={session.accountName} styles={styles} />
-          <PageFooter generatedAt={payload.generatedAt} styles={styles} />
-
-          <Text style={styles.sectionTitle}>{nextSection()}. Strategic Action Plan</Text>
-          <MultilineText text={normalizeContent(actionPlan.content)} styles={styles} />
-          <View style={styles.aiBadge}>
-            <CortexLogo size={9} />
-            <Text style={styles.aiBadgeText}>
-              Synthesized via Snowflake Cortex ({s(actionPlan.modelUsed)}) - {formatDate(actionPlan.createdAt)}
-            </Text>
-          </View>
-        </Page>
-      )}
 
       {/* ── AI Chat Highlights ── */}
       {chatHighlights.length > 0 && (
