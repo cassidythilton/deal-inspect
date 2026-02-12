@@ -39,6 +39,7 @@ import {
 import type { Deal, TDRStep } from '@/types/tdr';
 import { filesetIntel } from '@/lib/filesetIntel';
 import { getAppSettings } from '@/lib/appSettings';
+import { SnowflakeLogo, CortexLogo } from '@/components/CortexBranding';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ interface TDRChatProps {
 // ─── Icon mapping ────────────────────────────────────────────────────────────
 
 const ICON_MAP: Record<ProviderIconKey, React.FC<{ className?: string }>> = {
-  snowflake: Snowflake,
+  snowflake: SnowflakeLogo,
   search: Search,
   cpu: Cpu,
 };
@@ -568,7 +569,11 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
             {msg.role === 'assistant' && (
               <div className="shrink-0 mt-px">
                 <div className="h-5 w-5 rounded-full bg-[#221D38] border border-[#2a2540] flex items-center justify-center">
-                  <Bot className="h-3 w-3 text-slate-500" />
+                  {msg.provider === 'cortex' ? (
+                    <CortexLogo className="h-3 w-3" />
+                  ) : (
+                    <Bot className="h-3 w-3 text-slate-500" />
+                  )}
                 </div>
               </div>
             )}
@@ -640,13 +645,23 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
           <div className="flex gap-2">
             <div className="shrink-0 mt-px">
               <div className="h-5 w-5 rounded-full bg-[#221D38] border border-[#2a2540] flex items-center justify-center">
-                <Bot className="h-3 w-3 text-slate-500" />
+                {provider === 'cortex' ? (
+                  <CortexLogo className="h-3 w-3 animate-pulse" />
+                ) : (
+                  <Bot className="h-3 w-3 text-slate-500" />
+                )}
               </div>
             </div>
             <div className="bg-[#221D38] border border-[#2a2540] rounded-lg px-2.5 py-1.5">
               <div className="flex items-center gap-1.5 text-slate-500">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span className="text-[11px]">Thinking...</span>
+                {provider === 'cortex' ? (
+                  <SnowflakeLogo className="h-3 w-3 animate-pulse" />
+                ) : (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                )}
+                <span className="text-[11px]">
+                  {provider === 'cortex' ? 'Cortex thinking…' : 'Thinking...'}
+                </span>
               </div>
             </div>
           </div>

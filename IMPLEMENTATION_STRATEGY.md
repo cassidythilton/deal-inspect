@@ -3681,7 +3681,7 @@ Before any Slack integration can work, a Slack App must be created in the target
 | **16** | **Fix Similar Deals** | ✅ Complete | Feb 10, 2026 | None | **Bug Fix** |
 | **19** | **Fileset Intelligence Layer** | ✅ Complete | Feb 11, 2026 | None | **Knowledge Base** |
 | **19.5** | **Cortex KB Summarization & Fileset UX** | ✅ Complete | Feb 11, 2026 | Sprint 19 | **AI / UX** |
-| **22** | **Frontier Model Upgrade** | 🔲 Planned | — | None | **AI / Config** |
+| **22** | **Frontier Model Upgrade + Cortex Branding** | ✅ Complete | Feb 12, 2026 | None | **AI / Config / UX** |
 | **20** | **Hero Metrics & Nav Cleanup** | 🔲 Planned | — | Sprint 18 | **UX** |
 | **21** | **Action Plan Synthesis (CAPSTONE)** | 🔲 Planned | — | S17.5+S18+S19+S19.5+S22 | **AI / Artifact** |
 | **14** | **TDR Readout: Slack Distribution** | ⏸ Paused | — | Sprint 13 | **Distribution** |
@@ -4948,10 +4948,10 @@ Provide summary organized by:
 
 ---
 
-### Sprint 22 — Frontier Model Upgrade 🔲
+### Sprint 22 — Frontier Model Upgrade + Cortex Branding ✅ COMPLETE *(completed 2026-02-12)*
 
-> **Goal:** Replace all open-source / legacy Cortex models with best-in-breed frontier models from OpenAI and Anthropic. Every AI operation in the app — chat, TDR briefs, classification, entity extraction, KB summarization, analyst queries — should use the newest, most capable models available on Snowflake Cortex.
-> **Risk to app:** Low — configuration change. All AI_COMPLETE call signatures are identical regardless of model. If a model is unavailable in a region, Cortex cross-region inference handles fallback automatically.
+> **Goal:** Replace all open-source / legacy Cortex models with best-in-breed frontier models from OpenAI and Anthropic. Add first-class Snowflake & Cortex branding throughout the UI. Fix assorted UX bugs.
+> **Risk to app:** Low — configuration change + visual branding. All AI_COMPLETE call signatures are identical regardless of model. If a model is unavailable in a region, Cortex cross-region inference handles fallback automatically.
 > **Effort:** ~0.5 days
 > **Dependencies:** None — can be applied at any time. Best done before Sprint 21 (Action Plan Synthesis) to ensure the capstone sprint uses the strongest models.
 
@@ -5065,7 +5065,44 @@ Google Gemini is not currently available on Snowflake Cortex. When Snowflake add
 | `src/config/llmProviders.ts` | Replace Cortex model list: 4 frontier models, default `claude-4-sonnet` |
 | `codeengine/consolidated-sprint4-5.js` | Update `CORTEX_MODELS` config object. Update `sendChatMessage` fallback defaults. |
 
-**Definition of Done:** Every AI operation in the app uses a frontier model from OpenAI or Anthropic. The chat model selector shows only `claude-4-sonnet`, `claude-4-opus`, `openai-gpt-4.1`, `openai-o4-mini`. No Llama, Mistral, or Arctic models remain in the codebase. `CORTEX_MODELS.brief` = `claude-4-sonnet`, `CORTEX_MODELS.classify` = `openai-o4-mini`, `CORTEX_MODELS.extract` = `openai-o4-mini`. Gemini noted as future addition when Snowflake adds support.
+**Definition of Done:** ✅ Every AI operation in the app uses a frontier model from OpenAI or Anthropic. The chat model selector shows only `claude-4-sonnet`, `claude-4-opus`, `openai-gpt-4.1`, `openai-o4-mini`. No Llama, Mistral, or Arctic models remain in the codebase. `CORTEX_MODELS.brief` = `claude-4-sonnet`, `CORTEX_MODELS.classify` = `openai-o4-mini`, `CORTEX_MODELS.extract` = `openai-o4-mini`. Gemini noted as future addition when Snowflake adds support.
+
+**Additional Sprint 22 Work (completed alongside model upgrade):**
+
+**Part E: Snowflake & Cortex Branding** (`src/components/CortexBranding.tsx` — **new file**)
+Created a reusable component library with inline SVG versions of the official Snowflake and Cortex logos (blue + gray variants), plus composable badges (`PoweredByCortexBadge`, `CortexPill`, `SnowflakePill`, `CortexSpinner`). Integrated across 7 touchpoints:
+
+| Surface | Change |
+|---------|--------|
+| Sidebar footer | "Powered by Snowflake Cortex" badge with both logos; collapses to icon-only when narrow |
+| Intelligence tab | Cortex logo replaces Brain icon |
+| Chat tab | Snowflake logo replaces MessageSquare icon |
+| TDR Brief buttons + dialog | Cortex logo on generate/view buttons, dialog header, and loading animation |
+| Knowledge Base section | Snowflake logo + Cortex pill in header, branded loading & AI Summary label |
+| Analytics Extraction | Cortex logo + Snowflake pill in header |
+| Chat messages | Real Snowflake logo in provider selector, Cortex logo as avatar for Cortex responses, branded "Cortex thinking…" loading state |
+
+**Part F: KB Summary Readability** (`formatKBSummary` in `TDRIntelligence.tsx`)
+The Cortex AI Knowledge Base summary was rendering as a single dense paragraph. Added `formatKBSummary()` that normalises literal `\n`/`\t` escapes, detects section headers (e.g., "Competitive Intelligence:", "Recommended Actions:"), splits into visually distinct paragraphs with bold headings, and renders bullet points as proper `<ul>` lists. Applied `space-y-2` for consistent vertical spacing between sections.
+
+**Part G: Bug Fixes**
+- Fixed React Select uncontrolled→controlled warning in `TDRInputs.tsx` (changed `value={currentValue || undefined}` to `value={currentValue || ''}`)
+- Made the "Final Outcome" Select in `TDRIntelligence.tsx` a controlled component with `finalOutcome` state
+- Added retry logic with exponential backoff (up to 2 retries) to `summarizeResults()` in `filesetIntel.ts` for the Code Engine summarization call
+
+**All Files Changed (Sprint 22):**
+
+| File | Change |
+|------|--------|
+| `src/config/llmProviders.ts` | Frontier model list, default `claude-4-sonnet` |
+| `codeengine/consolidated-sprint4-5.js` | `CORTEX_MODELS` config, chat fallbacks, version → 1.39.0 |
+| `src/components/CortexBranding.tsx` | **NEW** — Snowflake + Cortex SVG logo components and composable badges |
+| `src/components/AppSidebar.tsx` | "Powered by Snowflake Cortex" badge in sidebar footer |
+| `src/pages/TDRWorkspace.tsx` | Cortex/Snowflake logos on Intelligence + Chat tabs |
+| `src/components/TDRIntelligence.tsx` | Cortex branding on Brief, KB, Extraction sections; `formatKBSummary()`; controlled Final Outcome Select |
+| `src/components/TDRChat.tsx` | Real Snowflake logo for Cortex provider; branded loading + message avatars |
+| `src/components/TDRInputs.tsx` | Fixed uncontrolled→controlled Select warning |
+| `src/lib/filesetIntel.ts` | Retry logic with backoff for Code Engine summarization |
 
 ---
 
@@ -5292,8 +5329,8 @@ Sprint 18 — TDR Score v2 (2 days) ✅     ──────┤
     │  (depends on S19) ───────────────────────┤
     │                                           │
     ▼                                           │
-Sprint 22 — Frontier Model Upgrade (0.5 day)   │
-    │  (claude-4-sonnet, openai-gpt-4.1, etc.) │
+Sprint 22 — Frontier Models + Branding ✅       │
+    │  (claude-4-sonnet, Cortex branding, UX)  │
     │                                           │
     ▼                                           │
 Sprint 20 — Hero Metrics & Nav (1–2 days)      │

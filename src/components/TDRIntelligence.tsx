@@ -63,6 +63,7 @@ import type { PostTDRScoreBreakdown } from '@/lib/tdrCriticalFactors';
 import { getAppSettings } from '@/lib/appSettings';
 import { filesetIntel } from '@/lib/filesetIntel';
 import type { FilesetSearchResult, FilesetSummary } from '@/lib/filesetIntel';
+import { CortexLogo, CortexPill, SnowflakeLogo, SnowflakePill } from '@/components/CortexBranding';
 
 interface TDRIntelligenceProps {
   deal?: Deal;
@@ -164,6 +165,93 @@ function renderMarkdownBlock(text: string, keyPrefix = 'md'): React.ReactNode {
   return <>{elements}</>;
 }
 
+/**
+ * Format a KB / fileset summary into readable paragraphs.
+ * Handles: literal \n, section headers like "Competitive Intelligence:",
+ * bullet points (\t+), and long run-on text.
+ */
+function formatKBSummary(raw: string): React.ReactNode {
+  if (!raw) return null;
+
+  // Strip surrounding quotes if present
+  let text = raw.replace(/^["']|["']$/g, '').trim();
+
+  // Normalise literal \n and \t sequences to real characters
+  text = text.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+
+  // Insert a newline before recognised section headers so they split cleanly
+  // Matches patterns like "Competitive Intelligence:", "Recommended Actions:", etc.
+  text = text.replace(/([.!?)\d])\s*\n?\s*([A-Z][A-Za-z &/]+:)/g, '$1\n\n$2');
+
+  // Also catch headers that follow a period directly without whitespace break
+  text = text.replace(/([.!?])\s{1,2}([A-Z][A-Za-z &/]+:)\s/g, '$1\n\n$2 ');
+
+  // Split into paragraphs on double-newline or single newlines that separate sections
+  const blocks = text
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  return (
+    <>
+      {blocks.map((block, i) => {
+        // Check if block starts with a header pattern like "Section Name:"
+        const headerMatch = block.match(/^([A-Z][A-Za-z &/]+):\s*([\s\S]*)$/);
+
+        // Check if block contains bullet points (lines starting with + or - or •)
+        const lines = block.split('\n').map((l) => l.trim()).filter(Boolean);
+        const hasBullets = lines.some((l) => /^[+\-•\t]/.test(l));
+
+        if (headerMatch && headerMatch[2]) {
+          const heading = headerMatch[1];
+          const body = headerMatch[2];
+
+          // Split body on bullet points if present
+          const bodyLines = body.split('\n').map((l) => l.trim()).filter(Boolean);
+          const bullets = bodyLines.filter((l) => /^[+\-•]\s/.test(l));
+          const prose = bodyLines.filter((l) => !/^[+\-•]\s/.test(l)).join(' ');
+
+          return (
+            <div key={i}>
+              <p className="font-semibold text-slate-300 mb-0.5">{renderInline(heading)}</p>
+              {prose && <p className="text-slate-400 mb-1">{renderInline(prose)}</p>}
+              {bullets.length > 0 && (
+                <ul className="list-disc pl-3.5 space-y-0.5 text-slate-400">
+                  {bullets.map((b, j) => (
+                    <li key={j}>{renderInline(b.replace(/^[+\-•]\s*/, ''))}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        }
+
+        if (hasBullets) {
+          const bulletLines = lines.filter((l) => /^[+\-•\t]/.test(l));
+          const nonBullet = lines.filter((l) => !/^[+\-•\t]/.test(l)).join(' ');
+          return (
+            <div key={i}>
+              {nonBullet && <p className="text-slate-400 mb-1">{renderInline(nonBullet)}</p>}
+              <ul className="list-disc pl-3.5 space-y-0.5 text-slate-400">
+                {bulletLines.map((b, j) => (
+                  <li key={j}>{renderInline(b.replace(/^[+\-•\t]\s*/, ''))}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        }
+
+        // Plain paragraph
+        return (
+          <p key={i} className="text-slate-400">
+            {renderInline(block.replace(/\n/g, ' '))}
+          </p>
+        );
+      })}
+    </>
+  );
+}
+
 /** Render inline markdown: **bold** and *italic* */
 function renderInline(text: string): React.ReactNode {
   // Split on **bold** and *italic* markers
@@ -257,6 +345,9 @@ export function TDRIntelligence({
   // ── Sprint 11: Similar Deals ──
   const [similarDeals, setSimilarDeals] = useState<{ opportunityId: string; accountName: string; similarityScore: number; sessionId?: string }[]>([]);
   const [similarDealsLoading, setSimilarDealsLoading] = useState(false);
+
+  // ── Sprint 22: Final Outcome (controlled select) ──
+  const [finalOutcome, setFinalOutcome] = useState<string>('');
 
   // ── Sprint 19: Fileset Intelligence ──
   const [filesetResults, setFilesetResults] = useState<FilesetSearchResult | null>(null);
@@ -877,9 +968,9 @@ export function TDRIntelligence({
               </Button>
             </div>
             {cortexProcessing && (
-              <div className="flex items-center gap-1.5 text-2xs text-violet-400">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                AI classifying findings &amp; extracting entities…
+              <div className="flex items-center gap-1.5 text-2xs text-cyan-400">
+                <CortexLogo className="h-3 w-3 animate-pulse" />
+                Cortex AI classifying findings &amp; extracting entities…
               </div>
             )}
             {sumbleError && !sumbleLoading && (
@@ -1563,10 +1654,10 @@ export function TDRIntelligence({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1 gap-1.5 text-xs h-8 border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200"
+                      className="flex-1 gap-1.5 text-xs h-8 border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200"
                       onClick={handleOpenCachedBrief}
                     >
-                      <FileText className="h-3 w-3" />
+                      <CortexLogo className="h-3 w-3" />
                       View TDR Brief
                     </Button>
                     <Button
@@ -1584,11 +1675,11 @@ export function TDRIntelligence({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full gap-1.5 text-xs h-8 border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 hover:text-violet-200"
+                    className="w-full gap-1.5 text-xs h-8 border-cyan-500/30 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 hover:text-cyan-200"
                     onClick={handleGenerateBrief}
                     disabled={briefLoading || (!sumbleData && !perplexityData)}
                   >
-                    {briefLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    {briefLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CortexLogo className="h-3 w-3" />}
                     Generate TDR Brief
                   </Button>
                 )}
@@ -1605,20 +1696,21 @@ export function TDRIntelligence({
                 <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#1e1a30] border-[#362f50] text-white">
                   <DialogHeader>
                     <DialogTitle className="text-white flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-violet-400" />
-                      AI-Generated TDR Brief
+                      <CortexLogo className="h-4 w-4" />
+                      Cortex AI — TDR Brief
                     </DialogTitle>
-                    <DialogDescription className="text-slate-500">
+                    <DialogDescription className="text-slate-500 flex items-center gap-1.5">
+                      <SnowflakeLogo className="h-3 w-3 inline-block shrink-0" />
                       {briefData?.modelUsed
-                        ? `Generated by Snowflake Cortex · ${briefData.modelUsed}${briefGeneratedAt ? ` · ${formatDate(briefGeneratedAt)}` : ''}`
-                        : 'Generating brief using Snowflake Cortex AI...'}
+                        ? `Snowflake Cortex · ${briefData.modelUsed}${briefGeneratedAt ? ` · ${formatDate(briefGeneratedAt)}` : ''}`
+                        : 'Generating brief via Snowflake Cortex AI...'}
                     </DialogDescription>
                   </DialogHeader>
 
                   {briefLoading ? (
                     <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
-                      <Loader2 className="h-6 w-6 animate-spin text-violet-400" />
-                      <p className="text-sm">Analyzing session data, tech stack, and research...</p>
+                      <CortexLogo className="h-8 w-8 animate-pulse" />
+                      <p className="text-sm">Cortex AI analyzing session data, tech stack, and research...</p>
                       <p className="text-2xs text-slate-600">This may take 15–30 seconds</p>
                     </div>
                   ) : briefData && !briefData.success ? (
@@ -1830,7 +1922,11 @@ export function TDRIntelligence({
           {/* ── Sprint 19: Knowledge Base (Fileset Intelligence) ── */}
           <div className="mt-3 pt-3 border-t border-[#322b4d]">
             <div className="flex items-center justify-between">
-              <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Knowledge Base</p>
+              <div className="flex items-center gap-1.5">
+                <SnowflakeLogo className="h-3 w-3" />
+                <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">Knowledge Base</p>
+                <CortexPill label="Cortex" />
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
@@ -1844,9 +1940,9 @@ export function TDRIntelligence({
             </div>
 
             {filesetLoading && (
-              <div className="flex items-center gap-2 mt-2 text-slate-400">
-                <Loader2 className="h-3 w-3 animate-spin text-amber-400" />
-                <span className="text-2xs">Searching knowledge base...</span>
+              <div className="flex items-center gap-2 mt-2 text-cyan-400">
+                <SnowflakeLogo className="h-3 w-3 animate-pulse" />
+                <span className="text-2xs">Cortex searching knowledge base...</span>
               </div>
             )}
 
@@ -1872,10 +1968,10 @@ export function TDRIntelligence({
 
                 {/* AI Summary — shown first, above document listing */}
                 {filesetSummary.summary && (
-                  <div className="rounded-md bg-[#1e1a30] border border-[#322b4d] p-2">
-                    <p className="text-[10px] font-medium text-amber-400 mb-1">AI Summary</p>
-                    <div className="text-[10px] text-slate-400 leading-relaxed">
-                      {renderMarkdownBlock(filesetSummary.summary, 'fs')}
+                  <div className="rounded-md bg-[#1e1a30] border border-[#322b4d] p-2.5">
+                    <p className="text-[10px] font-medium text-cyan-400 mb-2 flex items-center gap-1"><CortexLogo className="h-2.5 w-2.5" /> Cortex AI Summary</p>
+                    <div className="text-[10px] text-slate-400 leading-relaxed space-y-2">
+                      {formatKBSummary(filesetSummary.summary)}
                     </div>
                   </div>
                 )}
@@ -2131,7 +2227,10 @@ export function TDRIntelligence({
         <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
           Final Outcome
         </p>
-        <Select>
+        <Select
+          value={finalOutcome}
+          onValueChange={setFinalOutcome}
+        >
           <SelectTrigger className="h-9 text-sm bg-[#1e1a30] border-[#362f50] text-slate-200 focus:ring-[#4a3f6b] [&>svg]:text-slate-400">
             <SelectValue placeholder="Select outcome..." />
           </SelectTrigger>
@@ -2149,9 +2248,13 @@ export function TDRIntelligence({
           ──────────────────────────────────────────────────────────── */}
       {sessionId && (
         <div className="border-b border-[#2a2540] px-5 py-4">
-          <p className="mb-2 text-2xs font-semibold uppercase tracking-wider text-slate-500">
-            Analytics Extraction
-          </p>
+          <div className="mb-2 flex items-center gap-1.5">
+            <CortexLogo className="h-3 w-3" />
+            <p className="text-2xs font-semibold uppercase tracking-wider text-slate-500">
+              Analytics Extraction
+            </p>
+            <SnowflakePill label="Snowflake" />
+          </div>
           {extractionResult?.success ? (
         <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-emerald-400">

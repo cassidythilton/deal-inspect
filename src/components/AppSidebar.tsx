@@ -11,6 +11,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PoweredByCortexBadge } from '@/components/CortexBranding';
 
 const navItems = [
   { id: 'command', label: 'Command Center', icon: LayoutDashboard, path: '/' },
@@ -77,6 +78,14 @@ export function AppSidebar() {
           );
         })}
       </nav>
+
+      {/* Powered by Snowflake Cortex */}
+      <div className={cn(
+        'border-t border-sidebar-border px-2 py-2 transition-all',
+        isExpanded ? 'opacity-100' : 'opacity-100'
+      )}>
+        <PoweredByCortexBadge compact={!isExpanded} />
+      </div>
 
       {/* Collapse indicator */}
       <div className="border-t border-sidebar-border p-2">

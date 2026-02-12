@@ -602,7 +602,7 @@ export function TDRInputs({
               )}
               {field.type === 'select' && (
                 <Select
-                  value={currentValue || undefined}
+                  value={currentValue || ''}
                   onValueChange={(v) => handleSelectChange(field.id, field.label, v)}
                 >
                   <SelectTrigger className="h-9 text-sm">

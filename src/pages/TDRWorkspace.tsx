@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
 import { useTDRSession } from '@/hooks/useTDRSession';
 import { tdrReadout } from '@/lib/tdrReadout';
+import { CortexLogo, SnowflakeLogo } from '@/components/CortexBranding';
 
 /** Debounce delay for thesis auto-save */
 const THESIS_AUTOSAVE_MS = 1500;
@@ -334,14 +335,14 @@ export default function TDRWorkspace() {
                 value="intel"
                 className="gap-1.5 data-[state=active]:bg-[#332d50] data-[state=active]:text-white text-slate-400 text-xs"
               >
-                <Brain className="h-3 w-3" />
+                <CortexLogo className="h-3 w-3" />
                 Intelligence
               </TabsTrigger>
               <TabsTrigger
                 value="chat"
                 className="gap-1.5 data-[state=active]:bg-[#332d50] data-[state=active]:text-white text-slate-400 text-xs"
               >
-                <MessageSquare className="h-3 w-3" />
+                <SnowflakeLogo className="h-3 w-3" />
                 Chat
               </TabsTrigger>
             </TabsList>

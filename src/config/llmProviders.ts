@@ -1,8 +1,11 @@
 /**
- * LLM Provider Registry — Sprint 8
+ * LLM Provider Registry — Sprint 8 / Updated Sprint 22
  *
  * Central configuration for all LLM providers and models available
  * in the TDR Inline Chat experience.
+ *
+ * Sprint 22: Replaced legacy open-source models with frontier models
+ * from Anthropic (Claude 4) and OpenAI (GPT-4.1, o4-mini) on Snowflake Cortex.
  */
 
 export type ProviderKey = 'cortex' | 'perplexity' | 'domo';
@@ -36,13 +39,12 @@ export const LLM_PROVIDERS: Record<ProviderKey, LLMProvider> = {
     icon: 'snowflake',
     description: 'Snowflake-hosted models via AI_COMPLETE',
     serverSide: true,
-    defaultModelId: 'llama3.3-70b',
+    defaultModelId: 'claude-4-sonnet',
     models: [
-      { id: 'llama3.3-70b', label: 'Llama 3.3 70B', description: 'Fast, great reasoning', costTier: 'medium' },
-      { id: 'llama3.1-405b', label: 'Llama 3.1 405B', description: 'Most capable open model', costTier: 'high' },
-      { id: 'mistral-large2', label: 'Mistral Large 2', description: 'Strong multilingual', costTier: 'medium' },
-      { id: 'claude-3-5-sonnet', label: 'Claude 3.5 Sonnet', description: 'Anthropic on Snowflake', costTier: 'high' },
-      { id: 'snowflake-arctic', label: 'Snowflake Arctic', description: 'Snowflake native model', costTier: 'low' },
+      { id: 'claude-4-sonnet', label: 'Claude 4 Sonnet', description: 'Fast, excellent reasoning', costTier: 'medium' },
+      { id: 'claude-4-opus', label: 'Claude 4 Opus', description: 'Most capable, deep reasoning', costTier: 'high' },
+      { id: 'openai-gpt-4.1', label: 'GPT-4.1', description: 'Latest GPT, strong all-around', costTier: 'high' },
+      { id: 'openai-o4-mini', label: 'OpenAI o4-mini', description: 'Reasoning-optimized, efficient', costTier: 'medium' },
     ],
   },
   perplexity: {

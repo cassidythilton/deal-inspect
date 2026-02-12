@@ -239,6 +239,7 @@ async function summarizeResults(
   }));
 
   // Try Cortex via Code Engine first (Sprint 19.5)
+  // NOTE: If you get a 404 here, redeploy consolidated-sprint4-5.js in Domo Code Engine IDE.
   if (sessionId) {
     try {
       console.log('[FilesetIntel] Summarizing via Cortex Code Engine (sessionId:', sessionId, ')');
@@ -256,11 +257,12 @@ async function summarizeResults(
       }
       console.warn('[FilesetIntel] Cortex KB summary returned empty or failed:', inner?.error);
     } catch (err) {
-      console.warn('[FilesetIntel] Cortex Code Engine summarization failed, falling back to Domo AI:', err);
+      console.warn('[FilesetIntel] Cortex Code Engine summarization failed (404 = redeploy Code Engine), falling back to Domo AI:', err);
     }
   }
 
   // Fallback: Domo AI text generation (original approach)
+  // Also used when Cortex Code Engine isn't deployed or returns 404
   const documentTexts = matches
     .slice(0, 6)
     .map((m, i) => `[Doc ${i + 1}: ${m.metadata.fileName || m.metadata.path || 'Unknown'}]\n${m.content.text}`)
@@ -286,10 +288,19 @@ Keep the summary concise (3-5 bullet points). Focus on actionable intelligence.`
       temperature: 0.3,
     })) as { output?: string; choices?: Array<{ output?: string }> };
 
-    return result?.choices?.[0]?.output || result?.output || '';
+    const summary = result?.choices?.[0]?.output || result?.output || '';
+    if (summary) {
+      console.log('[FilesetIntel] Domo AI fallback summary received:', summary.length, 'chars');
+    }
+    return summary;
   } catch (err) {
-    console.warn('[FilesetIntel] AI summarization failed:', err);
-    return '';
+    console.warn('[FilesetIntel] AI summarization failed (both Cortex and Domo AI):', err);
+    // Return a basic document listing as last resort
+    const docList = matches
+      .slice(0, 5)
+      .map((m) => `• ${m.metadata.fileName || m.metadata.path || 'Document'} (${Math.round(m.score * 100)}% relevance)`)
+      .join('\n');
+    return docList ? `Relevant documents found:\n${docList}` : '';
   }
 }
 
