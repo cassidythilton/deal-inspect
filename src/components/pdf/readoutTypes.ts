@@ -29,6 +29,7 @@ export interface ReadoutInput {
 
 export interface ReadoutSumble {
   technologies: Record<string, string[]> | string[] | null;
+  techCategories?: Record<string, string[]> | null;
   pulledAt: string;
 }
 

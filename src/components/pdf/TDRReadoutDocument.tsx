@@ -548,10 +548,38 @@ function MultilineText({ text, styles }: { text: string; styles: ReturnType<type
   return (
     <>
       {paragraphs.map((para, i) => {
-        // Numbered section header: "1. Title" or "## Title"
-        const numberedMatch = para.match(/^(\d+)\.\s+(.+?)(?:\n(.*))?$/s);
+        const trimPara = para.trim();
+
+        // Markdown heading: ## Title or ### Title (strip # chars)
+        const mdHeadingMatch = trimPara.match(/^#{1,4}\s+(.+?)(?:\n(.*))?$/s);
+        if (mdHeadingMatch) {
+          const title = mdHeadingMatch[1].replace(/\*\*/g, '').trim();
+          const body = mdHeadingMatch[2]?.trim();
+          return (
+            <View key={i}>
+              <Text style={styles.sectionSubtitle}>{title}</Text>
+              {body && <MultilineBody text={body} styles={styles} />}
+            </View>
+          );
+        }
+
+        // Bold numbered header: **1. Title** or **N. Title** followed by content
+        const boldNumberedMatch = trimPara.match(/^\*\*(\d+)\.\s+(.+?)\*\*(.*)$/s);
+        if (boldNumberedMatch) {
+          const title = boldNumberedMatch[2].trim();
+          const body = boldNumberedMatch[3]?.trim();
+          return (
+            <View key={i}>
+              <Text style={styles.numberedHeader}>{boldNumberedMatch[1]}. {title}</Text>
+              {body && <MultilineBody text={body} styles={styles} />}
+            </View>
+          );
+        }
+
+        // Numbered section header: "1. Title" (plain or with markdown)
+        const numberedMatch = trimPara.match(/^(\d+)\.\s+(.+?)(?:\n(.*))?$/s);
         if (numberedMatch) {
-          const title = numberedMatch[2].replace(/\*\*/g, '');
+          const title = numberedMatch[2].replace(/\*\*/g, '').trim();
           const body = numberedMatch[3]?.trim();
           return (
             <View key={i}>
@@ -562,7 +590,7 @@ function MultilineText({ text, styles }: { text: string; styles: ReturnType<type
         }
 
         // Bold header detection: **Title** content
-        const boldMatch = para.match(/^\*\*(.*?)\*\*(.*)$/s);
+        const boldMatch = trimPara.match(/^\*\*(.*?)\*\*(.*)$/s);
         if (boldMatch) {
           return (
             <View key={i}>
@@ -573,23 +601,26 @@ function MultilineText({ text, styles }: { text: string; styles: ReturnType<type
         }
 
         // Paragraph with embedded bullet list
-        if (para.includes('\n- ') || para.includes('\n* ')) {
-          return <MultilineBody key={i} text={para} styles={styles} />;
+        if (trimPara.includes('\n- ') || trimPara.includes('\n* ')) {
+          return <MultilineBody key={i} text={trimPara} styles={styles} />;
         }
 
-        return <Text key={i} style={styles.bodyText}>{para.replace(/\*\*/g, '')}</Text>;
+        return <Text key={i} style={styles.bodyText}>{trimPara.replace(/\*\*/g, '')}</Text>;
       })}
     </>
   );
 }
 
-/** Render a body block that may contain inline bullet lists */
+/** Render a body block that may contain inline bullet lists and numbered sub-items */
 function MultilineBody({ text, styles }: { text: string; styles: ReturnType<typeof createStyles> }) {
   const lines = text.split('\n');
   return (
     <View>
       {lines.map((line, j) => {
         const trimmed = line.trim();
+        if (!trimmed) return null;
+
+        // Bullet list item: "- text" or "* text"
         if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
           const content = trimmed.slice(2).replace(/\*\*/g, '');
           return (
@@ -599,7 +630,21 @@ function MultilineBody({ text, styles }: { text: string; styles: ReturnType<type
             </View>
           );
         }
-        return trimmed ? <Text key={j} style={styles.bodyText}>{trimmed.replace(/\*\*/g, '')}</Text> : null;
+
+        // Numbered sub-item: "1. text", "2. text"
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
+        if (numMatch) {
+          const content = numMatch[2].replace(/\*\*/g, '');
+          return (
+            <View key={j} style={styles.listItem}>
+              <Text style={[styles.bullet, { width: 14 }]}>{numMatch[1]}.</Text>
+              <Text style={styles.listText}>{content}</Text>
+            </View>
+          );
+        }
+
+        // Plain body text — strip bold markers
+        return <Text key={j} style={styles.bodyText}>{trimmed.replace(/\*\*/g, '')}</Text>;
       })}
     </View>
   );
@@ -706,6 +751,12 @@ function PageFooter({ generatedAt, styles }: { generatedAt: string; styles: Retu
 // Parses the action plan prose to extract role-specific quick actions for the
 // visual summary card at the top of the action plan section.
 
+/** Capitalize the first character of a string */
+function capitalize(str: string): string {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 function extractQuickActions(content: string): { se: string[]; ae: string[]; timeline: string[] } {
   const se: string[] = [];
   const ae: string[] = [];
@@ -717,23 +768,28 @@ function extractQuickActions(content: string): { se: string[]; ae: string[]; tim
     const trimmed = sentence.trim();
     if (!trimmed || trimmed.length < 20) continue;
 
-    // Extract SE actions
+    // Extract SE actions — capitalize first letter after stripping role prefix
     const seMatch = trimmed.match(/\b(?:SE|Solutions Engineer|the SE)\s+(?:should|must|needs? to|will)\s+(.{20,})/i);
     if (seMatch && se.length < 4) {
-      se.push(seMatch[0].replace(/^(?:the\s+)?SE\s+/i, '').trim());
+      const action = capitalize(seMatch[0].replace(/^(?:the\s+)?SE\s+/i, '').trim());
+      se.push(action);
     }
 
-    // Extract AE actions
+    // Extract AE actions — capitalize first letter after stripping role prefix
     const aeMatch = trimmed.match(/\b(?:AE|Account Executive|the AE)\s+(?:should|must|needs? to|will)\s+(.{20,})/i);
     if (aeMatch && ae.length < 4) {
-      ae.push(aeMatch[0].replace(/^(?:the\s+)?AE\s+/i, '').trim());
+      const action = capitalize(aeMatch[0].replace(/^(?:the\s+)?AE\s+/i, '').trim());
+      ae.push(action);
     }
 
-    // Extract timeline items
+    // Extract timeline items — strip role prefix for cleaner display
     const timeMatch = trimmed.match(/\b(?:within\s+(?:one|two|three|1|2|3)\s+weeks?|immediately|this\s+week|next\s+(?:week|meeting)|two\s+weeks?|30[\s-]day)/i);
     if (timeMatch && timeline.length < 3) {
-      const shortSentence = trimmed.length > 120 ? trimmed.substring(0, 117) + '...' : trimmed;
-      timeline.push(shortSentence);
+      // Clean up: strip leading "The SE/AE" for timeline context
+      let timeItem = trimmed.replace(/^(?:the\s+)?(?:SE|AE)\s+/i, '');
+      timeItem = capitalize(timeItem);
+      if (timeItem.length > 130) timeItem = timeItem.substring(0, 127) + '...';
+      timeline.push(timeItem);
     }
   }
 
@@ -1000,26 +1056,26 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         {sumble && (
           <View style={styles.card} wrap={false}>
             <Text style={styles.sectionSubtitle}>Technology Stack</Text>
-            {isStringArray(sumble.technologies) ? (
+            {isStringArray(sumble.technologies) && sumble.technologies.length > 0 ? (
               <View style={styles.tagRow}>
-                {sumble.technologies.map((tech, i) => (
-                  <Text key={i} style={styles.tag}>{tech}</Text>
+                {sumble.technologies.map((tech: string, i: number) => (
+                  <Text key={i} style={styles.tag}>{sanitize(tech)}</Text>
                 ))}
               </View>
-            ) : sumble.technologies && typeof sumble.technologies === 'object' && !Array.isArray(sumble.technologies) ? (
+            ) : sumble.techCategories && typeof sumble.techCategories === 'object' && Object.keys(sumble.techCategories).length > 0 ? (
               (() => {
-                const entries = Object.entries(sumble.technologies as Record<string, unknown>).filter(
-                  ([, v]) => isStringArray(v)
+                const entries = Object.entries(sumble.techCategories as Record<string, unknown>).filter(
+                  ([, v]) => isStringArray(v) && (v as string[]).length > 0
                 );
                 if (entries.length === 0) {
-                  return <Text style={styles.bodyText}>{safeString(sumble.technologies)}</Text>;
+                  return <Text style={styles.emptySection}>No technology data available.</Text>;
                 }
                 return entries.map(([cat, techs]) => (
                   <View key={cat} style={{ marginBottom: 4 }}>
-                    <Text style={[styles.smallText, { fontWeight: 600 }]}>{cat}</Text>
+                    <Text style={[styles.smallText, { fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }]}>{sanitize(cat)}</Text>
                     <View style={styles.tagRow}>
                       {(techs as string[]).map((tech, i) => (
-                        <Text key={i} style={styles.tag}>{tech}</Text>
+                        <Text key={i} style={styles.tag}>{sanitize(tech)}</Text>
                       ))}
                     </View>
                   </View>
