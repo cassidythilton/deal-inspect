@@ -30,22 +30,22 @@ const PRIORITY_INFO = {
   Critical: {
     description: 'TDR Score 75+',
     strategy: 'Highest priority for SE engagement. Major architecture decisions pending.',
-    color: 'hsl(152, 73%, 45%)', // Emerald
+    color: 'hsl(263, 84%, 55%)', // Deep violet
   },
   High: {
     description: 'TDR Score 50-74',
     strategy: 'Strong TDR candidates. Multiple technical factors present.',
-    color: 'hsl(161, 50%, 50%)', // Teal
+    color: 'hsl(280, 60%, 50%)', // Purple
   },
   Medium: {
     description: 'TDR Score 25-49',
     strategy: 'Moderate complexity. Consider for TDR if bandwidth allows.',
-    color: 'hsl(38, 65%, 55%)', // Amber
+    color: 'hsl(300, 45%, 65%)', // Magenta-lavender
   },
   Low: {
     description: 'TDR Score <25',
     strategy: 'Standard sales-led motion likely sufficient.',
-    color: 'hsl(127, 9%, 55%)', // Sage gray
+    color: 'hsl(260, 15%, 65%)', // Muted purple-gray
   },
 } as const;
 

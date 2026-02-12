@@ -30,11 +30,11 @@ const formatCurrency = (value: number) => {
   return `$${value}`;
 };
 
-// Colors matching the new palette
+// Colors — purple gradient palette
 const CHART_COLORS = {
-  critical: 'hsl(152, 73%, 45%)', // Emerald
-  high: 'hsl(161, 50%, 50%)',     // Teal
-  medium: 'hsl(38, 65%, 55%)',    // Amber
+  critical: 'hsl(263, 84%, 58%)', // Vivid violet
+  high: 'hsl(280, 60%, 50%)',     // Purple
+  medium: 'hsl(300, 45%, 65%)',   // Magenta-lavender
 };
 
 // Custom tooltip
@@ -206,7 +206,7 @@ export function PipelineByCloseChart({ deals }: PipelineByCloseChartProps) {
               dataKey="period" 
               axisLine={false} 
               tickLine={false} 
-              tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+              tick={{ fontSize: 11, fill: 'hsl(260, 10%, 50%)' }}
             />
             <YAxis hide />
             <RechartsTooltip content={<CustomTooltip />} />

@@ -26,18 +26,18 @@ import { cn } from '@/lib/utils';
 // ─── Chart colour palettes ─────────────────────────────────────────────────
 
 const PIE_COLORS = [
-  'hsl(258, 60%, 60%)', // violet
-  'hsl(199, 75%, 52%)', // sky
-  'hsl(152, 73%, 45%)', // emerald
-  'hsl(38, 65%, 55%)',  // amber
-  'hsl(340, 60%, 55%)', // rose
-  'hsl(217, 55%, 55%)', // blue
-  'hsl(30, 70%, 55%)',  // orange
-  'hsl(280, 50%, 50%)', // purple
+  'hsl(263, 84%, 58%)', // vivid violet
+  'hsl(280, 60%, 50%)', // purple
+  'hsl(300, 45%, 65%)', // magenta-lavender
+  'hsl(240, 55%, 58%)', // indigo
+  'hsl(340, 55%, 55%)', // rose-magenta
+  'hsl(255, 50%, 72%)', // soft lavender
+  'hsl(320, 50%, 55%)', // fuchsia
+  'hsl(260, 15%, 65%)', // muted purple-gray
 ];
 
-const BAR_COLOR = 'hsl(258, 55%, 58%)';
-const BAR_SECONDARY = 'hsl(199, 60%, 48%)';
+const BAR_COLOR = 'hsl(263, 84%, 58%)';
+const BAR_SECONDARY = 'hsl(280, 60%, 50%)';
 
 // ─── Suggested questions ────────────────────────────────────────────────────
 
@@ -123,12 +123,12 @@ function AutoChart({ columns, rows }: { columns: string[]; rows: Record<string, 
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ top: 0, right: 30, bottom: 0, left: 10 }}>
-            <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(260, 10%, 55%)' }} axisLine={false} />
+            <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(260, 12%, 50%)' }} axisLine={false} />
             <YAxis
               type="category"
               dataKey="name"
               width={140}
-              tick={{ fontSize: 10, fill: 'hsl(260, 10%, 55%)' }}
+              tick={{ fontSize: 10, fill: 'hsl(260, 12%, 50%)' }}
               axisLine={false}
               tickLine={false}
             />
@@ -653,7 +653,7 @@ export default function TDRAnalytics() {
                 title="Domo Capabilities in Demand"
                 tooltip="Most requested Domo capabilities identified in TDR sessions"
                 data={chartData.useCases}
-                color="hsl(152, 73%, 45%)"
+                color="hsl(263, 84%, 58%)"
               />
             </section>
           </>

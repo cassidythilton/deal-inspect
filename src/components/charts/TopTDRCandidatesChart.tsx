@@ -25,12 +25,12 @@ const formatCurrency = (value: number) => {
   return `$${value}`;
 };
 
-// Get bar color based on score
+// Get bar color based on score — purple gradient
 const getBarColor = (score: number): string => {
-  if (score >= 75) return 'hsl(152, 73%, 45%)';  // Emerald
-  if (score >= 50) return 'hsl(161, 50%, 50%)';  // Teal
-  if (score >= 25) return 'hsl(38, 65%, 55%)';   // Amber
-  return 'hsl(217, 30%, 60%)';                    // Gray-blue
+  if (score >= 75) return 'hsl(263, 84%, 55%)';  // Deep violet
+  if (score >= 50) return 'hsl(280, 60%, 50%)';  // Purple
+  if (score >= 25) return 'hsl(300, 45%, 65%)';  // Magenta-lavender
+  return 'hsl(260, 15%, 65%)';                    // Muted purple-gray
 };
 
 // Custom tooltip — compact, matching backup
@@ -147,12 +147,12 @@ export function TopTDRCandidatesChart({ deals }: TopTDRCandidatesChartProps) {
                 width={100}
                 tick={{ 
                   fontSize: 10, 
-                  fill: 'hsl(127, 5%, 55%)',
+                  fill: 'hsl(260, 10%, 55%)',
                 }}
               />
               <RechartsTooltip 
                 content={<CustomTooltip />} 
-                cursor={{ fill: 'hsl(127, 5%, 95%)', radius: 4 }} 
+                cursor={{ fill: 'hsl(260, 15%, 95%)', radius: 4 }} 
               />
               <Bar 
                 dataKey="score" 
@@ -163,7 +163,7 @@ export function TopTDRCandidatesChart({ deals }: TopTDRCandidatesChartProps) {
                   position="right" 
                   style={{ 
                     fontSize: 10, 
-                    fill: 'hsl(127, 5%, 45%)',
+                    fill: 'hsl(260, 10%, 50%)',
                   }}
                   formatter={(v: number) => v.toString()}
                 />

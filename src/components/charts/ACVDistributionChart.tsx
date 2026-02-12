@@ -18,13 +18,13 @@ export function ACVDistributionChart({ deals }: ACVDistributionChartProps) {
   const getBarColor = (risk: string) => {
     switch (risk) {
       case 'green':
-        return 'hsl(152, 73%, 40%)';
+        return 'hsl(263, 84%, 58%)';
       case 'yellow':
-        return 'hsl(38, 65%, 50%)';
+        return 'hsl(300, 45%, 65%)';
       case 'red':
-        return 'hsl(350, 55%, 50%)';
+        return 'hsl(340, 55%, 55%)';
       default:
-        return 'hsl(161, 50%, 57%)';
+        return 'hsl(280, 60%, 50%)';
     }
   };
 
@@ -39,7 +39,7 @@ export function ACVDistributionChart({ deals }: ACVDistributionChartProps) {
             axisLine={false}
             tickLine={false}
             width={60}
-            tick={{ fontSize: 10, fill: 'hsl(127, 5%, 45%)' }}
+            tick={{ fontSize: 10, fill: 'hsl(260, 10%, 50%)' }}
           />
           <Bar dataKey="acv" radius={[0, 2, 2, 0]} barSize={12}>
             {data.map((entry, index) => (

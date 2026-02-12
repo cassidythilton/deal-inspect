@@ -15,9 +15,9 @@ export function RiskMixChart({ deals }: RiskMixChartProps) {
   );
 
   const data = [
-    { name: 'Ready', value: riskCounts['green'] || 0, color: 'hsl(152, 73%, 40%)' },
-    { name: 'At Risk', value: riskCounts['yellow'] || 0, color: 'hsl(38, 65%, 50%)' },
-    { name: 'Critical', value: riskCounts['red'] || 0, color: 'hsl(350, 55%, 50%)' },
+    { name: 'Ready', value: riskCounts['green'] || 0, color: 'hsl(263, 84%, 58%)' },
+    { name: 'At Risk', value: riskCounts['yellow'] || 0, color: 'hsl(300, 45%, 65%)' },
+    { name: 'Critical', value: riskCounts['red'] || 0, color: 'hsl(340, 55%, 55%)' },
   ].filter((d) => d.value > 0);
 
   const total = data.reduce((sum, d) => sum + d.value, 0);

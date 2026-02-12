@@ -29,25 +29,25 @@ export function ReadinessTrendChart() {
           <AreaChart data={trendData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id="readyGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(152, 73%, 40%)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="hsl(152, 73%, 40%)" stopOpacity={0} />
+                <stop offset="0%" stopColor="hsl(263, 84%, 58%)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="hsl(263, 84%, 58%)" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(38, 65%, 50%)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="hsl(38, 65%, 50%)" stopOpacity={0} />
+                <stop offset="0%" stopColor="hsl(300, 45%, 65%)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="hsl(300, 45%, 65%)" stopOpacity={0} />
               </linearGradient>
             </defs>
             <Area
               type="monotone"
               dataKey="ready"
-              stroke="hsl(152, 73%, 40%)"
+              stroke="hsl(263, 84%, 58%)"
               strokeWidth={1.5}
               fill="url(#readyGradient)"
             />
             <Area
               type="monotone"
               dataKey="atRisk"
-              stroke="hsl(38, 65%, 50%)"
+              stroke="hsl(300, 45%, 65%)"
               strokeWidth={1.5}
               fill="url(#riskGradient)"
             />

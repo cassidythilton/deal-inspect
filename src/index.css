@@ -5,45 +5,46 @@
 /* TDR Design System - Executive Inspection Workspace
    Quiet, elegant, dense. Linear × Notion × Stripe admin.
    
-   Color palette from coolors.co:
-   - Emerald:    #56E39F → 152 73% 62%
-   - Teal:       #59C9A5 → 161 50% 57%
-   - Sage:       #5B6C5D → 127 9% 39%
-   - Plum:       #3B2C35 → 324 15% 20%
-   - Aubergine:  #2A1F2D → 281 19% 15% (sidebar bg), 281 6% 42% (text foreground)
+   Color palette — Deep Purple / Violet gradient:
+   - Violet:     #7C3AED → 263 84% 58%
+   - Purple:     #6D28D9 → 263 78% 50%
+   - Deep:       #4C1D95 → 263 70% 35%
+   - Indigo:     #3730A3 → 243 55% 42%
+   - Magenta:    #A855F7 → 270 91% 65%
+   - Lavender:   #C4B5FD → 255 90% 85%
 */
 
 @layer base {
   :root {
-    /* Canvas - warm off-white with subtle warmth */
-    --background: 40 20% 97%;
-    --foreground: 281 6% 42%;
+    /* Canvas — soft cool-white with a faint purple wash */
+    --background: 250 20% 97%;
+    --foreground: 260 10% 35%;
 
-    /* Cards - clean white with warmth */
-    --card: 40 30% 99%;
-    --card-foreground: 281 6% 42%;
+    /* Cards — clean white, faint lavender tint */
+    --card: 255 25% 99%;
+    --card-foreground: 260 10% 35%;
 
     /* Popovers */
-    --popover: 40 30% 99%;
-    --popover-foreground: 281 6% 42%;
+    --popover: 255 25% 99%;
+    --popover-foreground: 260 10% 35%;
 
-    /* Primary - deep plum (elegant accent) */
-    --primary: 324 15% 20%;
-    --primary-foreground: 40 20% 97%;
+    /* Primary — deep violet */
+    --primary: 263 70% 35%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - sage tones */
-    --secondary: 127 9% 92%;
-    --secondary-foreground: 127 9% 32%;
+    /* Secondary — soft lavender tones */
+    --secondary: 255 30% 94%;
+    --secondary-foreground: 260 20% 30%;
 
-    /* Muted - sage-tinted grays */
-    --muted: 127 6% 92%;
-    --muted-foreground: 127 5% 45%;
+    /* Muted — purple-tinted grays */
+    --muted: 255 15% 93%;
+    --muted-foreground: 260 8% 48%;
 
-    /* Accent - warm teal highlight */
-    --accent: 161 50% 95%;
-    --accent-foreground: 161 50% 30%;
+    /* Accent — violet highlight */
+    --accent: 263 40% 95%;
+    --accent-foreground: 263 60% 35%;
 
-    /* Status Colors - emerald/teal palette */
+    /* Status Colors */
     --success: 152 73% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 38 65% 50%;
@@ -51,75 +52,75 @@
     --destructive: 350 55% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Feature accents */
+    /* Feature accents — purple-forward */
     --emerald: 152 73% 62%;
     --emerald-foreground: 152 73% 15%;
-    --teal: 161 50% 57%;
-    --teal-foreground: 161 50% 15%;
-    --sage: 127 9% 39%;
-    --sage-foreground: 127 9% 95%;
-    --plum: 324 15% 20%;
-    --plum-foreground: 324 15% 95%;
-    --aubergine: 281 19% 15%;
-    --aubergine-foreground: 281 19% 95%;
+    --teal: 263 50% 60%;
+    --teal-foreground: 263 50% 15%;
+    --sage: 260 8% 42%;
+    --sage-foreground: 260 8% 95%;
+    --plum: 263 70% 28%;
+    --plum-foreground: 263 70% 95%;
+    --aubergine: 268 40% 15%;
+    --aubergine-foreground: 268 40% 95%;
 
-    /* Borders - sage-tinted */
-    --border: 127 8% 88%;
-    --input: 127 8% 88%;
-    --ring: 161 50% 45%;
+    /* Borders — violet-tinted */
+    --border: 260 15% 88%;
+    --input: 260 15% 88%;
+    --ring: 263 70% 55%;
 
     --radius: 0.375rem;
 
-    /* Sidebar - deep aubergine navigation */
-    --sidebar-background: 281 19% 15%;
+    /* Sidebar — deep violet-purple */
+    --sidebar-background: 268 45% 13%;
     --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 281 6% 42%;
-    --sidebar-accent: 281 19% 22%;
+    --sidebar-primary-foreground: 260 10% 35%;
+    --sidebar-accent: 268 40% 20%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 281 15% 22%;
-    --sidebar-ring: 161 50% 45%;
+    --sidebar-border: 268 35% 20%;
+    --sidebar-ring: 263 70% 55%;
     --sidebar-muted: 0 0% 60%;
   }
 
   .dark {
-    --background: 281 19% 8%;
-    --foreground: 161 30% 90%;
-    --card: 281 19% 10%;
-    --card-foreground: 161 30% 90%;
-    --popover: 281 19% 10%;
-    --popover-foreground: 161 30% 90%;
-    --primary: 152 73% 55%;
-    --primary-foreground: 281 19% 10%;
-    --secondary: 281 15% 18%;
-    --secondary-foreground: 161 30% 85%;
-    --muted: 281 15% 18%;
-    --muted-foreground: 161 20% 55%;
-    --accent: 161 40% 18%;
-    --accent-foreground: 161 50% 85%;
+    --background: 268 30% 7%;
+    --foreground: 255 30% 90%;
+    --card: 268 30% 9%;
+    --card-foreground: 255 30% 90%;
+    --popover: 268 30% 9%;
+    --popover-foreground: 255 30% 90%;
+    --primary: 263 84% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 268 25% 16%;
+    --secondary-foreground: 255 30% 85%;
+    --muted: 268 25% 16%;
+    --muted-foreground: 260 15% 55%;
+    --accent: 263 40% 18%;
+    --accent-foreground: 263 60% 80%;
     --destructive: 350 55% 45%;
     --destructive-foreground: 0 0% 100%;
     --emerald: 152 73% 55%;
     --emerald-foreground: 152 73% 10%;
-    --teal: 161 50% 50%;
-    --teal-foreground: 161 50% 10%;
-    --sage: 127 9% 50%;
-    --sage-foreground: 127 9% 10%;
-    --plum: 324 15% 40%;
-    --plum-foreground: 324 15% 95%;
-    --aubergine: 281 19% 25%;
-    --aubergine-foreground: 281 19% 95%;
-    --border: 281 15% 22%;
-    --input: 281 15% 22%;
-    --ring: 161 50% 45%;
-    --sidebar-background: 281 22% 6%;
+    --teal: 263 50% 55%;
+    --teal-foreground: 263 50% 10%;
+    --sage: 260 8% 50%;
+    --sage-foreground: 260 8% 10%;
+    --plum: 263 60% 45%;
+    --plum-foreground: 263 60% 95%;
+    --aubergine: 268 35% 22%;
+    --aubergine-foreground: 268 35% 95%;
+    --border: 268 25% 20%;
+    --input: 268 25% 20%;
+    --ring: 263 70% 55%;
+    --sidebar-background: 268 50% 5%;
     --sidebar-foreground: 0 0% 95%;
     --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 281 19% 10%;
-    --sidebar-accent: 281 22% 14%;
+    --sidebar-primary-foreground: 268 30% 10%;
+    --sidebar-accent: 268 40% 12%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 281 22% 14%;
-    --sidebar-ring: 161 50% 45%;
+    --sidebar-border: 268 40% 12%;
+    --sidebar-ring: 263 70% 55%;
     --sidebar-muted: 0 0% 55%;
   }
 }
@@ -232,19 +233,19 @@
   --ag-header-background-color: transparent !important;
   --ag-odd-row-background-color: transparent !important;
 
-  /* Hover — subtle aubergine wash */
-  --ag-row-hover-color: hsl(281 6% 42% / 0.04) !important;
-  --ag-selected-row-background-color: hsl(281 6% 42% / 0.07) !important;
+  /* Hover — subtle violet wash */
+  --ag-row-hover-color: hsl(263 40% 50% / 0.04) !important;
+  --ag-selected-row-background-color: hsl(263 40% 50% / 0.07) !important;
 
   /* Borders — nearly invisible hairlines */
   --ag-border-color: transparent !important;
-  --ag-row-border-color: hsl(127 8% 88% / 0.35) !important;
+  --ag-row-border-color: hsl(260 15% 88% / 0.35) !important;
   --ag-header-column-separator-display: none !important;
 
-  /* Typography — soft aubergine-gray family */
-  --ag-foreground-color: hsl(281 6% 42%) !important;
-  --ag-secondary-foreground-color: hsl(281 4% 55%) !important;
-  --ag-header-foreground-color: hsl(281 4% 50%) !important;
+  /* Typography — soft purple-gray family */
+  --ag-foreground-color: hsl(260 10% 35%) !important;
+  --ag-secondary-foreground-color: hsl(260 8% 50%) !important;
+  --ag-header-foreground-color: hsl(260 8% 48%) !important;
 
   /* Metrics — !important to override Theming API defaults */
   --ag-font-family: inherit !important;
@@ -291,21 +292,21 @@
 
 /* Header row — hairline bottom only */
 .ag-theme-tdr .ag-header {
-  border-bottom: 1px solid hsl(127 8% 88% / 0.5) !important;
+  border-bottom: 1px solid hsl(260 15% 88% / 0.5) !important;
 }
 
 /* Row separators — ultra-subtle */
 .ag-theme-tdr .ag-row {
   cursor: pointer;
-  border-bottom: 1px solid hsl(127 8% 90% / 0.35) !important;
+  border-bottom: 1px solid hsl(260 15% 90% / 0.35) !important;
   transition: background-color 0.12s ease;
 }
 
 /* Clean pagination */
 .ag-theme-tdr .ag-paging-panel {
-  border-top: 1px solid hsl(127 8% 88% / 0.4);
+  border-top: 1px solid hsl(260 15% 88% / 0.4);
   font-size: 11px;
-  color: hsl(281 4% 55%);
+  color: hsl(260 8% 50%);
   height: 36px;
   padding: 0 16px;
 }
@@ -343,11 +344,11 @@
 .ag-theme-tdr .ag-header-cell:hover .ag-header-cell-filter-button:hover {
   opacity: 0.8;
 }
-/* Active filter indicator — emerald accent */
+/* Active filter indicator — violet accent */
 .ag-theme-tdr .ag-header-cell-filtered .ag-header-cell-menu-button,
 .ag-theme-tdr .ag-header-cell-filtered .ag-header-cell-filter-button {
   opacity: 1;
-  color: hsl(152 73% 40%);
+  color: hsl(263 70% 50%);
 }
 
 /* Sort icon — keep but soften */
@@ -366,8 +367,8 @@
   font-family: inherit;
 }
 .ag-theme-tdr .ag-filter {
-  background: hsl(40 30% 99%);
-  border: 1px solid hsl(127 8% 88% / 0.6);
+  background: hsl(255 25% 99%);
+  border: 1px solid hsl(260 15% 88% / 0.6);
   border-radius: 8px;
   box-shadow: 0 4px 24px hsl(220 20% 10% / 0.08), 0 1px 4px hsl(220 20% 10% / 0.04);
   padding: 12px;
@@ -377,29 +378,29 @@
 /* Filter text inputs */
 .ag-theme-tdr .ag-filter .ag-text-field-input,
 .ag-theme-tdr .ag-filter .ag-number-field-input {
-  background: hsl(40 20% 97%);
-  border: 1px solid hsl(127 8% 88%);
+  background: hsl(250 20% 97%);
+  border: 1px solid hsl(260 15% 88%);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 13px;
-  color: hsl(281 10% 30%);
+  color: hsl(260 15% 30%);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .ag-theme-tdr .ag-filter .ag-text-field-input:focus,
 .ag-theme-tdr .ag-filter .ag-number-field-input:focus {
-  border-color: hsl(152 73% 50%);
-  box-shadow: 0 0 0 2px hsl(152 73% 50% / 0.15);
+  border-color: hsl(263 70% 55%);
+  box-shadow: 0 0 0 2px hsl(263 70% 55% / 0.15);
 }
 .ag-theme-tdr .ag-filter .ag-text-field-input::placeholder,
 .ag-theme-tdr .ag-filter .ag-number-field-input::placeholder {
-  color: hsl(127 5% 60%);
+  color: hsl(260 8% 58%);
 }
 
 /* Filter select dropdowns */
 .ag-theme-tdr .ag-filter .ag-picker-field-wrapper {
-  background: hsl(40 20% 97%);
-  border: 1px solid hsl(127 8% 88%);
+  background: hsl(250 20% 97%);
+  border: 1px solid hsl(260 15% 88%);
   border-radius: 6px;
   padding: 4px 8px;
   font-size: 13px;
@@ -408,13 +409,13 @@
   transition: border-color 0.15s;
 }
 .ag-theme-tdr .ag-filter .ag-picker-field-wrapper:hover {
-  border-color: hsl(127 8% 78%);
+  border-color: hsl(263 30% 72%);
 }
 
 /* Select dropdown list */
 .ag-theme-tdr .ag-select-list {
-  background: hsl(40 30% 99%);
-  border: 1px solid hsl(127 8% 88% / 0.6);
+  background: hsl(255 25% 99%);
+  border: 1px solid hsl(260 15% 88% / 0.6);
   border-radius: 6px;
   box-shadow: 0 4px 16px hsl(220 20% 10% / 0.08);
   padding: 4px;
@@ -426,11 +427,11 @@
   cursor: pointer;
 }
 .ag-theme-tdr .ag-select-list-item:hover {
-  background: hsl(161 50% 95% / 0.5);
+  background: hsl(263 40% 95% / 0.5);
 }
 .ag-theme-tdr .ag-select-list-item.ag-active-item {
-  background: hsl(152 73% 50% / 0.1);
-  color: hsl(152 73% 30%);
+  background: hsl(263 70% 55% / 0.1);
+  color: hsl(263 70% 30%);
 }
 
 /* Set filter (checkbox list) */
@@ -443,7 +444,7 @@
   margin: 1px 4px;
 }
 .ag-theme-tdr .ag-set-filter-item:hover {
-  background: hsl(161 50% 95% / 0.5);
+  background: hsl(263 40% 95% / 0.5);
 }
 
 /* Mini filter search in set filter */
@@ -451,15 +452,15 @@
   margin: 0 0 6px 0;
 }
 .ag-theme-tdr .ag-mini-filter .ag-text-field-input {
-  background: hsl(40 20% 97%);
-  border: 1px solid hsl(127 8% 88%);
+  background: hsl(250 20% 97%);
+  border: 1px solid hsl(260 15% 88%);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 12px;
 }
 .ag-theme-tdr .ag-mini-filter .ag-text-field-input:focus {
-  border-color: hsl(152 73% 50%);
-  box-shadow: 0 0 0 2px hsl(152 73% 50% / 0.15);
+  border-color: hsl(263 70% 55%);
+  box-shadow: 0 0 0 2px hsl(263 70% 55% / 0.15);
 }
 
 /* Checkbox styling — emerald accent */
@@ -467,14 +468,14 @@
   border-radius: 3px;
 }
 .ag-theme-tdr .ag-checkbox-input-wrapper.ag-checked {
-  background-color: hsl(152 73% 40%);
-  border-color: hsl(152 73% 40%);
+  background-color: hsl(263 70% 50%);
+  border-color: hsl(263 70% 50%);
 }
 
 /* Filter buttons (Apply / Reset) */
 .ag-theme-tdr .ag-filter-apply-panel {
   padding-top: 8px;
-  border-top: 1px solid hsl(127 8% 88% / 0.4);
+  border-top: 1px solid hsl(260 15% 88% / 0.4);
   margin-top: 8px;
 }
 .ag-theme-tdr .ag-filter-apply-panel button {
@@ -485,15 +486,15 @@
   transition: all 0.15s;
 }
 .ag-theme-tdr .ag-standard-button {
-  background: hsl(40 20% 97%);
-  border: 1px solid hsl(127 8% 88%);
-  color: hsl(127 5% 45%);
+  background: hsl(250 20% 97%);
+  border: 1px solid hsl(260 15% 88%);
+  color: hsl(260 8% 48%);
   border-radius: 5px;
 }
 .ag-theme-tdr .ag-standard-button:hover {
-  background: hsl(161 50% 95% / 0.5);
-  border-color: hsl(152 73% 50% / 0.4);
-  color: hsl(152 73% 30%);
+  background: hsl(263 40% 95% / 0.5);
+  border-color: hsl(263 70% 55% / 0.4);
+  color: hsl(263 70% 35%);
 }
 
 /* Filter condition join (AND / OR radio) — soften */
@@ -501,8 +502,8 @@
   padding: 6px 0;
 }
 .ag-theme-tdr .ag-filter-condition .ag-radio-button-input-wrapper.ag-checked {
-  border-color: hsl(152 73% 40%);
+  border-color: hsl(263 70% 50%);
 }
 .ag-theme-tdr .ag-filter-condition .ag-radio-button-input-wrapper.ag-checked::after {
-  background-color: hsl(152 73% 40%);
+  background-color: hsl(263 70% 50%);
 }
