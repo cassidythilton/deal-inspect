@@ -531,12 +531,20 @@ export interface PostTDRScoreContext {
   dealComplexity?: string;
   /** Domo use cases identified from structured extract */
   domoUseCases?: string[];
-  /** Number of completed TDR steps (0-9) */
+  /** Number of completed REQUIRED TDR steps */
   completedStepCount?: number;
-  /** Total TDR steps */
+  /** Total REQUIRED TDR steps */
   totalStepCount?: number;
+  /** Number of completed OPTIONAL TDR steps */
+  optionalCompletedCount?: number;
+  /** Total OPTIONAL TDR steps */
+  optionalTotalCount?: number;
   /** Sprint 19: Fileset match signal — 'strong' | 'partial' | 'none' */
   filesetMatchSignal?: 'strong' | 'partial' | 'none';
+  /** Whether an action plan has been generated */
+  hasActionPlan?: boolean;
+  /** Whether a TDR brief has been generated */
+  hasBrief?: boolean;
 }
 
 export interface PostTDRScoreBreakdown {
@@ -623,6 +631,84 @@ export function calculatePostTDRScore(
     filesetMatchSignal: filesetMatchSignalScore,
     totalPostTDR,
   };
+}
+
+// ---------------------------------------------------------------------------
+// TDR Confidence Score — measures how well-informed the assessment is
+// ---------------------------------------------------------------------------
+// The Pre-TDR score measures RISK/COMPLEXITY (intrinsic to the deal).
+// The Confidence score measures ASSESSMENT QUALITY (how much work the SE has done).
+// Together they give a dual-axis view: "How complex is this deal?" × "How well do we understand it?"
+
+export interface TDRConfidenceBreakdown {
+  /** Required steps completed out of required total (0–40 pts) */
+  requiredSteps: number;
+  /** Optional steps completed — bonus depth (0–10 pts) */
+  optionalSteps: number;
+  /** External intelligence pulled (0–15 pts) */
+  externalIntel: number;
+  /** AI outputs generated: action plan, brief (0–15 pts) */
+  aiOutputs: number;
+  /** Knowledge base matches found (0–10 pts) */
+  kbMatch: number;
+  /** Risk categories identified through extraction (0–10 pts) */
+  riskAwareness: number;
+  /** Total confidence score 0–100 */
+  total: number;
+  /** Human-readable confidence band */
+  band: 'Insufficient' | 'Developing' | 'Solid' | 'High' | 'Comprehensive';
+}
+
+export function calculateTDRConfidence(
+  context: PostTDRScoreContext
+): TDRConfidenceBreakdown {
+  // Required steps (0-40) — the backbone of the TDR
+  const reqCompleted = context.completedStepCount ?? 0;
+  const reqTotal = context.totalStepCount ?? 5;
+  const requiredSteps = reqTotal > 0
+    ? Math.round((reqCompleted / reqTotal) * 40)
+    : 0;
+
+  // Optional steps (0-10) — bonus depth
+  const optCompleted = context.optionalCompletedCount ?? 0;
+  const optTotal = context.optionalTotalCount ?? 4;
+  const optionalSteps = optTotal > 0
+    ? Math.round((optCompleted / optTotal) * 10)
+    : 0;
+
+  // External intelligence (0-15)
+  let externalIntel = 0;
+  if (context.hasSumbleEnrichment) externalIntel += 6;
+  if (context.hasPerplexityEnrichment) externalIntel += 6;
+  if (context.hasSumbleEnrichment && context.hasPerplexityEnrichment) externalIntel += 3; // both = comprehensive
+
+  // AI outputs (0-15)
+  let aiOutputs = 0;
+  if (context.hasActionPlan) aiOutputs += 8;
+  if (context.hasBrief) aiOutputs += 7;
+
+  // KB match (0-10)
+  let kbMatch = 0;
+  if (context.filesetMatchSignal === 'strong') kbMatch = 10;
+  else if (context.filesetMatchSignal === 'partial') kbMatch = 5;
+
+  // Risk awareness (0-10)
+  const riskCount = context.riskCategories?.length ?? 0;
+  let riskAwareness = 0;
+  if (riskCount >= 3) riskAwareness = 10;
+  else if (riskCount >= 2) riskAwareness = 7;
+  else if (riskCount >= 1) riskAwareness = 4;
+
+  const total = Math.min(100, requiredSteps + optionalSteps + externalIntel + aiOutputs + kbMatch + riskAwareness);
+
+  let band: TDRConfidenceBreakdown['band'];
+  if (total >= 80) band = 'Comprehensive';
+  else if (total >= 60) band = 'High';
+  else if (total >= 40) band = 'Solid';
+  else if (total >= 20) band = 'Developing';
+  else band = 'Insufficient';
+
+  return { requiredSteps, optionalSteps, externalIntel, aiOutputs, kbMatch, riskAwareness, total, band };
 }
 
 /**

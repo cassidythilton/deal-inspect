@@ -65,8 +65,8 @@ import { accountIntel } from '@/lib/accountIntel';
 import type { SumbleEnrichment, PerplexityResearch, SumbleOrgData, SumbleJobData, SumblePeopleData } from '@/lib/accountIntel';
 import { cortexAi, parseBriefSections, FINDING_CATEGORY_STYLES } from '@/lib/cortexAi';
 import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, SentimentDataPoint, StructuredExtractResult, ActionPlanResult } from '@/lib/cortexAi';
-import { calculateTDRScore, calculatePostTDRScore, getPriorityFromScore, detectCriticalFactors } from '@/lib/tdrCriticalFactors';
-import type { PostTDRScoreBreakdown } from '@/lib/tdrCriticalFactors';
+import { calculateTDRScore, calculatePostTDRScore, getPriorityFromScore, detectCriticalFactors, calculateTDRConfidence } from '@/lib/tdrCriticalFactors';
+import type { PostTDRScoreBreakdown, TDRConfidenceBreakdown } from '@/lib/tdrCriticalFactors';
 import { getAppSettings } from '@/lib/appSettings';
 import { filesetIntel } from '@/lib/filesetIntel';
 import type { FilesetSearchResult, FilesetSummary } from '@/lib/filesetIntel';
@@ -78,8 +78,11 @@ interface TDRIntelligenceProps {
   missingInfo: string[];
   riskFlags: string[];
   sessionId?: string;
-  completedStepCount?: number;
-  totalStepCount?: number;
+  completedStepCount?: number;    // required steps completed
+  requiredStepCount?: number;     // total required steps (default 5)
+  optionalCompletedCount?: number; // optional steps completed
+  optionalTotalCount?: number;    // total optional steps (default 4)
+  totalStepCount?: number;        // all steps
 }
 
 // ── Source badge component ───────────────────────────────────────────────────
@@ -363,6 +366,18 @@ function CollapsibleSection({
   );
 }
 
+// ── Factor pill colors (dark-mode variants matching DealsTable palette) ──────
+const INTEL_FACTOR_PILL_COLORS: Record<string, string> = {
+  cyan:      'bg-cyan-500/10 text-cyan-300 border-cyan-500/20',
+  emerald:   'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
+  amber:     'bg-amber-500/10 text-amber-300 border-amber-500/20',
+  violet:    'bg-violet-500/10 text-violet-300 border-violet-500/20',
+  blue:      'bg-blue-500/10 text-blue-300 border-blue-500/20',
+  orange:    'bg-orange-500/10 text-orange-300 border-orange-500/20',
+  red:       'bg-red-500/10 text-red-300 border-red-500/20',
+  secondary: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+};
+
 // ── Score context descriptions (lifecycle-aware) ─────────────────────────────
 // The TDR goes through distinct lifecycle phases. The score context messaging
 // must shift from "you should do a TDR" → "here's what the TDR reveals."
@@ -378,13 +393,14 @@ function CollapsibleSection({
 type TDRLifecyclePhase = 'NOT_STARTED' | 'EARLY' | 'IN_PROGRESS' | 'NEAR_COMPLETE' | 'COMPLETE' | 'ENRICHED';
 
 function getTDRLifecyclePhase(
-  completedSteps: number,
-  totalSteps: number,
+  requiredCompleted: number,
+  requiredTotal: number,
   hasSession: boolean,
   hasEnrichment: boolean,
   hasActionPlan: boolean,
 ): TDRLifecyclePhase {
-  const ratio = totalSteps > 0 ? completedSteps / totalSteps : 0;
+  // Lifecycle is based on REQUIRED steps only — optional steps don't block completion
+  const ratio = requiredTotal > 0 ? requiredCompleted / requiredTotal : 0;
   if (ratio >= 1.0 && hasEnrichment && hasActionPlan) return 'ENRICHED';
   if (ratio >= 1.0) return 'COMPLETE';
   if (ratio >= 0.71) return 'NEAR_COMPLETE';
@@ -468,38 +484,38 @@ const PRIORITY_CONTEXT: Record<TDRLifecyclePhase, Record<string, { headline: str
   },
   COMPLETE: {
     CRITICAL: {
-      headline: 'TDR complete — high complexity confirmed',
-      description: 'All TDR steps completed. This deal has multiple converging risk factors. Review the action plan, ensure architecture is validated, and actively manage competitive and partner dynamics through close.',
+      headline: 'TDR complete — execute action plan',
+      description: 'All required steps completed. Complexity is documented. Next: pull external intelligence (Sumble, Perplexity) to validate competitive positioning and generate the action plan. Share the TDR readout with your manager for review.',
     },
     HIGH: {
-      headline: 'TDR complete — strategy defined',
-      description: 'Full TDR completed. Technical dimensions are documented and the strategic picture is clear. Execute the action plan and monitor for any shifts in competitive landscape or technical requirements.',
+      headline: 'TDR complete — refine and share',
+      description: 'All required steps completed and the technical picture is clear. Next: enrich with external intelligence to strengthen competitive positioning, then share the readout with your deal team and manager.',
     },
     MEDIUM: {
       headline: 'TDR complete — readiness confirmed',
-      description: 'Technical review is done. The deal\'s risk profile is understood and the solution approach is validated. Proceed with confidence and revisit if deal dynamics change.',
+      description: 'All required steps completed. The solution approach is validated and risks are understood. Enrich with external intelligence if time allows, then proceed with confidence.',
     },
     LOW: {
       headline: 'TDR complete — clear to proceed',
-      description: 'Review complete. No significant technical risks identified. The deal can proceed through standard execution without additional SE intervention.',
+      description: 'All required steps completed. No significant technical risks identified. Proceed through standard execution. Consider enriching only if deal dynamics change.',
     },
   },
   ENRICHED: {
     CRITICAL: {
-      headline: 'Fully assessed — active management required',
-      description: 'TDR complete with full external intelligence. Multiple high-value risk factors confirmed across competitive, technical, and partner dimensions. Execute the action plan, monitor competitive shifts, and maintain stakeholder alignment through close.',
+      headline: 'Fully informed — manage through close',
+      description: 'TDR complete with external intelligence. Architecture validated, competitive threats identified, action plan generated. Focus now shifts to execution: align stakeholders, monitor competitive shifts, and revisit the readout before key meetings.',
     },
     HIGH: {
-      headline: 'Fully assessed — execute strategy',
-      description: 'TDR and external intelligence are complete. The technical strategy is well-defined with clear competitive positioning and architecture validation. Focus shifts to execution and stakeholder management.',
+      headline: 'Fully informed — execute and monitor',
+      description: 'TDR and intelligence complete. Strategy is well-defined with clear competitive positioning and architecture validation. Execute the action plan, share the readout, and monitor for any shifts in the deal landscape.',
     },
     MEDIUM: {
-      headline: 'Fully assessed — validated and ready',
-      description: 'Comprehensive review complete with external enrichment. Risk profile is understood, solution fit is confirmed, and no major gaps remain. Proceed with the defined approach.',
+      headline: 'Fully informed — proceed with confidence',
+      description: 'Comprehensive assessment complete. Risk profile understood, solution fit confirmed, intelligence gathered. Share the readout with your team and proceed with the defined approach.',
     },
     LOW: {
-      headline: 'Fully assessed — no intervention needed',
-      description: 'Full review and enrichment complete. This deal has a straightforward technical profile with no significant risks. Standard execution path confirmed.',
+      headline: 'Fully informed — standard path confirmed',
+      description: 'Full assessment complete. Straightforward technical profile with no significant risks validated by external intelligence. Standard execution path confirmed.',
     },
   },
 };
@@ -529,6 +545,9 @@ export function TDRIntelligence({
   riskFlags,
   sessionId,
   completedStepCount = 0,
+  requiredStepCount = 5,
+  optionalCompletedCount = 0,
+  optionalTotalCount = 4,
   totalStepCount = 9,
 }: TDRIntelligenceProps) {
 
@@ -964,7 +983,7 @@ export function TDRIntelligence({
         const hasAnyPostData = !!sumbleData?.success || !!perplexityData?.success || completedStepCount > 0 || (extractionResult?.success && extractionResult.structured);
         let postBreakdown: PostTDRScoreBreakdown | null = null;
         if (hasAnyPostData) {
-          postBreakdown = calculatePostTDRScore(deal, {
+          const postCtx = {
             namedCompetitors: extractedEntities?.competitors ?? extractionResult?.structured?.NAMED_COMPETITORS ?? [],
             dangerousCompetitors: settings.dangerousCompetitors,
             hasSumbleEnrichment: !!sumbleData?.success,
@@ -973,15 +992,34 @@ export function TDRIntelligence({
             dealComplexity: extractionResult?.structured?.DEAL_COMPLEXITY,
             domoUseCases: extractionResult?.structured?.DOMO_USE_CASES ?? [],
             completedStepCount,
-            totalStepCount,
-            filesetMatchSignal: filesetSummary?.matchSignal ?? 'none',
-          });
+            totalStepCount: requiredStepCount,
+            optionalCompletedCount,
+            optionalTotalCount,
+            filesetMatchSignal: (filesetSummary?.matchSignal ?? 'none') as 'strong' | 'partial' | 'none',
+            hasActionPlan: !!actionPlanResult?.success,
+            hasBrief: !!briefData?.success,
+          };
+          postBreakdown = calculatePostTDRScore(deal, postCtx);
         }
         const displayScore = postBreakdown ? postBreakdown.totalPostTDR : preTDRScore;
         const priority = getPriorityFromScore(displayScore);
         const isPostTDR = !!postBreakdown;
+
+        // Confidence score — how well-informed is the assessment?
+        const confidence: TDRConfidenceBreakdown = calculateTDRConfidence({
+          completedStepCount,
+          totalStepCount: requiredStepCount,
+          optionalCompletedCount,
+          optionalTotalCount,
+          hasSumbleEnrichment: !!sumbleData?.success,
+          hasPerplexityEnrichment: !!perplexityData?.success,
+          riskCategories: extractionResult?.structured?.RISK_CATEGORIES ?? [],
+          filesetMatchSignal: (filesetSummary?.matchSignal ?? 'none') as 'strong' | 'partial' | 'none',
+          hasActionPlan: !!actionPlanResult?.success,
+          hasBrief: !!briefData?.success,
+        });
         const lifecyclePhase = getTDRLifecyclePhase(
-          completedStepCount, totalStepCount,
+          completedStepCount, requiredStepCount,
           !!sessionId,
           !!(sumbleData?.success || perplexityData?.success),
           !!actionPlanResult?.success,
@@ -1053,13 +1091,19 @@ export function TDRIntelligence({
                       lifecyclePhase === 'NOT_STARTED' ? 'bg-slate-500/5 text-slate-500 border border-slate-500/15' :
                       'bg-blue-500/10 text-blue-300/70 border border-blue-500/15'
                     )}>
-                      {lifecyclePhase === 'ENRICHED' ? 'Fully Assessed' :
+                      {lifecyclePhase === 'ENRICHED' ? 'Fully Informed' :
                        lifecyclePhase === 'COMPLETE' ? 'TDR Complete' :
-                       lifecyclePhase === 'NEAR_COMPLETE' ? `${completedStepCount}/${totalStepCount} Steps` :
-                       lifecyclePhase === 'IN_PROGRESS' ? `${completedStepCount}/${totalStepCount} Steps` :
+                       lifecyclePhase === 'NEAR_COMPLETE' ? `${completedStepCount}/${requiredStepCount} Required` :
+                       lifecyclePhase === 'IN_PROGRESS' ? `${completedStepCount}/${requiredStepCount} Required` :
                        lifecyclePhase === 'EARLY' ? 'TDR Started' :
                        'Pre-TDR'}
                     </span>
+                    {/* Note optional steps completed if any */}
+                    {optionalCompletedCount > 0 && lifecyclePhase !== 'NOT_STARTED' && (
+                      <span className="rounded-full px-1.5 py-0.5 text-2xs font-medium bg-slate-500/5 text-slate-500 border border-slate-500/10">
+                        +{optionalCompletedCount} optional
+                      </span>
+                    )}
                     <button
                       onClick={() => setScoreContextOpen(!scoreContextOpen)}
                       className="ml-auto text-slate-600 hover:text-slate-300 transition-colors"
@@ -1086,6 +1130,36 @@ export function TDRIntelligence({
                 </div>
               </div>
 
+              {/* Confidence meter — how well-informed is this assessment? */}
+              {lifecyclePhase !== 'NOT_STARTED' && (
+                <div className="flex items-center gap-2 mt-2 mb-1.5">
+                  <span className="text-[9px] uppercase tracking-wider text-slate-600">Confidence</span>
+                  <div className="flex-1 h-1 rounded-full bg-[#2a2540] overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        width: `${confidence.total}%`,
+                        background: confidence.total >= 80
+                          ? 'linear-gradient(90deg, hsl(152, 60%, 45%), hsl(160, 55%, 40%))'
+                          : confidence.total >= 60
+                          ? 'linear-gradient(90deg, hsl(217, 55%, 50%), hsl(230, 50%, 45%))'
+                          : confidence.total >= 40
+                          ? 'linear-gradient(90deg, hsl(38, 55%, 50%), hsl(45, 50%, 45%))'
+                          : 'hsl(260, 10%, 35%)',
+                      }}
+                    />
+                  </div>
+                  <span className={cn(
+                    'text-[9px] font-medium tabular-nums',
+                    confidence.total >= 80 ? 'text-emerald-400' :
+                    confidence.total >= 60 ? 'text-blue-400' :
+                    confidence.total >= 40 ? 'text-amber-400' : 'text-slate-500'
+                  )}>
+                    {confidence.total}% — {confidence.band}
+                  </span>
+                </div>
+              )}
+
               {/* Context: what the score means */}
               <p className="text-[11px] text-slate-400 leading-relaxed">
                 <span className={cn(
@@ -1097,7 +1171,7 @@ export function TDRIntelligence({
                 <span className="text-slate-500">{context.description}</span>
               </p>
 
-              {/* Top TDR triggers */}
+              {/* Top TDR triggers — colors match portfolio page */}
               {topFactors.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {topFactors.map(factor => (
@@ -1106,11 +1180,7 @@ export function TDRIntelligence({
                         <TooltipTrigger asChild>
                           <span className={cn(
                             'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium border',
-                            factor.tier === 1
-                              ? 'bg-violet-500/10 text-violet-300 border-violet-500/20'
-                              : factor.tier === 2
-                              ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-                              : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                            INTEL_FACTOR_PILL_COLORS[factor.color] || 'bg-slate-500/10 text-slate-400 border-slate-500/20'
                           )}>
                             {factor.shortLabel}
                           </span>
@@ -1118,7 +1188,10 @@ export function TDRIntelligence({
                         <TooltipContent side="bottom" className="max-w-xs text-[10px] bg-[#1e1a30] border-[#362f50] text-slate-300 p-2.5">
                           <p className="font-semibold text-slate-200 mb-1">{factor.label}</p>
                           <p className="text-slate-400">{factor.description}</p>
-                          <p className="text-violet-400/70 mt-1 text-[9px]">Strategy: {factor.strategy.substring(0, 120)}...</p>
+                          {lifecyclePhase === 'COMPLETE' || lifecyclePhase === 'ENRICHED'
+                            ? <p className="text-emerald-400/70 mt-1 text-[9px]">Assessed: {factor.strategy.substring(0, 120)}...</p>
+                            : <p className="text-violet-400/70 mt-1 text-[9px]">Strategy: {factor.strategy.substring(0, 120)}...</p>
+                          }
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -1198,6 +1271,50 @@ export function TDRIntelligence({
                       </div>
                     )}
                   </div>
+
+                  {/* Confidence breakdown (only shown when TDR has started) */}
+                  {lifecyclePhase !== 'NOT_STARTED' && (
+                    <div className="pt-2 border-t border-[#2a2540]/40">
+                      <p className="text-[9px] uppercase tracking-wider text-slate-600 mb-1">Assessment Confidence</p>
+                      <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
+                        Confidence measures how thorough the assessment is — not the deal's risk level. A high-risk deal with high confidence means "we understand the complexity and have a plan."
+                      </p>
+                      <div className="space-y-1">
+                        {[
+                          { label: 'Required Steps', value: confidence.requiredSteps, max: 40, desc: `${completedStepCount}/${requiredStepCount} required steps completed — these form the backbone of the TDR assessment` },
+                          { label: 'Optional Depth', value: confidence.optionalSteps, max: 10, desc: `${optionalCompletedCount}/${optionalTotalCount} optional steps completed — additional depth on partner, AI, architecture, and adoption` },
+                          { label: 'External Intel', value: confidence.externalIntel, max: 15, desc: 'Sumble and Perplexity enrichment adds competitive, technology, and market context' },
+                          { label: 'AI Analysis', value: confidence.aiOutputs, max: 15, desc: 'Action plan and TDR brief generated by Cortex AI — synthesizes all inputs into strategy' },
+                          { label: 'Knowledge Base', value: confidence.kbMatch, max: 10, desc: 'Battle cards, playbooks, or reference docs matched to this deal' },
+                          { label: 'Risk Identified', value: confidence.riskAwareness, max: 10, desc: 'Risk categories surfaced through structured extraction — shows the SE is eyes-open on risks' },
+                        ].map((item) => (
+                          <TooltipProvider key={item.label} delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2 text-2xs cursor-help">
+                                  <span className="text-slate-500 w-28 shrink-0">{item.label}</span>
+                                  <div className="flex-1 h-[3px] rounded-full bg-[#2a2540] overflow-hidden">
+                                    <div className="h-full rounded-full transition-all duration-500" style={{
+                                      width: `${item.max > 0 ? (item.value / item.max) * 100 : 0}%`,
+                                      background: item.value > 0
+                                        ? 'linear-gradient(90deg, hsl(152, 55%, 45%), hsl(160, 50%, 42%))'
+                                        : 'hsl(260, 10%, 30%)',
+                                    }} />
+                                  </div>
+                                  <span className={cn('tabular-nums w-8 text-right text-2xs font-medium', item.value > 0 ? 'text-emerald-400' : 'text-slate-600')}>
+                                    +{item.value}
+                                  </span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left" className="max-w-xs text-[10px] bg-[#1e1a30] border-[#362f50] text-slate-400 p-2">
+                                {item.desc}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Priority band legend */}
                   <div className="pt-2 border-t border-[#2a2540]/40">

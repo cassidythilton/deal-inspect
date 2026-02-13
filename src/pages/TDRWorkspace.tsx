@@ -363,7 +363,10 @@ export default function TDRWorkspace() {
             missingInfo={missingInfo}
             riskFlags={riskFlags}
                 sessionId={session?.sessionId}
-                completedStepCount={completedSteps.size}
+                completedStepCount={stepsWithCompletion.filter(s => s.required !== false && s.isComplete).length}
+                requiredStepCount={stepsWithCompletion.filter(s => s.required !== false).length}
+                optionalCompletedCount={stepsWithCompletion.filter(s => s.required === false && s.isComplete).length}
+                optionalTotalCount={stepsWithCompletion.filter(s => s.required === false).length}
                 totalStepCount={stepsWithCompletion.length}
               />
             </TabsContent>
