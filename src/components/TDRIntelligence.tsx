@@ -865,7 +865,7 @@ export function TDRIntelligence({
 
         return (
           <div className="border-b border-[#2a2540]">
-            {/* Deal header */}
+            {/* Deal header + team */}
             <div className="px-5 pt-4 pb-2">
               <h3 className="text-base font-semibold text-white">{deal.account}</h3>
               <p className="text-sm text-slate-400">{deal.dealName}</p>
@@ -881,6 +881,20 @@ export function TDRIntelligence({
                     )}>{deal.dealType}</span>
                   </>
                 )}
+              </div>
+              {/* Deal team — inline with header */}
+              <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
+                {[
+                  { label: 'AE', value: deal.accountExecutive || deal.owner },
+                  { label: 'SE', value: deal.salesConsultant },
+                  { label: 'SE Mgr', value: deal.seManager || 'TBD' },
+                ].filter(m => m.value).map((m, i) => (
+                  <span key={m.label} className="flex items-center gap-1">
+                    {i > 0 && <span className="text-slate-700 mr-1">·</span>}
+                    <span className="text-slate-600">{m.label}:</span>
+                    <span className="text-slate-400">{m.value}</span>
+                  </span>
+                ))}
               </div>
             </div>
 
@@ -1310,23 +1324,6 @@ export function TDRIntelligence({
             ))}
           </div>
 
-          {/* Deal team */}
-          {deal && (
-            <div className="mt-3 pt-3 border-t border-[#322b4d]/60 space-y-2">
-              <p className="text-2xs text-slate-600">Deal Team</p>
-              {[
-                { label: 'AE', value: deal.accountExecutive || deal.owner, source: 'crm' as const },
-                { label: 'SE', value: deal.salesConsultant, source: 'crm' as const },
-                { label: 'SE Mgr', value: deal.seManager || 'TBD', source: 'crm' as const },
-              ].map(m => (
-                <div key={m.label} className="flex items-center gap-2 text-xs">
-                  <span className="text-slate-500 w-12 shrink-0">{m.label}</span>
-                  <span className="text-slate-300 font-medium">{m.value || 'Not assigned'}</span>
-                  <SourceBadge source={m.source} />
-                </div>
-              ))}
-            </div>
-          )}
         </CollapsibleSection>
       )}
 
