@@ -5428,7 +5428,7 @@ Generate the action plan in these 7 sections:
 
 ---
 
-### Sprint 26 — Intelligence Panel UX Review & Consolidation 🔲
+### Sprint 26 — Intelligence Panel UX Review & Consolidation 🟡 IN PROGRESS
 
 > **Goal:** Perform a comprehensive usability audit of the TDR Intelligence panel (right modal). After 23+ sprints of iterative feature additions, the panel has accumulated ~20 distinct sections, multiple enrichment trigger buttons, heavy branding elements, and visible-but-low-value subsections. This sprint consolidates, simplifies, and refines the panel into a cohesive, intuitive experience — ready for executive demonstrations and daily SE workflow.
 > **Risk to app:** Medium — this is a structural UX refactor of the most information-dense surface in the app. Careful attention to not lose functionality while simplifying the interface.

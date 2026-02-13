@@ -572,6 +572,48 @@ export const accountIntel = {
   },
 
   /**
+   * Sprint 26: Unified enrichment — triggers all 4 Sumble endpoints in parallel.
+   * Returns individual results keyed by type. Each can independently succeed/fail.
+   */
+  async enrichAll(
+    opportunityId: string,
+    accountName: string,
+    domain: string,
+    calledBy: string = 'current-user'
+  ): Promise<{
+    sumble: SumbleEnrichment | null;
+    org: SumbleOrgData | null;
+    jobs: SumbleJobData | null;
+    people: SumblePeopleData | null;
+    completedCount: number;
+    totalCount: number;
+    errors: string[];
+  }> {
+    const errors: string[] = [];
+    const results = await Promise.allSettled([
+      this.enrichSumble(opportunityId, accountName, domain, calledBy),
+      this.enrichSumbleOrg(opportunityId, accountName, domain, calledBy),
+      this.enrichSumbleJobs(opportunityId, accountName, domain, calledBy),
+      this.enrichSumblePeople(opportunityId, accountName, domain, calledBy),
+    ]);
+
+    const extract = <T,>(r: PromiseSettledResult<T>, label: string): T | null => {
+      if (r.status === 'fulfilled') return r.value;
+      errors.push(`${label}: ${r.reason?.message || String(r.reason)}`);
+      return null;
+    };
+
+    const sumble = extract(results[0], 'Tech Stack');
+    const org = extract(results[1], 'Org Profile');
+    const jobs = extract(results[2], 'Hiring');
+    const people = extract(results[3], 'People');
+
+    const completedCount = results.filter(r => r.status === 'fulfilled').length;
+
+    return { sumble, org, jobs, people, completedCount, totalCount: 4, errors };
+  },
+
+  /**
    * Heuristic to derive a domain from an account name.
    * e.g., "Acme Corporation" → "acme.com"
    */
