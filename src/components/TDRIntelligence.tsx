@@ -363,23 +363,144 @@ function CollapsibleSection({
   );
 }
 
-// ── Score context descriptions ───────────────────────────────────────────────
-const PRIORITY_CONTEXT: Record<string, { headline: string; description: string }> = {
-  CRITICAL: {
-    headline: 'Requires immediate TDR',
-    description: 'Multiple high-value signals converging — material ACV, competitive displacement, active cloud partner, and/or greenfield architecture. SE must shape technical strategy now before architecture decisions lock in.',
+// ── Score context descriptions (lifecycle-aware) ─────────────────────────────
+// The TDR goes through distinct lifecycle phases. The score context messaging
+// must shift from "you should do a TDR" → "here's what the TDR reveals."
+//
+// Phases:
+//   NOT_STARTED  — no session or 0 steps completed, no enrichment
+//   EARLY        — session exists, 1–30% steps
+//   IN_PROGRESS  — 31–70% steps completed
+//   NEAR_COMPLETE — 71–99% steps completed
+//   COMPLETE     — 100% steps completed
+//   ENRICHED     — complete + external intel pulled + strategy generated
+
+type TDRLifecyclePhase = 'NOT_STARTED' | 'EARLY' | 'IN_PROGRESS' | 'NEAR_COMPLETE' | 'COMPLETE' | 'ENRICHED';
+
+function getTDRLifecyclePhase(
+  completedSteps: number,
+  totalSteps: number,
+  hasSession: boolean,
+  hasEnrichment: boolean,
+  hasActionPlan: boolean,
+): TDRLifecyclePhase {
+  const ratio = totalSteps > 0 ? completedSteps / totalSteps : 0;
+  if (ratio >= 1.0 && hasEnrichment && hasActionPlan) return 'ENRICHED';
+  if (ratio >= 1.0) return 'COMPLETE';
+  if (ratio >= 0.71) return 'NEAR_COMPLETE';
+  if (ratio >= 0.31) return 'IN_PROGRESS';
+  if (ratio > 0 || hasSession) return 'EARLY';
+  return 'NOT_STARTED';
+}
+
+const PRIORITY_CONTEXT: Record<TDRLifecyclePhase, Record<string, { headline: string; description: string }>> = {
+  NOT_STARTED: {
+    CRITICAL: {
+      headline: 'Requires immediate TDR',
+      description: 'Multiple high-value signals converging — material ACV, competitive displacement, active cloud partner, and/or greenfield architecture. SE must shape technical strategy now before architecture decisions lock in.',
+    },
+    HIGH: {
+      headline: 'Strong TDR candidate',
+      description: 'Significant deal complexity that warrants a full Technical Deal Review. Architecture shaping, partner alignment, and competitive positioning should be actively managed.',
+    },
+    MEDIUM: {
+      headline: 'TDR recommended',
+      description: 'Deal has meaningful technical dimensions. A TDR will help validate architecture fit, identify risks early, and ensure the solution aligns with the customer\'s data strategy.',
+    },
+    LOW: {
+      headline: 'Monitor — TDR optional',
+      description: 'Standard deal without strong TDR triggers. Consider a lightweight review if deal progresses or new competitive/technical signals emerge.',
+    },
   },
-  HIGH: {
-    headline: 'Strong TDR candidate',
-    description: 'Significant deal complexity that warrants a full Technical Deal Review. Architecture shaping, partner alignment, and competitive positioning should be actively managed.',
+  EARLY: {
+    CRITICAL: {
+      headline: 'TDR underway — high complexity detected',
+      description: 'Early-stage TDR on a high-complexity deal. Focus on uncovering competitive landscape, cloud architecture requirements, and key stakeholder alignment. Every input shapes the strategic picture.',
+    },
+    HIGH: {
+      headline: 'TDR underway — continue building the picture',
+      description: 'Good start. Continue completing TDR steps to validate architecture fit, competitive positioning, and partner alignment. Enrich with external intelligence to strengthen the analysis.',
+    },
+    MEDIUM: {
+      headline: 'TDR underway — capturing key dimensions',
+      description: 'Technical review in progress. Each completed step adds clarity to the risk profile and solution fit. Consider pulling external intelligence for competitive and technology context.',
+    },
+    LOW: {
+      headline: 'TDR underway — lightweight review',
+      description: 'Standard deal under review. Complete the key steps to confirm solution alignment and identify any hidden risks or competitive dynamics.',
+    },
   },
-  MEDIUM: {
-    headline: 'TDR recommended',
-    description: 'Deal has meaningful technical dimensions. A TDR will help validate architecture fit, identify risks early, and ensure the solution aligns with the customer\'s data strategy.',
+  IN_PROGRESS: {
+    CRITICAL: {
+      headline: 'TDR in progress — key risks surfacing',
+      description: 'Multiple risk vectors are becoming visible. Continue completing steps to validate all dimensions. Pull external intelligence if not yet done — competitive and technology signals are critical for this deal.',
+    },
+    HIGH: {
+      headline: 'TDR in progress — strategy taking shape',
+      description: 'The technical picture is forming. Architecture, competitive, and partner dimensions are becoming clearer. Complete remaining steps and generate an action plan to crystalize the strategy.',
+    },
+    MEDIUM: {
+      headline: 'TDR in progress — good coverage',
+      description: 'Solid progress. Continue filling in remaining areas to ensure complete risk awareness. The completed inputs are already informing the readiness assessment.',
+    },
+    LOW: {
+      headline: 'TDR in progress — nearly sufficient',
+      description: 'Lightweight review progressing well. Complete the remaining steps to finalize the assessment. No major risk signals detected so far.',
+    },
   },
-  LOW: {
-    headline: 'Monitor — TDR optional',
-    description: 'Standard deal without strong TDR triggers. Consider a lightweight review if deal progresses or new competitive/technical signals emerge.',
+  NEAR_COMPLETE: {
+    CRITICAL: {
+      headline: 'TDR nearly complete — validate remaining gaps',
+      description: 'Almost done. The high-complexity signals on this deal are well-documented. Close out remaining steps, then review the action plan and readiness assessment before proceeding.',
+    },
+    HIGH: {
+      headline: 'TDR nearly complete — finalize strategy',
+      description: 'Strong coverage. A few steps remain to complete the picture. Generate or refresh the action plan to capture the latest intelligence in a concrete strategy.',
+    },
+    MEDIUM: {
+      headline: 'TDR nearly complete — wrap up',
+      description: 'Most dimensions are covered. Finish the last inputs to finalize the readiness assessment and ensure no blind spots remain.',
+    },
+    LOW: {
+      headline: 'TDR nearly complete — confirm and close',
+      description: 'Review is nearly done. Finalize remaining steps and confirm the deal is ready to proceed without further technical intervention.',
+    },
+  },
+  COMPLETE: {
+    CRITICAL: {
+      headline: 'TDR complete — high complexity confirmed',
+      description: 'All TDR steps completed. This deal has multiple converging risk factors. Review the action plan, ensure architecture is validated, and actively manage competitive and partner dynamics through close.',
+    },
+    HIGH: {
+      headline: 'TDR complete — strategy defined',
+      description: 'Full TDR completed. Technical dimensions are documented and the strategic picture is clear. Execute the action plan and monitor for any shifts in competitive landscape or technical requirements.',
+    },
+    MEDIUM: {
+      headline: 'TDR complete — readiness confirmed',
+      description: 'Technical review is done. The deal\'s risk profile is understood and the solution approach is validated. Proceed with confidence and revisit if deal dynamics change.',
+    },
+    LOW: {
+      headline: 'TDR complete — clear to proceed',
+      description: 'Review complete. No significant technical risks identified. The deal can proceed through standard execution without additional SE intervention.',
+    },
+  },
+  ENRICHED: {
+    CRITICAL: {
+      headline: 'Fully assessed — active management required',
+      description: 'TDR complete with full external intelligence. Multiple high-value risk factors confirmed across competitive, technical, and partner dimensions. Execute the action plan, monitor competitive shifts, and maintain stakeholder alignment through close.',
+    },
+    HIGH: {
+      headline: 'Fully assessed — execute strategy',
+      description: 'TDR and external intelligence are complete. The technical strategy is well-defined with clear competitive positioning and architecture validation. Focus shifts to execution and stakeholder management.',
+    },
+    MEDIUM: {
+      headline: 'Fully assessed — validated and ready',
+      description: 'Comprehensive review complete with external enrichment. Risk profile is understood, solution fit is confirmed, and no major gaps remain. Proceed with the defined approach.',
+    },
+    LOW: {
+      headline: 'Fully assessed — no intervention needed',
+      description: 'Full review and enrichment complete. This deal has a straightforward technical profile with no significant risks. Standard execution path confirmed.',
+    },
   },
 };
 
@@ -859,7 +980,13 @@ export function TDRIntelligence({
         const displayScore = postBreakdown ? postBreakdown.totalPostTDR : preTDRScore;
         const priority = getPriorityFromScore(displayScore);
         const isPostTDR = !!postBreakdown;
-        const context = PRIORITY_CONTEXT[priority];
+        const lifecyclePhase = getTDRLifecyclePhase(
+          completedStepCount, totalStepCount,
+          !!sessionId,
+          !!(sumbleData?.success || perplexityData?.success),
+          !!actionPlanResult?.success,
+        );
+        const context = PRIORITY_CONTEXT[lifecyclePhase][priority];
         const criticalFactors = detectCriticalFactors(deal);
         const topFactors = criticalFactors.slice(0, 3);
 
@@ -921,9 +1048,17 @@ export function TDRIntelligence({
                     </span>
                     <span className={cn(
                       'rounded-full px-1.5 py-0.5 text-2xs font-medium',
-                      isPostTDR ? 'bg-violet-500/10 text-violet-300/70 border border-violet-500/15' : 'bg-slate-500/5 text-slate-500 border border-slate-500/15'
+                      lifecyclePhase === 'ENRICHED' ? 'bg-emerald-500/10 text-emerald-300/70 border border-emerald-500/15' :
+                      lifecyclePhase === 'COMPLETE' ? 'bg-violet-500/10 text-violet-300/70 border border-violet-500/15' :
+                      lifecyclePhase === 'NOT_STARTED' ? 'bg-slate-500/5 text-slate-500 border border-slate-500/15' :
+                      'bg-blue-500/10 text-blue-300/70 border border-blue-500/15'
                     )}>
-                      {isPostTDR ? 'Post-TDR' : 'Pre-TDR'}
+                      {lifecyclePhase === 'ENRICHED' ? 'Fully Assessed' :
+                       lifecyclePhase === 'COMPLETE' ? 'TDR Complete' :
+                       lifecyclePhase === 'NEAR_COMPLETE' ? `${completedStepCount}/${totalStepCount} Steps` :
+                       lifecyclePhase === 'IN_PROGRESS' ? `${completedStepCount}/${totalStepCount} Steps` :
+                       lifecyclePhase === 'EARLY' ? 'TDR Started' :
+                       'Pre-TDR'}
                     </span>
                     <button
                       onClick={() => setScoreContextOpen(!scoreContextOpen)}
@@ -1054,7 +1189,11 @@ export function TDRIntelligence({
                           </TooltipProvider>
                         ))}
                         <p className="text-[9px] text-slate-600 mt-2 italic">
-                          Enrich the deal and complete TDR steps to unlock the Post-TDR score with additional intelligence-based components.
+                          {lifecyclePhase === 'NOT_STARTED'
+                            ? 'Start the TDR and enrich the deal to unlock the Post-TDR score with intelligence-based components.'
+                            : lifecyclePhase === 'EARLY'
+                            ? 'Continue completing TDR steps and pull external intelligence to build the Post-TDR score.'
+                            : 'Complete remaining steps and enrich to finalize the Post-TDR assessment.'}
                         </p>
                       </div>
                     )}
