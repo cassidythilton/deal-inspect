@@ -60,6 +60,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   ],
   filesetIds: [],
   filesetNameMap: {},
+  slackDefaultChannel: 'tdr-channel',
 };
 
 const STORAGE_KEY = 'tdrAppSettings';

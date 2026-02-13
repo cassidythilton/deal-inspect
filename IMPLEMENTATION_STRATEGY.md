@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 4.4 · **Date:** February 12, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **In Progress:** 24 · **Remaining:** 24 (WS2+3), 26, 25
+**Status:** In Progress · **Version:** Draft 4.5 · **Date:** February 13, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **In Progress:** 24 (WS1 ✅) · **Remaining:** 24 (WS2+3), 26, 25
 
 ---
 
@@ -3534,11 +3534,11 @@ Scoring adjustments:
 > **Goal:** Push TDR readouts to Slack channels with AI-generated summaries and PDF attachments.
 > **Risk to app:** Low — new outbound integration. Slack API failure doesn't affect core app.
 > **Decision:** Slack-only distribution (Teams evaluated and deferred). PDF attachment is a hard requirement.
-> **Status:** ✅ Complete as of Feb 12, 2026. All 3 Code Engine functions deployed (generateReadoutSummary, distributeToSlack, getSlackChannels). Frontend Share dialog with AI summary, channel picker, and PDF attachment integrated into TDR workspace header. Slack section added to Settings page with setup instructions and manifest reference.
+> **Status:** ✅ Complete as of Feb 12, 2026. Polished Feb 13, 2026. All 3 Code Engine functions deployed (generateReadoutSummary, distributeToSlack, getSlackChannels). Frontend Share dialog with AI summary, channel picker, and PDF attachment integrated into TDR workspace header. Slack section added to Settings page with setup instructions and manifest reference. Feb 13 enhancements: executive-level Block Kit formatting, @mentions via `resolveSlackUsers`, consolidated PDF attachment, structured summary → Slack `mrkdwn` conversion, deal team info passthrough, `forceRegenerate` cache busting, retry with exponential backoff, Slack-style message preview with `FormattedSummary` component, icon-only buttons with hover animations, opportunity name cleanup.
 
 **Architecture: Slack Bot Token**
 - Auth: Single Slack Bot Token (`xoxb-...`) stored in Domo Account (Account ID configured in CE)
-- Required OAuth scopes: `chat:write`, `files:write`, `channels:read`
+- Required OAuth scopes: `chat:write`, `chat:write.public`, `files:write`, `files:read`, `channels:read`, `groups:read`, `users:read`
 - Two-call pattern: `files.uploadV2` (upload PDF) → `chat.postMessage` (send Block Kit message with file permalink)
 - Rate limits: 1 msg/sec per channel (well above our needs)
 
@@ -3568,7 +3568,8 @@ Before any Slack integration can work, a Slack App must be created in the target
                 "files:write",
                 "files:read",
                 "channels:read",
-                "groups:read"
+                "groups:read",
+                "users:read"
             ]
         }
     },
@@ -3591,6 +3592,7 @@ Before any Slack integration can work, a Slack App must be created in the target
 | `files:read` | Read file permalink after upload to include in the message |
 | `channels:read` | Fetch list of public channels for the channel picker in Settings |
 | `groups:read` | Fetch list of private channels the bot is a member of (for the channel picker) |
+| `users:read` | Resolve deal team member names to Slack user IDs for @mentions in distributed messages |
 
 **Setup steps (manual, one-time):**
 1. Go to https://api.slack.com/apps → "Create New App" → "From an app manifest"
@@ -3657,15 +3659,39 @@ Before any Slack integration can work, a Slack App must be created in the target
 - [ ] Test: error handling → bot not in channel shows helpful message
 - [ ] Test: re-distribute same readout → new row in distribution log (not overwrite)
 
-**New Code Engine Functions (3)**
+**New Code Engine Functions (3 + 1 helper)**
 
 | Function | Inputs | Output | Domo CE Types |
 |----------|--------|--------|---------------|
-| `generateReadoutSummary` | `sessionId` (string) | `{ success, summary, model, error }` (object) | Input: string, Output: object |
-| `distributeToSlack` | `sessionId` (string), `channel` (string), `summary` (string), `pdfBase64` (string) | `{ success, messageTs, fileId, error }` (object) | Input: 4× string, Output: object |
-| `getSlackChannels` | (none — uses stored token) | `{ success, channels: [{id, name}], error }` (object) | Input: none, Output: object |
+| `generateReadoutSummary` | `sessionId` (string), `dealTeamJson` (string, nullable), `forceRegenerate` (boolean, nullable) | `{ success, summary, modelUsed, cached, error }` (object) | Input: string + 2 nullable, Output: object |
+| `distributeToSlack` | `sessionId` (string), `channel` (string), `summary` (string), `pdfBase64` (string), `dealTeamJson` (string, nullable) | `{ success, messageTs, fileId, error }` (object) | Input: 4× string + 1 nullable, Output: object |
+| `getSlackChannels` | `placeholder` (string, nullable) | `{ success, channels: [{id, name}], error }` (object) | Input: 1 nullable string, Output: object |
+| `resolveSlackUsers` (internal helper) | `userNames` (array), `token` (string) | `{ name: "<@SLACK_ID>" }` map | Not mapped — called internally by `distributeToSlack` |
 
 **Definition of Done:** SE Manager can generate an executive-ready PDF and push it to Slack in under 10 seconds. The Slack message includes an AI-written summary that a VP can read without opening the PDF. The PDF is attached as a downloadable file. Every distribution is logged for audit.
+
+**Sprint 14 — Post-Completion Enhancements (Feb 13, 2026):**
+
+The following enhancements were applied to the Slack distribution experience after initial deployment:
+
+| Deliverable | Status |
+|-------------|--------|
+| **Executive-level Block Kit formatting** — Slack messages now use structured Block Kit: header, deal vitals (ACV, stage, verdict, opportunity), divider, multi-section executive summary, deal team block, PDF link, timestamp footer | ✅ |
+| **@mentions via `resolveSlackUsers`** — New CE helper resolves deal team names (AE, SE, SE Manager, PoC Architect) to Slack user IDs using `users.list` API with cursor-based pagination. Falls back to bold name if not found. Requires `users:read` OAuth scope. | ✅ |
+| **Consolidated PDF attachment** — PDF uploaded via `files.uploadV2` + `files.completeUploadExternal`, permalink embedded in Block Kit message. No separate attachment message. | ✅ |
+| **Structured summary → Slack `mrkdwn` conversion** — AI generates `**Header**` + `- bullet` markdown. `distributeToSlack` parses this into separate Block Kit sections with `*bold*` headers and `  •  bullet` formatting. | ✅ |
+| **`forceRegenerate` parameter** — `generateReadoutSummary` accepts `forceRegenerate: true` to bypass Snowflake cache, delete old cached summaries, and generate fresh. Used by "Regenerate" button in share dialog. | ✅ |
+| **Deal team info passthrough** — `DealTeamInfo` interface added to frontend (`tdrReadout.ts`). `TDRShareDialog` passes AE/SE/SE Mgr/PoC to `shareToSlack` → serialized as `dealTeamJson` for CE. | ✅ |
+| **AI prompt rewrite** — `generateReadoutSummary` prompt now: leads with SE/AE names (never "Owner" or managers), incorporates Perplexity + Sumble + KB summary context, structures output as 4 sections (`**Deal Overview**`, `**Technical Positioning**`, `**Competitive Landscape**`, `**Risk & Recommendation**`), each with bullets. | ✅ |
+| **Retry with exponential backoff** — `TDRShareDialog` retries `getSlackChannels` and `generateReadoutSummary` CE calls (up to 3 attempts, 1s → 2s → 4s delays) to handle Code Engine cold starts. Retry button on channel error. | ✅ |
+| **Slack-style message preview** — Share dialog redesigned with Slack-branded message preview: bot header, `FormattedSummary` component renders structured markdown as styled HTML (headers, bullets, bold), edit/preview toggle, PDF attachment footer, Cortex AI label. | ✅ |
+| **Icon-only export/share buttons** — Export PDF (FileDown) and Share to Slack (custom SVG) buttons are 24×24 icon-only with tooltips. Slack icon turns pink (`#E01E5A`) on hover with `scale-110` animation. | ✅ |
+| **Cursor-based channel pagination** — `getSlackChannels` fetches up to 4,000 channels via Slack cursor pagination (200/page, max 20 pages). Supports private channels via `groups:read`. | ✅ |
+| **Default channel** — `appSettings.ts` defaults to `tdr-channel`. Channel picker falls back to this if no `localStorage` last-used channel found. | ✅ |
+| **Opportunity name cleanup** — Trailing hyphens/whitespace trimmed from opportunity names in Slack messages (e.g. "Lotus & Windoware-" → "Lotus & Windoware"). | ✅ |
+| **Status label cleanup** — Hyphenated status values like "in-progress" display as "In Progress" in Slack verdict field. | ✅ |
+| **No emojis** — Removed all emojis from Block Kit messages for professional tone. | ✅ |
+| Manifest version: 1.49.0 | ✅ |
 
 ---
 
@@ -3688,19 +3714,28 @@ Before any Slack integration can work, a Slack App must be created in the target
 | 11 | Semantic Search & Analyst | ✅ Complete | Feb 9, 2026 | Sprints 7 + 8 | AI |
 | 12 | Migration & Cleanup | ✅ Complete | Feb 9, 2026 | All above | Cleanup |
 | **13** | **TDR Readout: PDF Engine** | ✅ Complete | Feb 10, 2026 | Sprints 3 + 7; enriched by 10 | **Artifact** |
-| **14** | **TDR Readout: Slack Distribution** | ✅ Complete | Feb 12, 2026 | Sprint 13 | **Distribution** |
-| **15** | **AG Grid Table, Deal Search & Filter Rethink** | 🔄 In Progress | — | None (frontend-only) | **UX** |
+| **14** | **TDR Readout: Slack Distribution** | ✅ Complete | Feb 12, 2026 (polished Feb 13) | Sprint 13 | **Distribution** |
+| **15** | **AG Grid Table, Deal Search & Filter Rethink** | ✅ Complete | Feb 11, 2026 | None (frontend-only) | **UX** |
+| **16** | **Fix Similar Deals** | ✅ Complete | Feb 10, 2026 | None | **Bug Fix** |
 | **17** | **Lean TDR Refactor** | ✅ Complete | Feb 10, 2026 | Sprints 3 + 7 | **UX** |
 | **17.5** | **Structured TDR Analytics Extraction Pipeline** | ✅ Complete | Feb 10, 2026 | Sprint 17 | **Analytics** |
 | **17.6** | **TDR Portfolio Analytics Page + NLQ** | ✅ Complete | Feb 10, 2026 | Sprint 17.5 | **Analytics / UX** |
 | **18** | **TDR Score v2 (Pre-TDR & Post-TDR)** | ✅ Complete | Feb 10, 2026 | Sprints 17.5 + 6.5 | **Scoring** |
-| **16** | **Fix Similar Deals** | ✅ Complete | Feb 10, 2026 | None | **Bug Fix** |
 | **19** | **Fileset Intelligence Layer** | ✅ Complete | Feb 11, 2026 | None | **Knowledge Base** |
 | **19.5** | **Cortex KB Summarization & Fileset UX** | ✅ Complete | Feb 11, 2026 | Sprint 19 | **AI / UX** |
-| **22** | **Frontier Model Upgrade + Cortex Branding** | ✅ Complete | Feb 12, 2026 | None | **AI / Config / UX** |
-| **20** | **Hero Metrics & Nav Cleanup** | 🔲 Planned | — | Sprint 18 | **UX** |
+| **20** | **Hero Metrics & Nav Cleanup** | ✅ Complete | Feb 12, 2026 | Sprint 18 | **UX** |
 | **21** | **Action Plan Synthesis (CAPSTONE)** | ✅ Complete | Feb 12, 2026 | S17.5+S18+S19+S19.5+S22 | **AI / Artifact** |
-| **14** | **TDR Readout: Slack Distribution** | ✅ Complete | Feb 12, 2026 | Sprint 13 | **Distribution** |
+| **22** | **Frontier Model Upgrade + Cortex Branding** | ✅ Complete | Feb 12, 2026 | None | **AI / Config / UX** |
+| **23** | **KB Insights Cleanup + KB Tooltip** | ✅ Complete | Feb 12, 2026 | S19.5 + S22 | **UX** |
+| **24** | **Performance Optimization & KB Summary Caching** | 🟡 WS1 Complete | Feb 12, 2026 (WS1) | S21 | **Performance** |
+| **26** | **Intelligence Panel UX Review & Consolidation** | 🔲 Planned | — | S14 + S21 + S24-WS1 | **UX** |
+| **25** | **Interactive Architecture Diagram** | 🔲 Planned | — | S24 + S26 | **Visualization** |
+
+**Post-Sprint Enhancements (Feb 13, 2026):**
+- Sprint 14 — Major Slack distribution polish: executive-level Block Kit formatting, structured summary → `mrkdwn` conversion, @mention support via `resolveSlackUsers`, consolidated PDF attachment, deal team passthrough, `forceRegenerate` cache busting, retry with exponential backoff, Slack-style message preview with `FormattedSummary` component, icon-only buttons with hover animations.
+- Sprint 14 — AI prompt rewrite: leads with SE/AE names, incorporates Perplexity + Sumble + KB summary, structures output as 4 markdown sections with headers and bullets.
+- Sprint 14 — Added `users:read` OAuth scope to Slack app manifest for @mention user resolution.
+- Sprint 14 — Opportunity name trailing hyphen cleanup, status label cleanup ("in-progress" → "In Progress").
 
 **Post-Sprint Bug Fixes (Feb 11, 2026):**
 - Sprint 19 — Fixed `discoverFilesets()` API response parsing: Domo API returned filesets under `fileSets` (camelCase) key but code expected `filesets` (lowercase). Added robust multi-key fallback.
@@ -5750,9 +5785,9 @@ Sprint 25 — Architecture Diagram (2–3 days)
 | **S23: KB Insights + KB Tooltip** | ✅ with S22 | S19.5 + S22 | 0.5 day | ✅ |
 | **S20: Hero Metrics & Nav** | ✅ with S22 | S18 | 1-2 days | ✅ |
 | **S21: Action Plan Synthesis** | — | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | ✅ |
-| **S14: Slack Distribution** | — | S13 | 2-3 days | ⏸ Paused |
-| **S26: Intelligence Panel UX** | — | S14 + S21 + S24-WS1 | 2-3 days | 🔲 |
+| **S14: Slack Distribution** | — | S13 | 2-3 days | ✅ (polished Feb 13) |
 | **S24: Perf Optimization** | — | S21 | 2 days | 🟡 WS1 done |
+| **S26: Intelligence Panel UX** | — | S14 + S21 + S24-WS1 | 2-3 days | 🔲 Next |
 | **S25: Architecture Diagram** | — | S24 + S26 | 2-3 days | 🔲 |
 
 ---

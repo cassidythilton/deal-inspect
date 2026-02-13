@@ -131,6 +131,14 @@ const MOCK_READOUT: ReadoutPayload = {
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export interface DealTeamInfo {
+  ae?: string;
+  se?: string;
+  seManager?: string;
+  pocArchitect?: string;
+  owner?: string;
+}
+
 export interface SlackChannel {
   id: string;
   name: string;
@@ -224,12 +232,15 @@ export const tdrReadout = {
   /**
    * Generate an AI-written executive summary for Slack distribution.
    */
-  async generateReadoutSummary(sessionId: string): Promise<ReadoutSummaryResult> {
+  async generateReadoutSummary(sessionId: string, dealTeam?: DealTeamInfo, forceRegenerate?: boolean): Promise<ReadoutSummaryResult> {
     if (!isDomoEnvironment()) {
-      return { success: true, summary: 'Acme Corp is a $125K mid-market deal at Stage 3, positioning Domo as the unified analytics layer replacing a fragmented Tableau/ThoughtSpot stack. Key technical alignment on Snowflake + embedded analytics. Recommend scheduling architecture workshop and engaging CTO as champion before ThoughtSpot POC in Q1 2026.', cached: false };
+      return { success: true, summary: '**Deal Overview**\nAcme Corp is a $125K mid-market deal at Stage 3, positioning Domo as the unified analytics layer replacing a fragmented Tableau/ThoughtSpot stack.\n\n**Technical Positioning**\n- Key technical alignment on Snowflake + embedded analytics\n- Domo positioned to replace fragmented BI stack\n\n**Competitive Landscape**\n- Tableau and ThoughtSpot are incumbent tools\n- Domo differentiates with unified data + analytics platform\n\n**Risk & Recommendation**\n- Recommend scheduling architecture workshop and engaging CTO as champion\n- Proceed — close before ThoughtSpot POC in Q1 2026', cached: false };
     }
     try {
-      const raw = await callCodeEngine<unknown>('generateReadoutSummary', { sessionId });
+      const dealTeamJson = dealTeam ? JSON.stringify(dealTeam) : '';
+      const args: Record<string, unknown> = { sessionId, dealTeamJson };
+      if (forceRegenerate) args.forceRegenerate = true;
+      const raw = await callCodeEngine<unknown>('generateReadoutSummary', args);
       const result = extractResult(raw);
       return {
         success: result.success as boolean,
@@ -271,19 +282,23 @@ export const tdrReadout = {
 
   /**
    * Distribute a TDR readout to a Slack channel.
-   * Uploads PDF attachment + posts Block Kit message with AI summary.
+   * Sends executive-level Block Kit message with @mentions and inline PDF.
    */
   async distributeToSlack(
     sessionId: string,
     channel: string,
     summary: string,
     pdfBase64: string,
+    dealTeam?: DealTeamInfo,
   ): Promise<SlackDistributionResult> {
     if (!isDomoEnvironment()) {
       return { success: true, messageTs: '1234567890.123456', channelName: channel, distributionId: 'mock-dist-001' };
     }
     try {
-      const raw = await callCodeEngine<unknown>('distributeToSlack', { sessionId, channel, summary, pdfBase64 });
+      const dealTeamJson = dealTeam ? JSON.stringify(dealTeam) : '{}';
+      const raw = await callCodeEngine<unknown>('distributeToSlack', {
+        sessionId, channel, summary, pdfBase64, dealTeamJson,
+      });
       const result = extractResult(raw);
       return {
         success: result.success as boolean,
@@ -307,6 +322,7 @@ export const tdrReadout = {
     channel: string,
     accountName: string,
     customSummary?: string,
+    dealTeam?: DealTeamInfo,
   ): Promise<SlackDistributionResult> {
     // 1. Assemble readout
     const payload = await this.assembleReadout(sessionId);
@@ -332,12 +348,12 @@ export const tdrReadout = {
     // 3. Generate or use custom summary
     let summary = customSummary || '';
     if (!summary) {
-      const summaryResult = await this.generateReadoutSummary(sessionId);
+      const summaryResult = await this.generateReadoutSummary(sessionId, dealTeam);
       summary = summaryResult.summary || `TDR Readout for ${accountName}`;
     }
 
-    // 4. Distribute
-    return this.distributeToSlack(sessionId, channel, summary, pdfBase64);
+    // 4. Distribute with deal team context
+    return this.distributeToSlack(sessionId, channel, summary, pdfBase64, dealTeam);
   },
 };
 

@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Share2, Sparkles, Check } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Sparkles, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
@@ -218,30 +218,24 @@ export default function TDRWorkspace() {
                 saving...
               </span>
             )}
-            {/* Sprint 13: Export Readout */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1.5 text-xs ml-2"
+            {/* Export PDF — icon-only */}
+            <button
+              className="h-6 w-6 ml-2 flex items-center justify-center rounded text-slate-500 hover:text-violet-400 hover:scale-110 transition-all duration-200 ease-out disabled:opacity-30 disabled:pointer-events-none"
               onClick={handleExportReadout}
               disabled={exportLoading || !session?.sessionId || session?.sessionId.startsWith('local-') || session?.sessionId.startsWith('fallback-')}
-              title="Export a polished PDF readout of this TDR"
+              title="Export PDF"
             >
-              {exportLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileDown className="h-3 w-3" />}
-              Export PDF
-            </Button>
-            {/* Sprint 14: Share to Slack */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 gap-1.5 text-xs"
+              {exportLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 transition-transform duration-200" />}
+            </button>
+            {/* Share to Slack — icon-only, turns Slack pink on hover */}
+            <button
+              className="h-6 w-6 flex items-center justify-center rounded text-slate-500 hover:text-[#E01E5A] hover:scale-110 transition-all duration-200 ease-out disabled:opacity-30 disabled:pointer-events-none"
               onClick={() => setShareDialogOpen(true)}
               disabled={!session?.sessionId || session?.sessionId.startsWith('local-') || session?.sessionId.startsWith('fallback-')}
-              title="Share this TDR readout to Slack"
+              title="Share to Slack"
             >
-              <Share2 className="h-3 w-3" />
-              Share
-            </Button>
+              <svg className="h-3.5 w-3.5 transition-transform duration-200" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.527 2.527 0 0 1 2.521 2.521 2.527 2.527 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.163 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.163 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.163 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.527 2.527 0 0 1-2.52-2.523 2.527 2.527 0 0 1 2.52-2.52h6.315A2.528 2.528 0 0 1 24 15.163a2.528 2.528 0 0 1-2.522 2.523h-6.315z"/></svg>
+            </button>
             {exportError && (
               <span className="text-2xs text-destructive ml-1" title={exportError}>Export failed</span>
             )}
@@ -390,6 +384,13 @@ export default function TDRWorkspace() {
         onOpenChange={setShareDialogOpen}
         sessionId={session?.sessionId || ''}
         accountName={deal.account}
+        dealTeam={{
+          ae: deal.accountExecutive,
+          se: deal.salesConsultant,
+          seManager: deal.seManager,
+          pocArchitect: deal.pocSalesConsultant,
+          owner: deal.owner,
+        }}
       />
     </div>
   );
