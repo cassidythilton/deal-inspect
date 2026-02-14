@@ -1,21 +1,8 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.51.0",
+  "version": "1.52.0",
   "datasetsMapping": [
-    {
-      "dataSetId": "79b2d8a2-2b91-41db-b1d2-532fc008f14c",
-      "alias": "forecastsmagic",
-      "fields": [
-        { "alias": "MgrForecastName", "columnName": "Mgr Forecast Name" },
-        { "alias": "ForecastQuarter", "columnName": "Forecast Quarter" },
-        { "alias": "LikelyCall", "columnName": "Likely Call" },
-        { "alias": "HighCall", "columnName": "High Call" },
-        { "alias": "LowCall", "columnName": "Low Call" },
-        { "alias": "ForecastQtrType", "columnName": "Forecast Qtr Type" },
-        { "alias": "ForecasterName", "columnName": "Forecaster Name" }
-      ]
-    },
     {
       "dataSetId": "6f12ec25-0018-4ed3-adfe-93ebdfad41fe",
       "alias": "opportunitiesmagic",
@@ -54,21 +41,6 @@
         { "alias": "PrimaryPartnerRole", "columnName": "Primary Partner Role" },
         { "alias": "WebisteDomain", "columnName": "Webiste Domain" },
         { "alias": "Competitors", "columnName": "competitors" }
-      ]
-    },
-    {
-      "dataSetId": "62c805ae-4bad-4c17-8606-fc7c83c70213",
-      "alias": "wcpweekly",
-      "fields": [
-        { "alias": "MgrForecastName", "columnName": "Mgr Forecast Name" },
-        { "alias": "ForecastCategory", "columnName": "Forecast Category" },
-        { "alias": "ForecastCategoryBuckets", "columnName": "Forecast Category Buckets" },
-        { "alias": "SfdcAcv", "columnName": "SFDC ACV" },
-        { "alias": "Likely", "columnName": "Likely" },
-        { "alias": "High", "columnName": "High" },
-        { "alias": "MgrForecastTeam", "columnName": "Mgr Forecast Team" },
-        { "alias": "BatchId", "columnName": "_BATCH_ID_" },
-        { "alias": "BatchLastRun", "columnName": "_BATCH_LAST_RUN_" }
       ]
     },
     {

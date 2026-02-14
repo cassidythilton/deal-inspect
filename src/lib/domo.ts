@@ -41,8 +41,6 @@ export interface DomoSEMapping {
 export const CONFIG = {
   datasets: {
     opportunities: 'opportunitiesmagic',
-    forecasts: 'forecastsmagic',
-    wcpWeekly: 'wcpweekly',
     seMapping: 'semapping',
   },
 } as const;
