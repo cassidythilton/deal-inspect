@@ -97,7 +97,7 @@ export default function Documentation() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* ── Sticky Table of Contents ──────────────────────────────────────── */}
-        <aside className="hidden lg:flex w-56 shrink-0 flex-col border-r border-white/[0.06] bg-[hsl(268,30%,8%)] overflow-y-auto">
+        <aside className="hidden xl:flex w-48 shrink-0 flex-col border-r border-white/[0.06] bg-[hsl(268,30%,8%)] overflow-y-auto">
           <div className="px-4 py-4">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
               Contents
@@ -138,7 +138,7 @@ export default function Documentation() {
 
         {/* ── Main Content ─────────────────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto bg-[hsl(268,30%,7%)]">
-          <div className="max-w-4xl mx-auto px-6 py-6 space-y-2">
+          <div className="px-6 py-6 space-y-2">
 
             {/* Intro text */}
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-5 py-4 mb-6">

@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** Complete · **Version:** Draft 5.2 · **Date:** February 14, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23, 24, 25, 26, 27 · **In Progress:** — · **Remaining:** —
+**Status:** Active · **Version:** Draft 5.3 · **Date:** February 14, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23, 24, 25, 26, 27 · **In Progress:** 28 (Deal Close Propensity ML Model) · **Remaining:** —
 
 ---
 
@@ -34,7 +34,7 @@
 
 ## 1. Executive Summary
 
-This document describes the strategy for transforming the TDR Deal Inspection app from an internally-scoped scoring tool into an **AI-native, intelligence-enriched review platform**. Four capabilities are introduced:
+This document describes the strategy for transforming the TDR Deal Inspection app from an internally-scoped scoring tool into an **AI-native, intelligence-enriched review platform**. Five capabilities are introduced:
 
 1. **External Account Intelligence** — Perplexity (web research) and Sumble (firmographic/technographic enrichment) provide real-world context about each account's technology stack, strategic initiatives, and competitive landscape.
 
@@ -43,6 +43,8 @@ This document describes the strategy for transforming the TDR Deal Inspection ap
 3. **Snowflake Cortex AI** — Cortex AI SQL functions (`AI_COMPLETE`, `AI_AGG`, `AI_SUMMARIZE_AGG`, `AI_CLASSIFY`, `AI_EXTRACT`, `AI_EMBED`, Cortex Analyst, Cortex Search) process stored data directly in Snowflake to generate TDR summaries, cross-deal insights, competitive intelligence aggregation, and semantic search across all account research.
 
 4. **TDR Inline Chat** — A context-aware conversational AI embedded in the TDR Workspace. The chat knows the current deal, all TDR inputs entered so far, and all cached account intelligence. It can answer questions using stored data (Cortex), search the web in real-time (Perplexity), or provide TDR methodology guidance — enabling the SE Manager to get answers without leaving the review workflow.
+
+5. **Deal Close Propensity ML** — A stacking ensemble machine learning model (XGBoost, LightGBM, RandomForest, LogisticRegression) trained on historical SFDC deal outcomes predicts close probability for every pipeline deal. The ML propensity score composes with the deterministic TDR complexity score to create a two-axis prioritization system (propensity × complexity → CRITICAL / MONITOR / LOW TOUCH / DEPRIORITIZE). SHAP explanations make every prediction transparent and trustworthy.
 
 The architecture routes all external API calls and Snowflake operations through **Domo Code Engine functions**, keeping API keys server-side and the front-end stateless.
 
@@ -2820,6 +2822,112 @@ cortex
 - `claude-opus-4-5` — premium
 
 > **Note:** These are the models that power the Cortex Code CLI *agent itself* — not to be confused with the AI_COMPLETE models available for application use (which include OpenAI and other providers). The CLI agent uses Claude models to understand your requests and orchestrate Snowflake operations.
+
+### 16.7 Cortex CLI — Rules of Engagement
+
+> **The cardinal rule:** Cortex CLI is a Snowflake assistant. It knows Snowflake. Ask it about Snowflake. Do not ask it to write application code.
+
+**What Cortex CLI IS:**
+A Snowflake-native agent that has direct access to your account metadata, live schema, Snowflake documentation, and Cortex AI capabilities. It excels at anything that lives inside Snowflake.
+
+**What Cortex CLI IS NOT:**
+A general-purpose code generator. It is not a JavaScript developer, a React developer, a Python notebook builder, or an application architect. It does not know Domo Code Engine patterns, frontend frameworks, or local development tooling.
+
+#### ✅ USE Cortex CLI For:
+
+| Category | Examples |
+|----------|---------|
+| **DDL & Schema** | Create tables, schemas, views, stages. Alter columns. Grant permissions. Describe existing objects. |
+| **Stored Procedures** | Generate SQL or Snowpark Python stored procedures that run *inside* Snowflake. |
+| **Tasks, Alerts, Streams** | Create and configure Snowflake automation objects. |
+| **Cortex AI Functions** | Test `AI_COMPLETE`, `AI_CLASSIFY`, `AI_EXTRACT`, `AI_EMBED`, `AI_AGG` calls. Validate prompts. |
+| **Snowflake ML** | `SNOWFLAKE.ML.CLASSIFICATION`, Snowpark ML pipelines, Model Registry operations. |
+| **Data Exploration** | Query live data, profile tables, check row counts, validate feature distributions. |
+| **Architecture Questions** | "What warehouse size for this workload?", "How does Snowflake Model Registry work?", "What Python packages are available in Snowpark?" |
+| **Debugging SQL** | Explain slow queries, optimize SQL, troubleshoot Snowflake-specific errors. |
+| **Schema Validation** | Verify objects were created correctly, inspect column types, check grants. |
+
+#### 🚫 DO NOT USE Cortex CLI For:
+
+| Category | Why Not | Who Does This |
+|----------|---------|---------------|
+| **Code Engine JavaScript** | Cortex CLI doesn't know the Domo Code Engine SDK, the `executeSql` pattern, JWT auth, or `manifest.json` packageMapping format. | **Cursor / direct authoring** — follow existing patterns in `cortexAi.js` and `consolidated-sprint4-5.js`. |
+| **Frontend TypeScript / React** | Cortex CLI has no knowledge of the app's component architecture, hooks, state management, or UI patterns. | **Cursor / direct authoring** — follow existing patterns in `src/`. |
+| **Python Notebooks** | Cortex CLI cannot create local files, install pip packages, or set up virtual environments. | **Cursor / direct authoring** — standard Jupyter + pip workflow. |
+| **Library Installation** | Cortex CLI runs in Snowflake, not on the local machine. `pip install`, `npm install`, `brew install` are local operations. | **Cursor / terminal** — standard package management. |
+| **Application Architecture** | Cortex CLI doesn't understand the Domo App Studio ecosystem, the React → Code Engine → Snowflake data flow, or the frontend/backend separation. | **Cursor / direct authoring** — reference `IMPLEMENTATION_STRATEGY.md`. |
+| **Testing & CI** | Cortex CLI cannot run unit tests, linting, build commands, or validation scripts. | **Cursor / terminal** — standard dev tooling. |
+| **Git Operations** | Cortex CLI has no access to the local git repo. | **Cursor / terminal** — standard git commands. |
+| **manifest.json Editing** | Cortex CLI doesn't know the Domo manifest format or packaging model. | **Cursor / direct authoring** — follow existing structure. |
+
+#### Engagement Model
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                   CORTEX CLI ENGAGEMENT MODEL                           │
+│                                                                         │
+│   ┌─────────────────────────────────────────────────┐                   │
+│   │              SNOWFLAKE DOMAIN                   │                   │
+│   │                                                 │                   │
+│   │   DDL · Views · Procedures · Tasks · Alerts     │ ◄── Cortex CLI   │
+│   │   Streams · Stages · Grants · ML Functions      │                   │
+│   │   Data Queries · AI Functions · Architecture    │                   │
+│   │   Warehouse Sizing · Model Registry · Debugging │                   │
+│   │                                                 │                   │
+│   └─────────────────────────────────────────────────┘                   │
+│                                                                         │
+│   ┌─────────────────────────────────────────────────┐                   │
+│   │            APPLICATION DOMAIN                   │                   │
+│   │                                                 │                   │
+│   │   Code Engine JS · Frontend TS/React · Notebooks│ ◄── Direct       │
+│   │   Library Installation · manifest.json · Git    │     Authoring     │
+│   │   Testing · CI · Build · Local Dev Environment  │     (Cursor)      │
+│   │                                                 │                   │
+│   └─────────────────────────────────────────────────┘                   │
+│                                                                         │
+│   The line is clear: if it runs IN Snowflake, ask Cortex CLI.           │
+│   If it runs OUTSIDE Snowflake, author it directly.                     │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Anti-Patterns (Mistakes to Never Repeat)
+
+1. **❌ Asking Cortex CLI to generate Code Engine functions.** Code Engine JS files follow Domo-specific patterns (SDK, `executeSql`, JWT auth, `packageMapping`). Cortex CLI doesn't know these patterns and will produce code that doesn't integrate correctly.
+
+2. **❌ Asking Cortex CLI to write frontend components.** The React component architecture, hook patterns, TypeScript interfaces, and UI design system are application-domain knowledge. Cortex CLI will generate generic code that doesn't fit.
+
+3. **❌ Asking Cortex CLI to set up local dev environments.** Python virtual environments, pip installs, Jupyter setup — these are local machine operations. Cortex CLI operates within Snowflake.
+
+4. **❌ Asking Cortex CLI to generate manifest.json entries.** The Domo manifest format is application-specific. Follow existing patterns in the codebase.
+
+5. **❌ Asking Cortex CLI for general ML architecture advice.** ML *strategy* decisions (ensemble vs. single model, feature selection, label design) are human judgment calls informed by domain expertise. Cortex CLI can answer "What Python packages does Snowpark support?" but should not be the source of architectural decisions.
+
+#### Correct Workflow Example (Sprint 28)
+
+```
+Step 1: SHAPE (Cursor + human)
+  → Define problem, features, architecture, sprint plan
+
+Step 2: PROTOTYPE (Cursor + local Python notebooks)
+  → Data exploration, feature engineering, model comparison
+  → pip install, Jupyter, local iteration
+
+Step 3: SNOWFLAKE INFRASTRUCTURE (Cortex CLI)
+  → DDL, stored procedures, Tasks, Alerts, Streams, Grants
+  → "Create ML_MODELS schema with these tables..."
+  → "Generate a Snowpark Python stored procedure that trains XGBoost..."
+
+Step 4: APPLICATION CODE (Cursor + direct authoring)
+  → codeengine/mlPredictions.js (Code Engine functions)
+  → src/lib/mlPredictions.ts (frontend service)
+  → manifest.json entries
+  → React components
+
+Step 5: VALIDATE (Cortex CLI)
+  → "Show me the latest 5 rows in DEAL_ML_PREDICTIONS"
+  → "What's the AUC_ROC for the deployed model?"
+  → "Count predictions by PREDICTION_CLASS"
+```
 
 ---
 
@@ -5776,6 +5884,205 @@ The app now spans 9+ pillars, 25+ sprints, and dozens of integrations. There is 
 
 ---
 
+### Sprint 28 — Deal Close Propensity ML Model 🔲 NOT STARTED
+
+> **Goal:** Build and deploy a machine learning model that predicts close probability for every pipeline deal. The propensity score composes with the existing deterministic TDR score to create a two-axis prioritization system: "How likely is this deal to close?" × "How technically complex is this deal?" — giving SE Managers a richer signal than either score alone.
+> **Risk to app:** Low — new Snowflake schema (`ML_MODELS`), new stored procedures, new Code Engine functions. No changes to existing tables, views, or app behavior. The ML score is additive; existing TDR scoring continues unchanged.
+> **Effort:** ~5–7 days (4 sub-sprints)
+> **Dependencies:** Sprint 18 (TDR Score v2 — for the two-axis composition), Sprint 25 (Documentation Hub — to update docs post-deployment)
+> **Cortex CLI:** Used for Snowflake-specific guidance only — DDL generation, stored procedure scaffolding, Snowpark package availability, Task/Alert/Stream architecture, and Snowflake ML best practices. All application code (Code Engine functions, frontend components, Python notebooks, library installation) is authored directly.
+
+**Problem Statement:**
+The current TDR prioritization relies on a deterministic 9-factor scoring engine (`tdrCriticalFactors.ts`) that assigns a 0–100 score based on hand-tuned weights (ACV thresholds, stage urgency, competitive pressure, partner involvement, etc.). This score answers "How technically complex is this deal?" — but it does not answer "How likely is this deal to close?" A deal can score 85 on TDR complexity but have a 15% chance of closing. Conversely, a seemingly simple deal may have strong close signals that the heuristic misses. The SE Manager needs both axes to allocate TDR time effectively.
+
+**Solution: Propensity to Close (Not TDR Suitability)**
+
+The model predicts `P(close)` — not "should this deal get a TDR." This is the correct decomposition because:
+
+| Question | Best Answered By | Why |
+|----------|-----------------|-----|
+| "Will this deal close?" | ML (pattern recognition across 30+ features) | Hundreds of historical examples, non-obvious signal combinations |
+| "Does this deal need technical shaping?" | Deterministic TDR score (domain expertise) | Business rules, not patterns — e.g., "any deal with Snowflake involvement needs TDR" |
+
+Combining both creates a **2×2 quadrant**:
+
+| | High Propensity | Low Propensity |
+|---|---|---|
+| **High TDR Score** | 🔴 **CRITICAL** — winnable + complex, TDR adds most value | ⚠️ MONITOR — complex but unlikely, investigate blockers |
+| **Low TDR Score** | ✅ LOW TOUCH — likely to close, minimal SE intervention | ⬜ DEPRIORITIZE — unlikely + simple, not worth TDR time |
+
+**Data Reality (from sample analysis):**
+- `opportunitiesmagic` dataset: ~500+ deals in sample (280K lines JSON), need full dataset in Snowflake for training
+- The sample contains all open pipeline (0 closed deals) — the full `opportunitiesmagic` dataset in Domo/Snowflake contains historical closed-won and closed-lost deals needed for labels
+- Key features available: ACV, Stage, Stage Age, Deal Type, Competitor Count, Partner Influence, Forecast Category, Sales Process Milestones (7 milestone dates), Account Win Rate (embedded), Professional Services ratio, People AI Engagement Level, 40+ additional SFDC attributes
+- Feature completeness is high: ACV (100%), Stage (100%), Stage Age (97%), Deal Type (100%), Competitors (62%), Partner Influence (40%)
+- Class label: `Is Won` (boolean) from SFDC — clean, auditable, no proxy labels needed
+
+**Training Architecture: Stacking Ensemble (Snowpark Python)**
+
+The recommended approach is a **custom stacking ensemble** over native-only `SNOWFLAKE.ML.CLASSIFICATION`:
+
+| Layer | Models | Purpose |
+|-------|--------|---------|
+| **Level 0 (Base)** | XGBoost, LightGBM, RandomForest, LogisticRegression | Each model makes different kinds of errors on tabular data |
+| **Level 1 (Meta)** | LogisticRegression | Learns optimal weights from 5-fold out-of-fold predictions |
+
+The native `SNOWFLAKE.ML.CLASSIFICATION` trains alongside as a **baseline comparator**. If the ensemble doesn't beat it by >2–3% AUC, we simplify to native-only. This is a built-in escape hatch.
+
+**Why ensemble over native-only:**
+- Native `SNOWFLAKE.ML.CLASSIFICATION` is already an ensemble internally (AutoML with LightGBM/XGBoost/LogReg), but it's a black box — no control over base learner diversity, no SHAP explanations, no custom preprocessing
+- Custom ensemble gives: SHAP-based explainability (why this prediction?), custom feature preprocessing, model registry with full versioning, feature importance tracking, and the ability to add domain-specific base models later
+
+**19 Derived Features (ML_FEATURE_STORE):**
+
+| Feature | Derivation |
+|---------|-----------|
+| `ACCOUNT_WIN_RATE` | Total Closed Won / (Won + Lost) — from account-level counts in SFDC |
+| `TYPE_SPECIFIC_WIN_RATE` | Win rate by deal type (New Logo vs. Upsell) |
+| `STAGE_VELOCITY_RATIO` | Stage Age / avg Stage Age for Sales Segment (>1 = slower) |
+| `QUARTER_URGENCY` | Proximity to quarter end (0–1 scale from Close Date) |
+| `DAYS_IN_CURRENT_STAGE` | Stage Age (integer) |
+| `DAYS_SINCE_CREATED` | Created Date → now |
+| `DEAL_COMPLEXITY_INDEX` | Weighted: Line Items × 0.3 + Competitors × 0.4 + Services flag × 0.3 |
+| `COMPETITOR_COUNT` | Number of Competitors |
+| `LINE_ITEM_COUNT` | Line Items |
+| `SERVICES_RATIO` | Professional Services Price / Total Price |
+| `ACV_NORMALIZED` | Z-score within Sales Segment |
+| `REVENUE_PER_EMPLOYEE` | ACV / Account Employees |
+| `SALES_PROCESS_COMPLETENESS` | Non-null milestone dates / 7 milestones |
+| `STEPS_COMPLETED` | Count of completed milestones + process flags |
+| `HAS_THESIS` | Boolean — People AI Engagement Level populated |
+| `HAS_STAKEHOLDERS` | Boolean — Snowflake Team Picklist populated |
+| `STAGE_ORDINAL` | Stage encoded as integer 1–7 |
+| `DEAL_COMPLEXITY_ENCODED` | Categorical: 1=Low, 2=Medium, 3=High |
+| `AI_MATURITY_ENCODED` | People AI Engagement Level → 1–5 scale |
+
+**Snowflake Objects Created:**
+
+| Object | Type | Schema | Purpose |
+|--------|------|--------|---------|
+| `ML_MODELS` | Schema | `TDR_APP.ML_MODELS` | Dedicated schema for ML objects |
+| `ML_FEATURE_STORE` | Table | `ML_MODELS` | Pre-computed derived features per opportunity, versioned by date |
+| `DEAL_ML_PREDICTIONS` | Table | `ML_MODELS` | Batch scoring results + SHAP explanations |
+| `ML_MODEL_METADATA` | Table | `ML_MODELS` | Model registry: versions, metrics, artifacts, lifecycle status |
+| `ML_ALERT_LOG` | Table | `ML_MODELS` | Alert audit log for monitoring pipeline health |
+| `PREDICTION_SYNC_QUEUE` | Table | `ML_MODELS` | Queue for downstream Domo dataset sync |
+| `ML_TRAINING_DATA` | View | `ML_MODELS` | Joins TDR session data with features and outcome labels |
+| `V_MODEL_PERFORMANCE` | View | `ML_MODELS` | Weekly prediction accuracy monitoring |
+| `V_LATEST_FEATURES` | View | `ML_MODELS` | Most recent features per opportunity |
+| `V_LATEST_PREDICTIONS` | View | `ML_MODELS` | Most recent prediction per opportunity |
+| `V_PRODUCTION_MODEL` | View | `ML_MODELS` | Currently deployed model |
+| `MODEL_ARTIFACTS` | Stage | `ML_MODELS` | Internal stage for serialized model files |
+| `SP_COMPUTE_ML_FEATURES` | Procedure (SQL) | `ML_MODELS` | Computes derived features from `opportunitiesmagic`, supports incremental/full-refresh |
+| `SP_TRAIN_STACKING_ENSEMBLE` | Procedure (Python) | `ML_MODELS` | Trains stacking ensemble with 5-fold CV, SMOTE, SHAP, model registry |
+| `SP_PREDICT_WIN_PROBABILITY` | Procedure (Python) | `ML_MODELS` | Batch/single prediction with SHAP explanations and risk flags |
+| `SP_DEPLOY_MODEL_TO_PRODUCTION` | Procedure (SQL) | `ML_MODELS` | Promotes validated model to production |
+| `TASK_COMPUTE_FEATURES` | Task | `ML_MODELS` | Daily 6am UTC — incremental feature computation |
+| `TASK_BATCH_SCORE` | Task | `ML_MODELS` | Daily 7am UTC (AFTER features) — batch scoring of all opportunities |
+| `TASK_RETRAIN_MODEL` | Task | `ML_MODELS` | Biweekly (1st & 15th) — retrain ensemble with latest data |
+| `TASK_PROCESS_NEW_PREDICTIONS` | Task | `ML_MODELS` | Every 15 min — consume stream, sync to downstream |
+| `TDR_ML_TRAINING_WH` | Warehouse | — | MEDIUM warehouse for training workloads (auto-suspend 120s, initially suspended) |
+| `ALERT_MODEL_PERFORMANCE_DEGRADATION` | Alert | `ML_MODELS` | Weekly — triggers if AUC-ROC drops below 0.65 (severity levels: WARNING/HIGH/CRITICAL) |
+| `STREAM_DEAL_PREDICTIONS` | Stream | `ML_MODELS` | CDC stream on `DEAL_ML_PREDICTIONS` for downstream processing |
+
+**Code Engine Functions (3 new — authored directly, not Cortex CLI):**
+
+| Function | Purpose | SQL Pattern |
+|----------|---------|-------------|
+| `getWinProbability(opportunityId)` | Single deal scoring | `CALL SP_PREDICT_WIN_PROBABILITY('single', ?)` |
+| `batchScoreDeals()` | Batch scoring all eligible deals | `CALL SP_PREDICT_WIN_PROBABILITY('batch', NULL)` |
+| `getLatestPredictions(opportunityId)` | Read cached predictions | `SELECT * FROM V_LATEST_PREDICTIONS WHERE OPPORTUNITY_ID = ?` |
+
+**Frontend Integration (planned — authored directly):**
+
+| Surface | Change |
+|---------|--------|
+| **Command Center** | Add "Win Probability" column to deals table, propensity badge (HIGH/MED/LOW) |
+| **Intelligence Panel** | New "Deal Propensity" card showing win probability, SHAP top factors, risk flags |
+| **Documentation Hub** | Update Architecture Diagram (ML layer), AI Models Reference (stacking ensemble), Data Model Reference (ML_MODELS tables) |
+| **TDR Score Composition** | Two-axis display: deterministic TDR score (X) × ML propensity (Y) → quadrant classification |
+
+**Generated Artifacts:**
+
+| File | Lines | Source | Contents |
+|------|-------|--------|----------|
+| `ml_infrastructure_ddl.sql` | 457 | Cortex CLI (Snowflake DDL) | Schema, 3 tables, 5 views, grants, internal stage |
+| `ml_feature_computation.sql` | 445 | Cortex CLI (Snowflake SQL) | SQL stored procedure for feature engineering with incremental/full-refresh |
+| `ml_training_procedure.sql` | 1,087 | Cortex CLI (Snowpark Python) | Snowpark Python procedures: training (stacking ensemble) + prediction (SHAP) + deployment helper |
+| `ml_automation.sql` | 322 | Cortex CLI (Snowflake SQL) | Tasks, Alerts, Streams, monitoring table, training warehouse, grants |
+| `notebooks/01_data_exploration.ipynb` | — | Direct (local Python) | Data profiling, feature distributions, class balance, missing value analysis |
+| `notebooks/02_feature_engineering.ipynb` | — | Direct (local Python) | Feature derivation prototyping, correlation analysis, feature selection |
+| `notebooks/03_model_prototyping.ipynb` | — | Direct (local Python) | Local model training, ensemble comparison, hyperparameter tuning, SHAP analysis |
+| `codeengine/mlPredictions.js` | — | Direct (Code Engine JS) | 3 Code Engine functions: getWinProbability, batchScoreDeals, getLatestPredictions |
+| `src/lib/mlPredictions.ts` | — | Direct (TypeScript) | Frontend service wrapping CE calls for ML predictions |
+
+**Local Development Environment:**
+
+| Component | Details |
+|-----------|---------|
+| **Python version** | 3.10 (matching Snowpark runtime) |
+| **Virtual environment** | `ml-venv/` in project root |
+| **Core libraries** | `pandas`, `numpy`, `scikit-learn`, `xgboost`, `lightgbm`, `imbalanced-learn`, `shap`, `joblib` |
+| **Notebook libraries** | `jupyter`, `matplotlib`, `seaborn`, `plotly` (for EDA visualization) |
+| **Snowflake connectivity** | `snowflake-snowpark-python`, `snowflake-connector-python` (for local → Snowflake data access) |
+| **Requirements file** | `notebooks/requirements.txt` |
+| **Notebooks path** | `notebooks/` directory in project root |
+
+The notebooks serve as the prototyping environment. All feature engineering, model training, and evaluation are iterated locally in notebooks first, then promoted to Snowflake stored procedures once validated. This avoids burning warehouse compute during experimentation.
+
+**Sub-Sprint Breakdown:**
+
+**Sprint 28a — Local Dev Environment & Data Exploration (Day 1)**
+- [ ] Create `notebooks/` directory and `notebooks/requirements.txt` with all Python dependencies
+- [ ] Set up Python 3.10 virtual environment (`ml-venv/`)
+- [ ] Install all libraries: pandas, numpy, scikit-learn, xgboost, lightgbm, shap, imbalanced-learn, jupyter, matplotlib, seaborn, snowflake-snowpark-python
+- [ ] Create `notebooks/01_data_exploration.ipynb` — load `forecast_page_opportunities_c.json` sample data, profile all fields, visualize distributions, analyze missing values, assess class balance
+- [ ] Create `notebooks/02_feature_engineering.ipynb` — prototype all 19 derived features locally, validate computation logic, correlation matrix, identify multicollinear features
+- [ ] Determine minimum viable training data available in full `opportunitiesmagic` dataset (target: ≥500 labeled rows with `Is Won` = TRUE/FALSE)
+
+**Sprint 28b — ML Infrastructure & Feature Pipeline (Day 2)**
+- [ ] Execute `ml_infrastructure_ddl.sql` via Cortex CLI or Snowflake worksheet — create `ML_MODELS` schema, tables, views, stage, grants
+- [ ] Execute `ml_feature_computation.sql` — create `SP_COMPUTE_ML_FEATURES` procedure
+- [ ] Run initial feature computation against full `opportunitiesmagic` dataset in Snowflake
+- [ ] Validate feature distributions in Snowflake match local notebook prototyping: null rates, value ranges, class balance
+- [ ] Verify minimum training data threshold (≥500 labeled rows with known outcomes)
+
+**Sprint 28c — Model Training & Validation (Day 3–4)**
+- [ ] Create `notebooks/03_model_prototyping.ipynb` — train all 4 base models locally on sample data, evaluate individually, prototype stacking
+- [ ] Execute `ml_training_procedure.sql` — create training + prediction + deployment procedures in Snowflake
+- [ ] Run `SP_TRAIN_STACKING_ENSEMBLE` with SMOTE on initial data
+- [ ] Evaluate metrics: target AUC-ROC ≥ 0.70, AUC-PR appropriate for class imbalance
+- [ ] Compare ensemble vs. native `SNOWFLAKE.ML.CLASSIFICATION` baseline — if <2% AUC lift, simplify to native
+- [ ] Review SHAP feature importance — validate top features make business sense
+- [ ] Deploy validated model: `CALL SP_DEPLOY_MODEL_TO_PRODUCTION('v1')`
+- [ ] Run batch scoring on full pipeline: `CALL SP_PREDICT_WIN_PROBABILITY('batch')`
+
+**Sprint 28d — Integration & Automation (Day 5–7)**
+- [ ] Execute `ml_automation.sql` — create Tasks (daily features, daily scoring, biweekly retraining), Alert, Stream, monitoring table, training warehouse
+- [ ] Resume Tasks: `ALTER TASK ... RESUME` for all 4 tasks
+- [ ] Write `codeengine/mlPredictions.js` — 3 Code Engine functions following existing `cortexAi.js` patterns (JWT auth, executeSql, /api/v2/statements)
+- [ ] Add `packageMapping` entries to `manifest.json` for the 3 new CE functions
+- [ ] Write `src/lib/mlPredictions.ts` — frontend service wrapping CE calls
+- [ ] Add Win Probability column to Command Center deals table
+- [ ] Add Deal Propensity card to Intelligence Panel (probability, SHAP factors, risk flags, quadrant)
+- [ ] Update Documentation Hub: Architecture Diagram (ML layer), AI Models (stacking ensemble), Data Model (ML_MODELS tables)
+
+**Definition of Done:** A stacking ensemble model trained on historical SFDC deal outcomes predicts close probability for every pipeline deal. Predictions surface in the Command Center (table column) and Intelligence Panel (propensity card with SHAP explanations). The two-axis quadrant (propensity × TDR score) is visible. Snowflake Tasks automate daily scoring and biweekly retraining. Model performance is monitored via alerts.
+
+**Key Decision Points:**
+1. **Ensemble vs. Native-only** — decided after Sprint 28c training run. If ensemble doesn't beat native by >2% AUC, simplify.
+2. **Class imbalance strategy** — SMOTE vs. class_weight. Run both in notebook prototyping, pick whichever produces better AUC-PR (more relevant for imbalanced data than AUC-ROC).
+3. **Minimum viable training data** — if full `opportunitiesmagic` has <500 labeled rows (Won + Lost), defer training and use a simpler logistic regression or even the native model until more data accumulates.
+4. **Notebook → Snowflake promotion** — all feature engineering and model logic is prototyped locally in notebooks first, then promoted to stored procedures only after validation. This avoids burning warehouse compute during iteration.
+
+**Learnings & Decisions (from shaping):**
+- Cortex CLI is the Snowflake-specific assistant: DDL, stored procedures, Tasks, Alerts, Streams, Snowpark package availability. All application code (Code Engine JS, frontend TS, Python notebooks) is authored directly.
+- "Propensity to close" is the correct model framing — not "TDR suitability." ML handles pattern recognition across features; the deterministic TDR score handles domain expertise. The two-axis composition gives richer prioritization than either alone.
+- Labels come from SFDC outcomes (`Is Won`), not the deterministic score. Using the hand-coded score as a label would create circular logic. The 9 TDR factors become *features*, and ML discovers whether the assumed weightings match what actually predicts wins.
+- The sample dataset (280K lines JSON) contains only open pipeline (0 closed deals). The full `opportunitiesmagic` dataset in Snowflake is required for training labels.
+
+---
+
 ### Sprint Execution Order & Dependencies
 
 ```
@@ -5847,6 +6154,18 @@ Sprint 25 — Documentation Hub & Architecture Diagram ✅ COMPLETE
     Scoring Reference, Capabilities Guide, Integrations,
     Data Model, AI Models, Glossary & FAQ
     /docs route with sticky ToC + accordions
+    │
+    ▼
+Sprint 28 — Deal Close Propensity ML Model 🔲
+    │  (depends on S18 + S25)
+    │  28a: Local Dev Environment & Data Exploration (Day 1)
+    │  28b: ML Infrastructure & Feature Pipeline (Day 2)
+    │  28c: Model Training & Validation (Day 3–4)
+    │  28d: Integration & Automation (Day 5–7)
+    │  Python notebooks for prototyping → Snowflake promotion
+    │  Stacking ensemble: XGBoost + LightGBM + RF + LogReg
+    │  19 derived features, SHAP explanations, 2-axis quadrant
+    │  Snowflake Tasks: daily scoring + biweekly retraining
 ```
 
 **Total estimated effort:** ~20-26 days of focused development
@@ -5869,6 +6188,7 @@ Sprint 25 — Documentation Hub & Architecture Diagram ✅ COMPLETE
 | **S26: Intelligence Panel UX** | — | S14 + S21 + S24-WS1 | 2-3 days | ✅ Feb 13 |
 | **S27: Decision Architecture** | — | S26 | 2 days | ✅ Feb 14 |
 | **S25: Documentation Hub + Architecture** | — | S24 + S27 | 1 day | ✅ Feb 14 |
+| **S28: Deal Close Propensity ML** | — | S18 + S25 | 5–7 days (4 sub-sprints) | 🔲 Not Started |
 
 ---
 
@@ -6179,6 +6499,11 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 **Why it matters independently:** This is the meta-deliverable. It documents everything the other eleven pillars built. When a Snowflake SA asks "What does your app do?", you open this tab. When a Domo executive asks "How is Cortex being used?", you check the AI Models section. When an SE asks "How is the TDR score calculated?", the Scoring Reference has every factor and weight. When a new engineer joins the project, they have a visual map plus complete technical documentation of the entire system. It transforms institutional knowledge into a comprehensive, interactive reference.
 **Key outcome:** The app explains itself — completely.
 
+### Pillar 13: Deal Close Propensity (Sprint 28)
+**What:** A `SNOWFLAKE.ML.CLASSIFICATION`-benchmarked stacking ensemble (XGBoost, LightGBM, RandomForest, LogisticRegression → LogReg meta-learner) trained on historical SFDC deal outcomes predicts close probability for every pipeline deal. 19 derived features are computed daily from `opportunitiesmagic` into an ML Feature Store. SHAP explanations surface the "why" behind every prediction. The propensity score composes with the existing deterministic TDR score to create a **two-axis prioritization system**: propensity to close (Y) × technical complexity (X) → a 2×2 quadrant (CRITICAL / MONITOR / LOW TOUCH / DEPRIORITIZE). Python notebooks handle local prototyping; Snowpark Python stored procedures handle training and inference in Snowflake. Snowflake Tasks automate daily scoring, daily feature computation, and biweekly model retraining.
+**Why it matters independently:** Even without any other enrichment, the propensity score answers the question the deterministic scoring can't: "Will this deal actually close?" An SE Manager looking at 40 open deals can immediately see which ones have an 85% close probability vs. 15%. Combined with the TDR complexity score, the CRITICAL quadrant (high propensity + high complexity) becomes the priority queue — deals that are both winnable and worth the TDR investment. The SHAP explanations make the model trustworthy: not just "72% likely to close" but "because account win rate is 0.65, stage velocity is 1.2× average, and sales process is 85% complete."
+**Key outcome:** The app predicts which deals will close — and explains why.
+
 ### The Flywheel
 
 ```
@@ -6231,8 +6556,9 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 | Pillars 1–10 (+ Performance) | A production-grade platform — cached intelligence, lean bundle, zero waste. Every Cortex call is intentional, every byte justified. |
 | Pillars 1–11 (+ UX Cohesion) | A polished platform — the Intelligence panel feels designed, not assembled. One-click enrichment, clear hierarchy, no branding noise. |
 | All 12 Pillars (+ Architecture Diagram) | **The documented platform:** the system explains itself. Stakeholders see the architecture, Snowflake SAs see Cortex usage, new engineers see the full map. The app is both the product and its own documentation. |
+| All 13 Pillars (+ ML Propensity) | **The predictive platform:** the system not only documents and enriches deals — it predicts which ones will close, explains why, and composes that prediction with TDR complexity to create a two-axis priority queue. SE Managers allocate time to the CRITICAL quadrant: deals that are both winnable and technically complex. The flywheel accelerates: as more deals close (or don't), the model retrains and gets smarter. |
 
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 9 is the capstone: it converts everything the other eight pillars generate into a single actionable artifact. Pillar 10 hardens the platform for production. Pillar 11 polishes the most critical surface in the app. Pillar 12 makes the architecture visible and shareable — the final deliverable that documents everything.
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 9 is the capstone: it converts everything the other eight pillars generate into a single actionable artifact. Pillar 10 hardens the platform for production. Pillar 11 polishes the most critical surface in the app. Pillar 12 makes the architecture visible and shareable. Pillar 13 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes.
 
 ---
 
