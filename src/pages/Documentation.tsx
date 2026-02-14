@@ -138,7 +138,7 @@ export default function Documentation() {
 
         {/* ── Main Content ─────────────────────────────────────────────────── */}
         <main className="flex-1 overflow-y-auto bg-[hsl(268,30%,7%)]">
-          <div className="px-6 py-6 space-y-2">
+          <div className="mx-auto max-w-7xl px-6 py-6 space-y-2">
 
             {/* Intro text */}
             <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-5 py-4 mb-6">

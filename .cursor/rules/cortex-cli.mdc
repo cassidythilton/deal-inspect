@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+# Cortex CLI — Rules of Engagement
+
+## The Cardinal Rule
+Cortex CLI (`cortex`) is a **Snowflake-only** assistant. It knows Snowflake. Ask it about Snowflake. Do NOT ask it to write application code.
+
+## ✅ USE Cortex CLI For
+- DDL: tables, schemas, views, stages, grants, permissions
+- Stored procedures (SQL or Snowpark Python) that run INSIDE Snowflake
+- Snowflake Tasks, Alerts, Streams
+- Cortex AI functions: AI_COMPLETE, AI_CLASSIFY, AI_EXTRACT, AI_EMBED, AI_AGG
+- Snowflake ML: SNOWFLAKE.ML.CLASSIFICATION, Snowpark ML, Model Registry
+- Data exploration: query live data, profile tables, validate features
+- Snowflake architecture questions: warehouse sizing, package availability, optimization
+- SQL debugging and optimization
+
+## 🚫 DO NOT USE Cortex CLI For
+- **Code Engine JavaScript** — author directly, follow patterns in `codeengine/cortexAi.js` and `codeengine/consolidated-sprint4-5.js`
+- **Frontend TypeScript / React** — author directly, follow patterns in `src/`
+- **Python notebooks** — author directly with standard Jupyter workflow
+- **Library installation** — use pip/npm/brew directly in terminal
+- **manifest.json editing** — author directly, follow existing Domo manifest format
+- **Application architecture decisions** — human judgment, not CLI delegation
+- **Git operations** — use git directly
+- **Testing / CI / Build** — use standard dev tooling
+
+## The Line
+If it runs **IN Snowflake** → ask Cortex CLI.
+If it runs **OUTSIDE Snowflake** → author it directly.
+
+## Reference
+Full guidelines in [IMPLEMENTATION_STRATEGY.md](mdc:IMPLEMENTATION_STRATEGY.md) Section 16.7.
