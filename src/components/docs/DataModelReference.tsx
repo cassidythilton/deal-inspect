@@ -11,6 +11,7 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Database, Eye } from 'lucide-react';
+import { SnowflakeLogo } from '@/components/CortexBranding';
 
 /* ── Shared table ──────────────────────────────────────────────────────────── */
 
@@ -85,8 +86,11 @@ export function DataModelReference() {
       </p>
 
       <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-1">
-        <p className="text-xs font-medium text-slate-200">Schema: TDR_APP.TDR_DATA</p>
-        <p className="text-[11px] text-slate-400">Warehouse: COMPUTE_WH | Role: TDR_APP_ROLE | Auth: JWT (RSA-256 key pair)</p>
+        <div className="flex items-center gap-2">
+          <SnowflakeLogo className="h-4 w-4 shrink-0" />
+          <p className="text-xs font-medium text-slate-200">Schema: TDR_APP.TDR_DATA</p>
+        </div>
+        <p className="text-[11px] text-slate-400 ml-6">Warehouse: COMPUTE_WH | Role: TDR_APP_ROLE | Auth: JWT (RSA-256 key pair)</p>
       </div>
 
       <Accordion type="multiple" className="space-y-2">

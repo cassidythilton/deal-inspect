@@ -4,6 +4,10 @@
  * Sprint 25: Documentation Hub
  */
 
+import { SnowflakeLogo, CortexLogo } from '@/components/CortexBranding';
+import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
+import { DomoIcon } from '@/components/icons/DomoIcon';
+
 /* ── Model card component ──────────────────────────────────────────────────── */
 
 interface ModelInfo {
@@ -63,7 +67,9 @@ export function AIModelsReference() {
 
       {/* ── Cortex Models ──────────────────────────────────────────────────── */}
       <div className="space-y-2">
-        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <SnowflakeLogo className="h-3.5 w-3.5 shrink-0" />
+          <CortexLogo className="h-3.5 w-3.5 shrink-0" />
           Snowflake Cortex — Server-side via Code Engine
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -155,7 +161,8 @@ export function AIModelsReference() {
 
       {/* ── Perplexity Models ──────────────────────────────────────────────── */}
       <div className="space-y-2 mt-6">
-        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <PerplexityIcon className="h-3.5 w-3.5 shrink-0" />
           Perplexity — Server-side via Code Engine
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -184,7 +191,8 @@ export function AIModelsReference() {
 
       {/* ── Domo AI ────────────────────────────────────────────────────────── */}
       <div className="space-y-2 mt-6">
-        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <DomoIcon className="h-3.5 w-3.5 shrink-0 text-slate-300" />
           Domo AI — Client-side (no Code Engine)
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

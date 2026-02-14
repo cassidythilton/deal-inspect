@@ -13,6 +13,8 @@ import {
 import { SnowflakeLogo, CortexLogo } from '@/components/CortexBranding';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
 import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
+import { DomoIcon } from '@/components/icons/DomoIcon';
+import { SlackIcon } from '@/components/icons/SlackIcon';
 
 /* ── Shared table ──────────────────────────────────────────────────────────── */
 
@@ -172,7 +174,7 @@ export function IntegrationsReference() {
         <AccordionItem value="domo" className="border border-white/[0.08] rounded-lg overflow-hidden">
           <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
             <IntegrationHeader
-              icon={<span className="text-[11px] font-bold text-violet-400">D</span>}
+              icon={<DomoIcon className="h-4 w-4 text-violet-400" />}
               title="Domo Platform"
               subtitle="Code Engine, Datasets, Filesets, AI, App Studio"
             />
@@ -198,7 +200,7 @@ export function IntegrationsReference() {
         <AccordionItem value="slack" className="border border-white/[0.08] rounded-lg overflow-hidden">
           <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
             <IntegrationHeader
-              icon={<span className="text-[11px] font-bold text-violet-400">#</span>}
+              icon={<SlackIcon className="h-4 w-4 text-violet-400" />}
               title="Slack"
               subtitle="TDR Readout distribution with AI summary"
             />
