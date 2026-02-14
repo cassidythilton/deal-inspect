@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 4.5 · **Date:** February 13, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23 · **In Progress:** 24 (WS1 ✅) · **Remaining:** 24 (WS2+3), 26, 25
+**Status:** In Progress · **Version:** Draft 5.0 · **Date:** February 14, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23, 26, 27 · **In Progress:** — · **Remaining:** 24 (WS2+3), 25
 
 ---
 
@@ -3728,8 +3728,19 @@ The following enhancements were applied to the Slack distribution experience aft
 | **22** | **Frontier Model Upgrade + Cortex Branding** | ✅ Complete | Feb 12, 2026 | None | **AI / Config / UX** |
 | **23** | **KB Insights Cleanup + KB Tooltip** | ✅ Complete | Feb 12, 2026 | S19.5 + S22 | **UX** |
 | **24** | **Performance Optimization & KB Summary Caching** | 🟡 WS1 Complete | Feb 12, 2026 (WS1) | S21 | **Performance** |
-| **26** | **Intelligence Panel UX Review & Consolidation** | 🔲 Planned | — | S14 + S21 + S24-WS1 | **UX** |
+| **26** | **Intelligence Panel UX Review & Consolidation** | ✅ Complete | Feb 13, 2026 | S14 + S21 + S24-WS1 | **UX** |
+| **27** | **Intelligence Panel Decision Architecture** | ✅ Complete | Feb 14, 2026 | S26 | **UX / Architecture** |
 | **25** | **Interactive Architecture Diagram** | 🔲 Planned | — | S24 + S26 | **Visualization** |
+
+**Post-Sprint Enhancements (Feb 14, 2026):**
+- Sprint 27 — TDR Score lifecycle maturity: 6-phase lifecycle (NOT_STARTED → EARLY → IN_PROGRESS → NEAR_COMPLETE → COMPLETE → ENRICHED) × 4 priority bands = 24 distinct contextual messages. Messaging evolves from "Requires TDR" to "TDR complete — execute action plan" to "Fully informed — manage through close."
+- Sprint 27 — TDR Confidence Score (dual-axis): new 0–100 score measuring assessment thoroughness (Required Steps 0–40, Optional Depth 0–10, External Intel 0–15, AI Analysis 0–15, Knowledge Base 0–10, Risk Identified 0–10). Bands: Insufficient → Developing → Solid → High → Comprehensive.
+- Sprint 27 — Required vs Optional steps: lifecycle phase uses required steps only (5/5). Optional steps noted separately as "+N optional" badge.
+- Sprint 27 — Trigger pill colors now match DealsTable portfolio page palette (factor.color: cyan, blue, amber, etc.).
+- Sprint 27 — Auto-load Research & Similar section: similar deals and research history fetched on mount without manual clicks.
+- Sprint 27 — Suppress Domo auto-refresh: `domo.onDataUpdate` no-op handler in `main.tsx` prevents dataset updates from reloading the app.
+- Sprint 27 — Deal team (AE, SE, SE Mgr) relocated to deal header alongside account name, ACV, stage.
+- Sprint 27 — TDR Score context: detailed breakdown with component definitions and priority band legend.
 
 **Post-Sprint Enhancements (Feb 13, 2026):**
 - Sprint 14 — Major Slack distribution polish: executive-level Block Kit formatting, structured summary → `mrkdwn` conversion, @mention support via `resolveSlackUsers`, consolidated PDF attachment, deal team passthrough, `forceRegenerate` cache busting, retry with exponential backoff, Slack-style message preview with `FormattedSummary` component, icon-only buttons with hover animations.
@@ -5428,7 +5439,7 @@ Generate the action plan in these 7 sections:
 
 ---
 
-### Sprint 26 — Intelligence Panel UX Review & Consolidation 🟡 IN PROGRESS
+### Sprint 26 — Intelligence Panel UX Review & Consolidation ✅ COMPLETE (Feb 13, 2026)
 
 > **Goal:** Perform a comprehensive usability audit of the TDR Intelligence panel (right modal). After 23+ sprints of iterative feature additions, the panel has accumulated ~20 distinct sections, multiple enrichment trigger buttons, heavy branding elements, and visible-but-low-value subsections. This sprint consolidates, simplifies, and refines the panel into a cohesive, intuitive experience — ready for executive demonstrations and daily SE workflow.
 > **Risk to app:** Medium — this is a structural UX refactor of the most information-dense surface in the app. Careful attention to not lose functionality while simplifying the interface.
@@ -5520,6 +5531,62 @@ Key changes:
 | `src/lib/accountIntel.ts` | Add `enrichAll(opportunityId, accountName, domain)` convenience method that calls all 4 Sumble endpoints in parallel |
 
 **Definition of Done:** The Intelligence panel has a clear information hierarchy (decision outputs at top, raw data below, admin at bottom). Account enrichment is a single click. Branding is expressed through subtle icons, not colored pills on every section. Analytics Extraction is invisible to the user (runs automatically). The panel renders cleanly with no "wall of buttons" or "branding overload" feeling. A Snowflake SA seeing the panel for the first time can immediately identify what's important.
+
+---
+
+### Sprint 27 — Intelligence Panel Decision Architecture ✅ COMPLETE (Feb 14, 2026)
+
+> **Goal:** Refactor the Intelligence panel from a data-source-centric layout (organized by Sumble, Perplexity, Cortex) into a **decision-oriented 4-zone architecture** — organized by the decisions an SE needs to make on a deal. Add a dual-axis scoring model (Risk × Confidence), lifecycle-aware contextual messaging, and auto-loading data sections.
+> **Risk to app:** Medium — major structural refactor of the largest component in the app (~2,800+ lines). No Code Engine changes.
+> **Effort:** ~2 days
+> **Dependencies:** Sprint 26 (panel must be consolidated before reorganizing)
+
+**Problem Statement:**
+
+After Sprint 26 consolidated sections and reduced branding, the panel was cleaner but still organized by data source. An SE looking at the panel had to mentally assemble insights from separate Sumble, Perplexity, Cortex, and CRM sections to answer a single question like "What is the competitive landscape?" The information was available but **disconnected** — you had to visit 3-4 different sections to get the full picture on any one theme.
+
+**Solution — 4-Zone Decision Architecture:**
+
+| Zone | Purpose | Contents |
+|------|---------|----------|
+| **A: Situation Room** | Quick orientation — what is this deal and how critical is it? | Deal header (account, ACV, stage, deal type, deal team), TDR Score with lifecycle-aware context, Confidence Score (new), Signal Strip (threat, hiring, KB match, intel level) |
+| **B: Intelligence Dossier** | Deep thematic analysis — organized by decision theme, not data source | §B1 Account Profile (Sumble Org + Perplexity summary), §B2 Technical Landscape (Sumble tech + Perplexity signals + Cortex extraction), §B3 Competitive Position (all competitive signals merged), §B4 Key People (Sumble people + Cortex executives), §B5 Market Signals (initiatives + hiring + classified findings + sentiment) |
+| **C: Strategic Guidance** | AI-synthesized outputs — what to do next | Action Plan (full dialog), TDR Brief (link), Structured extract chips (Verdict, Complexity, Entry Layer, Cloud Platform) |
+| **D: Evidence & Admin** | Raw data and administrative controls (collapsed by default) | Risk & Readiness, Research & Similar, Final Outcome |
+
+**Key Design Decisions:**
+
+1. **Inline Source Badges:** Instead of section-level branding, tiny inline badges (ⓢ Sumble · ⓟ Perplexity · ✨ Cortex AI · 🔎 KB · ▣ CRM) appear next to individual data points. The reader knows where each fact came from without branding dominating the layout.
+
+2. **Enrichment Action Bar:** Domain input and "Enrich Account" button moved to top of Zone B as a compact toolbar — enrichment is a workflow action, not a section.
+
+3. **TDR Score Lifecycle Maturity:**
+   - 6 lifecycle phases: NOT_STARTED → EARLY → IN_PROGRESS → NEAR_COMPLETE → COMPLETE → ENRICHED
+   - Each phase × 4 priority bands = 24 distinct contextual messages
+   - Messaging evolves from "Requires immediate TDR" → "TDR in progress — key risks surfacing" → "TDR complete — execute action plan" → "Fully informed — manage through close"
+   - Lifecycle based on **required steps only** (5/5). Optional steps shown as "+N optional" badge.
+
+4. **TDR Confidence Score (Dual-Axis):**
+   - Pre-TDR Score = deal complexity/risk (intrinsic to the deal)
+   - Confidence Score = assessment thoroughness (SE effort)
+   - Components: Required Steps (0-40), Optional Depth (0-10), External Intel (0-15), AI Analysis (0-15), Knowledge Base (0-10), Risk Identified (0-10)
+   - Bands: Insufficient (0-19) → Developing (20-39) → Solid (40-59) → High (60-79) → Comprehensive (80-100)
+   - A CRITICAL deal with Comprehensive confidence = "We know this is complex AND we fully understand it"
+
+5. **Auto-loading Data:** Similar Deals and Research History load automatically on mount. No manual "click to search" needed.
+
+6. **Domo Auto-refresh Suppression:** `domo.onDataUpdate()` no-op handler in `main.tsx` prevents dataset updates from reloading the app and destroying in-progress state.
+
+**Frontend Changes:**
+
+| File | Change |
+|------|--------|
+| `src/components/TDRIntelligence.tsx` | Major refactor: 4-zone layout, inline source badges, enrichment action bar, lifecycle-aware score context, confidence score, auto-load similar deals/history |
+| `src/lib/tdrCriticalFactors.ts` | Added `calculateTDRConfidence()` function and `TDRConfidenceBreakdown` interface |
+| `src/pages/TDRWorkspace.tsx` | Pass required/optional step counts separately to TDRIntelligence |
+| `src/main.tsx` | Added `domo.onDataUpdate()` no-op to suppress auto-refresh |
+
+**Definition of Done:** The Intelligence panel is organized into 4 decision-oriented zones. Each data point carries an inline source badge. The TDR Score shows lifecycle-aware context that evolves as the TDR matures (from "needs TDR" to "fully informed"). A Confidence meter shows assessment thoroughness alongside risk. Similar deals and history load automatically. The app does not reload when datasets update.
 
 ---
 
@@ -5750,11 +5817,14 @@ Sprint 14 — Slack Distribution ✅ COMPLETE
     │  Push PDF + AI summary to Slack channels
     │
     ▼
-Sprint 26 — Intelligence Panel UX Review 🔲
-    │  (depends on S14 — panel must be feature-complete first)
-    │  Consolidate Sumble buttons, reduce branding,
-    │  hide analytics extraction, reorder sections,
-    │  visual refinement
+Sprint 26 — Intelligence Panel UX Review ✅ COMPLETE
+    │  Consolidated Sumble buttons, reduced branding,
+    │  hid analytics extraction, reordered sections
+    │
+    ▼
+Sprint 27 — Intelligence Panel Decision Architecture ✅ COMPLETE
+    │  4-zone layout, lifecycle-aware TDR score,
+    │  confidence score, auto-load, Domo refresh suppression
     │
     ▼
 Sprint 24 — Perf Optimization + KB Caching 🟡 IN PROGRESS
@@ -5787,8 +5857,9 @@ Sprint 25 — Architecture Diagram (2–3 days)
 | **S21: Action Plan Synthesis** | — | S17.5 + S18 + S19 + S19.5 + S22 | 2-3 days | ✅ |
 | **S14: Slack Distribution** | — | S13 | 2-3 days | ✅ (polished Feb 13) |
 | **S24: Perf Optimization** | — | S21 | 2 days | 🟡 WS1 done |
-| **S26: Intelligence Panel UX** | — | S14 + S21 + S24-WS1 | 2-3 days | 🔲 Next |
-| **S25: Architecture Diagram** | — | S24 + S26 | 2-3 days | 🔲 |
+| **S26: Intelligence Panel UX** | — | S14 + S21 + S24-WS1 | 2-3 days | ✅ Feb 13 |
+| **S27: Decision Architecture** | — | S26 | 2 days | ✅ Feb 14 |
+| **S25: Architecture Diagram** | — | S24 + S27 | 2-3 days | 🔲 |
 
 ---
 
