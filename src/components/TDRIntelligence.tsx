@@ -881,6 +881,31 @@ export function TDRIntelligence({
     setSimilarDealsLoading(false);
   }, [deal?.id]);
 
+  // ── Auto-load Research & Similar when intel is available ──
+  const [autoLoadedResearch, setAutoLoadedResearch] = useState(false);
+  useEffect(() => {
+    if (autoLoadedResearch || !deal?.id) return;
+    // Load similar deals, history, and sentiment automatically
+    const autoLoad = async () => {
+      setAutoLoadedResearch(true);
+      // Similar deals
+      setSimilarDealsLoading(true);
+      try {
+        const result = await cortexAi.findSimilarDeals(deal.id);
+        if (result.success) setSimilarDeals((result.deals || []).filter((d) => d.similarityScore != null && !isNaN(d.similarityScore)));
+      } catch (err) { console.warn('[TDRIntelligence] Auto-load similar deals failed:', err); }
+      setSimilarDealsLoading(false);
+
+      // History (only if we have intel data)
+      if (sumbleData || perplexityData) {
+        setHistoryLoading(true);
+        try { const data = await accountIntel.getIntelHistory(deal.id); setHistoryData(data); } catch (err) { console.warn('[TDRIntelligence] Auto-load history failed:', err); }
+        setHistoryLoading(false);
+      }
+    };
+    autoLoad();
+  }, [deal?.id, autoLoadedResearch, sumbleData, perplexityData]);
+
   // ── Computed values ──
   const hasIntel = !!(sumbleData || perplexityData);
 
@@ -1948,15 +1973,16 @@ export function TDRIntelligence({
         </div>
       </CollapsibleSection>
 
-      {/* Research History & Similar Deals */}
-      {hasIntel && (
+      {/* Research History & Similar Deals — auto-loaded */}
+      {deal && (
         <CollapsibleSection title="Research & Similar" icon={History} iconColor="text-slate-500" defaultExpanded={false}>
           <div className="space-y-2">
-            {/* History */}
-            <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+            {/* History — only shown when intel data exists */}
+            {hasIntel && <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
               <DialogTrigger asChild>
                 <button onClick={handleViewHistory} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-400 hover:bg-[#221d38] hover:text-slate-200 transition-colors">
                   <History className="h-3 w-3" />Research History
+                  {historyData.length > 0 && <span className="ml-auto text-2xs text-slate-600">{historyData.length} pulls</span>}
                 </button>
               </DialogTrigger>
               <DialogContent className="max-w-lg bg-[#1e1a30] border-[#362f50] text-white">
@@ -1979,9 +2005,10 @@ export function TDRIntelligence({
                    })}
                 </div>
               </DialogContent>
-            </Dialog>
+            </Dialog>}
 
-            {/* Evolution */}
+            {/* Evolution — only shown when intel data exists */}
+            {hasIntel && <>
             <button onClick={handleLoadEvolution} disabled={evolutionLoading}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-400 hover:bg-[#221d38] hover:text-slate-200 transition-colors">
               {evolutionLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <BookOpen className="h-3 w-3" />}Intelligence Evolution
@@ -1995,6 +2022,7 @@ export function TDRIntelligence({
                  <p className="text-sm text-slate-500 py-6 text-center">Research at least twice to see evolution.</p>}
               </DialogContent>
             </Dialog>
+            </>}
 
             {/* Similar Deals */}
             <div>
@@ -2016,7 +2044,11 @@ export function TDRIntelligence({
                     );
                   })}
                 </div>
-              ) : !similarDealsLoading && <p className="text-2xs text-slate-600 italic px-2">Click search to find similar deals</p>}
+              ) : similarDealsLoading ? (
+                <div className="flex items-center gap-2 px-2 py-1 text-2xs text-slate-500"><Loader2 className="h-3 w-3 animate-spin" />Finding similar deals…</div>
+              ) : (
+                <p className="text-2xs text-slate-600 italic px-2">No similar deals found</p>
+              )}
             </div>
           </div>
         </CollapsibleSection>
