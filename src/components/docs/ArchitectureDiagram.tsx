@@ -316,7 +316,7 @@ function buildOverview() {
     edge('grpD', 'slack', { color: C.rose, label: 'Webhook' }),
   ];
 
-  return layoutGraph(nodes, edges, 'TB', { nodeSep: 50, rankSep: 70 });
+  return layoutGraph(nodes, edges, 'LR', { nodeSep: 40, rankSep: 80 });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -351,7 +351,7 @@ function buildDataModel() {
     edge('cortex', 'view', { color: C.cyan, dashed: true }),
   ];
 
-  return layoutGraph(nodes, edges, 'TB', { nodeSep: 55, rankSep: 80 });
+  return layoutGraph(nodes, edges, 'LR', { nodeSep: 40, rankSep: 80 });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -407,7 +407,7 @@ function buildCortexMap() {
     edge('domoai', 'f-domochat', { color: C.amber }),
   ];
 
-  return layoutGraph(nodes, edges, 'TB', { nodeSep: 35, rankSep: 70 });
+  return layoutGraph(nodes, edges, 'LR', { nodeSep: 35, rankSep: 80 });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -462,7 +462,7 @@ function buildEnrichment() {
     edge('sf-kb', 'panel', { color: C.violet }),
   ];
 
-  return layoutGraph(nodes, edges, 'TB', { nodeSep: 40, rankSep: 65 });
+  return layoutGraph(nodes, edges, 'LR', { nodeSep: 35, rankSep: 80 });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -507,11 +507,11 @@ type LayerDef = {
 };
 
 const LAYERS: LayerDef[] = [
-  { id: 'overview', label: 'System Overview', description: 'Five-tier architecture from UI to external APIs', build: buildOverview, height: 820 },
-  { id: 'datamodel', label: 'Data Model', description: 'Snowflake tables, foreign keys, and the analytics view', build: buildDataModel, height: 600 },
-  { id: 'cortex', label: 'Cortex AI Models', description: 'Which models power which features (Cortex, Perplexity, Domo AI)', build: buildCortexMap, height: 700 },
-  { id: 'enrichment', label: 'Enrichment Pipeline', description: 'Three parallel data flows: Sumble, Perplexity, and Knowledge Base', build: buildEnrichment, height: 780 },
-  { id: 'workflow', label: 'User Workflow', description: 'End-to-end SE journey from deal selection to Slack readout', build: buildWorkflow, height: 460 },
+  { id: 'overview', label: 'System Overview', description: 'Five-tier architecture from UI to external APIs', build: buildOverview, height: 620 },
+  { id: 'datamodel', label: 'Data Model', description: 'Snowflake tables, foreign keys, and the analytics view', build: buildDataModel, height: 520 },
+  { id: 'cortex', label: 'Cortex AI Models', description: 'Which models power which features (Cortex, Perplexity, Domo AI)', build: buildCortexMap, height: 580 },
+  { id: 'enrichment', label: 'Enrichment Pipeline', description: 'Three parallel data flows: Sumble, Perplexity, and Knowledge Base', build: buildEnrichment, height: 620 },
+  { id: 'workflow', label: 'User Workflow', description: 'End-to-end SE journey from deal selection to Slack readout', build: buildWorkflow, height: 420 },
 ];
 
 // ─── Main component ───────────────────────────────────────────────────────────
