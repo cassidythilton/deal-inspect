@@ -8,6 +8,7 @@ import CommandCenter from "@/pages/CommandCenter";
 import TDRWorkspace from "@/pages/TDRWorkspace";
 import TDRHistory from "@/pages/TDRHistory";
 import TDRAnalytics from "@/pages/TDRAnalytics";
+import Documentation from "@/pages/Documentation";
 import Settings from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
             <Route path="/workspace" element={<TDRWorkspace />} />
             <Route path="/history" element={<TDRHistory />} />
             <Route path="/analytics" element={<TDRAnalytics />} />
+            <Route path="/docs" element={<Documentation />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
           <Route path="*" element={<NotFound />} />

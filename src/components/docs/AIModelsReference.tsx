@@ -1,0 +1,233 @@
+/**
+ * AIModelsReference — Documents which AI models power which features.
+ *
+ * Sprint 25: Documentation Hub
+ */
+
+/* ── Model card component ──────────────────────────────────────────────────── */
+
+interface ModelInfo {
+  model: string;
+  provider: string;
+  costTier: 'low' | 'medium' | 'high';
+  usedFor: string[];
+}
+
+const COST_COLORS: Record<string, string> = {
+  low: '#22c55e',
+  medium: '#f59e0b',
+  high: '#ef4444',
+};
+
+function ModelCard({ model, provider, costTier, usedFor }: ModelInfo) {
+  return (
+    <div className="rounded-lg border border-[#2a2540]/40 bg-[#1B1630]/30 p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-200 font-mono">{model}</p>
+          <p className="text-[10px] text-slate-400">{provider}</p>
+        </div>
+        <span
+          className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          style={{
+            backgroundColor: COST_COLORS[costTier] + '20',
+            color: COST_COLORS[costTier],
+            border: `1px solid ${COST_COLORS[costTier]}40`,
+          }}
+        >
+          {costTier} cost
+        </span>
+      </div>
+      <ul className="space-y-1">
+        {usedFor.map((use, i) => (
+          <li key={i} className="flex gap-2 text-xs text-slate-300">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
+            {use}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* ── Main export ───────────────────────────────────────────────────────────── */
+
+export function AIModelsReference() {
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-slate-300 leading-relaxed">
+        DealInspect uses multiple AI models across three providers. Model selection is optimized
+        for each task — frontier models for generation and reasoning, smaller models for classification
+        and extraction, specialized models for embeddings.
+      </p>
+
+      {/* ── Cortex Models ──────────────────────────────────────────────────── */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+          Snowflake Cortex — Server-side via Code Engine
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ModelCard
+            model="claude-4-sonnet"
+            provider="Anthropic via Snowflake Cortex"
+            costTier="medium"
+            usedFor={[
+              'TDR Brief generation (primary)',
+              'Action Plan synthesis (primary)',
+              'TDR Chat default model',
+              'Structured TDR extraction',
+              'Portfolio insights generation',
+              'NLQ → SQL translation',
+            ]}
+          />
+          <ModelCard
+            model="claude-4-opus"
+            provider="Anthropic via Snowflake Cortex"
+            costTier="high"
+            usedFor={[
+              'TDR Chat (user-selectable)',
+              'Deep reasoning for complex questions',
+              'Most capable model available',
+            ]}
+          />
+          <ModelCard
+            model="openai-gpt-4.1"
+            provider="OpenAI via Snowflake Cortex"
+            costTier="high"
+            usedFor={[
+              'TDR Chat (user-selectable)',
+              'Strong general-purpose reasoning',
+              'Alternative to Claude for comparison',
+            ]}
+          />
+          <ModelCard
+            model="openai-o4-mini"
+            provider="OpenAI via Snowflake Cortex"
+            costTier="medium"
+            usedFor={[
+              'TDR Chat (user-selectable)',
+              'Reasoning-optimized, efficient',
+              'Good for structured analysis tasks',
+            ]}
+          />
+          <ModelCard
+            model="llama3.1-8b"
+            provider="Meta via Snowflake Cortex"
+            costTier="low"
+            usedFor={[
+              'AI_CLASSIFY — finding categorization',
+              'AI_EXTRACT — entity extraction',
+              'AI_SENTIMENT — sentiment analysis',
+              'Fast, cheap — ideal for classification tasks',
+            ]}
+          />
+          <ModelCard
+            model="llama3.1-70b"
+            provider="Meta via Snowflake Cortex"
+            costTier="medium"
+            usedFor={[
+              'AI_SUMMARIZE_AGG — intel history summarization',
+              'AI_AGG — aggregated analysis',
+              'Balanced quality and cost for summarization',
+            ]}
+          />
+          <ModelCard
+            model="snowflake-arctic-embed-l-v2.0"
+            provider="Snowflake via Cortex"
+            costTier="low"
+            usedFor={[
+              'AI_EMBED — generate semantic vectors',
+              'Similar deal matching (cosine similarity)',
+              'High-quality 1024-dim embeddings',
+            ]}
+          />
+          <ModelCard
+            model="e5-base-v2"
+            provider="Microsoft via Snowflake Cortex"
+            costTier="low"
+            usedFor={[
+              'Secondary embedding model',
+              'Used for general-purpose text similarity',
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* ── Perplexity Models ──────────────────────────────────────────────── */}
+      <div className="space-y-2 mt-6">
+        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+          Perplexity — Server-side via Code Engine
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ModelCard
+            model="sonar"
+            provider="Perplexity API"
+            costTier="low"
+            usedFor={[
+              'TDR Chat — web-grounded answers',
+              'Quick competitive research queries',
+              'Fast search with citations',
+            ]}
+          />
+          <ModelCard
+            model="sonar-pro"
+            provider="Perplexity API"
+            costTier="medium"
+            usedFor={[
+              'Account research enrichment',
+              'Deep competitive landscape analysis',
+              'Multi-step research with comprehensive citations',
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* ── Domo AI ────────────────────────────────────────────────────────── */}
+      <div className="space-y-2 mt-6">
+        <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+          Domo AI — Client-side (no Code Engine)
+        </h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ModelCard
+            model="domo-default"
+            provider="Domo Native AI"
+            costTier="low"
+            usedFor={[
+              'TDR Chat — quick answers without Cortex',
+              'Fallback summarization when Cortex is unavailable',
+              'No API key required — built into Domo platform',
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* ── Model Selection Philosophy ─────────────────────────────────────── */}
+      <div className="mt-6 rounded-lg border border-[#2a2540]/40 bg-[#1B1630]/30 px-4 py-3 space-y-2">
+        <p className="text-xs font-medium text-slate-300">Model Selection Philosophy</p>
+        <ul className="space-y-1 text-xs text-slate-300">
+          <li className="flex gap-2">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
+            <strong className="text-slate-300">Generation tasks</strong> (briefs, action plans, chat): Use frontier models (Claude 4 Sonnet/Opus, GPT-4.1) for best quality reasoning.
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
+            <strong className="text-slate-300">Classification & extraction</strong>: Use smaller models (llama3.1-8b) for speed and cost. These tasks don't need deep reasoning.
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
+            <strong className="text-slate-300">Summarization</strong>: Use mid-tier models (llama3.1-70b) for balanced quality.
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
+            <strong className="text-slate-300">Embeddings</strong>: Use purpose-built embedding models (Arctic, e5-base) — not LLMs.
+          </li>
+          <li className="flex gap-2">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
+            <strong className="text-slate-300">All results cached</strong>: CORTEX_ANALYSIS_RESULTS stores outputs so subsequent loads cost zero tokens.
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+

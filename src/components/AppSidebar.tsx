@@ -5,6 +5,7 @@ import {
   FileSearch,
   History,
   BarChart3,
+  BookOpen,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -19,6 +20,7 @@ const navItems = [
   { id: 'workspace', label: 'TDR Workspace', icon: FileSearch, path: '/workspace' },
   { id: 'history', label: 'History', icon: History, path: '/history' },
   { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/analytics' },
+  { id: 'docs', label: 'Documentation', icon: BookOpen, path: '/docs' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
 ];
 

@@ -6,6 +6,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/workspace': 'TDR Workspace',
   '/history': 'History',
   '/analytics': 'Analytics',
+  '/docs': 'Documentation',
   '/settings': 'Settings',
 };
 

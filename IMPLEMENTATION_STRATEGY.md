@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** In Progress · **Version:** Draft 5.1 · **Date:** February 14, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23, 24, 26, 27 · **In Progress:** — · **Remaining:** 25
+**Status:** Complete · **Version:** Draft 5.2 · **Date:** February 14, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23, 24, 25, 26, 27 · **In Progress:** — · **Remaining:** —
 
 ---
 
@@ -3730,9 +3730,12 @@ The following enhancements were applied to the Slack distribution experience aft
 | **24** | **Performance Optimization & KB Summary Caching** | ✅ Complete | Feb 12–14, 2026 | S21 | **Performance** |
 | **26** | **Intelligence Panel UX Review & Consolidation** | ✅ Complete | Feb 13, 2026 | S14 + S21 + S24-WS1 | **UX** |
 | **27** | **Intelligence Panel Decision Architecture** | ✅ Complete | Feb 14, 2026 | S26 | **UX / Architecture** |
-| **25** | **Interactive Architecture Diagram** | 🔲 Planned | — | S24 + S26 | **Visualization** |
+| **25** | **Documentation Hub & Architecture Diagram** | ✅ Complete | Feb 14, 2026 | S24 + S27 | **Documentation / Visualization** |
 
 **Post-Sprint Enhancements (Feb 14, 2026):**
+- Sprint 25 — Documentation Hub: 7-section in-app reference at `/docs` with sticky Table of Contents sidebar and accordion navigation. Sections: (1) Architecture Diagram — interactive 5-layer SVG (System Overview, Data Model, Cortex AI Model Map, Enrichment Pipeline, User Workflow) with pill-toggle layer switcher, (2) Scoring Reference — Pre-TDR, Post-TDR, and Confidence Score methodology with detailed factor/weight tables, (3) Capabilities Guide — 9 accordion sections covering every app feature, (4) Integrations Reference — Snowflake Cortex, Sumble, Perplexity, Domo Platform, Slack with endpoints and capabilities, (5) Data Model Reference — all 10 Snowflake tables/views with key columns, (6) AI Models Reference — every model across 3 providers with cost tier and use cases, (7) Glossary & FAQ — 20+ terms and common questions.
+- Sprint 25 — New files: `src/pages/Documentation.tsx`, `src/components/docs/ArchitectureDiagram.tsx`, `src/components/docs/ScoringReference.tsx`, `src/components/docs/CapabilitiesGuide.tsx`, `src/components/docs/IntegrationsReference.tsx`, `src/components/docs/DataModelReference.tsx`, `src/components/docs/AIModelsReference.tsx`, `src/components/docs/GlossaryReference.tsx`.
+- Sprint 25 — Navigation: `/docs` route, "Documentation" sidebar nav item (Network icon), MainLayout page title.
 - Sprint 27 — TDR Score lifecycle maturity: 6-phase lifecycle (NOT_STARTED → EARLY → IN_PROGRESS → NEAR_COMPLETE → COMPLETE → ENRICHED) × 4 priority bands = 24 distinct contextual messages. Messaging evolves from "Requires TDR" to "TDR complete — execute action plan" to "Fully informed — manage through close."
 - Sprint 27 — TDR Confidence Score (dual-axis): new 0–100 score measuring assessment thoroughness (Required Steps 0–40, Optional Depth 0–10, External Intel 0–15, AI Analysis 0–15, Knowledge Base 0–10, Risk Identified 0–10). Bands: Insufficient → Developing → Solid → High → Comprehensive.
 - Sprint 27 — Required vs Optional steps: lifecycle phase uses required steps only (5/5). Optional steps noted separately as "+N optional" badge.
@@ -5700,12 +5703,13 @@ A thorough audit was performed across manifest datasets, Code Engine functions, 
 
 ---
 
-### Sprint 25 — Interactive Architecture Diagram 🔲
+### Sprint 25 — Documentation Hub & Architecture Diagram ✅ COMPLETE
 
-> **Goal:** Build an interactive, exportable architecture diagram in a new app tab that visualizes the full system: data flows, Snowflake tables, Cortex AI models, enrichment providers (Sumble, Perplexity), Domo infrastructure (datasets, filesets, Code Engine), and key user workflows. The diagram must match the app's dark purple/violet design language and be exportable to PDF.
-> **Risk to app:** Low — purely additive, read-only visualization tab. No changes to existing functionality.
-> **Effort:** ~2-3 days
+> **Goal:** Build a comprehensive in-app Documentation Hub containing an interactive architecture diagram, scoring methodology reference, app capabilities guide, integrations reference, data model documentation, AI model registry, and glossary/FAQ. All in a single unified `/docs` tab.
+> **Risk to app:** Low — purely additive, read-only documentation tab. No changes to existing functionality.
+> **Effort:** ~1 day
 > **Dependencies:** Sprint 21 (Action Plan — so the diagram captures the complete architecture)
+> **Completion Date:** Feb 14, 2026
 
 **Problem Statement:**
 The app now spans 9+ pillars, 25+ sprints, and dozens of integrations. There is no visual representation of how the pieces connect. Stakeholders (Snowflake SAs, Domo executives, engineering leads) need a single diagram that shows:
@@ -5715,20 +5719,23 @@ The app now spans 9+ pillars, 25+ sprints, and dozens of integrations. There is 
 - Where external APIs (Sumble, Perplexity) plug in
 - The end-to-end user workflow from deal selection → TDR → action plan → readout
 
-**Solution: D2-Rendered Architecture Diagram Tab**
+**Solution: Unified Documentation Hub at `/docs`**
 
-**Rendering Library Selection:**
+**Approach:** Rather than a standalone architecture diagram page, the architecture visualization was integrated into a comprehensive Documentation Hub — a single `/docs` tab containing seven reference sections. The architecture diagram uses hand-crafted SVG React components (no external D2/Mermaid dependency) with a pill-toggle layer switcher. All documentation sections use accordion-based navigation with a sticky Table of Contents sidebar.
 
-| Library | Strengths | Fit |
-|---------|-----------|-----|
-| **D2 (d2lang)** | Purpose-built for architecture diagrams. Declarative DSL. Auto-layout. Supports layers, icons, styles. Can render to SVG. | ✅ Best fit — designed exactly for this use case |
-| **Mermaid.js** | Widely supported, markdown-friendly. Limited styling control. | ❌ Too constrained for custom branding |
-| **React Flow** | Interactive node graphs. Great for editable diagrams. | ❌ Overkill — we need a read-only architecture view |
-| **Excalidraw** | Whiteboard-style, hand-drawn aesthetic. | ❌ Wrong aesthetic for a professional architecture diagram |
+**Documentation Sections (7):**
 
-**Recommendation:** Use **D2** compiled to SVG at build time (or via a lightweight WASM runtime). If D2 WASM integration proves complex, fall back to **pre-rendered SVG** generated from D2 source, embedded as a React component with interactive zoom/pan via a library like `react-zoom-pan-pinch`.
+| Section | Component | Content |
+|---------|-----------|---------|
+| **1. Architecture Diagram** | `ArchitectureDiagram.tsx` | 5-layer interactive SVG: System Overview, Snowflake Data Model, Cortex AI Model Map, Enrichment Pipeline, User Workflow. Pill-toggle layer switcher. |
+| **2. TDR Index Score** | `ScoringReference.tsx` | Pre-TDR scoring (5 factors, weights, bands), Post-TDR scoring (5 factors), Confidence Score (6 dimensions, 0–100 scale, 5 bands). Factor tables with weight breakdowns. |
+| **3. App Capabilities** | `CapabilitiesGuide.tsx` | 9 accordion sections: Command Center, TDR Workspace, Intelligence Panel, TDR Inline Chat, Action Plan, TDR Readout & Slack, Portfolio Analytics + NLQ, Similar Deals, History & Settings. |
+| **4. Integrations** | `IntegrationsReference.tsx` | 5 integration cards: Snowflake Cortex AI (10 functions), Sumble (4 tiers), Perplexity (sonar-pro), Domo Platform (5 services), Slack (Block Kit). |
+| **5. Data Model** | `DataModelReference.tsx` | 10 Snowflake tables/views: TDR_SESSIONS, TDR_STEP_INPUTS, TDR_CHAT_MESSAGES, ACCOUNT_INTEL_SUMBLE, ACCOUNT_INTEL_PERPLEXITY, CORTEX_ANALYSIS_RESULTS, API_USAGE_LOG, V_TDR_ANALYTICS, TDR_READOUTS, TDR_DISTRIBUTIONS. |
+| **6. AI Models** | `AIModelsReference.tsx` | Every model across 3 providers: Snowflake Cortex (claude-4-sonnet, snowflake-arctic-embed-l-v2.0, Cortex Analyst, Cortex Search), Perplexity (sonar-pro), Domo AI (domo-ai-default). |
+| **7. Glossary & FAQ** | `GlossaryReference.tsx` | 20+ terms (TDR, Pre-TDR Score, Confidence Score, etc.) + common questions in accordion format. |
 
-**Diagram Layers (5 views):**
+**Architecture Diagram Layers (5 views):**
 
 | Layer | Shows | Key Elements |
 |-------|-------|-------------|
@@ -5742,38 +5749,30 @@ The app now spans 9+ pillars, 25+ sprints, and dozens of integrations. There is 
 
 | Element | Spec |
 |---------|------|
-| **Tab location** | New sidebar nav item: "Architecture" with `Network` or `Boxes` Lucide icon |
-| **Background** | Match app background: `hsl(260, 30%, 8%)` dark purple |
-| **Node styling** | Rounded rectangles with violet borders (`hsl(263, 84%, 55%)`), dark fill, white text. Snowflake nodes use the Snowflake logo. Cortex nodes use the Cortex logo. |
-| **Edge styling** | Smooth curved lines, semi-transparent violet. Animated pulse for "live" data flows. |
-| **Layer switcher** | Pill toggle at top: "Overview · Data Model · Cortex AI · Enrichment · Workflow" |
-| **Zoom/Pan** | `react-zoom-pan-pinch` for smooth interaction. Fit-to-screen button. |
-| **Export** | "Export PDF" button renders the current layer view to a PDF page via `@react-pdf/renderer` or `html2canvas` + `jsPDF`. |
-| **Branding** | Snowflake logo, Cortex logo, Domo logo, Sumble logo, Perplexity logo placed on their respective nodes. App title + version in header. |
+| **Tab location** | Sidebar nav item: "Documentation" with `Network` Lucide icon |
+| **Background** | Match app background: dark purple/slate theme |
+| **Layout** | 2-column: sticky Table of Contents (left) + content area (right) with accordion sections |
+| **Text colors** | High-contrast slate-200/300 for readability on dark backgrounds. No emojis. |
+| **Layer switcher** | Pill toggle: "Overview / Data Model / Cortex AI / Enrichment / Workflow" |
+| **Accordions** | Each section uses shadcn/ui Accordion with chevron toggles |
 
-**Frontend Changes:**
+**Frontend Changes (Actual):**
 
 | File | Change |
 |------|--------|
-| `src/pages/ArchitectureDiagram.tsx` | **New** — Main page component. Layer switcher, zoom controls, export button. |
-| `src/components/architecture/SystemOverview.tsx` | **New** — Layer 1 SVG diagram component. |
-| `src/components/architecture/DataModelDiagram.tsx` | **New** — Layer 2 Snowflake tables + relationships. |
-| `src/components/architecture/CortexModelMap.tsx` | **New** — Layer 3 AI model → feature mapping. |
-| `src/components/architecture/EnrichmentPipeline.tsx` | **New** — Layer 4 external API data flows. |
-| `src/components/architecture/WorkflowDiagram.tsx` | **New** — Layer 5 end-to-end user journey. |
-| `src/components/architecture/diagramStyles.ts` | **New** — Shared styling constants matching app theme. |
-| `src/components/AppSidebar.tsx` | Add "Architecture" nav item. |
-| `src/App.tsx` | Add `/architecture` route. |
-| `src/layouts/MainLayout.tsx` | Add "Architecture" to `PAGE_TITLES`. |
+| `src/pages/Documentation.tsx` | **New** — Main page. Sticky ToC sidebar + 7 accordion sections. |
+| `src/components/docs/ArchitectureDiagram.tsx` | **New** — 5-layer SVG architecture diagram with pill-toggle switcher. |
+| `src/components/docs/ScoringReference.tsx` | **New** — Pre-TDR, Post-TDR, Confidence Score reference with factor tables. |
+| `src/components/docs/CapabilitiesGuide.tsx` | **New** — 9-section capabilities guide. |
+| `src/components/docs/IntegrationsReference.tsx` | **New** — 5 integration cards with endpoints and features. |
+| `src/components/docs/DataModelReference.tsx` | **New** — 10 Snowflake table/view documentation. |
+| `src/components/docs/AIModelsReference.tsx` | **New** — AI model registry across 3 providers. |
+| `src/components/docs/GlossaryReference.tsx` | **New** — Glossary + FAQ. |
+| `src/components/AppSidebar.tsx` | Added "Documentation" nav item with Network icon. |
+| `src/App.tsx` | Added `/docs` route. |
+| `src/layouts/MainLayout.tsx` | Added "Documentation" to `PAGE_TITLES`. |
 
-**PDF Export Spec:**
-- Each layer renders as a single landscape PDF page
-- "Export All" option generates a multi-page PDF with all 5 layers
-- PDF uses the same dark theme as the app (not a white-background printout)
-- Title page: "TDR Deal Inspection — System Architecture" + version + date
-- Footer: "Generated by TDR Deal Inspection · Confidential"
-
-**Definition of Done:** A new "Architecture" tab renders an interactive, zoomable architecture diagram with 5 switchable layers. Each layer accurately represents the current system. The diagram uses the app's violet/purple design language with proper Snowflake, Cortex, Domo, Sumble, and Perplexity branding. Export to PDF produces a clean, professional document suitable for stakeholder presentations.
+**Definition of Done:** ✅ A new "Documentation" tab at `/docs` renders a comprehensive reference hub with 7 sections. The Architecture Diagram section provides 5 switchable SVG layers accurately representing the current system. The Scoring Reference fully documents the TDR Index Score methodology. The Capabilities Guide covers every app feature. The Integrations, Data Model, and AI Models sections provide complete technical reference. The Glossary & FAQ answers common questions. All content uses high-contrast text for readability, no emojis, and the app's dark violet/purple design language.
 
 ---
 
@@ -5842,11 +5841,12 @@ Sprint 24 — Perf Optimization + KB Caching ✅ COMPLETE
     │  WS3: audited — no changes needed (no regressions)
     │
     ▼
-Sprint 25 — Architecture Diagram (2–3 days)
+Sprint 25 — Documentation Hub & Architecture Diagram ✅ COMPLETE
     (depends on S24 — diagram reflects final clean architecture)
-    Interactive 5-layer system diagram, PDF export,
-    Snowflake/Cortex/Domo/enrichment visualization
-    THE FINAL DELIVERABLE
+    7-section Documentation Hub: Architecture Diagram (5 layers),
+    Scoring Reference, Capabilities Guide, Integrations,
+    Data Model, AI Models, Glossary & FAQ
+    /docs route with sticky ToC + accordions
 ```
 
 **Total estimated effort:** ~20-26 days of focused development
@@ -5868,7 +5868,7 @@ Sprint 25 — Architecture Diagram (2–3 days)
 | **S24: Perf Optimization** | — | S21 | 2 days | ✅ Feb 12–14 |
 | **S26: Intelligence Panel UX** | — | S14 + S21 + S24-WS1 | 2-3 days | ✅ Feb 13 |
 | **S27: Decision Architecture** | — | S26 | 2 days | ✅ Feb 14 |
-| **S25: Architecture Diagram** | — | S24 + S27 | 2-3 days | 🔲 |
+| **S25: Documentation Hub + Architecture** | — | S24 + S27 | 1 day | ✅ Feb 14 |
 
 ---
 
@@ -6174,10 +6174,10 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 **Why it matters independently:** Even without any new features, this pillar transforms the user experience from "wall of features accumulated over 23 sprints" to "cohesive intelligence dashboard designed for daily workflow." A first-time user can scan the panel and immediately find what matters. A returning user doesn't waste clicks on 4 separate enrichment buttons.
 **Key outcome:** The app feels designed, not assembled.
 
-### Pillar 12: Architecture Visualization (Sprint 25) — THE FINAL DELIVERABLE
-**What:** An interactive, multi-layer architecture diagram rendered in a dedicated app tab. Five switchable views — System Overview, Snowflake Data Model, Cortex AI Model Map, Enrichment Pipeline, and User Workflow — each rendered as a styled SVG matching the app's dark violet design language. Every Snowflake table, every Cortex model, every Code Engine function, every external API, and every user workflow is visualized with proper branding (Snowflake, Cortex, Domo, Sumble, Perplexity logos). The diagram is exportable to PDF for stakeholder presentations.
-**Why it matters independently:** This is the meta-deliverable. It documents everything the other eleven pillars built. When a Snowflake SA asks "What does your app do?", you open this tab. When a Domo executive asks "How is Cortex being used?", you export the Cortex layer. When a new engineer joins the project, they have a visual map of the entire system. It transforms institutional knowledge into a shareable artifact.
-**Key outcome:** The app explains itself.
+### Pillar 12: Documentation Hub & Architecture Visualization (Sprint 25) — THE FINAL DELIVERABLE
+**What:** A comprehensive in-app Documentation Hub at `/docs` containing seven sections: (1) Interactive Architecture Diagram with 5 switchable SVG layers (System Overview, Snowflake Data Model, Cortex AI Model Map, Enrichment Pipeline, User Workflow), (2) Scoring Reference detailing Pre-TDR, Post-TDR, and Confidence Score methodology with factor tables, (3) Capabilities Guide covering all 9 app sections with feature-level detail, (4) Integrations Reference documenting all 5 external systems (Snowflake Cortex, Sumble, Perplexity, Domo Platform, Slack), (5) Data Model Reference mapping all 10 Snowflake tables/views, (6) AI Models Reference cataloging every model across 3 providers, and (7) Glossary & FAQ with 20+ terms and common questions. The hub uses a sticky Table of Contents sidebar, accordion-based navigation, and the app's dark violet design language throughout.
+**Why it matters independently:** This is the meta-deliverable. It documents everything the other eleven pillars built. When a Snowflake SA asks "What does your app do?", you open this tab. When a Domo executive asks "How is Cortex being used?", you check the AI Models section. When an SE asks "How is the TDR score calculated?", the Scoring Reference has every factor and weight. When a new engineer joins the project, they have a visual map plus complete technical documentation of the entire system. It transforms institutional knowledge into a comprehensive, interactive reference.
+**Key outcome:** The app explains itself — completely.
 
 ### The Flywheel
 
