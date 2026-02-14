@@ -21,10 +21,10 @@ const COST_COLORS: Record<string, string> = {
 
 function ModelCard({ model, provider, costTier, usedFor }: ModelInfo) {
   return (
-    <div className="rounded-lg border border-[#2a2540]/40 bg-[#1B1630]/30 p-4 space-y-2">
+    <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-4 space-y-2">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-200 font-mono">{model}</p>
+          <p className="text-sm font-medium text-white font-mono">{model}</p>
           <p className="text-[10px] text-slate-400">{provider}</p>
         </div>
         <span
@@ -40,8 +40,8 @@ function ModelCard({ model, provider, costTier, usedFor }: ModelInfo) {
       </div>
       <ul className="space-y-1">
         {usedFor.map((use, i) => (
-          <li key={i} className="flex gap-2 text-xs text-slate-300">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
+          <li key={i} className="flex gap-2 text-sm text-slate-300">
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/60" />
             {use}
           </li>
         ))}
@@ -55,7 +55,7 @@ function ModelCard({ model, provider, costTier, usedFor }: ModelInfo) {
 export function AIModelsReference() {
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-300 leading-relaxed">
+      <p className="text-sm text-slate-200 leading-relaxed">
         DealInspect uses multiple AI models across three providers. Model selection is optimized
         for each task — frontier models for generation and reasoning, smaller models for classification
         and extraction, specialized models for embeddings.
@@ -77,7 +77,7 @@ export function AIModelsReference() {
               'TDR Chat default model',
               'Structured TDR extraction',
               'Portfolio insights generation',
-              'NLQ → SQL translation',
+              'NLQ \u2192 SQL translation',
             ]}
           />
           <ModelCard
@@ -202,32 +202,31 @@ export function AIModelsReference() {
       </div>
 
       {/* ── Model Selection Philosophy ─────────────────────────────────────── */}
-      <div className="mt-6 rounded-lg border border-[#2a2540]/40 bg-[#1B1630]/30 px-4 py-3 space-y-2">
-        <p className="text-xs font-medium text-slate-300">Model Selection Philosophy</p>
-        <ul className="space-y-1 text-xs text-slate-300">
+      <div className="mt-6 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-2">
+        <p className="text-sm font-medium text-white">Model Selection Philosophy</p>
+        <ul className="space-y-1 text-sm text-slate-300">
           <li className="flex gap-2">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
-            <strong className="text-slate-300">Generation tasks</strong> (briefs, action plans, chat): Use frontier models (Claude 4 Sonnet/Opus, GPT-4.1) for best quality reasoning.
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/60" />
+            <span><strong className="text-slate-200">Generation tasks</strong> (briefs, action plans, chat): Use frontier models (Claude 4 Sonnet/Opus, GPT-4.1) for best quality reasoning.</span>
           </li>
           <li className="flex gap-2">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
-            <strong className="text-slate-300">Classification & extraction</strong>: Use smaller models (llama3.1-8b) for speed and cost. These tasks don't need deep reasoning.
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/60" />
+            <span><strong className="text-slate-200">Classification & extraction</strong>: Use smaller models (llama3.1-8b) for speed and cost. These tasks don't need deep reasoning.</span>
           </li>
           <li className="flex gap-2">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
-            <strong className="text-slate-300">Summarization</strong>: Use mid-tier models (llama3.1-70b) for balanced quality.
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/60" />
+            <span><strong className="text-slate-200">Summarization</strong>: Use mid-tier models (llama3.1-70b) for balanced quality.</span>
           </li>
           <li className="flex gap-2">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
-            <strong className="text-slate-300">Embeddings</strong>: Use purpose-built embedding models (Arctic, e5-base) — not LLMs.
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/60" />
+            <span><strong className="text-slate-200">Embeddings</strong>: Use purpose-built embedding models (Arctic, e5-base) — not LLMs.</span>
           </li>
           <li className="flex gap-2">
-            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/50" />
-            <strong className="text-slate-300">All results cached</strong>: CORTEX_ANALYSIS_RESULTS stores outputs so subsequent loads cost zero tokens.
+            <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-violet-400/60" />
+            <span><strong className="text-slate-200">All results cached</strong>: CORTEX_ANALYSIS_RESULTS stores outputs so subsequent loads cost zero tokens.</span>
           </li>
         </ul>
       </div>
     </div>
   );
 }
-

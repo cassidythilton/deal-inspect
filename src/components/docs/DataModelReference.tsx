@@ -16,12 +16,12 @@ import { Database, Eye } from 'lucide-react';
 
 function DocTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#2a2540]/60">
+    <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-[#2a2540]/60 bg-[#1B1630]/60">
+          <tr className="border-b border-white/[0.08] bg-white/[0.04]">
             {headers.map((h, i) => (
-              <th key={i} className="px-3 py-2 text-left font-semibold text-slate-300 whitespace-nowrap">
+              <th key={i} className="px-3 py-2 text-left font-semibold text-slate-200 whitespace-nowrap">
                 {h}
               </th>
             ))}
@@ -29,7 +29,7 @@ function DocTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
         </thead>
         <tbody>
           {rows.map((row, ri) => (
-            <tr key={ri} className="border-b border-[#2a2540]/30 last:border-0">
+            <tr key={ri} className="border-b border-white/[0.04] last:border-0">
               {row.map((cell, ci) => (
                 <td key={ci} className="px-3 py-2 text-slate-300 whitespace-pre-line font-mono text-[11px]">
                   {cell}
@@ -51,20 +51,20 @@ function TableCard({ icon: Icon, name, description, purpose, keyColumns }: {
   keyColumns: string[][];
 }) {
   return (
-    <AccordionItem value={name} className="border border-[#2a2540]/40 rounded-lg overflow-hidden">
-      <AccordionTrigger className="px-4 py-3 hover:bg-[#1B1630]/40 [&[data-state=open]]:bg-[#1B1630]/60">
+    <AccordionItem value={name} className="border border-white/[0.08] rounded-lg overflow-hidden">
+      <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
         <div className="flex items-center gap-3 text-left">
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/10 border border-blue-500/20">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-blue-500/15 border border-blue-500/25">
             <Icon className="h-3.5 w-3.5 text-blue-400" />
           </div>
           <div>
-            <p className="text-sm font-medium text-slate-200 font-mono">{name}</p>
+            <p className="text-sm font-medium text-white font-mono">{name}</p>
             <p className="text-[10px] text-slate-400 font-sans">{description}</p>
           </div>
         </div>
       </AccordionTrigger>
       <AccordionContent className="px-4 pb-4 space-y-3">
-        <p className="text-xs text-slate-300 leading-relaxed">{purpose}</p>
+        <p className="text-sm text-slate-200 leading-relaxed">{purpose}</p>
         <DocTable
           headers={['Column', 'Type', 'Notes']}
           rows={keyColumns}
@@ -79,14 +79,14 @@ function TableCard({ icon: Icon, name, description, purpose, keyColumns }: {
 export function DataModelReference() {
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-300 leading-relaxed">
-        All persistent state lives in Snowflake under <code className="text-blue-400 bg-blue-500/10 px-1 rounded">TDR_APP.TDR_DATA</code>.
+      <p className="text-sm text-slate-200 leading-relaxed">
+        All persistent state lives in Snowflake under <code className="text-blue-300 bg-blue-500/15 px-1 rounded">TDR_APP.TDR_DATA</code>.
         The schema includes 8 tables and 2 views. Code Engine functions handle all reads/writes via the Snowflake SQL API with JWT authentication.
       </p>
 
-      <div className="rounded-lg border border-[#2a2540]/40 bg-[#1B1630]/30 px-4 py-3 space-y-1">
-        <p className="text-xs font-medium text-slate-300">Schema: TDR_APP.TDR_DATA</p>
-        <p className="text-[10px] text-slate-400">Warehouse: COMPUTE_WH · Role: TDR_APP_ROLE · Auth: JWT (RSA-256 key pair)</p>
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-1">
+        <p className="text-xs font-medium text-slate-200">Schema: TDR_APP.TDR_DATA</p>
+        <p className="text-[11px] text-slate-400">Warehouse: COMPUTE_WH | Role: TDR_APP_ROLE | Auth: JWT (RSA-256 key pair)</p>
       </div>
 
       <Accordion type="multiple" className="space-y-2">
@@ -117,7 +117,7 @@ export function DataModelReference() {
           purpose="Stores every field value entered by the SE during the TDR. Each row is a single field within a step. Supports history via versioning — the latest input per (session, step, field) tuple is displayed."
           keyColumns={[
             ['INPUT_ID', 'VARCHAR', 'Primary key (UUID)'],
-            ['SESSION_ID', 'VARCHAR', 'FK → TDR_SESSIONS'],
+            ['SESSION_ID', 'VARCHAR', 'FK \u2192 TDR_SESSIONS'],
             ['STEP_ID', 'VARCHAR', 'Step identifier (context, decision, etc.)'],
             ['FIELD_ID', 'VARCHAR', 'Field within the step'],
             ['FIELD_VALUE', 'VARCHAR', 'The SE\'s input text'],
@@ -133,7 +133,7 @@ export function DataModelReference() {
           purpose="Persists every chat message from the TDR Inline Chat. Includes both user and assistant messages with provider/model metadata and token usage for cost tracking."
           keyColumns={[
             ['MESSAGE_ID', 'VARCHAR', 'Primary key (UUID)'],
-            ['SESSION_ID', 'VARCHAR', 'FK → TDR_SESSIONS'],
+            ['SESSION_ID', 'VARCHAR', 'FK \u2192 TDR_SESSIONS'],
             ['ROLE', 'VARCHAR', 'user / assistant'],
             ['CONTENT', 'VARCHAR', 'Message text'],
             ['PROVIDER', 'VARCHAR', 'cortex / perplexity / domo'],
@@ -151,7 +151,7 @@ export function DataModelReference() {
           purpose="Stores the raw and parsed results from all 4 Sumble API endpoints. Keyed by opportunity ID — one row per enrichment pull. Supports history for seeing how intelligence evolves over time."
           keyColumns={[
             ['PULL_ID', 'VARCHAR', 'Primary key (UUID)'],
-            ['OPPORTUNITY_ID', 'VARCHAR', 'FK → deal'],
+            ['OPPORTUNITY_ID', 'VARCHAR', 'FK \u2192 deal'],
             ['ACCOUNT_NAME', 'VARCHAR', 'Account enriched'],
             ['TECHNOLOGIES', 'VARIANT', 'Array of detected technologies'],
             ['TECH_CATEGORIES', 'VARIANT', 'Technologies grouped by category'],
@@ -170,7 +170,7 @@ export function DataModelReference() {
           purpose="Stores Perplexity Sonar research results including key insights, citations, and the raw research narrative."
           keyColumns={[
             ['PULL_ID', 'VARCHAR', 'Primary key (UUID)'],
-            ['OPPORTUNITY_ID', 'VARCHAR', 'FK → deal'],
+            ['OPPORTUNITY_ID', 'VARCHAR', 'FK \u2192 deal'],
             ['ACCOUNT_NAME', 'VARCHAR', 'Account researched'],
             ['KEY_INSIGHTS', 'VARIANT', 'Array of key insight strings'],
             ['CITATIONS', 'VARIANT', 'Array of {url, title} citation objects'],
@@ -187,7 +187,7 @@ export function DataModelReference() {
           purpose="Stores all Cortex AI function outputs so they can be loaded without re-running expensive LLM calls. One row per (session, analysis_type) pair. Supports regeneration by deleting and re-inserting."
           keyColumns={[
             ['RESULT_ID', 'VARCHAR', 'Primary key (UUID)'],
-            ['SESSION_ID', 'VARCHAR', 'FK → TDR_SESSIONS'],
+            ['SESSION_ID', 'VARCHAR', 'FK \u2192 TDR_SESSIONS'],
             ['ANALYSIS_TYPE', 'VARCHAR', 'brief / action_plan / classification / extraction / structured_extract / kb_summary'],
             ['CONTENT', 'VARCHAR', 'The AI output (markdown text or JSON)'],
             ['MODEL_USED', 'VARCHAR', 'Which Cortex model was used'],
@@ -219,7 +219,7 @@ export function DataModelReference() {
           purpose="TDR_READOUTS stores generated readout metadata. TDR_DISTRIBUTIONS logs each Slack share with channel, message ID, and delivery status."
           keyColumns={[
             ['READOUT_ID / DISTRIBUTION_ID', 'VARCHAR', 'Primary key'],
-            ['SESSION_ID', 'VARCHAR', 'FK → TDR_SESSIONS'],
+            ['SESSION_ID', 'VARCHAR', 'FK \u2192 TDR_SESSIONS'],
             ['CHANNEL_NAME / CHANNEL_ID', 'VARCHAR', 'Slack channel target'],
             ['MESSAGE_TS', 'VARCHAR', 'Slack message timestamp (for threading)'],
             ['FILE_ID', 'VARCHAR', 'Uploaded PDF file ID in Slack'],
@@ -249,4 +249,3 @@ export function DataModelReference() {
     </div>
   );
 }
-

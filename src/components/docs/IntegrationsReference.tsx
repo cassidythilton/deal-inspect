@@ -18,12 +18,12 @@ import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
 
 function DocTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-[#2a2540]/60">
+    <div className="overflow-x-auto rounded-lg border border-white/[0.08]">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-[#2a2540]/60 bg-[#1B1630]/60">
+          <tr className="border-b border-white/[0.08] bg-white/[0.04]">
             {headers.map((h, i) => (
-              <th key={i} className="px-3 py-2 text-left font-semibold text-slate-300 whitespace-nowrap">
+              <th key={i} className="px-3 py-2 text-left font-semibold text-slate-200 whitespace-nowrap">
                 {h}
               </th>
             ))}
@@ -31,7 +31,7 @@ function DocTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
         </thead>
         <tbody>
           {rows.map((row, ri) => (
-            <tr key={ri} className="border-b border-[#2a2540]/30 last:border-0">
+            <tr key={ri} className="border-b border-white/[0.04] last:border-0">
               {row.map((cell, ci) => (
                 <td key={ci} className="px-3 py-2 text-slate-300 whitespace-pre-line">
                   {cell}
@@ -48,11 +48,11 @@ function DocTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
 function IntegrationHeader({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle: string }) {
   return (
     <div className="flex items-center gap-3 text-left">
-      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/10 border border-violet-500/20">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-violet-500/15 border border-violet-500/25">
         {icon}
       </div>
       <div>
-        <p className="text-sm font-medium text-slate-200">{title}</p>
+        <p className="text-sm font-medium text-white">{title}</p>
         <p className="text-[10px] text-slate-400">{subtitle}</p>
       </div>
     </div>
@@ -64,15 +64,15 @@ function IntegrationHeader({ icon, title, subtitle }: { icon: React.ReactNode; t
 export function IntegrationsReference() {
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-300 leading-relaxed">
+      <p className="text-sm text-slate-200 leading-relaxed">
         DealInspect integrates with five external systems. All API keys are kept server-side in
         Domo Code Engine — the React frontend never touches secrets directly.
       </p>
 
       <Accordion type="multiple" className="space-y-2">
         {/* ── Snowflake Cortex AI ──────────────────────────────────────────── */}
-        <AccordionItem value="cortex" className="border border-[#2a2540]/40 rounded-lg overflow-hidden">
-          <AccordionTrigger className="px-4 py-3 hover:bg-[#1B1630]/40 [&[data-state=open]]:bg-[#1B1630]/60">
+        <AccordionItem value="cortex" className="border border-white/[0.08] rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
             <IntegrationHeader
               icon={<CortexLogo size={16} />}
               title="Snowflake Cortex AI"
@@ -80,14 +80,14 @@ export function IntegrationsReference() {
             />
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4 space-y-3">
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-200 leading-relaxed">
               Cortex AI functions run directly inside Snowflake — data never leaves the account.
               Called via Code Engine functions that execute parameterized SQL.
             </p>
             <DocTable
               headers={['Function', 'Used For', 'Model']}
               rows={[
-                ['AI_COMPLETE', 'TDR Brief generation, Action Plan synthesis, Chat responses, Portfolio insights, NLQ → SQL', 'claude-4-sonnet (default), claude-4-opus, gpt-4.1, o4-mini'],
+                ['AI_COMPLETE', 'TDR Brief generation, Action Plan synthesis, Chat responses, Portfolio insights, NLQ \u2192 SQL', 'claude-4-sonnet (default), claude-4-opus, gpt-4.1, o4-mini'],
                 ['AI_CLASSIFY', 'Categorize Perplexity findings into TDR categories (competitive_threat, technology_adoption, etc.)', 'llama3.1-8b'],
                 ['AI_EXTRACT', 'Extract competitors, technologies, executives, timelines from unstructured text', 'llama3.1-8b'],
                 ['AI_EMBED', 'Generate semantic embeddings for similar deal matching', 'snowflake-arctic-embed-l-v2.0'],
@@ -95,20 +95,20 @@ export function IntegrationsReference() {
                 ['AI_SENTIMENT', 'Sentiment trend across intel history for an account', 'llama3.1-8b'],
                 ['AI_SUMMARIZE_AGG', 'Summarize intel evolution over time', 'llama3.1-70b'],
                 ['AI_AGG', 'Aggregate analysis across multiple data points', 'llama3.1-70b'],
-                ['Cortex Analyst', 'Natural language → SQL for portfolio analytics (NLQ bar)', 'AI_COMPLETE (routing)'],
+                ['Cortex Analyst', 'Natural language \u2192 SQL for portfolio analytics (NLQ bar)', 'AI_COMPLETE (routing)'],
                 ['Cortex Search', 'Hybrid semantic + keyword search over KB filesets', '(built-in)'],
               ]}
             />
-            <p className="text-[10px] text-slate-400 italic">
-              All Cortex calls are routed through Domo Code Engine → Snowflake SQL API with JWT auth.
+            <p className="text-[11px] text-slate-400 italic">
+              All Cortex calls are routed through Domo Code Engine \u2192 Snowflake SQL API with JWT auth.
               Results cached in CORTEX_ANALYSIS_RESULTS to avoid redundant token consumption.
             </p>
           </AccordionContent>
         </AccordionItem>
 
         {/* ── Sumble ──────────────────────────────────────────────────────── */}
-        <AccordionItem value="sumble" className="border border-[#2a2540]/40 rounded-lg overflow-hidden">
-          <AccordionTrigger className="px-4 py-3 hover:bg-[#1B1630]/40 [&[data-state=open]]:bg-[#1B1630]/60">
+        <AccordionItem value="sumble" className="border border-white/[0.08] rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
             <IntegrationHeader
               icon={<SumbleIcon className="h-4 w-4" />}
               title="Sumble"
@@ -116,7 +116,7 @@ export function IntegrationsReference() {
             />
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4 space-y-3">
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-200 leading-relaxed">
               Sumble provides real-time firmographic, technographic, and people intelligence.
               The "Enrich All" button calls all 4 endpoints in parallel, each persisted independently to Snowflake.
             </p>
@@ -129,16 +129,16 @@ export function IntegrationsReference() {
                 ['People (/people)', 'Key contacts, titles, departments, LinkedIn profiles', 'Identify decision makers, champions, and technical evaluators'],
               ]}
             />
-            <p className="text-[10px] text-slate-400 italic">
+            <p className="text-[11px] text-slate-400 italic">
               Results stored in ACCOUNT_INTEL_SUMBLE. Credit-based API — usage tracked in API_USAGE_LOG.
-              Domain auto-derived from account name (e.g., "Acme Corp" → "acme.com").
+              Domain auto-derived from account name (e.g., "Acme Corp" \u2192 "acme.com").
             </p>
           </AccordionContent>
         </AccordionItem>
 
         {/* ── Perplexity ──────────────────────────────────────────────────── */}
-        <AccordionItem value="perplexity" className="border border-[#2a2540]/40 rounded-lg overflow-hidden">
-          <AccordionTrigger className="px-4 py-3 hover:bg-[#1B1630]/40 [&[data-state=open]]:bg-[#1B1630]/60">
+        <AccordionItem value="perplexity" className="border border-white/[0.08] rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
             <IntegrationHeader
               icon={<PerplexityIcon className="h-4 w-4" />}
               title="Perplexity"
@@ -146,7 +146,7 @@ export function IntegrationsReference() {
             />
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4 space-y-3">
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-200 leading-relaxed">
               Perplexity Sonar provides real-time web research grounded in citations. Used for
               strategic context, competitive intelligence, and technology trend analysis.
             </p>
@@ -157,20 +157,20 @@ export function IntegrationsReference() {
                 ['sonar-pro', 'Deeper multi-step research with more sources', 'Comprehensive competitive landscape analysis, strategic intelligence'],
               ]}
             />
-            <p className="text-xs text-slate-300 leading-relaxed mt-2">
-              <strong className="text-slate-300">Research prompt structure:</strong> Account name + key insights request + competitive landscape +
+            <p className="text-sm text-slate-200 leading-relaxed mt-2">
+              <strong className="text-white">Research prompt structure:</strong> Account name + key insights request + competitive landscape +
               technology signals + strategic initiatives. Results include key insights (array), citations with URLs,
               and a summary narrative. All persisted to ACCOUNT_INTEL_PERPLEXITY.
             </p>
-            <p className="text-[10px] text-slate-400 italic">
+            <p className="text-[11px] text-slate-400 italic">
               Also available as a chat provider — "Perplexity" mode in TDR Chat returns cited answers from the live web.
             </p>
           </AccordionContent>
         </AccordionItem>
 
         {/* ── Domo Platform ───────────────────────────────────────────────── */}
-        <AccordionItem value="domo" className="border border-[#2a2540]/40 rounded-lg overflow-hidden">
-          <AccordionTrigger className="px-4 py-3 hover:bg-[#1B1630]/40 [&[data-state=open]]:bg-[#1B1630]/60">
+        <AccordionItem value="domo" className="border border-white/[0.08] rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
             <IntegrationHeader
               icon={<span className="text-[11px] font-bold text-violet-400">D</span>}
               title="Domo Platform"
@@ -178,7 +178,7 @@ export function IntegrationsReference() {
             />
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4 space-y-3">
-            <p className="text-xs text-slate-300 leading-relaxed">
+            <p className="text-sm text-slate-200 leading-relaxed">
               The app runs inside Domo App Studio and leverages multiple Domo platform services.
             </p>
             <DocTable
@@ -195,8 +195,8 @@ export function IntegrationsReference() {
         </AccordionItem>
 
         {/* ── Slack ───────────────────────────────────────────────────────── */}
-        <AccordionItem value="slack" className="border border-[#2a2540]/40 rounded-lg overflow-hidden">
-          <AccordionTrigger className="px-4 py-3 hover:bg-[#1B1630]/40 [&[data-state=open]]:bg-[#1B1630]/60">
+        <AccordionItem value="slack" className="border border-white/[0.08] rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
             <IntegrationHeader
               icon={<span className="text-[11px] font-bold text-violet-400">#</span>}
               title="Slack"
@@ -204,9 +204,9 @@ export function IntegrationsReference() {
             />
           </AccordionTrigger>
           <AccordionContent className="px-4 pb-4 space-y-3">
-            <p className="text-xs text-slate-300 leading-relaxed">
-              The TDR Share dialog distributes readout PDFs to Slack channels. The flow: assemble readout →
-              generate PDF → generate AI summary → post to Slack with PDF attachment.
+            <p className="text-sm text-slate-200 leading-relaxed">
+              The TDR Share dialog distributes readout PDFs to Slack channels. The flow: assemble readout \u2192
+              generate PDF \u2192 generate AI summary \u2192 post to Slack with PDF attachment.
             </p>
             <DocTable
               headers={['Feature', 'Detail']}
@@ -224,4 +224,3 @@ export function IntegrationsReference() {
     </div>
   );
 }
-

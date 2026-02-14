@@ -391,7 +391,7 @@ export function ArchitectureDiagram() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-300 leading-relaxed">
+      <p className="text-sm text-slate-200 leading-relaxed">
         Interactive architecture diagram showing 5 views of the system. Click a layer to explore
         how data flows through Snowflake, Cortex AI, enrichment providers, and the React frontend.
       </p>
@@ -406,7 +406,7 @@ export function ArchitectureDiagram() {
               'rounded-full px-3 py-1.5 text-[11px] font-medium transition-all border',
               activeLayer === layer.id
                 ? 'bg-violet-500/20 text-violet-300 border-violet-500/40'
-                : 'bg-transparent text-slate-400 border-[#2a2540]/40 hover:text-slate-200 hover:border-[#2a2540]'
+                : 'bg-transparent text-slate-300 border-white/[0.08] hover:text-white hover:border-white/[0.15]'
             )}
           >
             {layer.label}
@@ -415,11 +415,11 @@ export function ArchitectureDiagram() {
       </div>
 
       {/* Diagram viewport */}
-      <div className="rounded-xl border border-[#2a2540]/60 bg-[#0f0b1a] p-4 overflow-x-auto">
+      <div className="rounded-xl border border-white/[0.08] bg-[#0f0b1a] p-4 overflow-x-auto">
         <ActiveComponent />
       </div>
 
-      <p className="text-[10px] text-slate-400 italic">
+      <p className="text-[11px] text-slate-400 italic">
         All nodes represent live components in the deployed system. Solid arrows = runtime data flow. Dashed arrows = optional/parallel paths.
       </p>
     </div>
