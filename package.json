@@ -16,6 +16,7 @@
     "deploy:check": "echo '📋 Checking deploy readiness...' && test -f public/manifest.json && echo '✓ manifest.json' && test -f public/thumbnail.png && echo '✓ thumbnail.png' && grep -q 'ryuu.js' index.html && echo '✓ Domo SDK in index.html' && echo '✅ All checks passed!'"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^2.0.4",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -46,6 +47,7 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@react-pdf/renderer": "^4.3.2",
     "@tanstack/react-query": "^5.83.0",
+    "@xyflow/react": "^12.10.0",
     "ag-grid-community": "^35.0.1",
     "ag-grid-react": "^35.0.1",
     "class-variance-authority": "^0.7.1",
@@ -74,6 +76,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
+    "@types/dagre": "^0.7.53",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",
