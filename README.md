@@ -14,18 +14,6 @@
 
 ---
 
-## Screenshots
-
-| Command Center | TDR Workspace — Intelligence |
-|:-:|:-:|
-| ![Command Center](docs/screenshots/command-center.png) | ![TDR Workspace Intelligence](docs/screenshots/workspace-intelligence.png) |
-
-| TDR Workspace — Chat | Documentation Hub |
-|:-:|:-:|
-| ![TDR Workspace Chat](docs/screenshots/workspace-chat.png) | ![Documentation Hub](docs/screenshots/documentation.png) |
-
----
-
 ## Table of Contents
 
 1. [What Problem Does This Solve?](#what-problem-does-this-solve)
@@ -124,6 +112,10 @@ DealInspect is a **four-layer system**. Each layer is independently valuable; to
 
 The operational dashboard for SE managers. Shows pipeline metrics, TDR priority distribution, close urgency trends, and a scored deals table with actionable "Why TDR?" pills. Deals can be pinned to an **Agenda** for the next TDR meeting. Domo AI auto-suggests the top 5 candidates.
 
+<p align="center">
+  <img src="docs/screenshots/command-center.png" alt="Command Center" width="800" />
+</p>
+
 ### ![ws](https://img.shields.io/badge/TDR_Workspace-Three_Panel-59C9A5?style=flat-square) TDR Workspace
 
 A three-panel layout for conducting a Technical Deal Review:
@@ -134,6 +126,10 @@ A three-panel layout for conducting a Technical Deal Review:
 | ![center](https://img.shields.io/badge/Center-Inputs-5B6C5D?style=flat-square) | Structured input area with per-field save and edit history |
 | ![right](https://img.shields.io/badge/Right-Intelligence-5B6C5D?style=flat-square) | Account profile, tech landscape, competitive position, market signals, action plan, brief & verdict, risk scoring, research & similar deals |
 
+<p align="center">
+  <img src="docs/screenshots/workspace-intelligence.png" alt="TDR Workspace — Intelligence Panel" width="800" />
+</p>
+
 ### ![chat](https://img.shields.io/badge/Inline_Chat-Multi_Provider-3B2C35?style=flat-square) Inline Chat
 
 Context-aware conversational AI embedded in the workspace. The chat knows the current deal, all TDR inputs, and all cached account intelligence.
@@ -143,6 +139,10 @@ Context-aware conversational AI embedded in the workspace. The chat knows the cu
 | ![cortex](https://img.shields.io/badge/Snowflake_Cortex-29B5E8?style=flat-square&logo=snowflake&logoColor=white) | Questions about stored TDR/account data | In-database — no data leaves Snowflake |
 | ![claude](https://img.shields.io/badge/Claude_4_Sonnet-191919?style=flat-square&logo=anthropic&logoColor=white) | Complex reasoning, TDR strategy | Via Cortex AI_COMPLETE |
 | ![pplx](https://img.shields.io/badge/Perplexity-1a1a2e?style=flat-square) | Real-time web research with citations | External API via Code Engine |
+
+<p align="center">
+  <img src="docs/screenshots/workspace-chat.png" alt="TDR Workspace — Inline Chat" width="800" />
+</p>
 
 ### ![intel](https://img.shields.io/badge/Account_Intelligence-One_Click-FF6B35?style=flat-square) Account Intelligence
 
@@ -164,6 +164,10 @@ Cross-deal pattern analysis powered by structured TDR extracts. Includes an NLQ 
 ### ![docs](https://img.shields.io/badge/Documentation_Hub-In_App_Reference-6B7280?style=flat-square) Documentation Hub
 
 In-app reference covering scoring methodology, app capabilities, integrations, Snowflake data model, AI model registry, glossary, and an interactive **5-layer architecture diagram** with pan/zoom navigation.
+
+<p align="center">
+  <img src="docs/screenshots/documentation.png" alt="Documentation Hub" width="800" />
+</p>
 
 ---
 
