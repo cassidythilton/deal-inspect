@@ -1,709 +1,366 @@
-# TDR Deal Inspection
+# DealInspect
 
-> A Domo-embedded sales engineering workspace for identifying, scoring, and reviewing deals that need a **Technical Deal Review (TDR)**.
+**AI-powered Technical Deal Review platform for sales engineering teams.**
 
-**Version:** 1.23.0 · **Platform:** Domo Custom App · **Stack:** React 18 + TypeScript + Vite + Tailwind CSS + Recharts
+DealInspect combines structured SE workflows with multi-model AI intelligence to help sales engineering leaders inspect, score, and act on complex deals. It integrates Snowflake Cortex AI for in-database LLM functions, Sumble for firmographic and technographic enrichment, Perplexity for web-grounded research, Slack for readout distribution, and Domo's platform for data, hosting, and code execution.
+
+**Version:** 1.53.0 · **Platform:** Domo Custom App · **Stack:** React 18 · TypeScript · Vite · Tailwind CSS · Snowflake · Snowpark Python
+
+---
+
+## Screenshots
+
+| Command Center | TDR Workspace — Intelligence |
+|:-:|:-:|
+| ![Command Center](docs/screenshots/command-center.png) | ![TDR Workspace Intelligence](docs/screenshots/workspace-intelligence.png) |
+
+| TDR Workspace — Chat | Documentation Hub |
+|:-:|:-:|
+| ![TDR Workspace Chat](docs/screenshots/workspace-chat.png) | ![Documentation Hub](docs/screenshots/documentation.png) |
 
 ---
 
 ## Table of Contents
 
-1. [What Is This App?](#1-what-is-this-app)
-2. [Architecture Overview](#2-architecture-overview)
-3. [Data Sources & Manifest](#3-data-sources--manifest)
-4. [Data Flow Pipeline](#4-data-flow-pipeline)
-5. [TDR Index — Scoring Engine](#5-tdr-index--scoring-engine)
-6. [Domo AI Recommendation Engine](#6-domo-ai-recommendation-engine)
-7. [AppDB — TDR Session Persistence](#7-appdb--tdr-session-persistence)
-8. [Pages & Navigation](#8-pages--navigation)
-9. [Command Center (Dashboard)](#9-command-center-dashboard)
-10. [TDR Workspace](#10-tdr-workspace)
-11. [Filters & Dropdowns](#11-filters--dropdowns)
-12. [Recommended Deals Table](#12-recommended-deals-table)
-13. [Charts](#13-charts)
-14. [SE Mapping & Team Enrichment](#14-se-mapping--team-enrichment)
-15. [Design System & Color Palette](#15-design-system--color-palette)
-16. [Settings](#16-settings)
-17. [Development & Deployment](#17-development--deployment)
-18. [File Structure](#18-file-structure)
+1. [What Problem Does This Solve?](#what-problem-does-this-solve)
+2. [Architecture](#architecture)
+3. [Key Capabilities](#key-capabilities)
+4. [TDR Index — Scoring Engine](#tdr-index--scoring-engine)
+5. [AI & Intelligence Stack](#ai--intelligence-stack)
+6. [Deal Close Propensity ML (In Progress)](#deal-close-propensity-ml-in-progress)
+7. [Pages & Navigation](#pages--navigation)
+8. [Data Model](#data-model)
+9. [Design System](#design-system)
+10. [Development & Deployment](#development--deployment)
+11. [Project Structure](#project-structure)
+12. [License](#license)
 
 ---
 
-## 1. What Is This App?
+## What Problem Does This Solve?
 
-The TDR Deal Inspection app helps SE (Sales Engineer) managers and leaders identify which deals in the pipeline would benefit most from a structured **Technical Deal Review**. A TDR exists to:
+SE managers oversee dozens of active deals. Some require a Technical Deal Review (TDR) — a structured inspection to validate architecture, partner strategy, and competitive positioning before decisions lock in. The challenge: **which deals, and when?**
 
-- **Protect deal integrity** — validate technical architecture before decisions lock in
-- **Enable account expansion** — ensure the solution scope matches the customer's long-term vision
-- **Align partner strategy** — validate cloud partner (Snowflake, Databricks, BigQuery) integration approaches
+DealInspect answers this by combining three intelligence signals:
 
-The app surfaces the right deals at the right time by combining a deterministic scoring engine with Domo AI-powered recommendations, then provides a structured workspace to conduct the review.
+| Signal | Source | Question It Answers |
+|--------|--------|---------------------|
+| **TDR Complexity Score** | Deterministic 9-factor engine | "How technically complex is this deal?" |
+| **AI Recommendations** | Domo AI + 17-factor framework | "Which deals should I review first?" |
+| **Win Probability** *(in progress)* | Stacking ensemble ML model | "How likely is this deal to close?" |
+
+The platform then provides a structured workspace to *conduct* the review — with context-aware chat, external account intelligence, Cortex-generated briefs, and Slack distribution of the final readout.
 
 ---
 
-## 2. Architecture Overview
+## Architecture
+
+DealInspect is a four-layer system. Each layer is independently valuable; together they compound.
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         Domo Platform                                │
-│                                                                      │
-│   ┌─────────────────┐   ┌──────────────┐   ┌──────────────────┐     │
-│   │ opportunitiesmagic│   │  semapping   │   │    AppDB         │     │
-│   │   (8,000+ opps)  │   │ (29 SE→Mgr)  │   │ (TDR Sessions)  │     │
-│   └────────┬─────────┘   └──────┬───────┘   └────────┬─────────┘     │
-│            │                    │                     │               │
-│            │  /data/v1/...      │  /data/v1/...       │  /domo/       │
-│            │                    │                     │  datastores/  │
-│            ▼                    ▼                     ▼               │
-│   ┌─────────────────────────────────────────────────────────────┐     │
-│   │              TDR Deal Inspection (React SPA)                │     │
-│   │                                                             │     │
-│   │  ┌──────────────┐  ┌────────────┐  ┌────────────────────┐  │     │
-│   │  │ useDomo.ts   │  │ appDb.ts   │  │   domoAi.ts        │  │     │
-│   │  │ (data hooks) │  │ (AppDB)    │  │   (AI recs)        │  │     │
-│   │  └──────┬───────┘  └─────┬──────┘  └────────┬───────────┘  │     │
-│   │         │                │                   │              │     │
-│   │         ▼                ▼                   ▼              │     │
-│   │  ┌──────────────────────────────────────────────────────┐   │     │
-│   │  │  CommandCenter → DealsTable → Charts → Agenda        │   │     │
-│   │  │  TDRWorkspace → TDRSteps → TDRInputs → Intelligence │   │     │
-│   │  │  TDRHistory → Settings                               │   │     │
-│   │  └──────────────────────────────────────────────────────┘   │     │
-│   └─────────────────────────────────────────────────────────────┘     │
-│                                                                      │
-│   ┌──────────────────┐                                               │
-│   │ Domo AI          │  POST /domo/ai/v1/text/chat                   │
-│   │ (text/chat LLM)  │  ← 17-factor TDR Framework prompt            │
-│   └──────────────────┘  → JSON array of recommendations              │
-└──────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     EXPERIENCE LAYER (React SPA)                        │
+│                                                                         │
+│   Command Center  │  TDR Workspace  │  Inline Chat  │  Analytics       │
+│   Documentation   │  TDR History    │  Settings     │  PDF Readout     │
+│                                                                         │
+└─────────────────────────────────────┬───────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                  INTELLIGENCE LAYER (Domo Code Engine)                   │
+│                                                                         │
+│   Snowflake Cortex AI          │  Perplexity        │  Sumble          │
+│   ├─ AI_COMPLETE (briefs)      │  (web research,    │  (firmographic,  │
+│   ├─ AI_CLASSIFY (tags)        │   citations)       │   technographic, │
+│   ├─ AI_EXTRACT (entities)     │                    │   competitive)   │
+│   ├─ AI_EMBED (similarity)     ├────────────────────┤                  │
+│   ├─ AI_SENTIMENT (health)     │  Domo AI           │  Slack           │
+│   ├─ Cortex Analyst (NL→SQL)   │  (17-factor TDR    │  (readout        │
+│   └─ Cortex Search (hybrid)    │   recommendations) │   distribution)  │
+│                                                                         │
+└─────────────────────────────────────┬───────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     PERSISTENCE LAYER (Snowflake)                       │
+│                                                                         │
+│   TDR_SESSIONS  │  TDR_STEP_INPUTS  │  TDR_CHAT_MESSAGES              │
+│   TDR_STRUCTURED_EXTRACTS  │  TDR_READOUTS  │  TDR_DISTRIBUTIONS      │
+│   ACCOUNT_INTEL_SUMBLE  │  ACCOUNT_INTEL_PERPLEXITY                    │
+│   API_USAGE_LOG  │  CORTEX_ANALYSIS_RESULTS                            │
+│   ML_FEATURE_STORE  │  DEAL_ML_PREDICTIONS  │  ML_MODEL_METADATA      │
+│                                                                         │
+│   • Append-only writes with timestamps (full iteration history)        │
+│   • Cortex AI operates directly on stored data                         │
+│   • Cross-deal analytics via SQL / Cortex Analyst                      │
+│                                                                         │
+└─────────────────────────────────────┬───────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      DATA LAYER (Source Systems)                        │
+│                                                                         │
+│   SFDC Opportunities  │  SE Mapping  │  Forecasts  │  WCP Weekly       │
+│   (via Domo Datasets — existing, unchanged)                            │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
----
-
-## 3. Data Sources & Manifest
-
-The app connects to **4 Domo datasets** declared in `manifest.json`:
-
-| Alias | Dataset ID | Purpose | Key Fields |
-|-------|-----------|---------|------------|
-| `opportunitiesmagic` | `6f12ec25-...` | Primary pipeline data — all open opportunities | Opportunity Id, Account Name, Stage, ACV (USD), Likely, Close Date, Sales Consultant, PoC Sales Consultant, Deal Code, Partners Involved, Snowflake Team Picklist, Number of Competitors, Domo Forecast Category, Type |
-| `forecastsmagic` | `79b2d8a2-...` | Forecast data — manager-level forecast calls | Mgr Forecast Name, Forecast Quarter, Likely Call, High Call |
-| `wcpweekly` | `62c805ae-...` | Weekly commit pipeline snapshots | Mgr Forecast Name, Forecast Category, SFDC ACV, Likely |
-| `semapping` | `6c2d47a4-...` | SE-to-Manager lookup table (29 rows) | `se` → SE name, `se_manager` → their manager |
-
-### Manifest Field Aliasing
-
-Each dataset maps Domo column names to aliases. The `domo.ts` data layer normalizes both alias and canonical names to ensure resilience against Domo API returning either format.
+| Layer | Core Principle |
+|-------|---------------|
+| **Experience** | Every interaction is contextual — chat, research, briefs, and insights happen inline without leaving the TDR workflow |
+| **Intelligence** | Three AI backends, one unified context — Cortex for stored data, Perplexity for live web, Domo AI for candidate ranking |
+| **Persistence** | Everything is append-only — every edit, research pull, and chat message creates a timestamped row for full posterity |
+| **Data** | SFDC remains the source of truth — the app enriches it but never replaces it |
 
 ---
 
-## 4. Data Flow Pipeline
+## Key Capabilities
 
-```
-1. fetchOpportunities()
-   └── GET /data/v1/opportunitiesmagic
-   └── Pre-filter: Stage Age ≤ 365 days
-   └── Normalize field names (alias → canonical)
-   └── Returns: DomoOpportunity[]
+### Command Center
 
-2. fetchSEMapping()          (direct useEffect, bypasses React Query)
-   └── GET /data/v1/semapping
-   └── Auto-detect column keys (se, se_manager)
-   └── Returns: DomoSEMapping[]
+The operational dashboard for SE managers. Shows pipeline metrics, TDR priority distribution, close urgency trends, and a scored deals table with actionable "Why TDR?" pills. Deals can be pinned to an Agenda for the next TDR meeting. Domo AI auto-suggests the top 5 candidates.
 
-3. transformOpportunityToDeal()
-   └── Maps each raw record → Deal object
-   └── Parses stage number, calculates risk level
-   └── Extracts partner signal, competitive flags
-
-4. SE Manager Join
-   └── Build lookup: se_name (lowercase) → se_manager
-   └── Match deal.salesConsultant → lookup → deal.seManager
-   └── Fallback: try deal.pocSalesConsultant → lookup
-
-5. calculateTDRScore(deal)
-   └── 9-component scoring engine → tdrScore (0-100)
-
-6. AppDB Join
-   └── appDb.getTDRSessionsByDeal() → Map<opportunityId, TDRSession[]>
-   └── Enrich each deal with tdrSessions[] (up to 5 per deal)
-
-7. Domo AI Call (async, parallel)
-   └── generateTDRRecommendations(opportunities)
-   └── Returns top 5 candidates with scores, reasons, risk flags
-   └── Auto-pins to Agenda on first load
-
-8. Filter Options Extraction
-   └── SE Managers: from semapping dataset
-   └── Sales Engineers: unique "Sales Consultant" values from opportunities
-   └── PoC Architects: unique "PoC Sales Consultant" values from opportunities
-   └── Quarters: unique "Close Date FQ" and "Current FQ" values
-   └── Forecast Managers: filtered by ALLOWED_MANAGERS constant
-```
-
----
-
-## 5. TDR Index — Scoring Engine
-
-**File:** `src/lib/tdrCriticalFactors.ts`
-
-### Philosophy
-
-- Base score starts at **0**. Every point must be **earned**.
-- Most deals should land **LOW (0–24)** or **MEDIUM (25–49)**.
-- Only complex, high-value, strategically important deals reach **HIGH (50–74)**.
-- **CRITICAL (75+)** is reserved for deals with multiple Tier 1 signals converging.
-
-### The 9 Scoring Components
-
-| # | Component | Range | Source Field(s) | Logic |
-|---|-----------|-------|-----------------|-------|
-| 1 | **ACV Significance** | 0–20 | `ACV (USD)` / `Likely` | ≥$250K → 20 · ≥$100K → 15 · ≥$50K → 10 · ≥$25K → 5 · ≥$10K → 2 |
-| 2 | **Stage TDR Value** | 0–15 | `Stage` | Stage 2 (Determine Needs) → 15 · Stage 3 (Demonstrate Value) → 12 · Stage 1 → 8 · Stage 4 → 4 |
-| 3 | **Cloud Partner Alignment** | 0–15 | `Snowflake Team Picklist`, `Partners Involved`, `Partner Influence`, `Primary Partner Role` | Cloud platform detected → 15 · Co-sell + Partner Influence → 8 · Partner Influence only → 4 |
-| 4 | **Competitive Pressure** | 0–10 | `Number of Competitors` | ≥2 competitors → 10 · 1 competitor → 5 |
-| 5 | **Deal Type Signal** | 0–10 | `Type` | New Logo / New Business → 10 · Acquisition → 8 · Upsell / Expansion → 3 |
-| 6 | **Forecast Momentum** | 0–10 | `Domo Forecast Category` | Probable → 10 · Best Case → 8 · Pipeline → 6 · Commit → 4 |
-| 7 | **Stage Freshness** | −10 to +5 | `Stage Age` | ≤14 days → +5 · ≤45 days → +3 · ≤90 days → 0 · ≤180 days → −5 · >180 days → −10 |
-| 8 | **Deal Complexity** | 0–10 | `Deal Code` | PA prefix → +5 · P prefix → +3 · Multi-component → +3 · E02+ → +2 |
-| 9 | **Partner Role Strength** | 0–5 | `Primary Partner Role` | Co-sell → 5 · Reseller → 3 · Referral → 1 |
-
-**Maximum theoretical score: ~100** — requires a $250K+ new-logo deal in Stage 2 with a cloud partner, 2+ competitors, probable forecast, fresh stage, partner-architecture deal code, and co-sell partner role.
-
-### Priority Thresholds
-
-| Priority | Score Range | Meaning |
-|----------|------------|---------|
-| **CRITICAL** | ≥ 75 | Immediate TDR required — multiple high-value signals converging |
-| **HIGH** | 50–74 | TDR strongly recommended — good intervention opportunity |
-| **MEDIUM** | 25–49 | TDR beneficial — monitor for escalation |
-| **LOW** | < 25 | Standard process, no urgent TDR need |
-
-### "WHY TDR?" Tags (Critical Factor Detection)
-
-The `detectCriticalFactors()` function evaluates each deal against 11 defined factors and returns matching ones for display as colored pills in the UI.
-
-**Tier 1 Factors** (highest priority):
-- **Material Deal** ($100K+ ACV) — blue pill
-- **Cloud Platform** (Snowflake/Databricks/BigQuery) — cyan pill
-- **Architecture Shaping Window** (Stage 2–3) — emerald pill
-- **Competitive Displacement** (competitors present) — amber pill
-- **Greenfield / New Logo** — violet pill
-
-**Tier 2 Factors** (complexity indicators):
-- **Partner Play** (active co-sell) — cyan pill
-- **Forecast Momentum** (Probable/Best Case) — blue pill
-- **Enterprise Scale** (complex deal code) — blue pill
-
-**Tier 3 Factors** (context signals / risks):
-- **Stalling in Stage** (60–180 days) — orange pill
-- **Deal Stalled** (180+ days) — orange pill
-- **Late Stage** (Stage 4+, negative points) — secondary pill
-
-Each pill includes:
-- **Icon** — visual indicator of the factor category (DollarSign, Cloud, Zap, Swords, etc.)
-- **Label** — dynamically generated based on deal data
-- **Tooltip** — detailed description + recommended strategy
-- **Color** — categorized by factor type
-
----
-
-## 6. Domo AI Recommendation Engine
-
-**File:** `src/lib/domoAi.ts`
-
-### How It Works
-
-```
-1. After opportunities load, useDomo triggers generateTDRRecommendations()
-2. Pre-filter: ACV ≥ $100K, exclude closed
-3. Sort by ACV descending, take top 40
-4. Shape compact JSON payload (id, name, acv, stage, partners, etc.)
-5. POST /domo/ai/v1/text/chat with 17-factor TDR Framework prompt
-6. Parse JSON response → TDRRecommendation[]
-7. Top 5 with score ≥ 50 → suggestedDealIds
-8. Auto-pin to Agenda on first load (one-time)
-```
-
-### The API Call
-
-| Property | Value |
-|----------|-------|
-| **Endpoint** | `POST /domo/ai/v1/text/chat` |
-| **Temperature** | 0.3 (low variance for consistency) |
-| **System prompt** | 17-factor TDR Framework with scoring guidance |
-| **User prompt** | JSON array of top 40 deals by ACV |
-| **Response** | JSON array of recommendations |
-
-### The 17-Factor Framework (System Prompt)
-
-The AI is instructed to score deals against 17 factors in 4 tiers:
-
-**Tier 1 — High Priority Triggers (25 pts each):**
-1. Material ACV (≥$150K, high priority ≥$300K)
-2. Partner Platform (Snowflake/Databricks/BigQuery)
-3. Strategic Account (Enterprise segment, revenue >$1B)
-4. Competitive Displacement
-5. **Early-Stage + Strong Signal** (Stage 2–3 + ACV ≥$150K = "the sweet spot")
-6. Forecast Momentum
-
-**Tier 2 — Complexity Indicators (15 pts each):**
-7. Deal Type (New Business / Upsell)
-8. Partner Alignment (Partner Influence, Premium tier)
-9. Vertical Depth (Financial Services, Healthcare, etc.)
-10. Architecture Decision Window (early stage + partner platform)
-11. Stale Signals (Stage Age >60 days)
-
-**Tier 3 — Risk Flags (10 pts each):**
-12. Champion Gap
-13. Multi-Stakeholder complexity
-14. Partner Co-Sell (architecture not validated)
-15. Expansion Dynamics
-16. Late-Stage Warning (Stage ≥4)
-
-**Tier 4 — Future-State (5 pts each):**
-17. AI/Agentic Scope
-18. Cloud Compute strategy
-
-### AI Response Format
-
-```json
-[
-  {
-    "opportunityId": "006...",
-    "score": 85,
-    "priority": "CRITICAL",
-    "reasons": [
-      "Material ACV: $350K deal with strategic importance",
-      "Partner Platform: Snowflake architecture alignment needed",
-      "Early-Stage Sweet Spot: Stage 2 — maximum shaping opportunity"
-    ],
-    "riskFlags": [
-      "Competitive pressure from Tableau"
-    ],
-    "suggestedActions": [
-      "Schedule architecture workshop with Snowflake SA",
-      "Prepare competitive differentiation deck"
-    ]
-  }
-]
-```
-
-### Auto-Pinning Logic
-
-1. AI returns up to 5 recommendations with `score ≥ 50`.
-2. Their opportunity IDs are collected into `suggestedDealIds`.
-3. On first load (before user interaction), these IDs are added to the pinned set.
-4. The Agenda section displays them with a ✨ "AI Suggested" badge.
-5. Users can un-pin any deal manually — auto-pin only fires once per session.
-
-### Deterministic vs. AI Scoring
-
-| Aspect | Deterministic (`calculateTDRScore`) | AI (`generateTDRRecommendations`) |
-|--------|--------------------------------------|-----------------------------------|
-| **Speed** | Instant (client-side) | ~2–5 seconds (API call) |
-| **Consistency** | Identical every render | May vary slightly (temperature 0.3) |
-| **Depth** | 9 quantitative factors | 17+ factors with qualitative reasoning |
-| **Output** | Numeric score (0–100) | Score + reasons + risk flags + actions |
-| **Usage** | All deals (table, charts, pills) | Top 5 pinned candidates |
-| **Fallback** | Always available | Gracefully degrades if AI unavailable |
-
----
-
-## 7. AppDB — TDR Session Persistence
-
-**File:** `src/lib/appDb.ts`
-
-### Overview
-
-TDR sessions are persisted via the [Domo AppDB API](https://developer.domo.com/portal/1l1fm2g0sfm69-app-db-api). Each session records whether a TDR has been completed (or is in-progress) for a given opportunity.
-
-- **Collection:** `TDRSessions`
-- **Storage:** Domo AppDB in production, `localStorage` in development
-- **Capacity:** Up to 5 TDR sessions per deal
-
-### TDRSession Schema
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | STRING | Auto-generated document ID |
-| `opportunityId` | STRING | Salesforce Opportunity ID (unique key for matching) |
-| `opportunityName` | STRING | Deal name for display |
-| `accountName` | STRING | Account name |
-| `acv` | DOUBLE | Deal ACV at time of TDR |
-| `stage` | STRING | Deal stage at time of TDR |
-| `status` | STRING | `in-progress` or `completed` |
-| `owner` | STRING | AE who owns the deal |
-| `createdBy` | STRING | User who created the TDR session |
-| `createdAt` | STRING | ISO timestamp of creation |
-| `updatedAt` | STRING | ISO timestamp of last update |
-| `completedSteps` | STRING | JSON-serialized array of completed step IDs |
-| `notes` | STRING | Free-text notes from the TDR |
-
-### API Operations
-
-| Operation | Method | Endpoint |
-|-----------|--------|----------|
-| Create collection | POST | `/domo/datastores/v1/collections` |
-| List all sessions | GET | `/domo/datastores/v1/collections/TDRSessions/documents` |
-| Get one session | GET | `/domo/datastores/v1/collections/TDRSessions/documents/{id}` |
-| Create session | POST | `/domo/datastores/v1/collections/TDRSessions/documents` |
-| Update session | PUT | `/domo/datastores/v1/collections/TDRSessions/documents/{id}` |
-| Delete session | DELETE | `/domo/datastores/v1/collections/TDRSessions/documents/{id}` |
-
-### Multi-TDR Indicator (UI)
-
-Each deal in the Recommended Deals table has a "TDRs" column with **5 small circles**:
-
-- ⚫ **Gray** — no session (empty slot)
-- 🟢 **Green** — completed TDR
-- 🟡 **Amber** — in-progress TDR
-
-Hovering shows a tooltip with the count and dates of each session.
-
----
-
-## 8. Pages & Navigation
-
-The app uses a collapsible sidebar (`AppSidebar`) with 5 routes:
-
-| Route | Page | Description |
-|-------|------|-------------|
-| `/` | Command Center | Main dashboard with metrics, charts, and deals table |
-| `/agenda` | Agenda view | Same as Command Center but filtered to pinned deals |
-| `/workspace` | TDR Workspace | Three-panel layout for conducting a TDR on a specific deal |
-| `/history` | TDR History | Past TDR reviews with search and outcome filters |
-| `/settings` | Settings | App configuration (managers, ACV thresholds, feature flags) |
-
-### Sidebar
-
-- **Collapsed:** 56px wide, icon-only
-- **Expanded:** 208px wide on hover
-- **Background:** Deep aubergine (`#2A1F2D`)
-- **Text:** White
-- **Active state:** Slightly lighter aubergine background
-
----
-
-## 9. Command Center (Dashboard)
-
-**File:** `src/pages/CommandCenter.tsx`
-
-The main dashboard is organized into 4 zones:
-
-### Zone 1: Metrics Row (4 cards)
-
-| Metric | What It Shows |
-|--------|--------------|
-| **Eligible ACV** | Total ACV of all filtered deals |
-| **Recommended** | ACV of top 10 deals by TDR score |
-| **Agenda** | ACV of pinned deals |
-| **At-Risk** | ACV of deals with risk level red/yellow |
-
-### Zone 2: Charts Row (3 charts)
-
-1. **Top TDR Candidates** — horizontal bar chart, top 5 by TDR score
-2. **TDR Priority** — donut chart showing deal distribution by priority tier
-3. **TDR Pipeline by Close** — stacked area chart showing pipeline by close date
-
-### Zone 3: Recommended Deals Table
-
-Full table with columns: Deal/Account, Stage, Age, ACV, TDR Score, TDRs (dots), SE Team, Partner, Why TDR?, Action.
-
-### Zone 4: Agenda Section
-
-- Pinned deals for the next TDR meeting
-- AI-suggested candidates (if Domo AI is enabled)
-
-### View Toggle
-
-Three views in the TopBar:
-- **Recommended** — top 10 deals sorted by TDR score
-- **Agenda** — only pinned deals
-- **All Eligible** — all filtered deals
-
----
-
-## 10. TDR Workspace
-
-**File:** `src/pages/TDRWorkspace.tsx`
+### TDR Workspace
 
 A three-panel layout for conducting a Technical Deal Review:
 
-### Left Panel — TDR Steps
+- **Left** — 5 required + 4 optional TDR steps with progress tracking
+- **Center** — Structured input area with per-field save and edit history
+- **Right** — Intelligence panel with account profile, technical landscape, competitive position, market signals, strategic action plan, TDR brief & verdict, risk & readiness scoring, and research & similar deals
 
-9 structured steps with progress tracking:
+### Inline Chat
 
-1. Deal Context & Stakes
-2. Business Decision
-3. Current Architecture
-4. Target Architecture
-5. Domo Role
-6. Partner Alignment
-7. AI Strategy
-8. Technical Risk
-9. Usage & Adoption
+Context-aware conversational AI embedded in the workspace. The chat knows the current deal, all TDR inputs, and all cached account intelligence. Three providers:
 
-### Center Panel — TDR Inputs
+| Provider | Best For | Routing |
+|----------|----------|---------|
+| **Snowflake Cortex** | Questions about stored TDR/account data | In-database, no data leaves Snowflake |
+| **Claude 4 Sonnet** | Complex reasoning, TDR strategy | Via Cortex AI_COMPLETE |
+| **Perplexity** | Real-time web research with citations | External API via Code Engine |
 
-Free-form input area for the active step. Content is contextual to the selected step.
+### Account Intelligence
 
-### Right Panel — Intelligence
+One-click enrichment for any deal:
 
-- **Deal Info** — account name, deal name, ACV, stage
-- **Deal Team** — Account Executive, SE Manager, Sales Consultant (SE), PoC Sales Consultant
-- **Readiness Score** — green/yellow/red indicator
-- **Risk Flags** — contextual risks based on deal data
-- **Missing Information** — gaps that need to be filled
-- **Evidence Links** — quick links to CRM and technical assessment
-- **Final Outcome** — select review outcome (Approved, Needs Work, Deferred, At-Risk)
-- **Actions** — Save Draft, Finalize TDR, Generate Summary
+- **Sumble** — Firmographic profile (industry, revenue, employees), technographic stack (BI, CRM, cloud, DevOps, AI/ML tools with confidence scores), and competitive tool landscape
+- **Perplexity** — Web-grounded research on strategic initiatives, market position, technology decisions, and competitive dynamics — with source citations
 
-### Header Pills
+### TDR Readout & Distribution
 
-The workspace header shows deal team members as pills:
-- **Manager** — gray pill with the AE manager name
-- **SE Manager** — violet pill (shown when `seManager` is populated)
-- **SE** — gray pill with the Sales Consultant name
-- **PoC SE** — emerald pill (shown when `pocSalesConsultant` is populated)
+After completing a TDR, generate an executive-ready PDF readout and distribute to Slack channels with AI-generated summary, deal team @mentions, and the PDF attached.
+
+### Portfolio Analytics
+
+Cross-deal pattern analysis powered by structured TDR extracts. Includes an NLQ hero bar ("Ask Your TDR Data") backed by Cortex AI, plus charts for competitor frequency, platform distribution, entry layer patterns, risk categories, and TDR status distribution.
+
+### Documentation Hub
+
+In-app reference covering scoring methodology, app capabilities, integrations, Snowflake data model, AI model registry, glossary, and an interactive 5-layer architecture diagram with pan/zoom navigation.
 
 ---
 
-## 11. Filters & Dropdowns
+## TDR Index — Scoring Engine
 
-**File:** `src/components/TopBar.tsx`
+**File:** `src/lib/tdrCriticalFactors.ts`
 
-The TopBar provides 5 filter dimensions:
+The TDR Index is a deterministic 9-component scoring engine. Base score starts at 0 — every point must be earned. Most deals land LOW or MEDIUM; only complex, high-value deals with multiple converging signals reach HIGH or CRITICAL.
 
-| Filter | Type | Source | Styling When Active |
-|--------|------|--------|-------------------|
-| **Quarter** | Multi-select checkboxes | `Close Date FQ` from opportunities | Green tint |
-| **Manager** | Single select | `ALLOWED_MANAGERS` constant | Green tint |
-| **SE Manager** | Single select | `semapping` dataset | Violet tint |
-| **SE / PoC SE** | Single select with groups | `Sales Consultant` + `PoC Sales Consultant` from opportunities | Sky (SE) or Teal (PoC) tint |
-| **TDR Priority** | Single select | Computed from `tdrScore` | Red/Orange/Amber tint based on level |
+### The 9 Components
 
-### SE Dropdown Grouping
+| # | Component | Range | Key Logic |
+|---|-----------|-------|-----------|
+| 1 | **ACV Significance** | 0–20 | ≥$250K → 20 · ≥$100K → 15 · ≥$50K → 10 |
+| 2 | **Stage TDR Value** | 0–15 | Stage 2 (Determine Needs) → 15 · Stage 3 → 12 |
+| 3 | **Cloud Partner Alignment** | 0–15 | Snowflake/Databricks/BigQuery → 15 |
+| 4 | **Competitive Pressure** | 0–10 | ≥2 competitors → 10 |
+| 5 | **Deal Type Signal** | 0–10 | New Logo → 10 · Acquisition → 8 |
+| 6 | **Forecast Momentum** | 0–10 | Probable → 10 · Best Case → 8 |
+| 7 | **Stage Freshness** | −10 to +5 | ≤14d → +5 · >180d → −10 |
+| 8 | **Deal Complexity** | 0–10 | PA prefix → +5 · Multi-component → +3 |
+| 9 | **Partner Role Strength** | 0–5 | Co-sell → 5 · Reseller → 3 |
 
-The SE dropdown combines two groups with headers:
+### Priority Bands
+
+| Priority | Score | Action |
+|----------|-------|--------|
+| **CRITICAL** | ≥ 75 | Immediate TDR — multiple Tier 1 signals converging |
+| **HIGH** | 50–74 | TDR strongly recommended |
+| **MEDIUM** | 25–49 | Monitor for escalation |
+| **LOW** | < 25 | Standard process |
+
+### "Why TDR?" Pills
+
+Each deal gets up to 2 colored pills explaining *why* it scored the way it did. 11 defined factors across 3 tiers (Material Deal, Cloud Platform, Shaping Window, Competitive Displacement, New Logo, Partner Play, Forecast Momentum, Enterprise Scale, Stalling, Stalled, Late Stage) — each with an icon, dynamic label, and strategy tooltip.
+
+### Post-TDR Score
+
+After a TDR begins, the score evolves with 4 additional components: Named Competitor Threat (0–10), Enrichment Depth (0–5), TDR Input Completeness (0–10), and Risk Awareness (0–5) — reflecting how much intelligence has been gathered during the review.
+
+---
+
+## AI & Intelligence Stack
+
+DealInspect uses AI at five distinct points, each with a different purpose:
+
+| Function | AI Backend | Purpose | Trigger |
+|----------|-----------|---------|---------|
+| **TDR Candidate Ranking** | Domo AI (text/chat) | 17-factor framework scores top 40 deals by ACV | Automatic on data load |
+| **TDR Brief Generation** | Cortex AI_COMPLETE | Synthesizes all inputs/intel into executive summary | User-initiated |
+| **Entity Extraction** | Cortex AI_EXTRACT | Pulls competitors, technologies, risks from free text | After TDR step completion |
+| **Finding Classification** | Cortex AI_CLASSIFY | Categorizes Perplexity research findings | After research enrichment |
+| **Portfolio Insights** | Cortex AI_AGG | Cross-deal pattern analysis from structured extracts | Analytics page load |
+| **Sentiment Tracking** | Cortex AI_SENTIMENT | TDR health trend over time | Per-session |
+| **Similar Deal Discovery** | Cortex AI_EMBED | Semantic similarity search across past TDRs | Intelligence panel |
+| **Natural Language Query** | Cortex Analyst | "Ask Your TDR Data" — NL → SQL → results | Analytics page |
+| **Inline Chat** | Cortex / Perplexity / Domo | Context-aware Q&A within the workspace | User-initiated |
+| **Readout Summary** | Cortex AI_COMPLETE | Slack-formatted message summarizing TDR outcome | Share workflow |
+| **KB Summarization** | Cortex AI_COMPLETE | Summarize fileset/knowledge base search results | Intelligence panel |
+
+All external API calls route through **Domo Code Engine functions**, keeping API keys server-side and the frontend stateless.
+
+---
+
+## Deal Close Propensity ML (In Progress)
+
+> **Status:** Sprint 28 — Infrastructure defined, training procedures written, frontend integration pending.
+
+### The Problem
+
+The deterministic TDR score answers *"How technically complex is this deal?"* but not *"How likely is this deal to close?"* A deal can score 85 on TDR complexity yet have a 15% chance of closing. SE managers need both axes to allocate review time effectively.
+
+### The Solution: Two-Axis Prioritization
+
+A stacking ensemble ML model predicts `P(close)` for every pipeline deal. The propensity score composes with the deterministic TDR score to create a 2×2 quadrant:
+
+| | High Win Probability | Low Win Probability |
+|---|---|---|
+| **High TDR Score** | 🔴 **CRITICAL** — winnable + complex, TDR adds most value | ⚠️ **MONITOR** — complex but unlikely, investigate blockers |
+| **Low TDR Score** | ✅ **LOW TOUCH** — likely to close, minimal SE intervention | ⬜ **DEPRIORITIZE** — unlikely + simple, not worth TDR time |
+
+### Model Architecture
 
 ```
-All SEs
-─── SALES ENGINEERS ───
-  Alice Smith
-  Bob Johnson
-  ...
-─── POC ARCHITECTS ───
-  Charlie Wilson
-  Diana Lee
-  ...
+Level 0 (Base Models)          Level 1 (Meta-Learner)
+┌─────────────────────┐
+│  XGBoost            │───┐
+│  LightGBM           │───┤   ┌───────────────────────┐
+│  RandomForest       │───┼──▶│  LogisticRegression   │──▶ P(close)
+│  LogisticRegression │───┘   │  (learned weights)    │
+└─────────────────────┘       └───────────────────────┘
+         │
+    5-fold stratified CV
+    (out-of-fold predictions)
 ```
 
-- Selecting a Sales Engineer filters on `deal.salesConsultant`
-- Selecting a PoC Architect filters on `deal.pocSalesConsultant`
-- Values are prefixed (`se:` or `poc:`) internally for disambiguation
+- **Training data:** Historical SFDC deal outcomes (`Is Won` label — clean, auditable)
+- **Imbalance handling:** SMOTE oversampling or class-weight balancing
+- **Explainability:** SHAP values per prediction — every score is transparent
+- **Baseline comparison:** Native `SNOWFLAKE.ML.CLASSIFICATION` runs alongside; if ensemble doesn't beat it by >2% AUC, the system simplifies to native-only
 
-### Allowed Managers
+### 19 Engineered Features
 
-Only deals belonging to these AE managers are shown:
+| Category | Features |
+|----------|----------|
+| **Historical** | Account win rate, type-specific win rate |
+| **Velocity** | Stage velocity ratio, quarter urgency, days in stage, deal age |
+| **Complexity** | Deal complexity index, competitor count, line item count |
+| **Financial** | Services ratio, ACV normalized, revenue per employee |
+| **Process** | Sales process completeness, steps completed, has thesis, has stakeholders |
+| **Categorical** | Stage ordinal, deal complexity encoded, AI maturity encoded |
 
-1. Andrew Rich
-2. John Pasalano
-3. Keith White
-4. Taylor Rust
-5. Casey Morgan
+### Snowflake Infrastructure
 
-This list is configurable via the Settings page.
+| Object | Purpose |
+|--------|---------|
+| `ML_FEATURE_STORE` | Pre-computed derived features, versioned by date |
+| `DEAL_ML_PREDICTIONS` | Batch scoring results + SHAP explanations + risk flags |
+| `ML_MODEL_METADATA` | Model registry with versioning, metrics, and lifecycle |
+| `SP_TRAIN_STACKING_ENSEMBLE` | Snowpark Python: trains ensemble with 5-fold CV |
+| `SP_PREDICT_WIN_PROBABILITY` | Snowpark Python: batch/single prediction with SHAP |
+| `TASK_BATCH_SCORE` | Daily automated scoring (7am UTC) |
+| `TASK_RETRAIN_MODEL` | Biweekly retraining (1st & 15th) |
+| `ALERT_MODEL_PERFORMANCE_DEGRADATION` | Triggers if AUC-ROC drops below 0.65 |
 
----
+### Planned Frontend Surfaces
 
-## 12. Recommended Deals Table
-
-**File:** `src/components/DealsTable.tsx`
-
-### Column Layout
-
-| Column | Width | Content |
-|--------|-------|---------|
-| Deal / Account | 18% | Account name (bold) + deal name (muted) |
-| Stage | 10% | Colored badge: `[02] Determine Needs` with CheckCircle icon |
-| Age | 5% | Days in stage — green (<30d), amber (30–60d), red (60d+) |
-| ACV | 7% | Formatted currency ($150K, $1.2M) |
-| TDR | 5% | Score badge (0–100) with priority coloring |
-| TDRs | 6% | 5 small circles (gray/green/amber) showing session history |
-| SE Team | 12% | Sales Consultant name + PoC SE if present |
-| Partner | 5% | Dynamic icon based on partner type |
-| Why TDR? | 24% | Up to 2 colored pills with icons, labels, and strategy tooltips |
-| Action | 10% | Pin/Unpin button (appears on hover) |
-
-### Partner Icons (Dynamic)
-
-Icons vary based on deal characteristics:
-
-| Deal Code Prefix | Icon | Color | Meaning |
-|-----------------|------|-------|---------|
-| `PA` | Cloud | Sky blue | Partner Architecture (cloud platform deal) |
-| `P` | Users | Violet | Partner deal (co-sell or reseller) |
-| `E` | Building2 | Amber | Enterprise deal |
-| Other/None | RefreshCcw | Muted | Standard deal |
-
-### Brand-Specific Pill Colors
-
-| Platform | Hex | Usage |
-|----------|-----|-------|
-| Snowflake | `#00B9ED` | Cloud platform pill background |
-| Databricks | `#CB2B1D` | Cloud platform pill background |
-| Google BigQuery | `#4285F4` | Cloud platform pill background |
-
-### Tooltips
-
-All tooltips are **dynamic** — they show deal-specific information:
-- **Stage tooltip** — contextual guidance based on stage number
-- **TDR Score tooltip** — lists the top contributing factors
-- **TDRs tooltip** — count and dates of completed/in-progress sessions
-- **SE Team tooltip** — shows SE Manager hierarchy
-- **Partner tooltip** — shows partner name, platform, role, deal code, and strategy
-- **Why TDR? tooltip** — factor description + recommended action
+- **Command Center** — Win Probability column in deals table
+- **Intelligence Panel** — Deal Propensity card with SHAP top factors and risk flags
+- **Documentation Hub** — ML layer in architecture diagram, model registry reference
 
 ---
 
-## 13. Charts
+## Pages & Navigation
 
-### Top TDR Candidates (`TopTDRCandidatesChart.tsx`)
+The app uses a collapsible sidebar with 6 routes:
 
-- **Type:** Horizontal bar chart (Recharts `BarChart` with `layout="vertical"`)
-- **Data:** Top 5 deals by TDR score
-- **Colors:** Emerald (Critical), Teal (High), Amber (Medium), Gray-blue (Low)
-- **Y-Axis:** Account name (truncated to 18 chars)
-- **Labels:** Score value displayed to the right of each bar
-- **Tooltip:** Account name, deal name, TDR score, priority, ACV, stage
-
-### TDR Priority Distribution (`TDRPriorityChart.tsx`)
-
-- **Type:** Donut chart (Recharts `PieChart` with `Pie innerRadius/outerRadius`)
-- **Data:** Deal count by priority tier (Critical, High, Medium, Low)
-- **Center label:** Total deal count
-- **Legend:** Right side with priority name, pipeline ACV, and deal count
-- **Tooltip:** Priority description, pipeline ACV, deal count, strategy guidance
-
-### TDR Pipeline by Close (`PipelineByCloseChart.tsx`)
-
-- **Type:** Stacked area chart (Recharts `AreaChart`)
-- **Data:** Pipeline ACV grouped by close date period, stacked by TDR priority
-- **Time views:** Day (D), Week (W), Month (M) — toggleable
-- **Gradient fills:** Each priority tier has a gradient from colored to transparent
-- **Tooltip:** Period label, ACV breakdown by priority, total ACV
+| Route | Page | Description |
+|-------|------|-------------|
+| `/` | Command Center | Pipeline dashboard — metrics, charts, scored deals table, agenda |
+| `/workspace` | TDR Workspace | Three-panel TDR review — steps, inputs, intelligence + chat |
+| `/history` | TDR History | Past TDR reviews with search and outcome filters |
+| `/analytics` | Portfolio Analytics | Cross-deal patterns, NLQ, competitor/platform/risk charts |
+| `/docs` | Documentation Hub | In-app reference — scoring, architecture, data model, glossary |
+| `/settings` | Settings | Allowed managers, ACV thresholds, feature flags, API toggles |
 
 ---
 
-## 14. SE Mapping & Team Enrichment
+## Data Model
 
-### The SE Mapping Dataset
+### Domo Datasets (Source — Read-Only)
 
-A 29-row lookup table with 2 columns:
+| Alias | Purpose |
+|-------|---------|
+| `opportunitiesmagic` | Primary pipeline data — all open SFDC opportunities |
+| `forecastsmagic` | Manager-level forecast calls by quarter |
+| `wcpweekly` | Weekly commit pipeline snapshots |
+| `semapping` | SE-to-Manager lookup (29 rows) |
 
-| `se` (SE Name) | `se_manager` (Manager Name) |
-|-----------------|---------------------------|
-| John Smith | Dan Wentworth |
-| Jane Doe | Mike Johnson |
-| ... | ... |
+### Snowflake Persistence (TDR_APP.TDR_DATA)
 
-### Auto-Detection Logic
+| Table | Purpose |
+|-------|---------|
+| `TDR_SESSIONS` | Session lifecycle, status, outcome |
+| `TDR_STEP_INPUTS` | Per-field inputs with edit history |
+| `TDR_CHAT_MESSAGES` | Multi-turn chat conversations per session |
+| `TDR_STRUCTURED_EXTRACTS` | AI-extracted entities (competitors, technologies, risks) |
+| `TDR_READOUTS` | Generated readout metadata |
+| `TDR_DISTRIBUTIONS` | Slack distribution audit log |
+| `ACCOUNT_INTEL_SUMBLE` | Firmographic + technographic enrichment |
+| `ACCOUNT_INTEL_PERPLEXITY` | Web research with citations |
+| `CORTEX_ANALYSIS_RESULTS` | Cached AI analysis outputs (briefs, classifications) |
+| `API_USAGE_LOG` | Per-call cost and latency tracking |
 
-The `domo.ts` file implements a 3-method auto-detection strategy to identify SE and Manager columns, regardless of how Domo returns them:
+### Snowflake ML (TDR_APP.ML_MODELS)
 
-1. **Known candidates** — tries a list of common aliases (`se`, `SE`, `SalesConsultant`, etc.)
-2. **Heuristic** — any key containing `manager` or `mgr` is the manager column
-3. **2-column heuristic** — the column with fewer unique values is the manager (since there are ~4 managers for ~29 SEs)
-
-### Join Logic
-
-```
-For each deal:
-  1. Try deal.salesConsultant → lowercase → lookup in seLookup → set deal.seManager
-  2. If no match AND deal.pocSalesConsultant exists → try that → set deal.seManager
-```
-
-### SE Categorization
-
-- **Sales Engineers** — individuals listed in the `Sales Consultant` field of opportunities
-- **PoC Architects** — individuals listed in the `PoC Sales Consultant` field of opportunities
-- Anyone appearing in both lists is placed in PoC Architects only (deduplicated)
+| Table | Purpose |
+|-------|---------|
+| `ML_FEATURE_STORE` | 19 derived features per opportunity, date-versioned |
+| `DEAL_ML_PREDICTIONS` | Win probability + SHAP explanations + risk flags |
+| `ML_MODEL_METADATA` | Model registry — versions, metrics, artifacts, lifecycle |
 
 ---
 
-## 15. Design System & Color Palette
+## Design System
 
 ### Color Palette
 
-Source: [coolors.co/palette/56e39f-59c9a5-5b6c5d-3b2c35-2a1f2d](https://coolors.co/palette/56e39f-59c9a5-5b6c5d-3b2c35-2a1f2d)
+Source: [coolors.co palette](https://coolors.co/palette/56e39f-59c9a5-5b6c5d-3b2c35-2a1f2d)
 
-| Name | Hex | HSL | Usage |
-|------|-----|-----|-------|
-| Emerald | `#56E39F` | 152 73% 62% | Success states, Critical priority |
-| Teal | `#59C9A5` | 161 50% 57% | Accents, High priority, ring focus |
-| Sage | `#5B6C5D` | 127 9% 39% | Muted foregrounds, borders |
-| Plum | `#3B2C35` | 324 15% 20% | Primary color (buttons, badges) |
-| Aubergine | `#2A1F2D` | 281 19% 15% | Sidebar background, deep surfaces |
+| Name | Hex | Usage |
+|------|-----|-------|
+| Emerald | `#56E39F` | Success states, Critical priority |
+| Teal | `#59C9A5` | Accents, High priority |
+| Sage | `#5B6C5D` | Muted foregrounds, borders |
+| Plum | `#3B2C35` | Primary buttons, badges |
+| Aubergine | `#2A1F2D` | Sidebar, deep surfaces |
 
-### CSS Custom Properties
-
-The design system is built on CSS variables defined in `src/index.css`:
-
-- **Light mode:** Warm off-white canvas (`40 20% 97%`), clean white cards
-- **Dark mode:** Deep aubergine backgrounds (`281 19% 8%`), muted sage text
-- **Sidebar:** Always dark (aubergine) with white text
-
-### Component Classes
-
-| Class | Usage |
-|-------|-------|
-| `.stat-card` | Metric cards with subtle border |
-| `.table-row-tight` | Compact table rows with hover |
-| `.status-ready` / `.status-warning` / `.status-critical` | Status pill variants |
-| `.section-header` | Small uppercase tracking headers |
-| `.nav-item` / `.nav-item-active` | Sidebar navigation items |
-| `.panel` | Card-like containers with rounded borders |
-| `.step-dot` / `.step-dot-active` / `.step-dot-complete` | TDR step indicators |
-
-### Typography
-
-- **Font:** System font stack with OpenType features (`cv02`, `cv03`, `cv04`, `cv11`)
-- **Tabular nums:** `font-variant-numeric: tabular-nums` for aligned numbers
-- **Sizes:** `text-2xs` (10px), `text-xs` (12px), `text-sm` (14px), `text-base` (16px)
+The app supports light and dark modes via CSS custom properties. The Documentation Hub forces dark mode for visual cohesion with architecture diagrams.
 
 ---
 
-## 16. Settings
-
-**File:** `src/pages/Settings.tsx`
-
-Settings are persisted in `localStorage` under key `tdrAppSettings`.
-
-### Available Settings
-
-| Setting | Type | Default | Effect |
-|---------|------|---------|--------|
-| **Allowed Managers** | string[] | 5 managers | Controls which managers appear in the filter dropdown |
-| **Min ACV Threshold** | number | $100,000 | Minimum ACV for TDR eligibility |
-| **Default to Current Quarter** | boolean | true | Auto-filter to current fiscal quarter on load |
-| **AI Recommendations** | boolean | true | Enable/disable Domo AI TDR candidate suggestions |
-| **AppDB Persistence** | boolean | true | Enable/disable TDR session storage in Domo AppDB |
-| **Excluded Forecast Categories** | string[] | 6.Omitted, Closed Won, Closed Lost | Categories filtered out from deal tables |
-
-### API
-
-```typescript
-import { getAppSettings, saveAppSettings, resetAppSettings } from '@/lib/appSettings';
-
-const settings = getAppSettings();       // Read (merged with defaults)
-saveAppSettings({ minTDRACV: 50000 });   // Patch
-resetAppSettings();                       // Reset to defaults
-```
-
----
-
-## 17. Development & Deployment
+## Development & Deployment
 
 ### Prerequisites
 
@@ -715,101 +372,110 @@ resetAppSettings();                       // Reset to defaults
 
 ```bash
 npm install
-npm run dev          # Start Vite dev server at localhost:5173
+npm run dev          # Vite dev server at localhost:5173
 ```
 
-In dev mode:
-- Domo SDK is unavailable → data hooks return empty arrays
-- AppDB falls back to `localStorage`
-- AI recommendations return mock data based on local TDR scoring
-- Mock deals are loaded from `src/data/mockData.ts`
+In dev mode, Domo SDK is unavailable — data hooks return mock data, AppDB falls back to `localStorage`, and AI functions return simulated responses.
 
-### Build
+### Build & Deploy
 
 ```bash
 npm run build        # Production build → dist/
-```
-
-### Deploy to Domo
-
-```bash
 npm run deploy       # Build + publish to Domo
-# or
 npm run deploy:zip   # Build + create ZIP for manual upload
+npm run deploy:check # Verify manifest, thumbnail, SDK reference
 ```
 
-### Deploy Checklist
+### ML Development
+
+The ML modeling environment uses Python 3.10 (matching the Snowpark runtime):
 
 ```bash
-npm run deploy:check  # Verify manifest, thumbnail, and SDK reference
+python3.10 -m venv ml-venv
+source ml-venv/bin/activate
+pip install -r notebooks/requirements.txt
+jupyter notebook
 ```
 
-### Version Bumping
-
-Update the version in **3 files** before deploying:
-
-1. `package.json` → `"version": "x.y.z"`
-2. `manifest.json` → `"version": "x.y.z"`
-3. `public/manifest.json` → `"version": "x.y.z"` (copied to `dist/` on build)
-
-### Testing
-
-```bash
-npm run test         # Run Vitest tests
-npm run test:watch   # Watch mode
-```
+Notebooks in `notebooks/` are the prototyping environment — feature engineering and model training are iterated locally, then promoted to Snowflake stored procedures once validated.
 
 ---
 
-## 18. File Structure
+## Project Structure
 
 ```
 deal-inspect/
-├── manifest.json                    # Domo app manifest (datasets, ID, version)
-├── public/
-│   ├── manifest.json                # Copy of manifest for build
-│   └── thumbnail.png               # App icon in Domo
+├── README.md
+├── IMPLEMENTATION_STRATEGY.md       # Full implementation strategy (28 sprints)
+├── manifest.json                    # Domo app manifest (datasets, collections, version)
+├── package.json
+├── vite.config.ts
+├── tailwind.config.ts
+│
 ├── src/
 │   ├── App.tsx                      # Router + providers
 │   ├── main.tsx                     # Entry point
-│   ├── index.css                    # Design system (CSS variables, components)
+│   ├── index.css                    # Design system (CSS variables)
 │   │
 │   ├── types/
 │   │   └── tdr.ts                   # Core types: Deal, TDRStep, TDRSessionSummary
 │   │
 │   ├── lib/
-│   │   ├── domo.ts                  # Domo data fetching (opportunities, SE mapping)
-│   │   ├── domoAi.ts                # Domo AI text/chat integration (17-factor prompt)
-│   │   ├── appDb.ts                 # AppDB CRUD for TDR sessions
-│   │   ├── appSettings.ts           # localStorage settings management
+│   │   ├── domo.ts                  # Domo data fetching + field normalization
+│   │   ├── domoAi.ts                # Domo AI 17-factor TDR recommendations
+│   │   ├── snowflakeStore.ts        # Snowflake persistence (sessions, inputs)
+│   │   ├── cortexAi.ts              # Cortex AI functions (brief, classify, extract, embed)
+│   │   ├── accountIntel.ts          # Sumble + Perplexity enrichment orchestration
+│   │   ├── filesetIntel.ts          # Domo Fileset search + KB summarization
+│   │   ├── tdrChat.ts               # Multi-provider chat (Cortex, Perplexity, Domo)
+│   │   ├── tdrReadout.ts            # Readout assembly + Slack distribution
 │   │   ├── tdrCriticalFactors.ts    # Scoring engine + factor detection
+│   │   ├── appDb.ts                 # AppDB fallback for TDR sessions
+│   │   ├── appSettings.ts           # localStorage settings
 │   │   ├── constants.ts             # Allowed managers, thresholds, TDR steps
+│   │   ├── tooltips.ts              # Dynamic tooltip content
 │   │   └── utils.ts                 # cn() helper (clsx + tailwind-merge)
 │   │
 │   ├── hooks/
 │   │   └── useDomo.ts               # Main data hook (fetch, join, enrich, filter)
 │   │
 │   ├── pages/
-│   │   ├── CommandCenter.tsx         # Dashboard (metrics, charts, table, agenda)
-│   │   ├── TDRWorkspace.tsx          # 3-panel TDR review workspace
+│   │   ├── CommandCenter.tsx         # Dashboard — metrics, charts, deals table, agenda
+│   │   ├── TDRWorkspace.tsx          # Three-panel TDR review workspace
 │   │   ├── TDRHistory.tsx            # Past TDR reviews
-│   │   ├── Settings.tsx              # App configuration
-│   │   └── NotFound.tsx              # 404 page
+│   │   ├── TDRAnalytics.tsx          # Portfolio analytics + NLQ
+│   │   ├── Documentation.tsx         # In-app reference hub
+│   │   └── Settings.tsx              # App configuration
 │   │
 │   ├── components/
 │   │   ├── TopBar.tsx                # Filter bar (quarter, manager, SE, priority)
 │   │   ├── AppSidebar.tsx            # Collapsible navigation sidebar
-│   │   ├── DealsTable.tsx            # Recommended deals table with pills + tooltips
+│   │   ├── DealsTable.tsx            # Scored deals table with pills + tooltips
 │   │   ├── AgendaSection.tsx         # Pinned deals + AI suggestions
-│   │   ├── TDRSteps.tsx              # Step progress panel (workspace left)
-│   │   ├── TDRInputs.tsx             # Step input area (workspace center)
-│   │   ├── TDRIntelligence.tsx       # Deal intelligence panel (workspace right)
-│   │   ├── TDRSummaryModal.tsx       # AI-generated TDR summary modal
-│   │   ├── MetricsGrid.tsx           # Reusable metrics grid
-│   │   └── charts/
-│   │       ├── TopTDRCandidatesChart.tsx    # Horizontal bar chart
-│   │       ├── TDRPriorityChart.tsx         # Donut chart
-│   │       └── PipelineByCloseChart.tsx     # Stacked area chart
+│   │   ├── DealSearch.tsx            # Global deal search
+│   │   ├── TDRSteps.tsx              # Step progress (workspace left panel)
+│   │   ├── TDRInputs.tsx             # Step inputs (workspace center panel)
+│   │   ├── TDRIntelligence.tsx        # Intelligence panel (workspace right panel)
+│   │   ├── TDRChat.tsx               # Multi-provider chat component
+│   │   ├── TDRShareDialog.tsx        # Slack distribution dialog
+│   │   ├── CortexBranding.tsx        # Cortex AI model badges
+│   │   ├── charts/
+│   │   │   ├── TDRCoverageChart.tsx
+│   │   │   ├── ScoreDistributionChart.tsx
+│   │   │   └── CloseUrgencyChart.tsx
+│   │   ├── docs/                     # Documentation Hub sections
+│   │   │   ├── ArchitectureDiagram.tsx
+│   │   │   ├── ScoringReference.tsx
+│   │   │   ├── CapabilitiesGuide.tsx
+│   │   │   ├── IntegrationsReference.tsx
+│   │   │   ├── DataModelReference.tsx
+│   │   │   ├── AIModelsReference.tsx
+│   │   │   └── GlossaryReference.tsx
+│   │   ├── pdf/
+│   │   │   ├── TDRReadoutDocument.tsx  # React-PDF readout template
+│   │   │   └── readoutTypes.ts
+│   │   ├── icons/                    # Brand icons (Domo, Perplexity, Slack, Sumble)
+│   │   └── ui/                       # shadcn/ui primitives
 │   │
 │   ├── layouts/
 │   │   └── MainLayout.tsx            # Sidebar + <Outlet /> wrapper
@@ -817,12 +483,28 @@ deal-inspect/
 │   └── data/
 │       └── mockData.ts               # Mock deals for local development
 │
-├── samples/                          # Reference documents
-│   ├── TDR Framework.pdf             # Original TDR methodology
-│   └── ...                           # Sample dataset exports
+├── sql/
+│   └── bootstrap.sql                 # Snowflake DDL bootstrap
 │
-├── dist/                             # Build output (deployed to Domo)
-├── tailwind.config.ts                # Tailwind configuration
-├── vite.config.ts                    # Vite configuration
-└── package.json                      # Dependencies and scripts
+├── ml_infrastructure_ddl.sql         # ML schema, tables, views, stage, grants
+├── ml_feature_computation.sql        # Feature engineering stored procedure
+├── ml_training_procedure.sql         # Training + prediction + deployment procedures
+├── ml_automation.sql                 # Tasks, Alerts, Streams, monitoring
+│
+├── notebooks/                        # ML prototyping (local Python)
+│   └── 01_data_exploration.ipynb
+│
+├── codeengine/                       # Reference copies of Domo Code Engine functions
+│                                     # (deployed via Domo CE IDE, not from this repo)
+│
+└── docs/
+    └── screenshots/                  # App screenshots for README
 ```
+
+> **Note:** `codeengine/`, `samples/`, `dist/`, and `ml-venv/` are `.gitignore`d. Code Engine functions are deployed via the Domo Code Engine IDE. Build artifacts are generated with `npm run build`. The ML virtual environment is created locally per the [ML Development](#ml-development) instructions.
+
+---
+
+## License
+
+This project is not yet licensed. A license will be added before the repository is made public.
