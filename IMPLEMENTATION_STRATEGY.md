@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
 
-**Status:** Active · **Version:** Draft 5.3 · **Date:** February 14, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23, 24, 25, 26, 27 · **In Progress:** 28 (Deal Close Propensity ML Model) · **Remaining:** —
+**Status:** Active · **Version:** Draft 5.4 · **Date:** March 3, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23, 24, 25, 26, 27, OSS-1 · **In Progress:** 28 (Deal Close Propensity ML Model) · **Remaining:** —
 
 ---
 
@@ -5884,6 +5884,92 @@ The app now spans 9+ pillars, 25+ sprints, and dozens of integrations. There is 
 
 ---
 
+### Sprint OSS-1 — Open-Source Readiness & README Overhaul ✅ COMPLETE (Mar 3, 2026)
+
+> **Goal:** Make the repository safe and presentable for public GitHub visibility. Remove all hardcoded secrets, internal business data, and build artifacts from git tracking and history. Overhaul README for an expert audience (engineers + executives).
+> **Risk to app:** None — all removed files are reference copies (Code Engine functions deployed via Domo CE IDE), sample data, build artifacts, or session logs. No runtime dependencies affected. App builds and runs identically before and after.
+> **Effort:** ~0.5 day
+
+**Problem Statement:**
+The repository contained hardcoded credentials (Snowflake RSA private key, Sumble API key, Perplexity API key), internal SFDC business data (employee names, deal names, account data), a committed Python virtualenv (21K+ files), build artifacts, and Cursor session logs with embedded secrets. The README was internally-focused and did not reflect the current 4-layer architecture, Cortex AI integrations, or Sprint 28 ML strategy.
+
+**Security Remediation (Tier 1 — Critical):**
+
+| Secret | Files | Action |
+|--------|-------|--------|
+| Snowflake RSA Private Key (`-----BEGIN PRIVATE KEY-----`) | `codeengine/consolidated-sprint4-5.js`, `codeengine/copiedDomoCEfunctions.js`, `codeengine/consolidated-sprint1.js`, `codeengine/accountIntel.js`, `samples/aptSnowflakeCodeEngine.js` | `git rm --cached` + `git filter-repo --invert-paths` |
+| Sumble API Key (`655.66013af459bc...`) | Same files as above | Same treatment |
+| Perplexity API Key (`pplx-Qp0ADLMRMS...`) | Same files as above | Same treatment |
+| Snowflake account locator (`DOMOINC-DOMOPARTNER`) + username (`CHILTON`) | Same files + `IMPLEMENTATION_STRATEGY.md` | Scrubbed from strategy doc; files removed from tracking |
+
+**Data Remediation (Tier 2 — Internal Business Data):**
+
+| Data | Files | Action |
+|------|-------|--------|
+| SFDC opportunity data (deal names, ACV, employee names) | `samples/*.json`, `samples/TDR-*.md` | Entire `samples/` directory removed from tracking |
+| Employee emails (`@domo.com`) | `notebooks/01_data_exploration.ipynb` outputs | Notebook outputs cleared |
+| Cursor session logs with embedded credentials | `cursor_*.md` (3 files) | Removed from tracking |
+| Python virtualenv | `ml-venv/` (21,576 files) | Removed from tracking |
+| Build artifacts | `dist/`, `dist_backup_v1.4.0/` | Removed from tracking |
+
+**Git History Rewrite:**
+- Used `git filter-repo --invert-paths` to purge all sensitive files from every past commit
+- Two passes: first for `codeengine/`, `samples/`, `cursor_*.md`, `dist/`, `dist_backup_v1.4.0/`; second for `ml-venv/`
+- Remote re-added after each rewrite: `git remote add origin https://github.com/cassidythilton/deal-inspect.git`
+- Verified: zero hits for private key, Sumble key, Perplexity key, or account identifiers in tracked files AND git history
+
+**`.gitignore` Hardening:**
+
+```gitignore
+# ── Security: Code Engine reference files (deployed via Domo CE IDE, not this repo) ──
+codeengine/
+
+# ── Security: Internal business data & sample files ──
+samples/
+
+# ── Build artifacts (rebuild with npm run build) ──
+dist/
+dist_backup*/
+
+# ── Cursor session logs (may contain embedded secrets) ──
+cursor_*.md
+```
+
+**`IMPLEMENTATION_STRATEGY.md` Scrubbing:**
+- Replaced `/Users/cassidy.hilton/.local/bin/cortex` → `~/.local/bin/cortex`
+- Replaced `DOMOINC-DOMOPARTNER` account locator + `CHILTON` user → generic references
+
+**README Overhaul:**
+
+The README was rewritten from 830 lines of internal implementation detail to 510 lines of executive-ready narrative:
+
+| Before | After |
+|--------|-------|
+| Internal dev wiki (filter dropdown mechanics, tooltip CSS, column widths, employee names) | Problem statement → architecture → capabilities → scoring → AI stack → ML strategy |
+| Domo-only ASCII architecture diagram | Four-layer system diagram (Experience → Intelligence → Persistence → Data) |
+| No mention of Cortex AI, Snowflake persistence, chat, analytics, docs, Slack, readouts | 11 AI functions documented in single reference table |
+| No ML strategy | Full Sprint 28 section: 2×2 quadrant, ensemble architecture, 19 features, Snowflake infra |
+| No screenshots | 4 screenshot placeholders in `docs/screenshots/` |
+| 5 pages documented | 6 pages (added Analytics, Documentation) |
+| Outdated file structure | Current component tree (docs/, pdf/, icons/, Chat, ShareDialog) |
+
+**Files Created:**
+- `docs/screenshots/` — directory for README screenshot images
+
+**Verification:**
+- App builds successfully (`npx vite build` — clean, no errors)
+- All local files intact on disk (codeengine/, samples/, dist/, ml-venv/)
+- Zero secrets in tracked files (`git grep`)
+- Zero secrets in git history (`git log -S`)
+- 193 commits remain in rewritten history
+
+**Post-Sprint Action Required:**
+1. Save 4 screenshots to `docs/screenshots/` (command-center.png, workspace-intelligence.png, workspace-chat.png, documentation.png)
+2. Rotate all 3 API keys (Snowflake private key, Sumble key, Perplexity key) — they were in git history and must be considered compromised
+3. Force-push to GitHub: `git push --force-with-lease origin main`
+
+---
+
 ### Sprint 28 — Deal Close Propensity ML Model 🔲 NOT STARTED
 
 > **Goal:** Build and deploy a machine learning model that predicts close probability for every pipeline deal. The propensity score composes with the existing deterministic TDR score to create a two-axis prioritization system: "How likely is this deal to close?" × "How technically complex is this deal?" — giving SE Managers a richer signal than either score alone.
@@ -6156,6 +6242,12 @@ Sprint 25 — Documentation Hub & Architecture Diagram ✅ COMPLETE
     /docs route with sticky ToC + accordions
     │
     ▼
+Sprint OSS-1 — Open-Source Readiness & README Overhaul ✅ COMPLETE
+    │  Security: removed secrets, data, build artifacts from tracking + history
+    │  Hardened .gitignore, scrubbed IMPLEMENTATION_STRATEGY.md
+    │  README: rewritten for expert/exec audience (4-layer arch, AI stack, ML strategy)
+    │
+    ▼
 Sprint 28 — Deal Close Propensity ML Model 🔲
     │  (depends on S18 + S25)
     │  28a: Local Dev Environment & Data Exploration (Day 1)
@@ -6188,6 +6280,7 @@ Sprint 28 — Deal Close Propensity ML Model 🔲
 | **S26: Intelligence Panel UX** | — | S14 + S21 + S24-WS1 | 2-3 days | ✅ Feb 13 |
 | **S27: Decision Architecture** | — | S26 | 2 days | ✅ Feb 14 |
 | **S25: Documentation Hub + Architecture** | — | S24 + S27 | 1 day | ✅ Feb 14 |
+| **OSS-1: Open-Source Readiness** | — | S25 | 0.5 day | ✅ Mar 3 |
 | **S28: Deal Close Propensity ML** | — | S18 + S25 | 5–7 days (4 sub-sprints) | 🔲 Not Started |
 
 ---
@@ -6205,9 +6298,9 @@ Sprint 28 — Deal Close Propensity ML Model 🔲
 | Snowflake SQL API (Statements) | https://docs.snowflake.com/en/developer-guide/sql-api/reference |
 | Domo Code Engine | https://developer.domo.com/portal/8k7stcm6lubfh-code-engine-overview |
 | Domo AppDB API | https://developer.domo.com/portal/1l1fm2g0sfm69-app-db-api |
-| Sample: aptSnowflakeCodeEngine.js | `samples/aptSnowflakeCodeEngine.js` (local) |
-| Sample: cortexAnalystCodeEngine.js | `samples/cortexAnalystCodeEngine.js` (local) |
-| Sample: Filesets Chat Interface | `samples/filesets chat interface_/` (local) |
+| Sample: aptSnowflakeCodeEngine.js | `samples/aptSnowflakeCodeEngine.js` (local, .gitignored) |
+| Sample: cortexAnalystCodeEngine.js | `samples/cortexAnalystCodeEngine.js` (local, .gitignored) |
+| Sample: Filesets Chat Interface | `samples/filesets chat interface_/` (local, .gitignored) |
 | Domo Filesets API (query endpoint) | `/domo/files/v1/filesets/{id}/query` (App Studio proxy) |
 | Domo Filesets (default KB) | https://domo.domo.com/datacenter/filesets/6d0776f7-cafe-47c0-9153-d11a365a0c02/files |
 
