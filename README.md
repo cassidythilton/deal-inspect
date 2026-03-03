@@ -14,17 +14,11 @@
 
 ---
 
+<!-- 
 ## Screenshots
-
-| Command Center | TDR Workspace — Intelligence |
-|:-:|:-:|
-| ![Command Center](docs/screenshots/command-center.png) | ![TDR Workspace Intelligence](docs/screenshots/workspace-intelligence.png) |
-
-| TDR Workspace — Chat | Documentation Hub |
-|:-:|:-:|
-| ![TDR Workspace Chat](docs/screenshots/workspace-chat.png) | ![Documentation Hub](docs/screenshots/documentation.png) |
-
----
+Add screenshots to docs/screenshots/ and uncomment this section:
+  command-center.png | workspace-intelligence.png | workspace-chat.png | documentation.png
+-->
 
 ## Table of Contents
 
