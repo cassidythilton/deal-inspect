@@ -2680,7 +2680,7 @@ The [Cortex Code CLI](https://docs.snowflake.com/en/user-guide/cortex-code/corte
 
 ```
 $ which cortex
-/Users/cassidy.hilton/.local/bin/cortex
+~/.local/bin/cortex
 
 $ cortex --version
 Cortex Code v1.0.6
@@ -3052,7 +3052,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 **Definition of Done:** Code Engine can authenticate to Snowflake and execute SQL against all 6 tables.
 
 **Learnings & Decisions:**
-- Used hardcoded keypair auth (PKCS#8 private key + `DOMOINC-DOMOPARTNER` account locator + `CHILTON` user) matching the `cortexAnalystCodeEngine.js` pattern — `sdk.getAccount()` was unreliable (500 errors).
+- Used hardcoded keypair auth (PKCS#8 private key + Snowflake account locator + service user) matching the `cortexAnalystCodeEngine.js` pattern — `sdk.getAccount()` was unreliable (500 errors).
 - Built a `testConnection` function to diagnose Snowflake connectivity step-by-step (config → JWT → SQL → table access → seed verification).
 - Consolidated all persistence functions into a single `consolidated-sprint1.js` for direct paste into the Domo Code Engine IDE.
 - Bootstrap DDL executed via Cortex CLI (`cortex`).
@@ -5911,17 +5911,9 @@ Combining both creates a **2×2 quadrant**:
 | **High TDR Score** | 🔴 **CRITICAL** — winnable + complex, TDR adds most value | ⚠️ MONITOR — complex but unlikely, investigate blockers |
 | **Low TDR Score** | ✅ LOW TOUCH — likely to close, minimal SE intervention | ⬜ DEPRIORITIZE — unlikely + simple, not worth TDR time |
 
-**Training Data Source:**
-
-| Location | Table / File | Contents |
-|----------|-------------|----------|
-| **Snowflake (canonical)** | `TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNF"` | Full historical SFDC opportunity dataset — includes closed-won, closed-lost, and open pipeline deals. This is the training data source. |
-| **Domo Dataset** | `opportunitiesmagic` (alias in `manifest.json`) | Same data, powering the app's deals table. Synced to Snowflake. |
-| **Local Sample** | `samples/forecast_page_opportunities_c.json` | 500-record sample export for offline development. Open pipeline only (no closed deals). |
-
 **Data Reality (from sample analysis):**
-- `TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNF"` is the full dataset in Snowflake containing historical closed-won and closed-lost deals needed for labels
-- The local sample (`forecast_page_opportunities_c.json`) contains only open pipeline (0 closed deals) — useful for schema inspection and feature prototyping, not for training
+- `opportunitiesmagic` dataset: ~500+ deals in sample (280K lines JSON), need full dataset in Snowflake for training
+- The sample contains all open pipeline (0 closed deals) — the full `opportunitiesmagic` dataset in Domo/Snowflake contains historical closed-won and closed-lost deals needed for labels
 - Key features available: ACV, Stage, Stage Age, Deal Type, Competitor Count, Partner Influence, Forecast Category, Sales Process Milestones (7 milestone dates), Account Win Rate (embedded), Professional Services ratio, People AI Engagement Level, 40+ additional SFDC attributes
 - Feature completeness is high: ACV (100%), Stage (100%), Stage Age (97%), Deal Type (100%), Competitors (62%), Partner Influence (40%)
 - Class label: `Is Won` (boolean) from SFDC — clean, auditable, no proxy labels needed
@@ -5981,7 +5973,7 @@ The native `SNOWFLAKE.ML.CLASSIFICATION` trains alongside as a **baseline compar
 | `V_LATEST_PREDICTIONS` | View | `ML_MODELS` | Most recent prediction per opportunity |
 | `V_PRODUCTION_MODEL` | View | `ML_MODELS` | Currently deployed model |
 | `MODEL_ARTIFACTS` | Stage | `ML_MODELS` | Internal stage for serialized model files |
-| `SP_COMPUTE_ML_FEATURES` | Procedure (SQL) | `ML_MODELS` | Computes derived features from `TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNF"`, supports incremental/full-refresh |
+| `SP_COMPUTE_ML_FEATURES` | Procedure (SQL) | `ML_MODELS` | Computes derived features from `opportunitiesmagic`, supports incremental/full-refresh |
 | `SP_TRAIN_STACKING_ENSEMBLE` | Procedure (Python) | `ML_MODELS` | Trains stacking ensemble with 5-fold CV, SMOTE, SHAP, model registry |
 | `SP_PREDICT_WIN_PROBABILITY` | Procedure (Python) | `ML_MODELS` | Batch/single prediction with SHAP explanations and risk flags |
 | `SP_DEPLOY_MODEL_TO_PRODUCTION` | Procedure (SQL) | `ML_MODELS` | Promotes validated model to production |
@@ -6046,12 +6038,12 @@ The notebooks serve as the prototyping environment. All feature engineering, mod
 - [ ] Install all libraries: pandas, numpy, scikit-learn, xgboost, lightgbm, shap, imbalanced-learn, jupyter, matplotlib, seaborn, snowflake-snowpark-python
 - [ ] Create `notebooks/01_data_exploration.ipynb` — load `forecast_page_opportunities_c.json` sample data, profile all fields, visualize distributions, analyze missing values, assess class balance
 - [ ] Create `notebooks/02_feature_engineering.ipynb` — prototype all 19 derived features locally, validate computation logic, correlation matrix, identify multicollinear features
-- [ ] Determine minimum viable training data available in `TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNF"` (target: ≥500 labeled rows with `Is Won` = TRUE/FALSE)
+- [ ] Determine minimum viable training data available in full `opportunitiesmagic` dataset (target: ≥500 labeled rows with `Is Won` = TRUE/FALSE)
 
 **Sprint 28b — ML Infrastructure & Feature Pipeline (Day 2)**
 - [ ] Execute `ml_infrastructure_ddl.sql` via Cortex CLI or Snowflake worksheet — create `ML_MODELS` schema, tables, views, stage, grants
 - [ ] Execute `ml_feature_computation.sql` — create `SP_COMPUTE_ML_FEATURES` procedure
-- [ ] Run initial feature computation against `TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNF"` in Snowflake
+- [ ] Run initial feature computation against full `opportunitiesmagic` dataset in Snowflake
 - [ ] Validate feature distributions in Snowflake match local notebook prototyping: null rates, value ranges, class balance
 - [ ] Verify minimum training data threshold (≥500 labeled rows with known outcomes)
 
@@ -6080,14 +6072,14 @@ The notebooks serve as the prototyping environment. All feature engineering, mod
 **Key Decision Points:**
 1. **Ensemble vs. Native-only** — decided after Sprint 28c training run. If ensemble doesn't beat native by >2% AUC, simplify.
 2. **Class imbalance strategy** — SMOTE vs. class_weight. Run both in notebook prototyping, pick whichever produces better AUC-PR (more relevant for imbalanced data than AUC-ROC).
-3. **Minimum viable training data** — if `TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNF"` has <500 labeled rows (Won + Lost), defer training and use a simpler logistic regression or even the native model until more data accumulates.
+3. **Minimum viable training data** — if full `opportunitiesmagic` has <500 labeled rows (Won + Lost), defer training and use a simpler logistic regression or even the native model until more data accumulates.
 4. **Notebook → Snowflake promotion** — all feature engineering and model logic is prototyped locally in notebooks first, then promoted to stored procedures only after validation. This avoids burning warehouse compute during iteration.
 
 **Learnings & Decisions (from shaping):**
 - Cortex CLI is the Snowflake-specific assistant: DDL, stored procedures, Tasks, Alerts, Streams, Snowpark package availability. All application code (Code Engine JS, frontend TS, Python notebooks) is authored directly.
 - "Propensity to close" is the correct model framing — not "TDR suitability." ML handles pattern recognition across features; the deterministic TDR score handles domain expertise. The two-axis composition gives richer prioritization than either alone.
 - Labels come from SFDC outcomes (`Is Won`), not the deterministic score. Using the hand-coded score as a label would create circular logic. The 9 TDR factors become *features*, and ML discovers whether the assumed weightings match what actually predicts wins.
-- The local sample dataset (280K lines JSON) contains only open pipeline (0 closed deals). The full Snowflake table `TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNF"` is the canonical training data source.
+- The sample dataset (280K lines JSON) contains only open pipeline (0 closed deals). The full `opportunitiesmagic` dataset in Snowflake is required for training labels.
 
 ---
 

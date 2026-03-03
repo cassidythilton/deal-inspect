@@ -23,3 +23,21 @@ dist-ssr
 *.sln
 *.sw?
 tdr deal inspection_/
+
+# ML Development
+ml-venv/
+notebooks/*.parquet
+notebooks/.ipynb_checkpoints/
+
+# ── Security: Code Engine reference files (deployed via Domo CE IDE, not this repo) ──
+codeengine/
+
+# ── Security: Internal business data & sample files ──
+samples/
+
+# ── Build artifacts (rebuild with npm run build) ──
+dist/
+dist_backup*/
+
+# ── Cursor session logs (may contain embedded secrets) ──
+cursor_*.md
