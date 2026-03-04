@@ -579,12 +579,8 @@ export const accountIntel = {
   },
 
   /**
-   * Sprint 26: Unified enrichment — triggers all 4 Sumble endpoints in parallel.
-   * Returns individual results keyed by type. Each can independently succeed/fail.
-   *
-   * Resilience: If enrichSumble returns {success:false} (Code Engine payload
-   * overflow — data IS persisted to Snowflake, but return is null), we fall back
-   * to getLatestIntel to retrieve the persisted tech stack data.
+   * Simplified enrichment — tech stack only (1 Sumble credit).
+   * Org/Jobs/People tiers disabled to conserve credits.
    */
   async enrichAll(
     opportunityId: string,
@@ -601,50 +597,20 @@ export const accountIntel = {
     errors: string[];
   }> {
     const errors: string[] = [];
-    const results = await Promise.allSettled([
-      this.enrichSumble(opportunityId, accountName, domain, calledBy),
-      this.enrichSumbleOrg(opportunityId, accountName, domain, calledBy),
-      this.enrichSumbleJobs(opportunityId, accountName, domain, calledBy),
-      this.enrichSumblePeople(opportunityId, accountName, domain, calledBy),
-    ]);
+    let sumble: SumbleEnrichment | null = null;
 
-    const extract = <T,>(r: PromiseSettledResult<T>, label: string): T | null => {
-      if (r.status === 'fulfilled') return r.value;
-      errors.push(`${label}: ${r.reason?.message || String(r.reason)}`);
-      return null;
-    };
-
-    let sumble = extract(results[0], 'Tech Stack');
-    const org = extract(results[1], 'Org Profile');
-    const jobs = extract(results[2], 'Hiring');
-    const people = extract(results[3], 'People');
-
-    // Count truly successful enrichments (resolved AND success:true)
-    const isSuccess = (val: unknown): boolean =>
-      typeof val === 'object' && val !== null && (val as Record<string, unknown>).success === true;
-
-    let successCount = [sumble, org, jobs, people].filter(isSuccess).length;
-
-    // Fallback: if enrichSumble returned {success:false} (payload overflow),
-    // the data was still persisted to Snowflake. Retrieve it from cache.
-    if (sumble && !sumble.success) {
-      console.log('[AccountIntel] enrichSumble returned success:false — falling back to getLatestIntel for cached data');
-      try {
-        const cached = await this.getLatestIntel(opportunityId);
-        if (cached.sumble && cached.hasSumble) {
-          console.log('[AccountIntel] Recovered Sumble tech stack from Snowflake cache');
-          sumble = cached.sumble;
-          successCount++;
-        } else {
-          errors.push('Tech Stack: payload overflow, data not yet in cache');
-        }
-      } catch (err) {
-        console.warn('[AccountIntel] Fallback getLatestIntel failed:', err);
-        errors.push('Tech Stack: payload overflow, cache fallback failed');
-      }
+    try {
+      sumble = await this.enrichSumble(opportunityId, accountName, domain, calledBy);
+    } catch (err) {
+      errors.push(`Tech Stack: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    return { sumble, org, jobs, people, completedCount: successCount, totalCount: 4, errors };
+    const successCount = sumble?.success ? 1 : 0;
+    if (sumble && !sumble.success) {
+      errors.push(sumble.error || 'enrichSumble returned success:false');
+    }
+
+    return { sumble, org: null, jobs: null, people: null, completedCount: successCount, totalCount: 1, errors };
   },
 
   /**

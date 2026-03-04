@@ -925,12 +925,8 @@ export function TDRIntelligence({
     let count = 0;
     if (sumbleData?.success) count++;
     if (perplexityData?.success) count++;
-    if (sumbleOrgData?.success) count++;
-    if (sumbleJobData?.success) count++;
-    if (sumblePeopleData?.success) count++;
-    if (count >= 4) return 'Full';
-    if (count >= 2) return 'Partial';
-    if (count >= 1) return 'Light';
+    if (count >= 2) return 'Full';
+    if (count >= 1) return 'Partial';
     return 'None';
   })();
 
@@ -1480,49 +1476,22 @@ export function TDRIntelligence({
       {/* ── §B2 Technical Landscape ── */}
       {(sumbleData?.success || (perplexityData?.technologySignals?.length ?? 0) > 0 || allTechnologies.size > 0) && (
         <CollapsibleSection title="Technical Landscape" icon={Layers} iconColor="text-violet-400" defaultExpanded={true}>
-          {/* Tech category grid */}
-          {sumbleData?.techCategories && Object.entries(sumbleData.techCategories).some(([, techs]) => techs.length > 0) && (
-            <div className="space-y-1.5 mb-3">
-              {Object.entries(sumbleData.techCategories)
-                .filter(([, techs]) => techs.length > 0)
-                .map(([category, techs]) => {
-                  const style = TECH_CATEGORY_STYLES[category] || TECH_CATEGORY_STYLES.Other;
+          {/* Tech stack — flat list of technology names from Sumble */}
+          {sumbleData?.technologies && sumbleData.technologies.length > 0 && (
+            <div className="mb-3">
+              <p className="text-2xs text-slate-500 mb-1.5">{sumbleData.technologies.length} technologies detected <SourceBadge source="sumble" /></p>
+              <div className="flex flex-wrap gap-1.5">
+                {sumbleData.technologies.map((tech) => {
+                  const sources = allTechnologies.get(tech);
+                  const hasMultipleSources = sources && sources.size > 1;
                   return (
-                    <div key={category} className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-2xs text-slate-500 w-16 shrink-0">{style.label}</span>
-                      {techs.map((tech) => {
-                        const sources = allTechnologies.get(tech);
-                        const hasMultipleSources = sources && sources.size > 1;
-                        return (
-                          <span key={tech} className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-medium', style.bg, style.text)}>
-                            {tech}
-                            <SourceBadge source="sumble" />
-                            {hasMultipleSources && <SourceBadge source="cortex" />}
-                          </span>
-                        );
-                      })}
-                    </div>
+                    <span key={tech} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-medium bg-violet-500/10 text-violet-300 border border-violet-500/20">
+                      {tech}
+                      {hasMultipleSources && <SourceBadge source="cortex" />}
+                    </span>
                   );
                 })}
-            </div>
-          )}
-
-          {/* Tech detail highlights (job/people signals) */}
-          {sumbleData?.techDetails && sumbleData.techDetails.filter(t => t.jobs_count > 0 || t.people_count > 0).length > 0 && (
-            <div className="space-y-1 mb-3">
-              <p className="text-2xs text-slate-600 mb-1">Hiring &amp; people signals</p>
-              {sumbleData.techDetails
-                .filter(t => t.jobs_count > 0 || t.people_count > 0)
-                .slice(0, 5)
-                .map((tech) => (
-                  <div key={tech.name} className="flex items-center justify-between text-2xs">
-                    <span className="font-medium text-slate-300 flex items-center gap-1">{tech.name} <SourceBadge source="sumble" /></span>
-                    <div className="flex gap-3 text-slate-500">
-                      {tech.jobs_count > 0 && <span>{tech.jobs_count} jobs</span>}
-                      {tech.people_count > 0 && <span>{tech.people_count} people</span>}
-                    </div>
-                  </div>
-                ))}
+              </div>
             </div>
           )}
 
