@@ -582,9 +582,13 @@ export const accountIntel = {
    * Simplified enrichment — tech stack only (1 Sumble credit).
    * Org/Jobs/People tiers disabled to conserve credits.
    *
-   * Resilience: if enrichSumble returns null (Code Engine killed the function),
-   * waits 1.5s then polls getLatestIntel to retrieve data that may have been
-   * persisted to Snowflake before the function was killed.
+   * DIAGNOSTIC FLOW:
+   * 1. First calls enrichSumble with domain='__diag__' to verify Code Engine
+   *    can return data from this function at all (no API calls, no credits).
+   * 2. If diagnostic fails → Code Engine issue (function mapping, package not published).
+   * 3. If diagnostic succeeds → proceed with real enrichment.
+   * 4. If real enrichment fails → Sumble API or Snowflake issue.
+   * 5. Fallback: poll getLatestIntel for any cached data.
    */
   async enrichAll(
     opportunityId: string,
@@ -603,18 +607,36 @@ export const accountIntel = {
     const errors: string[] = [];
     let sumble: SumbleEnrichment | null = null;
 
+    // ── STEP 0: Diagnostic — verify Code Engine can return from enrichSumble ──
+    // This call uses domain='__diag__' which returns immediately with mock data.
+    // No Sumble credits used. No Snowflake calls. Just tests the CE function routing.
+    try {
+      console.log('[AccountIntel] Running enrichSumble diagnostic...');
+      const diagResult = await this.enrichSumble(opportunityId, accountName, '__diag__', calledBy);
+      if (diagResult?.success && (diagResult as Record<string, unknown>).diagnostic) {
+        console.log('[AccountIntel] DIAGNOSTIC PASSED: Code Engine CAN return from enrichSumble');
+      } else {
+        console.error('[AccountIntel] DIAGNOSTIC FAILED: enrichSumble returned', diagResult,
+          '— Code Engine function may not be updated. Did you publish the CE package?');
+        errors.push('DIAGNOSTIC FAILED: Code Engine cannot return data from enrichSumble. The CE function may need to be updated and the package re-published.');
+        return { sumble: null, org: null, jobs: null, people: null, completedCount: 0, totalCount: 1, errors };
+      }
+    } catch (diagErr) {
+      console.error('[AccountIntel] DIAGNOSTIC ERROR:', diagErr);
+      errors.push(`DIAGNOSTIC ERROR: ${diagErr instanceof Error ? diagErr.message : String(diagErr)}`);
+      return { sumble: null, org: null, jobs: null, people: null, completedCount: 0, totalCount: 1, errors };
+    }
+
+    // ── STEP 1: Real enrichment (diagnostic passed — CE function works) ──
     try {
       sumble = await this.enrichSumble(opportunityId, accountName, domain, calledBy);
     } catch (err) {
       errors.push(`Tech Stack: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // ── Fallback: if enrichSumble returned null/failure, poll Snowflake cache ──
-    // The CE function may have persisted data before Code Engine killed it.
+    // ── STEP 2: Fallback — poll Snowflake cache if enrichment failed ──
     if (!sumble?.success) {
       console.log('[AccountIntel] enrichSumble did not succeed — polling getLatestIntel fallback');
-      // Wait for Snowflake INSERT to commit (the function may have completed the INSERT
-      // but Code Engine killed it before the return was serialized)
       await new Promise(resolve => setTimeout(resolve, 1500));
       try {
         const cached = await this.getLatestIntel(opportunityId);
