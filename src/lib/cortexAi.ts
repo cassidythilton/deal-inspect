@@ -224,6 +224,7 @@ async function callCodeEngine<T>(
 
 /**
  * Extract the actual result from potentially SDK-wrapped responses.
+ * Handles null inner values (Code Engine payload overflow returns {result: null}).
  */
 function extractResult(raw: unknown): Record<string, unknown> {
   if (typeof raw === 'object' && raw !== null) {
@@ -231,13 +232,17 @@ function extractResult(raw: unknown): Record<string, unknown> {
     const keys = Object.keys(raw);
     if (keys.length === 1) {
       const inner = (raw as Record<string, unknown>)[keys[0]];
-      if (typeof inner === 'object' && inner !== null) {
+      if (inner === null || inner === undefined) {
+        console.warn(`[CortexAI] extractResult: "${keys[0]}" is null — Code Engine may have exceeded output limits`);
+        return { success: false, error: `Code Engine returned null for "${keys[0]}"` };
+      }
+      if (typeof inner === 'object') {
         return inner as Record<string, unknown>;
       }
     }
   }
   console.warn('[CortexAI] Unexpected response shape:', raw);
-  return raw as Record<string, unknown>;
+  return (raw ?? { success: false, error: 'Unexpected response shape' }) as Record<string, unknown>;
 }
 
 // ─── Mock data for dev mode ──────────────────────────────────────────────────

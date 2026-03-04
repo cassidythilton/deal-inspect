@@ -180,6 +180,8 @@ async function callCodeEngine<T>(fnName: string, args: Record<string, unknown> =
  * Extract the actual result from potentially SDK-wrapped responses.
  * The SDK's packageMapping wraps returns as { [outputAlias]: returnValue }
  * e.g., { result: { success: true, ... } } or { intel: { sumble: null, ... } }
+ *
+ * Handles null inner values (Code Engine payload overflow returns {result: null}).
  */
 function extractResult(raw: unknown): Record<string, unknown> {
   if (typeof raw === 'object' && raw !== null) {
@@ -191,13 +193,18 @@ function extractResult(raw: unknown): Record<string, unknown> {
     // Single-key wrapper from SDK packageMapping — always unwrap
     if (keys.length === 1) {
       const inner = (raw as Record<string, unknown>)[keys[0]];
-      if (typeof inner === 'object' && inner !== null) {
+      // Null inner = Code Engine returned null (payload overflow or silent failure)
+      if (inner === null || inner === undefined) {
+        console.warn(`[AccountIntel] extractResult: "${keys[0]}" is null — Code Engine may have exceeded output limits`);
+        return { success: false, error: `Code Engine returned null for "${keys[0]}"` };
+      }
+      if (typeof inner === 'object') {
         return inner as Record<string, unknown>;
       }
     }
   }
   console.warn('[AccountIntel] Unexpected response shape:', raw);
-  return raw as Record<string, unknown>;
+  return (raw ?? { success: false, error: 'Unexpected response shape' }) as Record<string, unknown>;
 }
 
 // ─── Mock data for dev mode ──────────────────────────────────────────────────
