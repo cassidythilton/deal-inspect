@@ -1476,24 +1476,56 @@ export function TDRIntelligence({
       {/* ── §B2 Technical Landscape ── */}
       {(sumbleData?.success || (perplexityData?.technologySignals?.length ?? 0) > 0 || allTechnologies.size > 0) && (
         <CollapsibleSection title="Technical Landscape" icon={Layers} iconColor="text-violet-400" defaultExpanded={true}>
-          {/* Tech stack — flat list of technology names from Sumble */}
-          {sumbleData?.technologies && sumbleData.technologies.length > 0 && (
-            <div className="mb-3">
-              <p className="text-2xs text-slate-500 mb-1.5">{sumbleData.technologies.length} technologies detected <SourceBadge source="sumble" /></p>
-              <div className="flex flex-wrap gap-1.5">
-                {sumbleData.technologies.map((tech) => {
-                  const sources = allTechnologies.get(tech);
-                  const hasMultipleSources = sources && sources.size > 1;
-                  return (
-                    <span key={tech} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-medium bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                      {tech}
-                      {hasMultipleSources && <SourceBadge source="cortex" />}
-                    </span>
-                  );
-                })}
+          {/* Tech category grid — categorized client-side from flat tech list */}
+          {sumbleData?.technologies && sumbleData.technologies.length > 0 && (() => {
+            // Client-side categorization (mirrors Code Engine categorizeTechnologies)
+            const CRM_KW = ['salesforce', 'hubspot', 'dynamics'];
+            const BI_KW = ['tableau', 'power bi', 'power-bi', 'looker', 'qlik', 'thoughtspot', 'sisense', 'domo', 'metabase', 'mode'];
+            const DW_KW = ['snowflake', 'databricks', 'bigquery', 'redshift', 'synapse', 'teradata', 'vertica'];
+            const ETL_KW = ['dbt', 'fivetran', 'airflow', 'informatica', 'talend', 'matillion', 'stitch', 'mulesoft', 'kafka', 'spark', 'hadoop'];
+            const CLOUD_KW = ['aws', 'azure', 'gcp', 'google cloud'];
+            const ML_KW = ['artificial intelligence', 'tensorflow', 'pytorch', 'sagemaker', 'databricks ml', 'vertex ai', 'datarobot', 'mlflow', 'h2o'];
+            const ERP_KW = ['netsuite', 'sap', 'workday', 'oracle erp', 'peoplesoft'];
+            const DEVOPS_KW = ['kubernetes', 'docker', 'terraform', 'jenkins', 'github', 'gitlab', 'datadog', 'splunk', 'new relic'];
+            const cats: Record<string, string[]> = { CRM: [], BI: [], Cloud: [], DW: [], DevOps: [], ERP: [], ETL: [], ML: [], Other: [] };
+            for (const tech of sumbleData.technologies) {
+              const l = tech.toLowerCase();
+              if (CRM_KW.some(k => l.includes(k))) cats.CRM.push(tech);
+              else if (BI_KW.some(k => l.includes(k))) cats.BI.push(tech);
+              else if (DW_KW.some(k => l.includes(k))) cats.DW.push(tech);
+              else if (ETL_KW.some(k => l.includes(k))) cats.ETL.push(tech);
+              else if (CLOUD_KW.some(k => l.includes(k))) cats.Cloud.push(tech);
+              else if (ML_KW.some(k => l.includes(k))) cats.ML.push(tech);
+              else if (ERP_KW.some(k => l.includes(k))) cats.ERP.push(tech);
+              else if (DEVOPS_KW.some(k => l.includes(k))) cats.DevOps.push(tech);
+              else cats.Other.push(tech);
+            }
+            return (
+              <div className="space-y-1.5 mb-3">
+                {Object.entries(cats)
+                  .filter(([, techs]) => techs.length > 0)
+                  .map(([category, techs]) => {
+                    const style = TECH_CATEGORY_STYLES[category] || TECH_CATEGORY_STYLES.Other;
+                    return (
+                      <div key={category} className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-2xs text-slate-500 w-16 shrink-0">{style.label}</span>
+                        {techs.map((tech) => {
+                          const sources = allTechnologies.get(tech);
+                          const hasMultipleSources = sources && sources.size > 1;
+                          return (
+                            <span key={tech} className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-medium', style.bg, style.text)}>
+                              {tech}
+                              <SourceBadge source="sumble" />
+                              {hasMultipleSources && <SourceBadge source="cortex" />}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Perplexity tech signals */}
           {perplexityData?.technologySignals && perplexityData.technologySignals.length > 0 && (
