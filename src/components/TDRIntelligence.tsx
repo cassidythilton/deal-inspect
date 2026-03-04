@@ -793,8 +793,8 @@ export function TDRIntelligence({
       if (result.org?.success) setSumbleOrgData(result.org);
       if (result.jobs?.success) setSumbleJobData(result.jobs);
       if (result.people?.success) setSumblePeopleData(result.people);
-      if (result.errors.length > 0) setSumbleError(`${result.completedCount}/4 succeeded. ${result.errors.join('; ')}`);
-      setEnrichAllProgress(`${result.completedCount}/4 complete`);
+      if (result.errors.length > 0) setSumbleError(`${result.errors.join('; ')}`);
+      setEnrichAllProgress(result.completedCount === 1 ? 'Complete' : 'Failed');
     } catch (err) { setSumbleError(err instanceof Error ? err.message : 'Enrichment failed'); }
     setEnrichAllLoading(false);
   }, [deal, domain]);

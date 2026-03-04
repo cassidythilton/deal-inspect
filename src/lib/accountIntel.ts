@@ -581,6 +581,10 @@ export const accountIntel = {
   /**
    * Simplified enrichment — tech stack only (1 Sumble credit).
    * Org/Jobs/People tiers disabled to conserve credits.
+   *
+   * Resilience: if enrichSumble returns null (Code Engine killed the function),
+   * waits 1.5s then polls getLatestIntel to retrieve data that may have been
+   * persisted to Snowflake before the function was killed.
    */
   async enrichAll(
     opportunityId: string,
@@ -605,8 +609,29 @@ export const accountIntel = {
       errors.push(`Tech Stack: ${err instanceof Error ? err.message : String(err)}`);
     }
 
+    // ── Fallback: if enrichSumble returned null/failure, poll Snowflake cache ──
+    // The CE function may have persisted data before Code Engine killed it.
+    if (!sumble?.success) {
+      console.log('[AccountIntel] enrichSumble did not succeed — polling getLatestIntel fallback');
+      // Wait for Snowflake INSERT to commit (the function may have completed the INSERT
+      // but Code Engine killed it before the return was serialized)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      try {
+        const cached = await this.getLatestIntel(opportunityId);
+        if (cached.hasSumble && cached.sumble) {
+          console.log('[AccountIntel] Fallback: found cached Sumble data in Snowflake');
+          sumble = cached.sumble;
+        } else {
+          console.log('[AccountIntel] Fallback: no cached Sumble data found');
+          if (!errors.length) errors.push('Tech Stack: enrichment returned null and no cached data found');
+        }
+      } catch (fallbackErr) {
+        console.warn('[AccountIntel] Fallback getLatestIntel failed:', fallbackErr);
+      }
+    }
+
     const successCount = sumble?.success ? 1 : 0;
-    if (sumble && !sumble.success) {
+    if (sumble && !sumble.success && !errors.length) {
       errors.push(sumble.error || 'enrichSumble returned success:false');
     }
 
