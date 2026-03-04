@@ -581,6 +581,10 @@ export const accountIntel = {
   /**
    * Sprint 26: Unified enrichment — triggers all 4 Sumble endpoints in parallel.
    * Returns individual results keyed by type. Each can independently succeed/fail.
+   *
+   * Resilience: If enrichSumble returns {success:false} (Code Engine payload
+   * overflow — data IS persisted to Snowflake, but return is null), we fall back
+   * to getLatestIntel to retrieve the persisted tech stack data.
    */
   async enrichAll(
     opportunityId: string,
@@ -610,14 +614,37 @@ export const accountIntel = {
       return null;
     };
 
-    const sumble = extract(results[0], 'Tech Stack');
+    let sumble = extract(results[0], 'Tech Stack');
     const org = extract(results[1], 'Org Profile');
     const jobs = extract(results[2], 'Hiring');
     const people = extract(results[3], 'People');
 
-    const completedCount = results.filter(r => r.status === 'fulfilled').length;
+    // Count truly successful enrichments (resolved AND success:true)
+    const isSuccess = (val: unknown): boolean =>
+      typeof val === 'object' && val !== null && (val as Record<string, unknown>).success === true;
 
-    return { sumble, org, jobs, people, completedCount, totalCount: 4, errors };
+    let successCount = [sumble, org, jobs, people].filter(isSuccess).length;
+
+    // Fallback: if enrichSumble returned {success:false} (payload overflow),
+    // the data was still persisted to Snowflake. Retrieve it from cache.
+    if (sumble && !sumble.success) {
+      console.log('[AccountIntel] enrichSumble returned success:false — falling back to getLatestIntel for cached data');
+      try {
+        const cached = await this.getLatestIntel(opportunityId);
+        if (cached.sumble && cached.hasSumble) {
+          console.log('[AccountIntel] Recovered Sumble tech stack from Snowflake cache');
+          sumble = cached.sumble;
+          successCount++;
+        } else {
+          errors.push('Tech Stack: payload overflow, data not yet in cache');
+        }
+      } catch (err) {
+        console.warn('[AccountIntel] Fallback getLatestIntel failed:', err);
+        errors.push('Tech Stack: payload overflow, cache fallback failed');
+      }
+    }
+
+    return { sumble, org, jobs, people, completedCount: successCount, totalCount: 4, errors };
   },
 
   /**
