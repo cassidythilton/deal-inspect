@@ -607,27 +607,6 @@ export const accountIntel = {
     const errors: string[] = [];
     let sumble: SumbleEnrichment | null = null;
 
-    // ── STEP 0: Diagnostic — verify Code Engine can return from enrichSumble ──
-    // This call uses domain='__diag__' which returns immediately with mock data.
-    // No Sumble credits used. No Snowflake calls. Just tests the CE function routing.
-    try {
-      console.log('[AccountIntel] Running enrichSumble diagnostic...');
-      const diagResult = await this.enrichSumble(opportunityId, accountName, '__diag__', calledBy);
-      if (diagResult?.success && (diagResult as Record<string, unknown>).diagnostic) {
-        console.log('[AccountIntel] DIAGNOSTIC PASSED: Code Engine CAN return from enrichSumble');
-      } else {
-        console.error('[AccountIntel] DIAGNOSTIC FAILED: enrichSumble returned', diagResult,
-          '— Code Engine function may not be updated. Did you publish the CE package?');
-        errors.push('DIAGNOSTIC FAILED: Code Engine cannot return data from enrichSumble. The CE function may need to be updated and the package re-published.');
-        return { sumble: null, org: null, jobs: null, people: null, completedCount: 0, totalCount: 1, errors };
-      }
-    } catch (diagErr) {
-      console.error('[AccountIntel] DIAGNOSTIC ERROR:', diagErr);
-      errors.push(`DIAGNOSTIC ERROR: ${diagErr instanceof Error ? diagErr.message : String(diagErr)}`);
-      return { sumble: null, org: null, jobs: null, people: null, completedCount: 0, totalCount: 1, errors };
-    }
-
-    // ── STEP 1: Real enrichment (diagnostic passed — CE function works) ──
     try {
       sumble = await this.enrichSumble(opportunityId, accountName, domain, calledBy);
     } catch (err) {
