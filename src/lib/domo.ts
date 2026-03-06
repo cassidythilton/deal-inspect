@@ -29,6 +29,44 @@ export interface DomoOpportunity {
   'Deal Code': string | null;
   'Number of Competitors': number | null;
   'competitors': string | null;
+  'Forecast Manager': string;
+  'Webiste Domain': string | null;
+  // ML & expanded fields
+  'Account Revenue USD': number | null;
+  'Account Employees': number | null;
+  'Strategic Account': string | null;
+  'Region': string | null;
+  'Sales Segment': string | null;
+  'Sales Vertical': string | null;
+  'Platform Price': number | null;
+  'Professional Services Price': number | null;
+  'Line Items': number | null;
+  'Contract Type': string | null;
+  'Pricing Type': string | null;
+  'CPQ': string | null;
+  'Is Partner': string | null;
+  'Is Pipeline': string | null;
+  'Non-Competitive Deal': string | null;
+  'People AI Engagement Level': string | null;
+  'Is Closed': string | null;
+  'Is Won': string | null;
+  'Total Closed Won Count': number | null;
+  'Total Closed Lost Count': number | null;
+  'New Logo Won Count': number | null;
+  'New Logo Lost Count': number | null;
+  'Upsell Won Count': number | null;
+  'Upsell Lost Count': number | null;
+  'Total Opty Count': number | null;
+  'Created Date': string | null;
+  'Discovery Call Completed': string | null;
+  'Demo Completed Date': string | null;
+  'Pricing Call Date': string | null;
+  'Gate Call Completed': string | null;
+  'Has Pre-Call Plan': number | null;
+  'Has ADM/AE Sync Agenda': number | null;
+  'Forecast Comments': string | null;
+  'Next Step': string | null;
+  'Business Challenge': string | null;
   [key: string]: unknown;
 }
 
@@ -66,9 +104,8 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
   'AcvUsd': 'ACV (USD)',
   'CloseDate': 'Close Date',
   'CloseDateFQ': 'Close Date FQ',
-  'CurrentFQ': 'Current FQ',
   'DomoOpportunityOwner': 'Domo Opportunity Owner',
-  'MgrForecastName': 'Mgr Forecast Name',
+  'MgrForecastName': 'Forecast Manager',
   'SalesConsultant': 'Sales Consultant',
   'PocSalesConsultant': 'PoC Sales Consultant',
   'PrimaryPartnerRole': 'Primary Partner Role',
@@ -80,6 +117,41 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
   'Competitors': 'competitors',
   'DealCode': 'Deal Code',
   'WebisteDomain': 'Webiste Domain',
+  'AccountRevenueUsd': 'Account Revenue USD',
+  'AccountEmployees': 'Account Employees',
+  'StrategicAccount': 'Strategic Account',
+  'Region': 'Region',
+  'SalesSegment': 'Sales Segment',
+  'SalesVertical': 'Sales Vertical',
+  'PlatformPrice': 'Platform Price',
+  'ProfessionalServicesPrice': 'Professional Services Price',
+  'LineItems': 'Line Items',
+  'ContractType': 'Contract Type',
+  'PricingType': 'Pricing Type',
+  'CPQ': 'CPQ',
+  'IsPartner': 'Is Partner',
+  'IsPipeline': 'Is Pipeline',
+  'NonCompetitiveDeal': 'Non-Competitive Deal',
+  'PeopleAiEngagement': 'People AI Engagement Level',
+  'IsClosed': 'Is Closed',
+  'IsWon': 'Is Won',
+  'TotalClosedWonCount': 'Total Closed Won Count',
+  'TotalClosedLostCount': 'Total Closed Lost Count',
+  'NewLogoWonCount': 'New Logo Won Count',
+  'NewLogoLostCount': 'New Logo Lost Count',
+  'UpsellWonCount': 'Upsell Won Count',
+  'UpsellLostCount': 'Upsell Lost Count',
+  'TotalOptyCount': 'Total Opty Count',
+  'CreatedDate': 'Created Date',
+  'DiscoveryCallCompleted': 'Discovery Call Completed',
+  'DemoCompletedDate': 'Demo Completed Date',
+  'PricingCallDate': 'Pricing Call Date',
+  'GateCallCompleted': 'Gate Call Completed',
+  'HasPreCallPlan': 'Has Pre-Call Plan',
+  'HasAdmAeSyncAgenda': 'Has ADM/AE Sync Agenda',
+  'ForecastComments': 'Forecast Comments',
+  'NextStep': 'Next Step',
+  'BusinessChallenge': 'Business Challenge',
 };
 
 /**

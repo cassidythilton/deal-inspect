@@ -283,6 +283,119 @@ Only return valid JSON array, no markdown or explanation.`;
   }
 }
 
+// ─── TDR Field Enhancement (Sprint 29) ─────────────────────────────────────
+
+export interface EnhancementContext {
+  field: {
+    id: string;
+    label: string;
+    placeholder?: string;
+    hint?: string;
+  };
+  step: {
+    id: string;
+    title: string;
+    coreQuestion?: string;
+  };
+  rawInput: string;
+  siblingFields: Array<{ label: string; value: string }>;
+  crossStepFields: Array<{ stepTitle: string; label: string; value: string }>;
+  dealMetadata?: {
+    account?: string;
+    acv?: number;
+    stage?: string;
+    dealType?: string;
+    closeDate?: string;
+    owner?: string;
+    competitors?: string;
+    partnerSignal?: string;
+  };
+}
+
+export interface EnhancementResult {
+  enhanced: string;
+  contextSources: string[];
+}
+
+const ENHANCE_SYSTEM_PROMPT = `You are an expert sales engineering assistant helping improve TDR (Technical Deal Review) field responses.
+
+Your job: take a terse, incomplete field response and enhance it with specificity, structure, and completeness — while preserving the SE's original intent.
+
+Rules:
+- PRESERVE the SE's core assertions — do not invent new facts or claims
+- ADD specificity where the SE was vague (names, numbers, timelines, technical details)
+- STRUCTURE the response to match the field's purpose
+- KEEP the voice professional but human — not corporate boilerplate
+- DO NOT add hedging language or excessive caveats
+- DO NOT contradict any information the SE provided
+- Draw from the deal context provided to add relevant detail the SE likely knows but didn't write down
+- Return ONLY the enhanced text — no markdown, no preamble, no explanation`;
+
+function buildEnhancementPrompt(ctx: EnhancementContext): string {
+  const parts: string[] = [];
+
+  parts.push(`## Field to Enhance`);
+  parts.push(`**Field:** ${ctx.field.label}`);
+  if (ctx.field.hint) parts.push(`**Purpose:** ${ctx.field.hint}`);
+  if (ctx.field.placeholder) parts.push(`**Expected format:** ${ctx.field.placeholder}`);
+
+  parts.push(`\n## TDR Step Context`);
+  parts.push(`**Step:** ${ctx.step.title}`);
+  if (ctx.step.coreQuestion) parts.push(`**Core question:** ${ctx.step.coreQuestion}`);
+
+  parts.push(`\n## SE's Input (enhance this)`);
+  parts.push(`"${ctx.rawInput}"`);
+
+  if (ctx.siblingFields.length > 0) {
+    parts.push(`\n## Other fields in this step (for coherence)`);
+    for (const f of ctx.siblingFields) {
+      parts.push(`- **${f.label}:** ${f.value}`);
+    }
+  }
+
+  if (ctx.crossStepFields.length > 0) {
+    parts.push(`\n## Fields from other steps (broader deal narrative)`);
+    for (const f of ctx.crossStepFields) {
+      parts.push(`- **[${f.stepTitle}] ${f.label}:** ${f.value}`);
+    }
+  }
+
+  if (ctx.dealMetadata) {
+    const m = ctx.dealMetadata;
+    parts.push(`\n## Deal Metadata`);
+    if (m.account) parts.push(`- **Account:** ${m.account}`);
+    if (m.acv) parts.push(`- **ACV:** $${m.acv.toLocaleString()}`);
+    if (m.stage) parts.push(`- **Stage:** ${m.stage}`);
+    if (m.dealType) parts.push(`- **Deal Type:** ${m.dealType}`);
+    if (m.closeDate) parts.push(`- **Close Date:** ${m.closeDate}`);
+    if (m.owner) parts.push(`- **Owner:** ${m.owner}`);
+    if (m.competitors) parts.push(`- **Competitors:** ${m.competitors}`);
+    if (m.partnerSignal && m.partnerSignal !== 'none') parts.push(`- **Partner Signal:** ${m.partnerSignal}`);
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Enhance a single TDR field response using the Domo AI endpoint.
+ * Returns the enhanced text and a list of context sources used.
+ */
+export async function enhanceTDRField(ctx: EnhancementContext): Promise<EnhancementResult> {
+  const userPrompt = buildEnhancementPrompt(ctx);
+
+  const contextSources: string[] = ['SE input', 'field purpose'];
+  if (ctx.siblingFields.length > 0) contextSources.push('sibling fields');
+  if (ctx.crossStepFields.length > 0) contextSources.push('cross-step context');
+  if (ctx.dealMetadata) contextSources.push('deal metadata');
+
+  const enhanced = await callDomoAI(userPrompt, ENHANCE_SYSTEM_PROMPT, 0.4);
+
+  return {
+    enhanced: enhanced.trim(),
+    contextSources,
+  };
+}
+
 /**
  * Check whether AI recommendations are enabled in app settings.
  */

@@ -97,7 +97,7 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
   }
 
   const accountExecutive = get('Domo Opportunity Owner', 'DomoOpportunityOwner') || undefined;
-  const owner = get('Mgr Forecast Name', 'MgrForecastName') || accountExecutive || 'Unassigned';
+  const owner = get('Forecast Manager', 'Mgr Forecast Name', 'MgrForecastName') || accountExecutive || 'Unassigned';
   const salesConsultant = get('Sales Consultant', 'SalesConsultant') || undefined;
   const pocSalesConsultant = get('PoC Sales Consultant', 'PocSalesConsultant') || undefined;
 
@@ -354,6 +354,7 @@ export function useDeals() {
     if (opportunities) {
       for (const opp of opportunities) {
         const mgrName = String(
+          (opp as Record<string, unknown>)['Forecast Manager'] ??
           (opp as Record<string, unknown>)['Mgr Forecast Name'] ??
           (opp as Record<string, unknown>)['MgrForecastName'] ??
           opp['Domo Opportunity Owner'] ?? ''
@@ -375,11 +376,14 @@ export function useDeals() {
         if (mgrName) forecastManagers.add(mgrName);
 
         const closeFQ = String((opp as Record<string, unknown>)['Close Date FQ'] ?? (opp as Record<string, unknown>)['CloseDateFQ'] ?? '');
-        const currentFQ = String((opp as Record<string, unknown>)['Current FQ'] ?? (opp as Record<string, unknown>)['CurrentFQ'] ?? '');
         if (closeFQ && isValidQuarter(closeFQ)) quarters.add(closeFQ);
-        if (currentFQ && isValidQuarter(currentFQ)) quarters.add(currentFQ);
         }
     }
+
+    // Derive current FQ from date (replaces dataset-level CurrentFQ column)
+    const now = new Date();
+    const fq = Math.ceil((now.getMonth() + 1) / 3);
+    quarters.add(`${now.getFullYear()}-Q${fq}`);
 
     // Remove anyone who appears in PoC from the Sales Engineers list
     for (const poc of pocSalesConsultants) {

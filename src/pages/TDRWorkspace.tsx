@@ -334,6 +334,16 @@ export default function TDRWorkspace() {
             onToggleStepComplete={handleToggleStepComplete}
             isStepComplete={activeStep ? completedSteps.has(activeStep.id) : false}
             allSteps={stepsWithCompletion}
+            dealContext={deal ? {
+              account: deal.account,
+              acv: deal.acv,
+              stage: deal.stage,
+              dealType: deal.dealType,
+              closeDate: deal.closeDate,
+              owner: deal.owner,
+              competitors: deal.competitors,
+              partnerSignal: deal.partnerSignal,
+            } : undefined}
           />
         </main>
 

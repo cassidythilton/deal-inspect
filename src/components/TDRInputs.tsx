@@ -18,10 +18,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Check, CheckCircle2, History, Loader2, CloudOff, Save } from 'lucide-react';
+import { Check, CheckCircle2, History, Loader2, CloudOff, Save, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { snowflakeStore } from '@/lib/snowflakeStore';
 import type { StepInput } from '@/lib/snowflakeStore';
+import { enhanceTDRField, isAIEnabled } from '@/lib/domoAi';
+import type { EnhancementContext, EnhancementResult } from '@/lib/domoAi';
+import { isDomoEnvironment } from '@/lib/domo';
 
 /** Debounce interval for auto-save (ms) */
 const AUTOSAVE_DELAY_MS = 1500;
@@ -49,6 +52,17 @@ interface TDRInputsProps {
   isStepComplete?: boolean;
   /** All steps (for step order lookup) */
   allSteps?: TDRStep[];
+  /** Deal metadata for AI enhancement context */
+  dealContext?: {
+    account?: string;
+    acv?: number;
+    stage?: string;
+    dealType?: string;
+    closeDate?: string;
+    owner?: string;
+    competitors?: string;
+    partnerSignal?: string;
+  };
 }
 
 interface FieldConfig {
@@ -178,6 +192,7 @@ export function TDRInputs({
   onToggleStepComplete,
   isStepComplete,
   allSteps,
+  dealContext,
 }: TDRInputsProps) {
   // Track local field values for controlled inputs
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
@@ -205,6 +220,102 @@ export function TDRInputs({
   useEffect(() => { onSaveInputRef.current = onSaveInput; }, [onSaveInput]);
   useEffect(() => { allStepsRef.current = allSteps; }, [allSteps]);
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+
+  // ── AI Enhancement state ──
+  const [enhancingField, setEnhancingField] = useState<string | null>(null);
+  const [enhancementResult, setEnhancementResult] = useState<Record<string, EnhancementResult>>({});
+
+  const handleEnhance = useCallback(async (fieldId: string, fieldConfig: FieldConfig) => {
+    if (!activeStep || !allSteps) return;
+    const key = `${activeStep.id}::${fieldId}`;
+    const rawInput = localValuesRef.current[key]
+      || inputValues?.get(key)
+      || '';
+    if (!rawInput.trim()) return;
+
+    setEnhancingField(fieldId);
+
+    const stepConfig = stepInputConfigs[activeStep.id];
+    const siblingFields: EnhancementContext['siblingFields'] = [];
+    if (stepConfig) {
+      for (const f of stepConfig.fields) {
+        if (f.id === fieldId) continue;
+        const fKey = `${activeStep.id}::${f.id}`;
+        const val = localValuesRef.current[fKey] || inputValues?.get(fKey) || '';
+        if (val.trim()) siblingFields.push({ label: f.label, value: val });
+      }
+    }
+
+    const crossStepFields: EnhancementContext['crossStepFields'] = [];
+    for (const step of allSteps) {
+      if (step.id === activeStep.id) continue;
+      const sc = stepInputConfigs[step.id];
+      if (!sc) continue;
+      for (const f of sc.fields) {
+        const fKey = `${step.id}::${f.id}`;
+        const val = localValuesRef.current[fKey] || inputValues?.get(fKey) || '';
+        if (val.trim()) {
+          crossStepFields.push({ stepTitle: step.title, label: f.label, value: val });
+        }
+      }
+    }
+
+    try {
+      const result = await enhanceTDRField({
+        field: {
+          id: fieldId,
+          label: fieldConfig.label,
+          placeholder: fieldConfig.placeholder,
+          hint: fieldConfig.hint,
+        },
+        step: {
+          id: activeStep.id,
+          title: activeStep.title,
+          coreQuestion: activeStep.coreQuestion,
+        },
+        rawInput,
+        siblingFields,
+        crossStepFields,
+        dealMetadata: dealContext,
+      });
+      setEnhancementResult(prev => ({ ...prev, [fieldId]: result }));
+    } catch (err) {
+      console.error('[TDRInputs] Enhancement failed:', err);
+    } finally {
+      setEnhancingField(null);
+    }
+  }, [activeStep, allSteps, inputValues, dealContext]);
+
+  const acceptEnhancement = useCallback((fieldId: string) => {
+    const result = enhancementResult[fieldId];
+    if (!result || !activeStep) return;
+    handleChange(fieldId, result.enhanced);
+    setEnhancementResult(prev => {
+      const next = { ...prev };
+      delete next[fieldId];
+      return next;
+    });
+    if (onSaveInput && allSteps) {
+      const stepIdx = allSteps.findIndex(s => s.id === activeStep.id);
+      const fieldConfig = stepInputConfigs[activeStep.id]?.fields.find(f => f.id === fieldId);
+      onSaveInput({
+        stepId: activeStep.id,
+        stepLabel: activeStep.title,
+        fieldId,
+        fieldLabel: fieldConfig?.label || fieldId,
+        fieldValue: result.enhanced,
+        stepOrder: stepIdx >= 0 ? stepIdx : 0,
+      });
+    }
+  }, [enhancementResult, activeStep, allSteps, onSaveInput]);
+
+  const dismissEnhancement = useCallback((fieldId: string) => {
+    setEnhancementResult(prev => {
+      const next = { ...prev };
+      delete next[fieldId];
+      return next;
+    });
+  }, []);
 
   // ── Edit History Dialog ──
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -591,14 +702,87 @@ export function TDRInputs({
                 />
               )}
               {field.type === 'textarea' && (
-                <Textarea
-                  id={field.id}
-                  placeholder={field.placeholder}
-                  className="min-h-20 resize-none text-sm"
-                  value={currentValue}
-                  onChange={(e) => handleChange(field.id, e.target.value)}
-                  onBlur={() => handleBlur(field.id, field.label)}
-                />
+                <div className="space-y-2">
+                  <Textarea
+                    id={field.id}
+                    placeholder={field.placeholder}
+                    className="min-h-20 resize-none text-sm"
+                    value={currentValue}
+                    onChange={(e) => handleChange(field.id, e.target.value)}
+                    onBlur={() => handleBlur(field.id, field.label)}
+                  />
+                  {/* AI Enhancement affordance */}
+                  {isDomoEnvironment() && isAIEnabled() && (
+                    <div className="flex items-center justify-end">
+                      <button
+                        type="button"
+                        className={cn(
+                          'flex items-center gap-1 rounded-md px-2 py-1 text-2xs transition-colors',
+                          currentValue.trim()
+                            ? 'text-violet-600 hover:bg-violet-50 hover:text-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30'
+                            : 'cursor-not-allowed text-muted-foreground/40',
+                        )}
+                        disabled={!currentValue.trim() || enhancingField === field.id}
+                        onClick={() => handleEnhance(field.id, field)}
+                      >
+                        {enhancingField === field.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3 w-3" />
+                        )}
+                        {enhancingField === field.id ? 'Enhancing…' : 'Enhance'}
+                      </button>
+                    </div>
+                  )}
+                  {/* Enhancement result */}
+                  {enhancementResult[field.id] && (
+                    <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 dark:border-violet-800/50 dark:bg-violet-950/20">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-2xs font-medium text-violet-700 dark:text-violet-300">
+                          <Sparkles className="h-3 w-3" />
+                          AI-Enhanced
+                        </span>
+                        <span className="text-2xs text-muted-foreground">
+                          Using: {enhancementResult[field.id].contextSources.join(', ')}
+                        </span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm text-foreground">
+                        {enhancementResult[field.id].enhanced}
+                      </p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="h-7 gap-1 bg-violet-600 text-xs hover:bg-violet-700"
+                          onClick={() => acceptEnhancement(field.id)}
+                        >
+                          <Check className="h-3 w-3" />
+                          Accept
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs"
+                          onClick={() => {
+                            handleChange(field.id, enhancementResult[field.id].enhanced);
+                            dismissEnhancement(field.id);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 gap-1 text-xs text-muted-foreground"
+                          onClick={() => dismissEnhancement(field.id)}
+                        >
+                          <X className="h-3 w-3" />
+                          Dismiss
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
               {field.type === 'select' && (
                 <Select

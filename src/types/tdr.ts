@@ -54,6 +54,25 @@ export interface Deal {
   isPartnerPlay?: boolean;
   isStalled?: boolean;
   isEarlyStage?: boolean;
+  // Expanded dataset fields (Sprint 28)
+  accountRevenue?: number;
+  accountEmployees?: number;
+  strategicAccount?: boolean;
+  region?: string;
+  salesSegment?: string;
+  salesVertical?: string;
+  servicesRatio?: number;
+  dealComplexityIndex?: number;
+  salesProcessCompleteness?: number;
+  // ML propensity fields (Sprint 28)
+  propensityScore?: number;
+  propensityQuadrant?: 'CRITICAL' | 'STANDARD' | 'MONITOR' | 'SKIP';
+  propensityFactors?: Array<{
+    label: string;
+    value: number | string;
+    direction: 'up' | 'down' | 'neutral';
+    magnitude: number;
+  }>;
 }
 
 export interface TDRStep {

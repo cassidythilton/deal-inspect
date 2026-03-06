@@ -1,8 +1,27 @@
 # TDR Deal Inspection — Implementation Strategy
 
-> Account Intelligence, Snowflake Persistence, Cortex AI, and Inline TDR Chat
+> Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 5.4 · **Date:** March 3, 2026 · **Sprints Completed:** 1, 2, 3, 4, 5, 5.5, 6, 6.5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 17.5, 17.6, 18, 19, 19.5, 20, 21, 22, 23, 24, 25, 26, 27, OSS-1 · **In Progress:** 28 (Deal Close Propensity ML Model) · **Remaining:** —
+**Status:** Active · **Version:** Draft 5.8 · **Date:** March 5, 2026 · **Sprints Completed:** 1–27, OSS-1 (33 sprints) · **Next Up:** 28 (Dataset Swap & Deal Close Propensity ML), 29 (AI-Enhanced TDR Responses), 30 (UX Polish & Iteration), 31 (TDR Framework Redesign)
+
+---
+
+### Current State & What's Next
+
+**Where we are:** Pillars 1–13 are complete (33 sprints, Feb 9 – Mar 3, 2026). The app is a fully functional, AI-native deal intelligence platform with Snowflake persistence, Cortex AI processing, external enrichment (Sumble + Perplexity), inline chat, Knowledge Base filesets, two-phase TDR scoring, action plan synthesis, PDF readout with Slack distribution, frontier models, performance optimization, UX polish, and a 7-section Documentation Hub.
+
+**What's next (4 sprints, ~13–20 days total):**
+
+| Sprint | Name | Effort | Can Parallel? | Key Deliverable |
+|--------|------|--------|--------------|-----------------|
+| **28** | Dataset Swap & Deal Close Propensity ML | 7–10 days (5 sub-sprints: 28a–28e) | — | Expand dataset from 34 to 65 columns, train `SNOWFLAKE.ML.CLASSIFICATION` model, surface propensity score + SHAP factors in two-axis quadrant |
+| **29** | AI-Enhanced TDR Responses | 2–3 days (2 sub-sprints: 29a–29b) | ✅ with S28 | Per-field "Enhance" button on TDR textareas, 8-layer context-aware AI improvement, inline diff |
+| **30** | UX Polish & Iteration | 1–2 days | — (after S28 + S29) | Stage Age threshold fix, quadrant/SHAP/diff polish, duplicate records, Settings→Filter bridge, Perplexity tech pills, Slack PDF colors, Intelligence Panel checklist, gap indicators |
+| **31** | TDR Framework Redesign | 3–5 days (3 sub-sprints: 31a–31c) | — (after S29 + S30) | Consolidate 9 steps to ~5–6, AI & ML core step with value continuum, resizable textareas, semi-auto step completion, pill/tag inputs, TDR versioning, PDF readout update |
+
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31)
+
+**Start point:** Sprint 28a (dataset swap) or Sprint 29a (enhancement engine) — these two sprints are independent and can run in parallel. Sprint 30 follows after both are functional. Sprint 31 follows Sprint 30 and requires user approval before step restructuring proceeds.
 
 ---
 
@@ -27,14 +46,14 @@
 17. [Implementation Phases](#17-implementation-phases)
 18. [Sprint Plan & Progress Tracker](#18-sprint-plan--progress-tracker)
 19. [Reference Links](#19-reference-links)
-20. [Solution Strategy Summary — The Six Pillars](#20-solution-strategy-summary--the-six-pillars)
+20. [Solution Strategy Summary — The Seventeen Pillars](#20-solution-strategy-summary--the-seventeen-pillars)
 21. [TDR Readout: Executive PDF & Distribution](#21-tdr-readout-executive-pdf--distribution)
 
 ---
 
 ## 1. Executive Summary
 
-This document describes the strategy for transforming the TDR Deal Inspection app from an internally-scoped scoring tool into an **AI-native, intelligence-enriched review platform**. Five capabilities are introduced:
+This document describes the strategy for transforming the TDR Deal Inspection app from an internally-scoped scoring tool into an **AI-native, intelligence-enriched review platform**. Eight capabilities define the platform:
 
 1. **External Account Intelligence** — Perplexity (web research) and Sumble (firmographic/technographic enrichment) provide real-world context about each account's technology stack, strategic initiatives, and competitive landscape.
 
@@ -44,7 +63,13 @@ This document describes the strategy for transforming the TDR Deal Inspection ap
 
 4. **TDR Inline Chat** — A context-aware conversational AI embedded in the TDR Workspace. The chat knows the current deal, all TDR inputs entered so far, and all cached account intelligence. It can answer questions using stored data (Cortex), search the web in real-time (Perplexity), or provide TDR methodology guidance — enabling the SE Manager to get answers without leaving the review workflow.
 
-5. **Deal Close Propensity ML** — A stacking ensemble machine learning model (XGBoost, LightGBM, RandomForest, LogisticRegression) trained on historical SFDC deal outcomes predicts close probability for every pipeline deal. The ML propensity score composes with the deterministic TDR complexity score to create a two-axis prioritization system (propensity × complexity → CRITICAL / MONITOR / LOW TOUCH / DEPRIORITIZE). SHAP explanations make every prediction transparent and trustworthy.
+5. **Deal Close Propensity ML** — A `SNOWFLAKE.ML.CLASSIFICATION` model trained on historical SFDC deal outcomes predicts close probability for every pipeline deal. Native SQL — no Python, no external compute. 19 derived features. The propensity score composes with the deterministic TDR complexity score in a two-axis quadrant (propensity × complexity → CRITICAL / STANDARD / MONITOR / SKIP). SHAP-like factor explanations — plain English, directional arrows, magnitude bars — make every prediction transparent and trustworthy for naive users.
+
+6. **AI-Enhanced TDR Responses** — Per-field AI enhancement for TDR inputs. SEs click "Enhance" on any textarea to get a context-aware improved version drawing from 8 layers (deal metadata, account intel, Knowledge Base filesets, cross-step inputs). Inline diff with Accept/Edit/Dismiss. Uses the Domo AI endpoint (Anthropic) for low-latency enhancement. Raises the quality floor for every downstream AI artifact.
+
+7. **UX Polish & Data Visibility** — Dedicated refinement cycle for all Sprint 28–29 surfaces (propensity quadrant, SHAP factors, AI diff view) plus recalibration of data visibility rules. Fixes the `MAX_STAGE_AGE_DAYS = 365` hard filter that silently hides legitimate deals (e.g., renewals with high stage age but near-term close dates). Addresses duplicate Opportunity ID records with conflicting field values. Adds Intelligence Panel guided workflow, Perplexity tech pills with source provenance, Slack PDF color matching, Settings→Filter bridge, and data gap indicators.
+
+8. **TDR Framework Redesign** — Consolidation from 9 steps / 29 fields to ~5–6 steps with sharper, less redundant fields. AI & ML elevated from a 2-field optional step to a rigorous core step with a structured AI value continuum framework (rules-based automation → traditional ML → generative AI → agentic solutions). Resizable textareas, semi-automated step completion, pill/tag inputs for Domo layers, and exposed TDR versioning for follow-up iterations. PDF readout updated to match.
 
 The architecture routes all external API calls and Snowflake operations through **Domo Code Engine functions**, keeping API keys server-side and the front-end stateless.
 
@@ -2825,6 +2850,8 @@ cortex
 
 ### 16.7 Cortex CLI — Rules of Engagement
 
+> **Shaping document:** `shaping/cortex-cli-usage-guidelines.md` — full problem framing, requirements, boundary model, sprint tool assignment, invocation patterns, and fit check.
+
 > **The cardinal rule:** Cortex CLI is a Snowflake assistant. It knows Snowflake. Ask it about Snowflake. Do not ask it to write application code.
 
 **What Cortex CLI IS:**
@@ -2902,132 +2929,70 @@ A general-purpose code generator. It is not a JavaScript developer, a React deve
 
 5. **❌ Asking Cortex CLI for general ML architecture advice.** ML *strategy* decisions (ensemble vs. single model, feature selection, label design) are human judgment calls informed by domain expertise. Cortex CLI can answer "What Python packages does Snowpark support?" but should not be the source of architectural decisions.
 
-#### Correct Workflow Example (Sprint 28)
+#### Correct Workflow Example (Sprint 28 — Dataset Swap & Propensity ML)
 
 ```
-Step 1: SHAPE (Cursor + human)
+Step 1: SHAPE (Cursor + human)                            ✅ Complete
   → Define problem, features, architecture, sprint plan
+  → shaping/dataset-swap-and-propensity-model.md
 
-Step 2: PROTOTYPE (Cursor + local Python notebooks)
-  → Data exploration, feature engineering, model comparison
-  → pip install, Jupyter, local iteration
+Step 2: DATASET SWAP (Cursor + direct authoring)          Sprint 28a
+  → manifest.json field mappings, DomoOpportunity interface,
+    OPPORTUNITY_FIELD_MAP, Deal type expansion
+  → Cortex CLI NOT used (application domain)
 
-Step 3: SNOWFLAKE INFRASTRUCTURE (Cortex CLI)
-  → DDL, stored procedures, Tasks, Alerts, Streams, Grants
-  → "Create ML_MODELS schema with these tables..."
-  → "Generate a Snowpark Python stored procedure that trains XGBoost..."
+Step 3: EDA (Cursor + local Python notebook)              Sprint 28b
+  → notebooks/01_data_exploration.ipynb
+  → Cortex CLI: query live Snowflake table for label distribution,
+    feature completeness, null rates
+  → Cursor: notebook authoring, visualization, go/no-go analysis
 
-Step 4: APPLICATION CODE (Cursor + direct authoring)
-  → codeengine/mlPredictions.js (Code Engine functions)
+Step 4: SNOWFLAKE INFRASTRUCTURE (Cortex CLI)             Sprint 28c
+  → DDL: ML_FEATURE_STORE view, ML_TRAINING_DATA view,
+    DEAL_ML_PREDICTIONS table, ML_MODEL_METADATA table
+  → Grants: CREATE SNOWFLAKE.ML.CLASSIFICATION, CORTEX_USER
+  → "Create view ML_FEATURE_STORE with these 19 derived features..."
+  → "CREATE SNOWFLAKE.ML.CLASSIFICATION DEAL_CLOSE_PROPENSITY..."
+  → "Run SHOW_EVALUATION_METRICS() and SHOW_FEATURE_IMPORTANCE()"
+  → Stored procedure: RETRAIN_PROPENSITY_MODEL
+  → Tasks: nightly batch scoring, weekly retraining
+
+Step 5: APPLICATION CODE (Cursor + direct authoring)      Sprint 28d
+  → codeengine/ — getWinProbability, batchScoreDeals,
+    getModelMetrics, retrainModel
   → src/lib/mlPredictions.ts (frontend service)
-  → manifest.json entries
-  → React components
+  → manifest.json packageMapping entries
+  → Cortex CLI NOT used (application domain)
 
-Step 5: VALIDATE (Cortex CLI)
-  → "Show me the latest 5 rows in DEAL_ML_PREDICTIONS"
-  → "What's the AUC_ROC for the deployed model?"
-  → "Count predictions by PREDICTION_CLASS"
+Step 6: FRONTEND (Cursor + direct authoring)              Sprint 28e
+  → Propensity column, quadrant scatter plot, SHAP factors,
+    Intelligence Panel card, portfolio metrics
+  → Cortex CLI NOT used (application domain)
+
+Step 7: VALIDATE (Cortex CLI)
+  → "Show the latest 10 rows in DEAL_ML_PREDICTIONS"
+  → "What's the accuracy and AUC_ROC for DEAL_CLOSE_PROPENSITY?"
+  → "Show feature importance for the deployed model"
+  → "Count predictions by prediction class"
+  → "Verify ML_FEATURE_STORE returns correct derived features for a sample deal"
 ```
 
 ---
 
 ## 17. Implementation Phases
 
-### Phase 1 — Snowflake Foundation
+> **Note:** This section contains the original phase-based plan drafted before implementation began. **All 8 phases below are complete** — they were executed as Sprints 1–12 (see [Section 18: Sprint Plan & Progress Tracker](#18-sprint-plan--progress-tracker) for the detailed sprint-by-sprint record). Subsequent work (Sprints 13–29) extended well beyond the original 8 phases and is documented exclusively in Section 18. **For current status, refer to Section 18 and the Progress Dashboard.**
 
-**Scope:** DDL + `tdr-snowflake-persistence` Code Engine function + `snowflakeStore.ts`
-
-**Deliverables:**
-- [ ] Create Snowflake database/schema (`TDR_APP.TDR_DATA`)
-- [ ] Create dedicated warehouse (`TDR_APP_WH`, XS, auto-suspend 60s)
-- [ ] Create all 6 tables (sessions, inputs, sumble, perplexity, usage log, cortex results)
-- [ ] Build `tdr-snowflake-persistence` Code Engine function
-- [ ] Build `src/lib/snowflakeStore.ts` (front-end service, replaces `appDb.ts`)
-- [ ] Wire TDR Workspace to use `snowflakeStore` for session CRUD
-- [ ] Implement dual-write (Snowflake + AppDB) during transition
-
-### Phase 2 — TDR Input Persistence
-
-**Scope:** Wire TDR step inputs to save/load from Snowflake
-
-**Deliverables:**
-- [ ] Update `TDRInputs.tsx` to save field values on change (debounced)
-- [ ] Update `TDRWorkspace.tsx` to load latest inputs on session open
-- [ ] Add input history view ("View edit history" per field)
-- [ ] Capture user identity via `/domo/users/v1/me`
-
-### Phase 3 — Account Intelligence
-
-**Scope:** `tdr-account-intel` Code Engine function + front-end integration
-
-**Deliverables:**
-- [ ] Create Domo Account entries for Perplexity and Sumble API keys
-- [ ] Build `tdr-account-intel` Code Engine function (Perplexity + Sumble + Snowflake writes)
-- [ ] Build `src/lib/accountIntel.ts` (front-end orchestration)
-- [ ] Add "Account Research" step to TDR Workspace (Step 2)
-- [ ] Add "Account Intelligence" section to `TDRIntelligence.tsx`
-- [ ] Implement domain resolution logic
-- [x] ~~Implement cache-first architecture with configurable TTL~~ → Removed. All API calls are user-initiated only (click-to-enrich). No auto-fetch or TTL.
-
-### Phase 4 — Cortex AI (Phase A — Deal-Level)
-
-**Scope:** Per-deal Cortex functions via `tdr-cortex-ai` Code Engine function
-
-**Deliverables:**
-- [ ] Build `tdr-cortex-ai` Code Engine function
-- [ ] Build `src/lib/cortexAi.ts` (front-end service)
-- [ ] Implement `AI_COMPLETE` TDR brief generation (replaces Domo AI summary)
-- [ ] Implement `AI_CLASSIFY` for Perplexity finding categorization
-- [ ] Implement `AI_EXTRACT` for entity extraction from research
-- [ ] Implement `AI_SENTIMENT` for TDR health tracking
-- [ ] Store all results in `CORTEX_ANALYSIS_RESULTS`
-
-### Phase 5 — Cortex AI (Phase B — Portfolio-Level)
-
-**Scope:** Cross-deal analysis and semantic search
-
-**Deliverables:**
-- [ ] Implement `AI_AGG` portfolio insights (Command Center)
-- [ ] Implement `AI_SUMMARIZE_AGG` intel evolution (Workspace)
-- [ ] Implement `AI_EMBED` + `AI_SIMILARITY` for deal matching
-- [ ] Add "Similar Deals" section to Intelligence panel
-- [ ] Add "Portfolio Insights" to Command Center
-- [ ] Set up Cortex Analyst semantic model over TDR tables
-- [ ] Add "Ask TDR" natural language query interface
-
-### Phase 6 — Scoring & Prompt Enrichment
-
-**Scope:** Intelligence-aware TDR scoring and Domo AI prompt enhancement
-
-**Deliverables:**
-- [ ] Add `techStackOverlap` critical factor
-- [ ] Add `strategicMomentum` critical factor
-- [ ] Enhance existing factors with intel validation
-- [ ] Enrich Domo AI prompt payload with cached intel
-- [ ] Add enrichment indicators to DealsTable
-
-### Phase 7 — Settings, Migration & Polish
-
-**Scope:** Settings UI, AppDB migration, monitoring
-
-**Deliverables:**
-- [ ] Add "Account Intelligence" card to Settings page
-- [ ] Add API usage counter display
-- [ ] Build AppDB → Snowflake migration Code Engine function
-- [ ] Run migration, validate data, cut over to Snowflake-only
-- [ ] Remove AppDB dependency
-- [ ] Set up scheduled Cortex batch analysis (Snowflake Tasks)
-
-### Phase 8 — Cortex Search & Analyst (Advanced)
-
-**Scope:** Full-text search and natural language analytics
-
-**Deliverables:**
-- [ ] Set up Cortex Search service over intel + TDR notes
-- [ ] Add search bar to Command Center
-- [ ] Build Cortex Analyst semantic model YAML
-- [ ] Add "Ask TDR" interface
-- [ ] Document Cortex Code CLI usage for SE leadership
+| Phase | Scope | Completed As |
+|-------|-------|-------------|
+| Phase 1 — Snowflake Foundation | DDL, Code Engine, snowflakeStore | Sprint 1 ✅ |
+| Phase 2 — TDR Input Persistence | Step inputs save/load from Snowflake | Sprints 2–3 ✅ |
+| Phase 3 — Account Intelligence | Sumble + Perplexity + caching | Sprints 4–6 ✅ |
+| Phase 4 — Cortex AI (Deal-Level) | AI_COMPLETE, AI_CLASSIFY, AI_EXTRACT | Sprint 7 ✅ |
+| Phase 5 — Cortex AI (Portfolio-Level) | AI_AGG, AI_EMBED, Analyst, Search | Sprints 9, 11 ✅ |
+| Phase 6 — Scoring & Prompt Enrichment | TDR scoring with intel signals | Sprint 10 ✅ |
+| Phase 7 — Settings, Migration & Polish | AppDB → Snowflake migration, cleanup | Sprint 12 ✅ |
+| Phase 8 — Cortex Search & Analyst | Semantic search, NLQ | Sprint 11 ✅ |
 
 ---
 
@@ -3839,6 +3804,9 @@ The following enhancements were applied to the Slack distribution experience aft
 | **26** | **Intelligence Panel UX Review & Consolidation** | ✅ Complete | Feb 13, 2026 | S14 + S21 + S24-WS1 | **UX** |
 | **27** | **Intelligence Panel Decision Architecture** | ✅ Complete | Feb 14, 2026 | S26 | **UX / Architecture** |
 | **25** | **Documentation Hub & Architecture Diagram** | ✅ Complete | Feb 14, 2026 | S24 + S27 | **Documentation / Visualization** |
+| **OSS-1** | **Open-Source Readiness & README Overhaul** | ✅ Complete | Mar 3, 2026 | S25 | **Security / Documentation** |
+| **28** | **Dataset Swap & Deal Close Propensity ML** | 🔲 Not Started | — | S18 | **Data / ML / Scoring / UX** |
+| **29** | **AI-Enhanced TDR Responses** | 🔲 Not Started | — | S17 + S19 + S6.5 | **AI / UX** |
 
 **Post-Sprint Enhancements (Feb 14, 2026):**
 - Sprint 25 — Documentation Hub: 7-section in-app reference at `/docs` with sticky Table of Contents sidebar and accordion navigation. Sections: (1) Architecture Diagram — interactive 5-layer SVG (System Overview, Data Model, Cortex AI Model Map, Enrichment Pipeline, User Workflow) with pill-toggle layer switcher, (2) Scoring Reference — Pre-TDR, Post-TDR, and Confidence Score methodology with detailed factor/weight tables, (3) Capabilities Guide — 9 accordion sections covering every app feature, (4) Integrations Reference — Snowflake Cortex, Sumble, Perplexity, Domo Platform, Slack with endpoints and capabilities, (5) Data Model Reference — all 10 Snowflake tables/views with key columns, (6) AI Models Reference — every model across 3 providers with cost tier and use cases, (7) Glossary & FAQ — 20+ terms and common questions.
@@ -5970,202 +5938,337 @@ The README was rewritten from 830 lines of internal implementation detail to 510
 
 ---
 
-### Sprint 28 — Deal Close Propensity ML Model 🔲 NOT STARTED
+### Sprint 28 — Dataset Swap & Deal Close Propensity ML Model 🔲 NOT STARTED
 
-> **Goal:** Build and deploy a machine learning model that predicts close probability for every pipeline deal. The propensity score composes with the existing deterministic TDR score to create a two-axis prioritization system: "How likely is this deal to close?" × "How technically complex is this deal?" — giving SE Managers a richer signal than either score alone.
-> **Risk to app:** Low — new Snowflake schema (`ML_MODELS`), new stored procedures, new Code Engine functions. No changes to existing tables, views, or app behavior. The ML score is additive; existing TDR scoring continues unchanged.
-> **Effort:** ~5–7 days (4 sub-sprints)
-> **Dependencies:** Sprint 18 (TDR Score v2 — for the two-axis composition), Sprint 25 (Documentation Hub — to update docs post-deployment)
-> **Cortex CLI:** Used for Snowflake-specific guidance only — DDL generation, stored procedure scaffolding, Snowpark package availability, Task/Alert/Stream architecture, and Snowflake ML best practices. All application code (Code Engine functions, frontend components, Python notebooks, library installation) is authored directly.
+> **Goal:** (1) Swap the primary app dataset to an expanded version with 65 column mappings (up from 34), including historical outcomes, account firmographics, sales milestones, and engagement signals. (2) Build a `SNOWFLAKE.ML.CLASSIFICATION` propensity-to-close model that predicts close probability for every deal. (3) Surface the propensity score as a primary metric alongside TDR Score in a two-axis quadrant. (4) Display SHAP-like factor explanations inline per deal, designed for naive users.
+> **Risk to app:** Low–Medium — dataset swap requires careful column reconciliation to avoid regressions. 2 existing columns missing from v2 (remap `Mgr Forecast Name` → `Forecast Manager`; drop unused `Current FQ`). ML model is additive; existing TDR scoring continues unchanged.
+> **Effort:** ~7–10 days (6 sub-sprints)
+> **Dependencies:** Sprint 18 (TDR Score v2 — for the two-axis composition)
+> **Shaping document:** `shaping/dataset-swap-and-propensity-model.md`
 
 **Problem Statement:**
-The current TDR prioritization relies on a deterministic 9-factor scoring engine (`tdrCriticalFactors.ts`) that assigns a 0–100 score based on hand-tuned weights (ACV thresholds, stage urgency, competitive pressure, partner involvement, etc.). This score answers "How technically complex is this deal?" — but it does not answer "How likely is this deal to close?" A deal can score 85 on TDR complexity but have a 15% chance of closing. Conversely, a seemingly simple deal may have strong close signals that the heuristic misses. The SE Manager needs both axes to allocate TDR time effectively.
+The current TDR prioritization relies on a deterministic 9-factor scoring engine (`tdrCriticalFactors.ts`) that assigns a 0–100 score based on hand-tuned weights. This score answers "How technically complex is this deal?" — but not "How likely is this deal to close?" A deal can score 85 on TDR complexity but have a 15% chance of closing. The SE Manager needs both axes to allocate TDR time effectively.
 
-**Solution: Propensity to Close (Not TDR Suitability)**
+Additionally, the app ingests only 34 of 300+ available SFDC columns. The current `opportunitiesmagic` dataset (ID: `6f12ec25-0018-4ed3-adfe-93ebdfad41fe`) lacks the account firmographics, sales milestones, engagement signals, and historical win/loss data required for ML. A new dataset with expanded columns is the prerequisite.
 
-The model predicts `P(close)` — not "should this deal get a TDR." This is the correct decomposition because:
+**Dataset Swap:**
 
-| Question | Best Answered By | Why |
-|----------|-----------------|-----|
-| "Will this deal close?" | ML (pattern recognition across 30+ features) | Hundreds of historical examples, non-obvious signal combinations |
-| "Does this deal need technical shaping?" | Deterministic TDR score (domain expertise) | Business rules, not patterns — e.g., "any deal with Snowflake involvement needs TDR" |
+New Domo dataset ID: `6ae5896e-e13d-48ac-a9fb-c6e9116b4bb4`
+Snowflake table: `TDR_APP.PUBLIC.Forecast_Page_Opportunities_Magic_SNFv2`
+Alias: `opportunitiesmagic` (unchanged — avoids codebase-wide rename)
+Column mappings: 32 existing (preserved; 2 remapped/dropped) + 33 new = **65 total**
 
-Combining both creates a **2×2 quadrant**:
+Verified against actual v2 sample (`samples/forecast_page_opportunities_cv2.json` — 506 columns). 2 existing columns required changes: `Mgr Forecast Name` → remapped to `Forecast Manager` (same data, alias unchanged); `Current FQ` → dropped (not used in frontend). 4 proposed columns removed (not in v2): `Why Do Anything`, `Why Domo`, `Why Now`, `Manager Comments`. The 33 confirmed new fields add: account firmographics (Revenue, Employees, Strategic Account, Region, Segment, Vertical), extended deal economics (Platform Price, Services Price, Line Items, Contract Type, Pricing Type, CPQ), sales milestones (Discovery Call, Demo, Pricing Call, Gate Call, Pre-Call Plan, ADM Agenda), engagement (People AI), historical outcomes (Is Closed, Won/Lost/Opty counts by type), dates (Created Date), deal flags (Is Partner, Is Pipeline, Non-Competitive), and unstructured text (Forecast Comments, Next Step, Business Challenge) for Phase 2 AI enrichment.
+
+Full reconciliation table in `shaping/dataset-swap-and-propensity-model.md`.
+
+**Training Architecture: `SNOWFLAKE.ML.CLASSIFICATION` (Native)**
+
+| Aspect | Approach |
+|--------|----------|
+| **Engine** | `SNOWFLAKE.ML.CLASSIFICATION` — native, GA, pure SQL |
+| **Target** | `IS_WON` (binary: Won = 1, Lost = 0) from closed deals |
+| **Features** | 19 derived features computed in `ML_FEATURE_STORE` view |
+| **Preprocessing** | Auto-handled by Snowflake (encoding, splits, tuning) |
+| **Explainability** | `SHOW_FEATURE_IMPORTANCE()` for global; per-prediction factor decomposition for SHAP-like inline display |
+| **Inference** | Batch (nightly Task) + real-time fallback (on-demand Code Engine call) |
+| **Retraining** | Weekly via Snowflake Task; metadata logged to `ML_MODEL_METADATA` |
+| **No Python** | No Snowpark, no UDFs, no external compute — pure SQL through existing Code Engine pattern |
+
+**Why native over stacking ensemble (revised from original Sprint 28 plan):**
+The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking ensemble with Snowpark Python. `SNOWFLAKE.ML.CLASSIFICATION` is simpler: it auto-tunes internally (it's already ensemble-like under the hood), requires no Python runtime, and fits the existing Code Engine → SQL API pattern. Start native; if performance is insufficient, *then* consider Snowpark. Built-in escape hatch, not upfront complexity.
+
+**Two-Axis Composition:**
 
 | | High Propensity | Low Propensity |
 |---|---|---|
-| **High TDR Score** | 🔴 **CRITICAL** — winnable + complex, TDR adds most value | ⚠️ MONITOR — complex but unlikely, investigate blockers |
-| **Low TDR Score** | ✅ LOW TOUCH — likely to close, minimal SE intervention | ⬜ DEPRIORITIZE — unlikely + simple, not worth TDR time |
+| **High TDR Score** | 🔴 **CRITICAL** — winnable + complex, TDR adds most value | ⚠️ MONITOR — complex but uncertain, investigate blockers |
+| **Low TDR Score** | ✅ STANDARD — likely to close, TDR not critical | ⬜ SKIP — unlikely + simple, not worth TDR time |
 
-**Data Reality (from sample analysis):**
-- `opportunitiesmagic` dataset: ~500+ deals in sample (280K lines JSON), need full dataset in Snowflake for training
-- The sample contains all open pipeline (0 closed deals) — the full `opportunitiesmagic` dataset in Domo/Snowflake contains historical closed-won and closed-lost deals needed for labels
-- Key features available: ACV, Stage, Stage Age, Deal Type, Competitor Count, Partner Influence, Forecast Category, Sales Process Milestones (7 milestone dates), Account Win Rate (embedded), Professional Services ratio, People AI Engagement Level, 40+ additional SFDC attributes
-- Feature completeness is high: ACV (100%), Stage (100%), Stage Age (97%), Deal Type (100%), Competitors (62%), Partner Influence (40%)
-- Class label: `Is Won` (boolean) from SFDC — clean, auditable, no proxy labels needed
-
-**Training Architecture: Stacking Ensemble (Snowpark Python)**
-
-The recommended approach is a **custom stacking ensemble** over native-only `SNOWFLAKE.ML.CLASSIFICATION`:
-
-| Layer | Models | Purpose |
-|-------|--------|---------|
-| **Level 0 (Base)** | XGBoost, LightGBM, RandomForest, LogisticRegression | Each model makes different kinds of errors on tabular data |
-| **Level 1 (Meta)** | LogisticRegression | Learns optimal weights from 5-fold out-of-fold predictions |
-
-The native `SNOWFLAKE.ML.CLASSIFICATION` trains alongside as a **baseline comparator**. If the ensemble doesn't beat it by >2–3% AUC, we simplify to native-only. This is a built-in escape hatch.
-
-**Why ensemble over native-only:**
-- Native `SNOWFLAKE.ML.CLASSIFICATION` is already an ensemble internally (AutoML with LightGBM/XGBoost/LogReg), but it's a black box — no control over base learner diversity, no SHAP explanations, no custom preprocessing
-- Custom ensemble gives: SHAP-based explainability (why this prediction?), custom feature preprocessing, model registry with full versioning, feature importance tracking, and the ability to add domain-specific base models later
-
-**19 Derived Features (ML_FEATURE_STORE):**
+**19 Derived Features:**
 
 | Feature | Derivation |
 |---------|-----------|
-| `ACCOUNT_WIN_RATE` | Total Closed Won / (Won + Lost) — from account-level counts in SFDC |
+| `ACCOUNT_WIN_RATE` | Total Closed Won / (Won + Lost) per account |
 | `TYPE_SPECIFIC_WIN_RATE` | Win rate by deal type (New Logo vs. Upsell) |
-| `STAGE_VELOCITY_RATIO` | Stage Age / avg Stage Age for Sales Segment (>1 = slower) |
-| `QUARTER_URGENCY` | Proximity to quarter end (0–1 scale from Close Date) |
+| `STAGE_VELOCITY_RATIO` | Stage Age / avg Stage Age for Sales Segment |
+| `QUARTER_URGENCY` | Proximity to quarter end (0–1) |
 | `DAYS_IN_CURRENT_STAGE` | Stage Age (integer) |
 | `DAYS_SINCE_CREATED` | Created Date → now |
-| `DEAL_COMPLEXITY_INDEX` | Weighted: Line Items × 0.3 + Competitors × 0.4 + Services flag × 0.3 |
+| `DEAL_COMPLEXITY_INDEX` | Normalized(Line Items + Competitors + Services Ratio) |
 | `COMPETITOR_COUNT` | Number of Competitors |
 | `LINE_ITEM_COUNT` | Line Items |
 | `SERVICES_RATIO` | Professional Services Price / Total Price |
 | `ACV_NORMALIZED` | Z-score within Sales Segment |
 | `REVENUE_PER_EMPLOYEE` | ACV / Account Employees |
-| `SALES_PROCESS_COMPLETENESS` | Non-null milestone dates / 7 milestones |
+| `SALES_PROCESS_COMPLETENESS` | Non-null milestones / 7 |
 | `STEPS_COMPLETED` | Count of completed milestones + process flags |
-| `HAS_THESIS` | Boolean — People AI Engagement Level populated |
-| `HAS_STAKEHOLDERS` | Boolean — Snowflake Team Picklist populated |
-| `STAGE_ORDINAL` | Stage encoded as integer 1–7 |
-| `DEAL_COMPLEXITY_ENCODED` | Categorical: 1=Low, 2=Medium, 3=High |
-| `AI_MATURITY_ENCODED` | People AI Engagement Level → 1–5 scale |
+| `HAS_THESIS` | People AI Engagement Level populated? |
+| `HAS_STAKEHOLDERS` | Snowflake Team Picklist populated? |
+| `STAGE_ORDINAL` | Stage → integer 1–7 |
+| `DEAL_COMPLEXITY_ENCODED` | Low / Medium / High → 1 / 2 / 3 |
+| `AI_MATURITY_ENCODED` | People AI Engagement → 1–5 |
 
-**Snowflake Objects Created:**
+**Snowflake Objects:**
 
-| Object | Type | Schema | Purpose |
-|--------|------|--------|---------|
-| `ML_MODELS` | Schema | `TDR_APP.ML_MODELS` | Dedicated schema for ML objects |
-| `ML_FEATURE_STORE` | Table | `ML_MODELS` | Pre-computed derived features per opportunity, versioned by date |
-| `DEAL_ML_PREDICTIONS` | Table | `ML_MODELS` | Batch scoring results + SHAP explanations |
-| `ML_MODEL_METADATA` | Table | `ML_MODELS` | Model registry: versions, metrics, artifacts, lifecycle status |
-| `ML_ALERT_LOG` | Table | `ML_MODELS` | Alert audit log for monitoring pipeline health |
-| `PREDICTION_SYNC_QUEUE` | Table | `ML_MODELS` | Queue for downstream Domo dataset sync |
-| `ML_TRAINING_DATA` | View | `ML_MODELS` | Joins TDR session data with features and outcome labels |
-| `V_MODEL_PERFORMANCE` | View | `ML_MODELS` | Weekly prediction accuracy monitoring |
-| `V_LATEST_FEATURES` | View | `ML_MODELS` | Most recent features per opportunity |
-| `V_LATEST_PREDICTIONS` | View | `ML_MODELS` | Most recent prediction per opportunity |
-| `V_PRODUCTION_MODEL` | View | `ML_MODELS` | Currently deployed model |
-| `MODEL_ARTIFACTS` | Stage | `ML_MODELS` | Internal stage for serialized model files |
-| `SP_COMPUTE_ML_FEATURES` | Procedure (SQL) | `ML_MODELS` | Computes derived features from `opportunitiesmagic`, supports incremental/full-refresh |
-| `SP_TRAIN_STACKING_ENSEMBLE` | Procedure (Python) | `ML_MODELS` | Trains stacking ensemble with 5-fold CV, SMOTE, SHAP, model registry |
-| `SP_PREDICT_WIN_PROBABILITY` | Procedure (Python) | `ML_MODELS` | Batch/single prediction with SHAP explanations and risk flags |
-| `SP_DEPLOY_MODEL_TO_PRODUCTION` | Procedure (SQL) | `ML_MODELS` | Promotes validated model to production |
-| `TASK_COMPUTE_FEATURES` | Task | `ML_MODELS` | Daily 6am UTC — incremental feature computation |
-| `TASK_BATCH_SCORE` | Task | `ML_MODELS` | Daily 7am UTC (AFTER features) — batch scoring of all opportunities |
-| `TASK_RETRAIN_MODEL` | Task | `ML_MODELS` | Biweekly (1st & 15th) — retrain ensemble with latest data |
-| `TASK_PROCESS_NEW_PREDICTIONS` | Task | `ML_MODELS` | Every 15 min — consume stream, sync to downstream |
-| `TDR_ML_TRAINING_WH` | Warehouse | — | MEDIUM warehouse for training workloads (auto-suspend 120s, initially suspended) |
-| `ALERT_MODEL_PERFORMANCE_DEGRADATION` | Alert | `ML_MODELS` | Weekly — triggers if AUC-ROC drops below 0.65 (severity levels: WARNING/HIGH/CRITICAL) |
-| `STREAM_DEAL_PREDICTIONS` | Stream | `ML_MODELS` | CDC stream on `DEAL_ML_PREDICTIONS` for downstream processing |
+| Object | Type | Purpose |
+|--------|------|---------|
+| `ML_FEATURE_STORE` | View | 19 derived features computed from raw opportunity data |
+| `ML_TRAINING_DATA` | View | Closed deals + labels + features for training input |
+| `DEAL_CLOSE_PROPENSITY` | ML Model | `SNOWFLAKE.ML.CLASSIFICATION` model object |
+| `DEAL_ML_PREDICTIONS` | Table | Batch prediction results (opp_id, propensity_pct, top_factors, scored_at) |
+| `ML_MODEL_METADATA` | Table | Training run history (version, accuracy, feature importance, trained_at) |
+| `RETRAIN_PROPENSITY_MODEL` | Procedure | Rebuilds model from latest data, logs metadata |
+| `TASK_BATCH_SCORE` | Task | Nightly scoring of all open pipeline |
+| `TASK_RETRAIN_MODEL` | Task | Weekly retraining |
 
-**Code Engine Functions (3 new — authored directly, not Cortex CLI):**
+**Code Engine Functions (4 new):**
 
-| Function | Purpose | SQL Pattern |
-|----------|---------|-------------|
-| `getWinProbability(opportunityId)` | Single deal scoring | `CALL SP_PREDICT_WIN_PROBABILITY('single', ?)` |
-| `batchScoreDeals()` | Batch scoring all eligible deals | `CALL SP_PREDICT_WIN_PROBABILITY('batch', NULL)` |
-| `getLatestPredictions(opportunityId)` | Read cached predictions | `SELECT * FROM V_LATEST_PREDICTIONS WHERE OPPORTUNITY_ID = ?` |
+| Function | Purpose |
+|----------|---------|
+| `getWinProbability(opportunityId)` | Single-deal propensity with top SHAP-like factors |
+| `batchScoreDeals()` | Batch score all pipeline deals |
+| `getModelMetrics()` | Accuracy, precision, recall, feature importance, last trained |
+| `retrainModel()` | Admin-triggered model retrain |
 
-**Frontend Integration (planned — authored directly):**
+**Frontend Integration:**
 
 | Surface | Change |
 |---------|--------|
-| **Command Center** | Add "Win Probability" column to deals table, propensity badge (HIGH/MED/LOW) |
-| **Intelligence Panel** | New "Deal Propensity" card showing win probability, SHAP top factors, risk flags |
-| **Documentation Hub** | Update Architecture Diagram (ML layer), AI Models Reference (stacking ensemble), Data Model Reference (ML_MODELS tables) |
-| **TDR Score Composition** | Two-axis display: deterministic TDR score (X) × ML propensity (Y) → quadrant classification |
-
-**Generated Artifacts:**
-
-| File | Lines | Source | Contents |
-|------|-------|--------|----------|
-| `ml_infrastructure_ddl.sql` | 457 | Cortex CLI (Snowflake DDL) | Schema, 3 tables, 5 views, grants, internal stage |
-| `ml_feature_computation.sql` | 445 | Cortex CLI (Snowflake SQL) | SQL stored procedure for feature engineering with incremental/full-refresh |
-| `ml_training_procedure.sql` | 1,087 | Cortex CLI (Snowpark Python) | Snowpark Python procedures: training (stacking ensemble) + prediction (SHAP) + deployment helper |
-| `ml_automation.sql` | 322 | Cortex CLI (Snowflake SQL) | Tasks, Alerts, Streams, monitoring table, training warehouse, grants |
-| `notebooks/01_data_exploration.ipynb` | — | Direct (local Python) | Data profiling, feature distributions, class balance, missing value analysis |
-| `notebooks/02_feature_engineering.ipynb` | — | Direct (local Python) | Feature derivation prototyping, correlation analysis, feature selection |
-| `notebooks/03_model_prototyping.ipynb` | — | Direct (local Python) | Local model training, ensemble comparison, hyperparameter tuning, SHAP analysis |
-| `codeengine/mlPredictions.js` | — | Direct (Code Engine JS) | 3 Code Engine functions: getWinProbability, batchScoreDeals, getLatestPredictions |
-| `src/lib/mlPredictions.ts` | — | Direct (TypeScript) | Frontend service wrapping CE calls for ML predictions |
-
-**Local Development Environment:**
-
-| Component | Details |
-|-----------|---------|
-| **Python version** | 3.10 (matching Snowpark runtime) |
-| **Virtual environment** | `ml-venv/` in project root |
-| **Core libraries** | `pandas`, `numpy`, `scikit-learn`, `xgboost`, `lightgbm`, `imbalanced-learn`, `shap`, `joblib` |
-| **Notebook libraries** | `jupyter`, `matplotlib`, `seaborn`, `plotly` (for EDA visualization) |
-| **Snowflake connectivity** | `snowflake-snowpark-python`, `snowflake-connector-python` (for local → Snowflake data access) |
-| **Requirements file** | `notebooks/requirements.txt` |
-| **Notebooks path** | `notebooks/` directory in project root |
-
-The notebooks serve as the prototyping environment. All feature engineering, model training, and evaluation are iterated locally in notebooks first, then promoted to Snowflake stored procedures once validated. This avoids burning warehouse compute during experimentation.
+| **Command Center table** | New "Win Propensity" column — percentage, color-coded (>70% green, 40–70% amber, <40% red), sortable |
+| **Command Center quadrant tab** | Gorgeous interactive scatter plot: propensity (Y) × TDR score (X), deals colored by quadrant, click-to-navigate |
+| **Intelligence Panel** | Propensity card with SHAP factor bars — plain English labels, directional arrows (↑ helps / ↓ hurts), magnitude bars, color-coded. Designed for naive users — no jargon |
+| **Why TDR? pills** | New propensity factor pills: "High Win Rate (0.78)", "Fast Stage Velocity (1.4×)", "Strong Engagement" |
+| **Portfolio analytics** | Weighted propensity, CRITICAL quadrant count, <20% risk deals |
+| **Graceful degradation** | Propensity shows "—" when model unavailable; TDR score works independently |
 
 **Sub-Sprint Breakdown:**
 
-**Sprint 28a — Local Dev Environment & Data Exploration (Day 1)**
-- [ ] Create `notebooks/` directory and `notebooks/requirements.txt` with all Python dependencies
-- [ ] Set up Python 3.10 virtual environment (`ml-venv/`)
-- [ ] Install all libraries: pandas, numpy, scikit-learn, xgboost, lightgbm, shap, imbalanced-learn, jupyter, matplotlib, seaborn, snowflake-snowpark-python
-- [ ] Create `notebooks/01_data_exploration.ipynb` — load `forecast_page_opportunities_c.json` sample data, profile all fields, visualize distributions, analyze missing values, assess class balance
-- [ ] Create `notebooks/02_feature_engineering.ipynb` — prototype all 19 derived features locally, validate computation logic, correlation matrix, identify multicollinear features
-- [ ] Determine minimum viable training data available in full `opportunitiesmagic` dataset (target: ≥500 labeled rows with `Is Won` = TRUE/FALSE)
+**Sprint 28a — Dataset Swap (Day 1)** *[Cursor — application domain]*
+- [ ] Swap `dataSetId` from `6f12ec25-0018-4ed3-adfe-93ebdfad41fe` to `6ae5896e-e13d-48ac-a9fb-c6e9116b4bb4` in `dist/manifest.json`, `public/manifest.json`, and root `manifest.json`
+- [ ] Remap `Mgr Forecast Name` → `Forecast Manager` in manifest field mappings (alias stays `MgrForecastName`)
+- [ ] Drop `Current FQ` from manifest (not used in frontend)
+- [ ] Add 33 new field mappings (65 total) per reconciliation table in shaping doc
+- [ ] Expand `DomoOpportunity` interface in `src/lib/domo.ts` with new fields
+- [ ] Expand `OPPORTUNITY_FIELD_MAP` with new alias → canonical mappings
+- [ ] Expand `Deal` interface in `src/types/tdr.ts` with new optional properties
+- [ ] Extend `transformOpportunityToDeal()` in `src/hooks/useDomo.ts` for new fields
+- [ ] Verify all existing pages, components, and scoring work without regressions
+- [ ] Verify `domoAi.ts` AI payload still works with expanded data
 
-**Sprint 28b — ML Infrastructure & Feature Pipeline (Day 2)**
-- [ ] Execute `ml_infrastructure_ddl.sql` via Cortex CLI or Snowflake worksheet — create `ML_MODELS` schema, tables, views, stage, grants
-- [ ] Execute `ml_feature_computation.sql` — create `SP_COMPUTE_ML_FEATURES` procedure
-- [ ] Run initial feature computation against full `opportunitiesmagic` dataset in Snowflake
-- [ ] Validate feature distributions in Snowflake match local notebook prototyping: null rates, value ranges, class balance
-- [ ] Verify minimum training data threshold (≥500 labeled rows with known outcomes)
+**Sprint 28b — Exploratory Data Analysis (Day 2)** *[Cursor + Cortex CLI for live Snowflake queries]*
+- [ ] Overhaul `notebooks/01_data_exploration.ipynb` to target `TDR_APP.PUBLIC.Forecast_Page_Opportunities_Magic_SNFv2`
+- [ ] Validate label distribution: Won count, Lost count, Open count, class balance
+- [ ] Feature completeness: null rates for all 19 ML feature source columns across closed and open deals
+- [ ] Won vs Lost distribution analysis for key numeric features
+- [ ] Correlation analysis: identify multicollinear features to avoid redundancy
+- [ ] Derived feature preview: account win rate, stage velocity, services ratio, sales process completeness
+- [ ] Output: clear go/no-go on training viability (minimum ~100 closed deals required)
 
-**Sprint 28c — Model Training & Validation (Day 3–4)**
-- [ ] Create `notebooks/03_model_prototyping.ipynb` — train all 4 base models locally on sample data, evaluate individually, prototype stacking
-- [ ] Execute `ml_training_procedure.sql` — create training + prediction + deployment procedures in Snowflake
-- [ ] Run `SP_TRAIN_STACKING_ENSEMBLE` with SMOTE on initial data
-- [ ] Evaluate metrics: target AUC-ROC ≥ 0.70, AUC-PR appropriate for class imbalance
-- [ ] Compare ensemble vs. native `SNOWFLAKE.ML.CLASSIFICATION` baseline — if <2% AUC lift, simplify to native
-- [ ] Review SHAP feature importance — validate top features make business sense
-- [ ] Deploy validated model: `CALL SP_DEPLOY_MODEL_TO_PRODUCTION('v1')`
-- [ ] Run batch scoring on full pipeline: `CALL SP_PREDICT_WIN_PROBABILITY('batch')`
+**Sprint 28c — ML Infrastructure & Model Training (Day 3–4)** *[Cortex CLI — all Snowflake domain]*
+- [ ] Create `ML_FEATURE_STORE` view (19 derived features)
+- [ ] Create `ML_TRAINING_DATA` view (closed deals + labels)
+- [ ] Create `DEAL_ML_PREDICTIONS` table, `ML_MODEL_METADATA` table
+- [ ] Grants for `TDR_APP_ROLE`: `CREATE SNOWFLAKE.ML.CLASSIFICATION`, `CORTEX_USER`
+- [ ] `CREATE SNOWFLAKE.ML.CLASSIFICATION DEAL_CLOSE_PROPENSITY` on training data
+- [ ] Validate via `SHOW_EVALUATION_METRICS()` — target AUC-ROC ≥ 0.70
+- [ ] Extract `SHOW_FEATURE_IMPORTANCE()` — verify top features make business sense
+- [ ] Log metadata to `ML_MODEL_METADATA`
 
-**Sprint 28d — Integration & Automation (Day 5–7)**
-- [ ] Execute `ml_automation.sql` — create Tasks (daily features, daily scoring, biweekly retraining), Alert, Stream, monitoring table, training warehouse
-- [ ] Resume Tasks: `ALTER TASK ... RESUME` for all 4 tasks
-- [ ] Write `codeengine/mlPredictions.js` — 3 Code Engine functions following existing `cortexAi.js` patterns (JWT auth, executeSql, /api/v2/statements)
-- [ ] Add `packageMapping` entries to `manifest.json` for the 3 new CE functions
+**Sprint 28d — Code Engine & Automation (Day 5–6)** *[Cursor for CE code + Cortex CLI for Tasks/Procedures]*
+- [ ] Write Code Engine functions: `getWinProbability`, `batchScoreDeals`, `getModelMetrics`, `retrainModel`
+- [ ] Add `packageMapping` entries to manifest for all 4 functions
+- [ ] Create nightly batch scoring Task and weekly retrain Task
+- [ ] Create `RETRAIN_PROPENSITY_MODEL` stored procedure
 - [ ] Write `src/lib/mlPredictions.ts` — frontend service wrapping CE calls
-- [ ] Add Win Probability column to Command Center deals table
-- [ ] Add Deal Propensity card to Intelligence Panel (probability, SHAP factors, risk flags, quadrant)
-- [ ] Update Documentation Hub: Architecture Diagram (ML layer), AI Models (stacking ensemble), Data Model (ML_MODELS tables)
 
-**Definition of Done:** A stacking ensemble model trained on historical SFDC deal outcomes predicts close probability for every pipeline deal. Predictions surface in the Command Center (table column) and Intelligence Panel (propensity card with SHAP explanations). The two-axis quadrant (propensity × TDR score) is visible. Snowflake Tasks automate daily scoring and biweekly retraining. Model performance is monitored via alerts.
+**Sprint 28e — Frontend Integration (Day 7–10)** *[Cursor — application domain]*
+- [ ] Add Win Propensity column to Command Center deals table (AG Grid)
+- [ ] Build quadrant scatter plot as Command Center tab — gorgeous, interactive, click-to-navigate
+- [ ] Add propensity card to Intelligence Panel with SHAP factor bars (naive-user-friendly design)
+- [ ] Extend Why TDR? pills with propensity factor pills
+- [ ] Add portfolio-level propensity metrics
+- [ ] Implement graceful degradation ("—" when model unavailable)
+- [ ] Update Documentation Hub: Architecture Diagram, AI Models Reference, Data Model Reference
+
+**Definition of Done:** Dataset swapped to expanded 65-column mapping with zero regressions (`Mgr Forecast Name` remapped, `Current FQ` dropped, 4 unavailable text columns removed). EDA validates sufficient training data. `SNOWFLAKE.ML.CLASSIFICATION` model trained and scoring pipeline deals nightly. Propensity score surfaces in Command Center table, interactive quadrant scatter, Intelligence Panel (with SHAP factors), and portfolio analytics. Two-axis quadrant (propensity × TDR score) is the primary prioritization view. Weekly retraining automated.
 
 **Key Decision Points:**
-1. **Ensemble vs. Native-only** — decided after Sprint 28c training run. If ensemble doesn't beat native by >2% AUC, simplify.
-2. **Class imbalance strategy** — SMOTE vs. class_weight. Run both in notebook prototyping, pick whichever produces better AUC-PR (more relevant for imbalanced data than AUC-ROC).
-3. **Minimum viable training data** — if full `opportunitiesmagic` has <500 labeled rows (Won + Lost), defer training and use a simpler logistic regression or even the native model until more data accumulates.
-4. **Notebook → Snowflake promotion** — all feature engineering and model logic is prototyped locally in notebooks first, then promoted to stored procedures only after validation. This avoids burning warehouse compute during iteration.
+1. **Go/no-go from EDA** — if <100 closed deals in the new dataset, defer model training. App still works; propensity shows "—".
+2. **Class imbalance** — if Won:Lost ratio is heavily skewed, evaluate class_weight vs. oversampling in training config.
+3. **Threshold calibration** — initial quadrant thresholds (propensity 50%, TDR score 50) refined after seeing actual model output distributions.
 
-**Learnings & Decisions (from shaping):**
-- Cortex CLI is the Snowflake-specific assistant: DDL, stored procedures, Tasks, Alerts, Streams, Snowpark package availability. All application code (Code Engine JS, frontend TS, Python notebooks) is authored directly.
-- "Propensity to close" is the correct model framing — not "TDR suitability." ML handles pattern recognition across features; the deterministic TDR score handles domain expertise. The two-axis composition gives richer prioritization than either alone.
-- Labels come from SFDC outcomes (`Is Won`), not the deterministic score. Using the hand-coded score as a label would create circular logic. The 9 TDR factors become *features*, and ML discovers whether the assumed weightings match what actually predicts wins.
-- The sample dataset (280K lines JSON) contains only open pipeline (0 closed deals). The full `opportunitiesmagic` dataset in Snowflake is required for training labels.
+**Learnings (from Sprint 28 reshaping):**
+- Stacking ensemble dropped in favor of native `SNOWFLAKE.ML.CLASSIFICATION`. Simpler, no Python, fits existing pattern. Upgrade path to Snowpark ensemble exists if needed.
+- Dataset swap is the prerequisite — the original Sprint 28 assumed ML on top of existing data. The expanded dataset feeds both the app and the model.
+- SHAP-like factor display is designed for naive users: plain English, directional arrows, magnitude bars, no jargon.
+- Propensity is a platform, not a point solution: TDR prioritization, pipeline health, forecast validation, portfolio risk, and (6–12 months out) causal analysis of TDR intervention impact.
+
+---
+
+### Sprint 29 — AI-Enhanced TDR Responses 🔲 NOT STARTED
+
+> **Goal:** Add per-field AI enhancement to TDR textarea inputs. When an SE types a terse response, they can click "Enhance" to get an AI-improved version that preserves their intent but adds specificity, structure, and completeness — drawing from deal context, account intel, and the Knowledge Base. The SE reviews a before/after diff and explicitly accepts, edits, or dismisses the enhancement.
+> **Risk to app:** Low — additive UX feature on existing textarea fields. No changes to TDR step structure, field definitions, or save infrastructure. Enhancement is opt-in (button click), not automatic.
+> **Effort:** ~2–3 days (2 sub-sprints)
+> **Dependencies:** Sprint 17 (lean TDR inputs — field structure), Sprint 19 (fileset intelligence — KB context), Sprint 6.5 (Sumble deep intel — account context). No dependency on Sprint 28.
+> **Shaping document:** `shaping/ai-enhanced-tdr-responses.md`
+
+**Problem Statement:**
+SEs filling out TDR fields write terse, incomplete responses under time pressure. A typical human input looks like "New CFO wants better reporting. Current process is manual." — but useful TDR inputs require specificity about timing, stakeholders, constraints, and architectural truth. Every downstream AI artifact (structured extract, TDR brief, action plan) degrades when inputs are thin. The gap isn't length — it's the SE knowing more than they wrote down.
+
+**Solution: "Enhance" Button + Inline Diff**
+
+An "Enhance" affordance appears on textarea fields (not selects, not short text). On click, the system assembles a context-aware prompt from 8 layers:
+
+1. **Field identity** — label, placeholder, hint from `stepInputConfigs`
+2. **Step identity** — title, core question from `tdrSteps`
+3. **SE's raw input** — the seed to enhance
+4. **Sibling fields** — other filled fields in the same step
+5. **Cross-step context** — filled fields from other steps (thesis, decision, entry layer)
+6. **Deal metadata** — account, ACV, stage, deal type, close date
+7. **Account intel** — Sumble + Perplexity data (if enriched)
+8. **Knowledge Base** — Domo filesets (battle cards, playbooks, competitive guides — always available)
+
+The prompt respects TDR forcing functions: "Customer Decision" gets tightened to one sentence, "Architectural Truth" gets sharpened as a constraint, "Key Assumption" gets isolated as a single falsifiable belief.
+
+The AI returns an enhanced version. The SE sees an inline diff (original vs. enhanced) with three actions:
+- **Accept** → enhanced value replaces field content, saves via existing `onSaveInput`
+- **Edit** → enhanced text enters the textarea for manual tweaks, normal auto-save takes over
+- **Dismiss** → nothing changes
+
+A context-source badge shows what was used: "Enhanced using: Perplexity research, Sumble tech stack, Knowledge Base, deal metadata" — building trust in the output.
+
+**API:** Uses **Domo AI endpoint** (`/domo/ai/v1/text/chat`) via `domoAi.ts` pattern — same Anthropic model quality as Cortex but lower latency (no Code Engine → Snowflake round-trip) and no Cortex per-token cost. ~500 output tokens per field enhancement.
+
+**Key Design Decisions:**
+- Per-field only (no bulk "enhance all" at launch — risk of rubber-stamping)
+- Re-enhance always available (Enhance button reappears after any edit, even on previously enhanced fields)
+- Enhancement quality signal shown (which context sources were used)
+- Filesets provide baseline context even when Sumble/Perplexity haven't been run ("Enrich account data for better enhancements" nudge when intel is missing)
+- No new Snowflake tables — edit history in `TDR_STEP_INPUTS` captures original and enhanced values
+- "AI-enhanced" badge on accepted fields so reviewers know which inputs had AI assist
+
+**Sprint 29a — Enhancement Engine & Prompt Construction (Day 1–2)**
+- [ ] Create `src/lib/tdrEnhance.ts` — prompt assembly function that collects all 8 context layers for a given field
+- [ ] Add `enhanceField` function using Domo AI endpoint (`/domo/ai/v1/text/chat`) — sends assembled prompt, returns enhanced text
+- [ ] Build per-field-type prompt templates that encode the TDR forcing functions (one-sentence for Customer Decision, constraint for Architectural Truth, etc.)
+- [ ] Add fileset context integration — query relevant KB documents for the deal's industry/competitors and include in prompt
+- [ ] Test with sample inputs from `samples/TDR-*.md` to validate enhancement quality
+
+**Sprint 29b — UI Integration & Diff View (Day 2–3)**
+- [ ] Add "Enhance" button to textarea fields in `TDRInputs.tsx` — sparkle icon + text, bottom-right of field, disabled when empty
+- [ ] Build inline diff component — shows original vs. enhanced with highlighted changes, Accept/Edit/Dismiss buttons
+- [ ] Wire Accept → `onSaveInput` (bypasses debounce, immediate save)
+- [ ] Wire Edit → replace textarea value, enter normal auto-save flow
+- [ ] Wire Dismiss → close diff, no changes
+- [ ] Add "AI-enhanced" badge to fields that accepted an enhancement
+- [ ] Add context-source indicator ("Enhanced using: ...")
+- [ ] Add "Enrich account data for better enhancements" nudge when Sumble/Perplexity data is missing
+
+---
+
+### Sprint 30 — UX Polish & Iteration 🔲 NOT STARTED
+
+> **Goal:** Dedicated time for holistic UX evaluation and refinement of Sprint 28 and Sprint 29 deliverables. New ML visualizations (propensity quadrant, SHAP factors), AI enhancement UI (diff view, context badges), and the expanded dataset columns all need real-user feedback cycles before they're production-ready. This sprint also addresses pre-existing data visibility issues discovered during UAT (e.g., Stage Age filtering threshold).
+> **Risk to app:** None — purely additive refinements to existing, working features.
+> **Effort:** ~1–2 days
+> **Dependencies:** Sprint 28 (propensity quadrant + SHAP display), Sprint 29 (AI enhancement + diff view). Both must be functional before UX iteration begins.
+
+**Problem Statement:**
+First implementations of complex visualizations and interaction patterns rarely nail the UX on the first pass. The propensity quadrant scatter plot, SHAP factor cards, AI enhancement diff view, and context-source badges are all net-new interaction surfaces that benefit from evaluation in situ — with real deal data, real screen sizes, and real user workflows. Additionally, existing data visibility rules may need recalibration: the current `MAX_STAGE_AGE_DAYS = 365` threshold silently hides legitimate deals (e.g., renewals that sit in early stages for extended periods), creating a trust gap when users search for deals they know exist.
+
+**Scope (candidate items — prioritized during sprint):**
+
+1. **Stage Age Threshold Review** — The current hard filter (`Stage Age > 365 days → hidden`) drops legitimate deals. Example: "New York State Olympic Regional Development Authority Renewal" has Stage Age = 1,072 days but a close date of 3/22/26 — a real, active deal invisible to the app. Options:
+   - Increase threshold (e.g., 730 days)
+   - Make threshold configurable per deal type (renewals get longer leash)
+   - Replace hard cutoff with a "stale deal" visual indicator instead of exclusion
+   - Add close-date proximity override (if close date is within 90 days, always show regardless of stage age)
+
+2. **Propensity Quadrant Polish** — Scatter plot readability, dot sizing (ACV-weighted?), hover tooltips, quadrant label placement, color palette for CRITICAL/STANDARD/MONITOR/SKIP, responsive behavior on smaller screens.
+
+3. **SHAP Factor Display** — Plain English labels, directional arrows, magnitude bar sizing, card layout (horizontal vs. vertical), "Why this score?" expandable section placement.
+
+4. **AI Enhancement Diff View** — Diff rendering clarity (word-level vs. line-level), button placement, animation on accept/dismiss, re-enhance affordance, mobile responsiveness.
+
+5. **Context-Source Badges** — Visual weight, truncation on narrow viewports, tooltip on hover for full context list.
+
+6. **Expanded Dataset Column Visibility** — New columns from the dataset swap (firmographics, engagement signals, milestones) may warrant surfacing in deal detail views or tooltips. Evaluate which are useful vs. noise.
+
+7. **Duplicate Record Handling** — Investigate and handle cases where the dataset contains duplicate Opportunity IDs with differing field values (e.g., different `Mgr Forecast Name` on each row). Determine deduplication strategy: latest record wins, prefer non-placeholder values, or flag for review.
+
+8. **TDR Step Restructuring** — Moved to Sprint 31 (TDR Framework Redesign) — see below. Substantially expanded via `shaping/tdr-quality-of-life.md`.
+
+9. **Settings → Filter bridge** — `appSettings.allowedManagers` in localStorage is disconnected from `ALLOWED_MANAGERS` in `constants.ts`. Bridge them so manager additions in Settings immediately reflect in the Command Center dropdown.
+
+10. **Perplexity tech pills** — Technical landscape pills only show Sumble-sourced technologies. Perplexity-cited tech (e.g., "Alteryx" from a Papa Johns research pull) should render as pills with a Perplexity source icon.
+
+11. **Slack PDF tech pill colors** — Tech stack pills in the Slack PDF render without color. Match `TECH_CATEGORY_STYLES` from the app.
+
+12. **Intelligence Panel guided workflow** — Add a "Readout Checklist" indicator showing the recommended sequence: Enrich → Research → Action Plan → TDR Brief. Each item shows status (not started / complete / stale). Communicates the sequence without enforcing it.
+
+13. **Slack share caching** — Reuse recently generated TDR brief and PDF for Slack distribution instead of regenerating. Skip redundant `generateReadoutSummary()` call if summary hasn't changed.
+
+14. **Gap indicator** — Subtle "Gap" badge on textarea fields that are empty or very terse (< ~15 chars) when sibling fields are filled. Non-blocking diagnostic cue. Step header shows count: "2 gaps identified."
+
+**No-Gos:**
+- No auto-enhancement without user action
+- No enhancement that introduces facts not in SE input or account intel
+- No new Snowflake tables
+- No custom diff renderer (use existing React diff library or simple before/after toggle)
+- No forced workflow in the Intelligence Panel — checklist is advisory, not blocking
+
+**Definition of Done:** SE can click "Enhance" on any textarea field, see an AI-enhanced version with inline diff, and Accept/Edit/Dismiss. Enhancement draws from all available context (8 layers). Context sources are visible. Edit history preserves both original and enhanced values. Settings manager changes immediately reflect in Command Center. Tech pills include Perplexity sources with provenance icons. Slack PDF tech pills are colored. Intelligence Panel shows a readout checklist. Gap indicators surface on empty/terse fields.
+
+---
+
+### Sprint 31 — TDR Framework Redesign 🔲 NOT STARTED
+
+> **Goal:** Consolidate the TDR from 9 steps / 29 fields to 5 steps / 23 fields. Elevate AI & ML from an optional 2-field afterthought to a rigorous core step with structured AI value continuum framework, plain English labels, and level-specific dynamic hints. Add resizable textareas, semi-automated step completion, pill/tag inputs (Domo Layers, AI Signals, AI Data Readiness), gap indicators for "Unknown" selections, and exposed TDR versioning. Update the PDF readout to match.
+> **Risk to app:** Medium — structural change to the core TDR framework. Mitigated by: (1) Snowflake schema is field-ID-agnostic (new IDs are additive, old data preserved), (2) scoring weights can be remapped, (3) old sessions remain readable.
+> **Effort:** ~3–5 days
+> **Dependencies:** Sprint 29 (AI Enhancement — build on current steps first, then restructure), Sprint 30 (UX Polish — quick fixes ship independently).
+> **Shaping document:** `shaping/tdr-quality-of-life.md` — **step design approved and locked.**
+> **Reference materials:** `samples/ai-value-continuum.png`, `samples/what-to-look-for.png`, `samples/Practitioners Series Problem Framing Worksheet (1).pdf` — all reviewed and incorporated into the AI & ML step design.
+
+**Problem Statement:**
+The current 9-step TDR is exceedingly detailed for real-world SE workflows. Several fields overlap (Entry Layer / In-Scope Layers, System of Record / Architectural Truth / What Changes in Target State). The AI & ML assessment is a 2-field optional step that doesn't surface whether the opportunity is for rules-based automation, traditional ML, generative AI, or agentic solutions. Step completion is a manual checkbox with no intelligence about actual field completeness. In-scope layers save as free text instead of structured tags usable for analytics. Textareas can't be resized. TDR versioning (adding follow-up responses at a later date) isn't clearly exposed despite existing Snowflake support.
+
+**Approved Step Structure (5 steps, 23 fields — down from 9 steps, 29 fields):**
+
+| # | Step | Required? | Fields | Key Changes |
+|---|------|-----------|--------|-------------|
+| 1 | Deal Context | Yes | 5 | Merges Context + Business Decision. Drops `success-criteria`. Renames `key-stakeholders` → `key-technical-stakeholders`. |
+| 2 | Technical Architecture | Yes | 6 (4 req, 2 opt) | Merges Architecture + Domo Role + Target Architecture. 12 fields → 6. `current-state` consolidates SoR + arch-truth + pain-points. `target-state` consolidates 4 target fields. `domo-layers` multi-select pills replace entry-layer + in-scope. `why-composition` → `why-domo` ("Why Domo Wins Here"). |
+| 3 | Risk & Verdict | Yes | 5 (3 req, 2 opt) | Absorbs Partner. Partner posture is a risk/opportunity signal. Drops `compute-alignment`. |
+| 4 | AI & ML Opportunity Assessment | Yes | 5 | **New core step.** Plain English labels (Rules & Automation, Predictive AI, Generative AI, Autonomous AI). Dynamic hints change based on `ai-level`. `ai-data` is multi-select. "Unknown / needs discovery" triggers gap indicator. |
+| 5 | Adoption & Success | No | 2 | Streamlines Usage. Merges `adoption-plan` + `success-metrics` → `adoption-success`. |
+
+**Sprint 31a — Step Consolidation Design & User Approval** ✅ APPROVED
+- [x] Propose consolidated step structure — 5 steps, 23 fields
+- [x] Design AI & ML core step using value continuum framework (3 reference docs reviewed)
+- [x] Map field consolidations: Entry Layer + In-Scope → Domo Layers pills; SoR + Arch Truth + Pain Points → Current State; 4 target fields → Target State; Stakeholders renamed; Why Composition → Why Domo Wins Here
+- [x] Evaluate: Business Decision reduced (merged into Deal Context, success-criteria dropped); Out of Scope kept optional; Additional Context folded into core steps
+- [x] User approval obtained — step design locked
+
+**Sprint 31b — Step Implementation**
+- [ ] Update `tdrSteps` in `mockData.ts` with 5 new step IDs, titles, core questions
+- [ ] Update `stepInputConfigs` in `TDRInputs.tsx` with 23 field definitions, including dynamic hints for AI & ML step
+- [ ] Build pill/tag input component for Domo Layers, AI Signals, and AI Data Readiness (use `react-select` creatable or similar)
+- [ ] Implement `ai-level` select with plain English labels + subtitle descriptions in dropdown
+- [ ] Wire dynamic hint switching on `ai-problem` and `ai-value` textareas based on `ai-level` selection
+- [ ] Add `resize: vertical` CSS to all textarea fields with drag handle
+- [ ] Implement semi-automated step completion: auto-complete when required fields have substantive content (>15 chars for textareas, any non-"Unknown" selection for selects); manual override preserved
+- [ ] Implement gap indicators: empty/terse textareas, "Unknown" selects, contradiction states (ai-level vs ai-signals mismatch)
+- [ ] Update `tdrCriticalFactors.ts` scoring weights for new step/field IDs
+
+**Sprint 31c — Versioning & PDF**
+- [ ] Add "Start New Iteration" button for deals with completed TDR sessions
+- [ ] Build collapsible iteration history view (read-only previous iterations)
+- [ ] Update `TDRReadoutDocument.tsx` PDF layout to match new 5-step structure
+- [ ] Update `tdrReadout.ts` readout assembly for new field/step IDs
+- [ ] Test end-to-end: new steps → save → generate brief → generate action plan → PDF → Slack
 
 ---
 
@@ -6248,19 +6351,46 @@ Sprint OSS-1 — Open-Source Readiness & README Overhaul ✅ COMPLETE
     │  README: rewritten for expert/exec audience (4-layer arch, AI stack, ML strategy)
     │
     ▼
-Sprint 28 — Deal Close Propensity ML Model 🔲
-    │  (depends on S18 + S25)
-    │  28a: Local Dev Environment & Data Exploration (Day 1)
-    │  28b: ML Infrastructure & Feature Pipeline (Day 2)
-    │  28c: Model Training & Validation (Day 3–4)
-    │  28d: Integration & Automation (Day 5–7)
-    │  Python notebooks for prototyping → Snowflake promotion
-    │  Stacking ensemble: XGBoost + LightGBM + RF + LogReg
-    │  19 derived features, SHAP explanations, 2-axis quadrant
-    │  Snowflake Tasks: daily scoring + biweekly retraining
+Sprint 28 — Dataset Swap & Deal Close Propensity ML 🔲
+    │  (depends on S18)
+    │  28a: Dataset Swap — 65 column mappings, new dataset ID (Day 1)
+    │  28b: Exploratory Data Analysis — overhaul notebook (Day 2)
+    │  28c: ML Infrastructure & Model Training (Day 3–4)
+    │  28d: Code Engine & Automation (Day 5–6)
+    │  28e: Frontend Integration — quadrant, SHAP, propensity (Day 7–10)
+    │  SNOWFLAKE.ML.CLASSIFICATION (native, pure SQL)
+    │  19 derived features, SHAP-like factors for naive users
+    │  2-axis quadrant: propensity × TDR score
+    │
+    ▼
+Sprint 29 — AI-Enhanced TDR Responses 🔲
+    │  (depends on S17 + S19 + S6.5; parallel with S28)
+    │  29a: Enhancement Engine & Prompt Construction (Day 1–2)
+    │  29b: UI Integration & Diff View (Day 2–3)
+    │  Domo AI endpoint (Anthropic), 8 context layers
+    │  Per-field Enhance button, inline diff, Accept/Edit/Dismiss
+    │  Filesets + Sumble + Perplexity + SE inputs + deal metadata
+    │
+    ▼
+Sprint 30 — UX Polish & Iteration 🔲
+    │  (depends on S28 + S29)
+    │  Stage Age threshold, quadrant/SHAP/diff polish
+    │  Settings→Filter bridge, Perplexity tech pills
+    │  Slack PDF colors, Intelligence Panel checklist
+    │  Gap indicators, duplicate record handling
+    │  ~1–2 days
+    │
+    ▼
+Sprint 31 — TDR Framework Redesign 🔲
+    │  (depends on S29 + S30; requires user approval)
+    │  31a: Step consolidation design & approval
+    │  31b: Step implementation (pills, resize, auto-complete)
+    │  31c: Versioning UX & PDF readout update
+    │  9 steps → ~5–6, AI & ML core step, value continuum
+    │  ~3–5 days
 ```
 
-**Total estimated effort:** ~20-26 days of focused development
+**Total estimated effort (original):** ~22–29 days · **Completed:** ~20 days (Sprints 14–27, OSS-1) · **Remaining:** ~13–20 days (Sprints 28 + 29 + 30 + 31)
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -6281,7 +6411,10 @@ Sprint 28 — Deal Close Propensity ML Model 🔲
 | **S27: Decision Architecture** | — | S26 | 2 days | ✅ Feb 14 |
 | **S25: Documentation Hub + Architecture** | — | S24 + S27 | 1 day | ✅ Feb 14 |
 | **OSS-1: Open-Source Readiness** | — | S25 | 0.5 day | ✅ Mar 3 |
-| **S28: Deal Close Propensity ML** | — | S18 + S25 | 5–7 days (4 sub-sprints) | 🔲 Not Started |
+| **S28: Dataset Swap & Propensity ML** | — | S18 | 7–10 days (5 sub-sprints) | 🔲 Not Started |
+| **S29: AI-Enhanced TDR Responses** | ✅ with S28 | S17 + S19 + S6.5 | 2–3 days (2 sub-sprints) | 🔲 Not Started |
+| **S30: UX Polish & Iteration** | — | S28 + S29 | 1–2 days | 🔲 Not Started |
+| **S31: TDR Framework Redesign** | — | S29 + S30 | 3–5 days (3 sub-sprints) | 🔲 Not Started |
 
 ---
 
@@ -6523,9 +6656,9 @@ CREATE TABLE IF NOT EXISTS TDR_DISTRIBUTIONS (
 
 ---
 
-## 20. Solution Strategy Summary — The Six Pillars
+## 20. Solution Strategy Summary — The Seventeen Pillars
 
-This is the "elevator pitch" view. The final solution is built on six distinct pillars. Each pillar is independently valuable, but together they create a compounding effect: more data makes the chat smarter, chat interactions surface insights that improve scoring, scoring drives better TDR prioritization, better prioritization means more valuable data is collected, and the readout captures it all as a permanent record. It's a flywheel.
+This is the "elevator pitch" view. The final solution is built on seventeen distinct pillars. Each pillar is independently valuable, but together they create a compounding effect: more data makes the chat smarter, chat interactions surface insights that improve scoring, scoring drives better TDR prioritization, better prioritization means more valuable data is collected, the readout captures it all as a permanent record, and the ML model predicts which deals will close. It's a flywheel.
 
 ### Pillar 1: Persistent Memory (Sprints 1–3)
 **What:** Every TDR session, every step input, every edit — stored in Snowflake with timestamps. Full history, never overwritten.
@@ -6567,35 +6700,50 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 **Why it matters independently:** Model quality is the single biggest lever for AI output quality. Frontier models produce dramatically better TDR briefs, more accurate entity extraction, more insightful KB summaries, and more useful chat responses. This is a force multiplier for every other pillar.
 **Key outcome:** The app uses the best AI available — period.
 
-### Pillar 8: Lean Operating Model (Sprint 17)
+### Pillar 9: Lean Operating Model (Sprint 17)
 **What:** The 9-step TDR is compressed into 5 required sections + optional extras. A Thesis field ("Why does Domo belong?") is always visible. Fields are replaced with forcing questions. The target is 30 minutes, not 90.
 **Why it matters independently:** Even if you never build another enrichment source, a faster TDR means more deals get reviewed. The compression removes documentation overhead and focuses the SE on the one question that matters: does the technical story hold together?
 **Key outcome:** The app respects the user's time.
 
-### Pillar 9: Action Plan Synthesis (Sprint 21) — THE CAPSTONE
+### Pillar 10: Action Plan Synthesis (Sprint 21) — THE CAPSTONE
 **What:** After TDR completion, Cortex AI synthesizes ALL captured data — SE inputs, deal metadata, Perplexity research, Sumble enrichment, fileset battle cards/playbooks, chat highlights, classified findings, Post-TDR Score — into a 7-section strategic action plan tailored to the specific deal. Every recommendation cites its data source. The plan names specific competitors, specific partners, specific people, specific technologies.
 **Why it matters independently:** This is the payoff for everything else. Every other pillar *generates* intelligence. This pillar *converts* that intelligence into action. Without it, the SE/AE still has to read through raw data and figure out what to do. With it, they open the PDF and the first thing they see is: "Here's exactly what to do next, in what order, and why."
 **Key outcome:** The app tells you what to do.
 
-### Pillar 10: Performance & Caching (Sprint 24)
+### Pillar 11: Performance & Caching (Sprint 24)
 **What:** A full-stack audit of the app — dead code removal, unused dataset cleanup, bundle optimization, and most critically: **caching Cortex KB summaries to Snowflake** so they persist across sessions rather than regenerating on every deal load. A "Refresh" button gives the user explicit control over when to invoke a fresh Cortex call.
 **Why it matters independently:** Even without any new features, this pillar makes the existing app faster, cheaper, and leaner. KB summaries load in < 200ms from Snowflake cache instead of 5-10s from a live Cortex call. The bundle shrinks by ≥ 15%. Dead code and orphaned datasets are eliminated, reducing maintenance surface area. Cortex AI token spend drops significantly as redundant calls are eliminated.
 **Key outcome:** The app is fast, lean, and cost-efficient.
 
-### Pillar 11: UX Cohesion (Sprint 26) — THE POLISH
+### Pillar 12: UX Cohesion (Sprint 26) — THE POLISH
 **What:** A comprehensive usability audit and redesign of the Intelligence panel — the most information-dense surface in the app. Consolidates 4 separate Sumble enrichment buttons into one "Enrich Account" action. Reduces branding from colored pills on every section to subtle icon-only indicators. Moves Analytics Extraction behind the scenes (auto-runs, invisible to user). Reorders sections by decision value: Action Plan and TDR Score at top, raw data feeds in collapsible middle sections, administrative controls at bottom.
 **Why it matters independently:** Even without any new features, this pillar transforms the user experience from "wall of features accumulated over 23 sprints" to "cohesive intelligence dashboard designed for daily workflow." A first-time user can scan the panel and immediately find what matters. A returning user doesn't waste clicks on 4 separate enrichment buttons.
 **Key outcome:** The app feels designed, not assembled.
 
-### Pillar 12: Documentation Hub & Architecture Visualization (Sprint 25) — THE FINAL DELIVERABLE
+### Pillar 13: Documentation Hub & Architecture Visualization (Sprint 25)
 **What:** A comprehensive in-app Documentation Hub at `/docs` containing seven sections: (1) Interactive Architecture Diagram with 5 switchable SVG layers (System Overview, Snowflake Data Model, Cortex AI Model Map, Enrichment Pipeline, User Workflow), (2) Scoring Reference detailing Pre-TDR, Post-TDR, and Confidence Score methodology with factor tables, (3) Capabilities Guide covering all 9 app sections with feature-level detail, (4) Integrations Reference documenting all 5 external systems (Snowflake Cortex, Sumble, Perplexity, Domo Platform, Slack), (5) Data Model Reference mapping all 10 Snowflake tables/views, (6) AI Models Reference cataloging every model across 3 providers, and (7) Glossary & FAQ with 20+ terms and common questions. The hub uses a sticky Table of Contents sidebar, accordion-based navigation, and the app's dark violet design language throughout.
 **Why it matters independently:** This is the meta-deliverable. It documents everything the other eleven pillars built. When a Snowflake SA asks "What does your app do?", you open this tab. When a Domo executive asks "How is Cortex being used?", you check the AI Models section. When an SE asks "How is the TDR score calculated?", the Scoring Reference has every factor and weight. When a new engineer joins the project, they have a visual map plus complete technical documentation of the entire system. It transforms institutional knowledge into a comprehensive, interactive reference.
 **Key outcome:** The app explains itself — completely.
 
-### Pillar 13: Deal Close Propensity (Sprint 28)
-**What:** A `SNOWFLAKE.ML.CLASSIFICATION`-benchmarked stacking ensemble (XGBoost, LightGBM, RandomForest, LogisticRegression → LogReg meta-learner) trained on historical SFDC deal outcomes predicts close probability for every pipeline deal. 19 derived features are computed daily from `opportunitiesmagic` into an ML Feature Store. SHAP explanations surface the "why" behind every prediction. The propensity score composes with the existing deterministic TDR score to create a **two-axis prioritization system**: propensity to close (Y) × technical complexity (X) → a 2×2 quadrant (CRITICAL / MONITOR / LOW TOUCH / DEPRIORITIZE). Python notebooks handle local prototyping; Snowpark Python stored procedures handle training and inference in Snowflake. Snowflake Tasks automate daily scoring, daily feature computation, and biweekly model retraining.
-**Why it matters independently:** Even without any other enrichment, the propensity score answers the question the deterministic scoring can't: "Will this deal actually close?" An SE Manager looking at 40 open deals can immediately see which ones have an 85% close probability vs. 15%. Combined with the TDR complexity score, the CRITICAL quadrant (high propensity + high complexity) becomes the priority queue — deals that are both winnable and worth the TDR investment. The SHAP explanations make the model trustworthy: not just "72% likely to close" but "because account win rate is 0.65, stage velocity is 1.2× average, and sales process is 85% complete."
-**Key outcome:** The app predicts which deals will close — and explains why.
+### Pillar 14: Dataset Swap & Deal Close Propensity (Sprint 28)
+**What:** Two-part: (1) Swap the primary dataset from a 34-column mapping to 65 columns (2 existing remapped/dropped, 33 new added), adding account firmographics, sales milestones, engagement signals, historical outcomes, and unstructured text. Verified against actual v2 sample (506 total columns available). New Domo dataset ID includes historical closed deals for ML training. (2) Train a `SNOWFLAKE.ML.CLASSIFICATION` propensity-to-close model — native SQL, no Python, no ensemble complexity. 19 derived features. Propensity composes with TDR score into a **two-axis quadrant** (CRITICAL / STANDARD / MONITOR / SKIP). SHAP-like factor explanations surface inline per deal — designed for naive users with plain English labels, directional arrows (↑ helps / ↓ hurts), and magnitude bars. Gorgeous interactive quadrant scatter plot in the Command Center. EDA notebook validates data quality before training.
+**Why it matters independently:** The dataset swap alone expands what the app knows about each deal — firmographics, engagement, process milestones become visible. The propensity model answers the question the deterministic score can't: "Will this deal actually close?" Combined with TDR complexity, the CRITICAL quadrant (high propensity + high complexity) becomes the priority queue. The SHAP factor display makes the model trustworthy: not just "82% likely to close" but "because account win rate is 0.78, stage velocity is 1.4× average, and engagement is strong" — in words anyone can understand.
+**Key outcome:** The app predicts which deals will close, explains why in plain English, and composes that with technical complexity to focus SE Manager time on the right deals.
+
+### Pillar 15: AI-Enhanced TDR Responses (Sprint 29)
+**What:** Per-field AI enhancement for TDR textarea inputs. An SE types a terse response ("New CFO wants better reporting"), clicks "Enhance," and receives a context-aware improved version that preserves their intent but adds specificity, structure, and completeness. The enhancement draws from 8 context layers: field identity, step forcing function, sibling/cross-step inputs, deal metadata, Sumble account intel, Perplexity research, and Domo Knowledge Base filesets. The SE sees an inline diff and explicitly accepts, edits, or dismisses. Uses the Domo AI endpoint (Anthropic) for low-latency, cost-effective enhancement without a Snowflake round-trip. No new infrastructure — enhanced values save through the existing `onSaveInput` flow and edit history captures both original and enhanced versions.
+**Why it matters independently:** The entire DealInspect intelligence stack — structured extraction, TDR brief, action plan, classified findings — is only as good as what the SE types into the TDR fields. Thin inputs produce thin artifacts. This pillar closes the gap between what the SE knows and what they write, making every downstream AI artifact materially better without requiring the SE to become a better writer. It also creates a positive feedback loop: as SEs see enhanced responses, they internalize what "good" looks like and start writing better inputs naturally.
+**Key outcome:** The quality floor for TDR inputs rises — no deal goes through the system with terse, unstructured responses that starve the AI pipeline.
+
+### Pillar 16: UX Polish & Iteration (Sprint 30)
+**What:** A dedicated pass over every net-new interaction surface from Sprints 28–29 — propensity quadrant scatter plot, SHAP factor cards, AI enhancement diff view, context-source badges — plus recalibration of existing data visibility rules. The `MAX_STAGE_AGE_DAYS` threshold (currently 365) silently hides legitimate deals like renewals that linger in early stages; this pillar evaluates alternatives (higher threshold, deal-type awareness, close-date proximity override, or soft "stale" indicator instead of hard exclusion). Duplicate Opportunity ID records with conflicting field values (e.g., one row with `Mgr Forecast Name = "NAM Enterprise"`, another with `Casey Morgan`) get a deduplication strategy. Every new column from the expanded dataset is evaluated for surfacing in deal detail views. Additionally: Settings→Filter bridge so manager additions immediately reflect in dropdowns, Perplexity-cited tech rendered as pills with source provenance icons, Slack PDF tech pills colored to match the app, Intelligence Panel guided workflow checklist, Slack share caching to eliminate redundant regeneration, and data gap indicators on empty/terse TDR fields.
+**Why it matters independently:** First-pass implementations of ML visualizations and AI interaction patterns almost never nail the UX. Without a dedicated refinement cycle, rough edges accumulate — an awkward tooltip placement, an unintuitive diff rendering, a hidden deal — and users lose trust faster than they build it. This pillar ensures the new capabilities *feel* as good as they *work*. It also catches data visibility bugs before they become "why can't I find my deal?" support tickets. The Intelligence Panel checklist and gap indicators address a second class of problem: workflow opacity and silent information gaps that undermine the TDR process itself.
+**Key outcome:** The app's new ML and AI surfaces are production-polished, zero legitimate deals are silently hidden, and the path from "open a deal" to "share a complete readout" is obvious.
+
+### Pillar 17: TDR Framework Redesign (Sprint 31)
+**What:** Consolidation of the TDR from 9 steps / 29 fields to ~5–6 steps with fewer, sharper fields. The current step structure has redundancies (Entry Layer / In-Scope Layers, System of Record / Architectural Truth / Target State Change, Business Decision fields) that slow SEs down. AI & ML is elevated from a 2-field optional step to a rigorous core step with a structured AI value continuum framework spanning rules-based automation, traditional ML, generative AI, and agentic solutions — reflecting what Domo actually sells. Field-level improvements: "Key Stakeholders" → "Key Technical Stakeholders", Entry Layer becomes multi-select, In-Scope Layers become pill/tag inputs for analytics, all textareas get resize handles. Step completion semi-automates based on field completeness instead of manual checkbox. TDR versioning (multiple iterations over time) is exposed in the UI. PDF readout updates to match the new structure. All changes align to the existing Snowflake schema (field IDs are strings — additive, not destructive). **Requires explicit user approval before implementation.**
+**Why it matters independently:** The TDR framework is the core data-collection instrument. Every downstream artifact — structured extraction, TDR brief, action plan, readout PDF — is only as good as the inputs the steps elicit. A framework that's too granular, has redundant fields, and underweights AI assessment produces lower-quality inputs under time pressure. Consolidating steps makes TDR completion faster, elevating AI & ML makes the most strategically relevant assessment unavoidable, and structured tags (pills) for Domo layers unlock cross-deal analytics that free text can't provide. Semi-automated completion removes a tedious manual gate. Versioning enables living TDRs that evolve as deals progress.
+**Key outcome:** SEs complete TDRs faster with sharper, less redundant inputs. AI & ML opportunity assessment is a first-class concern. The TDR becomes a living document with iteration history.
 
 ### The Flywheel
 
@@ -6635,23 +6783,27 @@ This is the "elevator pitch" view. The final solution is built on six distinct p
 
 ### What This Means Practically
 
-| If you build only... | The app becomes... |
-|----------------------|-------------------|
-| Pillar 1 (Persistence) | A reliable, auditable TDR system with history |
-| Pillars 1 + 2 (+ Intelligence) | A context-rich TDR tool that knows the account |
-| Pillars 1 + 2 + 3 (+ Chat) | An AI-assisted TDR workflow where you never leave the app |
-| Pillars 1–4 (+ Cortex) | A strategic platform that generates insights across all deals |
-| Pillars 1–5 (+ Scoring v2) | A self-improving deal intelligence system that gets smarter with every review, with Pre-TDR and Post-TDR scores |
-| Pillars 1–6 (+ Readout) | A complete deal intelligence platform that produces executive-ready artifacts |
-| Pillars 1–7 (+ Knowledge Base) | A knowledge-augmented TDR system — battle cards and playbooks surface automatically at the point of decision |
-| Pillars 1–8 (+ Lean Model) | A fast, focused TDR that takes 30 minutes and produces structured intelligence |
-| Pillars 1–9 (+ Action Plan) | **The complete platform:** every data source, every AI capability, every enrichment — synthesized into a specific, tailored action plan that tells the SE/AE exactly what to do next |
-| Pillars 1–10 (+ Performance) | A production-grade platform — cached intelligence, lean bundle, zero waste. Every Cortex call is intentional, every byte justified. |
-| Pillars 1–11 (+ UX Cohesion) | A polished platform — the Intelligence panel feels designed, not assembled. One-click enrichment, clear hierarchy, no branding noise. |
-| All 12 Pillars (+ Architecture Diagram) | **The documented platform:** the system explains itself. Stakeholders see the architecture, Snowflake SAs see Cortex usage, new engineers see the full map. The app is both the product and its own documentation. |
-| All 13 Pillars (+ ML Propensity) | **The predictive platform:** the system not only documents and enriches deals — it predicts which ones will close, explains why, and composes that prediction with TDR complexity to create a two-axis priority queue. SE Managers allocate time to the CRITICAL quadrant: deals that are both winnable and technically complex. The flywheel accelerates: as more deals close (or don't), the model retrains and gets smarter. |
+| If you build only... | Status | The app becomes... |
+|----------------------|--------|-------------------|
+| Pillar 1 (Persistence) | ✅ | A reliable, auditable TDR system with history |
+| Pillars 1–2 (+ Intelligence) | ✅ | A context-rich TDR tool that knows the account |
+| Pillars 1–3 (+ Chat) | ✅ | An AI-assisted TDR workflow where you never leave the app |
+| Pillars 1–4 (+ Cortex) | ✅ | A strategic platform that generates insights across all deals |
+| Pillars 1–5 (+ Scoring v2) | ✅ | A self-improving deal intelligence system that gets smarter with every review, with Pre-TDR and Post-TDR scores |
+| Pillars 1–6 (+ Readout) | ✅ | A complete deal intelligence platform that produces executive-ready artifacts |
+| Pillars 1–7 (+ Knowledge Base) | ✅ | A knowledge-augmented TDR system — battle cards and playbooks surface automatically at the point of decision |
+| Pillars 1–8 (+ Frontier Models) | ✅ | Every AI operation uses best-in-breed frontier models — force multiplier for all pillars |
+| Pillars 1–9 (+ Lean Model) | ✅ | A fast, focused TDR that takes 30 minutes and produces structured intelligence |
+| Pillars 1–10 (+ Action Plan) | ✅ | **The complete platform:** every data source, every AI capability, every enrichment — synthesized into a specific, tailored action plan that tells the SE/AE exactly what to do next |
+| Pillars 1–11 (+ Performance) | ✅ | A production-grade platform — cached intelligence, lean bundle, zero waste. Every Cortex call is intentional, every byte justified. |
+| Pillars 1–12 (+ UX Cohesion) | ✅ | A polished platform — the Intelligence panel feels designed, not assembled. One-click enrichment, clear hierarchy, no branding noise. |
+| Pillars 1–13 (+ Documentation Hub) | ✅ | **The documented platform:** the system explains itself. Stakeholders see the architecture, Snowflake SAs see Cortex usage, new engineers see the full map. The app is both the product and its own documentation. |
+| Pillars 1–14 (+ Dataset Swap + ML Propensity) | 🔲 | **The predictive platform:** the system ingests the full deal picture (65 columns, verified against actual v2 dataset), predicts which deals will close, explains why in plain English (SHAP factors), and composes that prediction with TDR complexity into a gorgeous interactive quadrant. SE Managers allocate time to the CRITICAL quadrant: deals that are both winnable and technically complex. The flywheel accelerates: as more deals close (or don't), the model retrains and gets smarter. |
+| All 15 Pillars (+ AI Enhancement) | 🔲 | **The self-improving platform:** the system raises the quality floor of its own inputs. SEs get AI-assisted writing that draws from every context source the platform has accumulated — filesets, Sumble, Perplexity, cross-step inputs — ensuring no deal enters the intelligence pipeline with thin, unstructured data. Better inputs → better extractions → better briefs → better action plans. The flywheel tightens. |
+| All 16 Pillars (+ UX Polish) | 🔲 | **The production-polished platform:** every new surface — propensity quadrant, SHAP factors, AI enhancement diff — has been evaluated with real data and refined. Data visibility rules are recalibrated (Stage Age threshold, duplicate handling) so zero legitimate deals are silently hidden. Intelligence Panel has a guided workflow. Tech pills show provenance. The app doesn't just work; it feels right. |
+| All 17 Pillars (+ TDR Redesign) | 🔲 | **The streamlined platform:** the TDR itself — the core instrument — is rebuilt. 9 steps become ~5–6. Redundant fields are consolidated. AI & ML is a rigorous core step, not an afterthought. Textareas resize, steps auto-complete, Domo layers are pills for analytics, and TDRs version over time. SEs complete reviews faster with sharper inputs. Every downstream artifact gets better because the inputs got better. The flywheel is complete. |
 
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. Pillar 9 is the capstone: it converts everything the other eight pillars generate into a single actionable artifact. Pillar 10 hardens the platform for production. Pillar 11 polishes the most critical surface in the app. Pillar 12 makes the architecture visible and shareable. Pillar 13 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes.
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. **Pillars 1–13 are complete.** The app today is the documented platform — fully functional, polished, and self-explanatory. Pillar 10 is the capstone: it converts everything the other pillars generate into a single actionable artifact. Pillar 14 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes. Pillar 15 closes the input quality gap: the system helps SEs write better inputs, which makes everything downstream better. Pillar 16 ensures the new ML and AI surfaces are production-polished, that data visibility rules don't silently hide real deals, and that the Intelligence Panel workflow is obvious. Pillar 17 rebuilds the core TDR instrument itself — fewer steps, sharper fields, AI & ML as a first-class concern, and a living document that versions over time.
 
 ---
 

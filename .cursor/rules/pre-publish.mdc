@@ -1,0 +1,28 @@
+---
+description: Pre-publish checklist for Domo app deployment
+globs: dist/manifest.json
+alwaysApply: false
+---
+
+# Pre-Publish Checklist
+
+Before the user runs `domo publish` from `dist/`, ALWAYS verify and alert on:
+
+## 1. Version Bump
+- `dist/manifest.json` version must be incremented from the last published version
+- `public/manifest.json` version must match `dist/manifest.json`
+- Suggest semver: patch for bug fixes, minor for new features/fields, major for breaking changes
+
+## 2. Build Freshness
+- Run `npm run build` (Vite) BEFORE publishing — `dist/assets/*.js` must reflect latest source changes
+- Check `dist/assets/` file timestamps vs latest source edits. If assets are older, the build is stale.
+
+## 3. Manifest Consistency
+- `dist/manifest.json` and `public/manifest.json` must have identical `datasetsMapping` sections
+- All dataset IDs, field aliases, and column names must match between both files
+
+## 4. Alert the User
+When the user mentions publishing, deploying, or running `domo publish`:
+- Proactively check all items above
+- Report status: "Ready to publish" or "Not ready — [issues]"
+- Never let a stale build or un-bumped version reach production

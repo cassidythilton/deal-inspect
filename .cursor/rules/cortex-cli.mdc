@@ -32,4 +32,5 @@ If it runs **IN Snowflake** → ask Cortex CLI.
 If it runs **OUTSIDE Snowflake** → author it directly.
 
 ## Reference
-Full guidelines in [IMPLEMENTATION_STRATEGY.md](mdc:IMPLEMENTATION_STRATEGY.md) Section 16.7.
+- Full guidelines in [IMPLEMENTATION_STRATEGY.md](mdc:IMPLEMENTATION_STRATEGY.md) Section 16.7.
+- Shaped specification: [shaping/cortex-cli-usage-guidelines.md](mdc:shaping/cortex-cli-usage-guidelines.md) — problem framing, boundary model, sprint tool assignments, invocation patterns.
