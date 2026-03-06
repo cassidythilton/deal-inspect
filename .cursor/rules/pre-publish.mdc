@@ -26,3 +26,9 @@ When the user mentions publishing, deploying, or running `domo publish`:
 - Proactively check all items above
 - Report status: "Ready to publish" or "Not ready — [issues]"
 - Never let a stale build or un-bumped version reach production
+
+## 5. Regular Git Commits
+After completing any sprint or sub-sprint work:
+- Commit with a descriptive message covering what changed and why
+- Push to origin immediately after committing
+- Don't let uncommitted work accumulate across multiple sprints

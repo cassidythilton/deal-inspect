@@ -113,8 +113,8 @@ export default function CommandCenter() {
       agendaStatus: pinnedIds.has(d.id) ? (d.agendaStatus || 'draft') : undefined,
     }));
 
-    // AE Manager filter
-    if (seFilters.selectedManager) {
+    // AE Manager filter ('all' shows all allowed managers)
+    if (seFilters.selectedManager && seFilters.selectedManager !== 'all') {
       result = result.filter((d) => d.owner === seFilters.selectedManager);
     }
 
