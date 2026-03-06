@@ -6093,9 +6093,15 @@ The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking 
 - [x] Default quarter filter set to current quarter; SQL fetches current+4 quarters for early-stage deal visibility
 - [x] App version bumped to v1.63.0, all UAT passed
 
+**Sprint 28b+ — Pre-Training Data Validation** *[Python script — run before 28c]* 🔲 NOT STARTED
+- [ ] Run `python notebooks/02_pre_training_validation.py` against live Snowflake
+- [ ] **Gate:** All critical checks must pass (dedup, label/stage consistency, leakage audit)
+- [ ] Review warnings (outliers, cardinality, temporal drift) — address before training if possible
+- [ ] Confirm safe feature list output → feeds into `ML_FEATURE_STORE` view design
+
 **Sprint 28c — ML Infrastructure & Model Training (Day 3–4)** *[Cortex CLI — all Snowflake domain]*
-- [ ] Create `ML_FEATURE_STORE` view (19 derived features)
-- [ ] Create `ML_TRAINING_DATA` view (closed deals + labels)
+- [ ] Create `ML_FEATURE_STORE` view (using validated safe feature list from 02_pre_training_validation.py)
+- [ ] Create `ML_TRAINING_DATA` view (closed deals + labels, deduplicated per Opportunity Id)
 - [ ] Create `DEAL_ML_PREDICTIONS` table, `ML_MODEL_METADATA` table
 - [ ] Grants for `TDR_APP_ROLE`: `CREATE SNOWFLAKE.ML.CLASSIFICATION`, `CORTEX_USER`
 - [ ] `CREATE SNOWFLAKE.ML.CLASSIFICATION DEAL_CLOSE_PROPENSITY` on training data
