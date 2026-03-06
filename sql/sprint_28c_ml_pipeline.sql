@@ -185,12 +185,13 @@ SELECT
         ELSE NULL
     END AS REVENUE_PER_EMPLOYEE,
 
-    -- Sales process completeness (non-null milestones / 6)
+    -- Sales process completeness (non-null, non-empty milestones / 6)
+    -- Note: Demo Completed Date, Pricing Call Date are TEXT columns that can be empty strings
     (
-        CASE WHEN o."Discovery Call Completed" IS NOT NULL THEN 1 ELSE 0 END +
-        CASE WHEN o."Demo Completed Date" IS NOT NULL THEN 1 ELSE 0 END +
-        CASE WHEN o."Pricing Call Date" IS NOT NULL THEN 1 ELSE 0 END +
-        CASE WHEN o."Gate Call Completed" IS NOT NULL THEN 1 ELSE 0 END +
+        CASE WHEN o."Discovery Call Completed" IS NOT NULL AND o."Discovery Call Completed" != '' THEN 1 ELSE 0 END +
+        CASE WHEN o."Demo Completed Date" IS NOT NULL AND o."Demo Completed Date" != '' THEN 1 ELSE 0 END +
+        CASE WHEN o."Pricing Call Date" IS NOT NULL AND o."Pricing Call Date" != '' THEN 1 ELSE 0 END +
+        CASE WHEN o."Gate Call Completed" IS NOT NULL AND o."Gate Call Completed" != '' THEN 1 ELSE 0 END +
         CASE WHEN o."Has Pre-Call Plan" IS NOT NULL AND o."Has Pre-Call Plan" != '' THEN 1 ELSE 0 END +
         CASE WHEN o."Has ADM/AE Sync Agenda" IS NOT NULL AND o."Has ADM/AE Sync Agenda" != '' THEN 1 ELSE 0 END
     )::FLOAT / 6.0 AS SALES_PROCESS_COMPLETENESS,
