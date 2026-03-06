@@ -341,6 +341,16 @@ export function useDeals() {
       console.log(`[AppDB] ${tdrMatchCount} deals have TDR sessions`);
     }
 
+    const propensityCount = result.filter(d => d.propensityScore != null).length;
+    console.log(`[ML Propensity] ${propensityCount}/${result.length} deals have propensity scores`);
+    if (propensityCount > 0) {
+      const sample = result.find(d => d.propensityScore != null);
+      console.log('[ML Propensity] Sample:', {
+        id: sample?.id, score: sample?.propensityScore,
+        quadrant: sample?.propensityQuadrant, factors: sample?.propensityFactors?.length
+      });
+    }
+
     return result;
   }, [opportunities, seLookup, tdrSessionsByDeal, dealsWithIntel]);
 

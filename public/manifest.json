@@ -1,7 +1,7 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.63.0",
+  "version": "1.64.0",
   "datasetsMapping": [
     {
       "dataSetId": "6ae5896e-e13d-48ac-a9fb-c6e9116b4bb4",
@@ -74,7 +74,32 @@
         { "alias": "HasAdmAeSyncAgenda", "columnName": "Has ADM/AE Sync Agenda" },
         { "alias": "ForecastComments", "columnName": "Forecast Comments" },
         { "alias": "NextStep", "columnName": "Next Step" },
-        { "alias": "BusinessChallenge", "columnName": "Business Challenge" }
+        { "alias": "BusinessChallenge", "columnName": "Business Challenge" },
+        { "alias": "PropensityScore", "columnName": "PROPENSITY_SCORE" },
+        { "alias": "MlPrediction", "columnName": "PREDICTION" },
+        { "alias": "PropensityQuadrant", "columnName": "QUADRANT" },
+        { "alias": "Factor1Name", "columnName": "FACTOR_1_NAME" },
+        { "alias": "Factor1Value", "columnName": "FACTOR_1_VALUE" },
+        { "alias": "Factor1Direction", "columnName": "FACTOR_1_DIRECTION" },
+        { "alias": "Factor1Magnitude", "columnName": "FACTOR_1_MAGNITUDE" },
+        { "alias": "Factor2Name", "columnName": "FACTOR_2_NAME" },
+        { "alias": "Factor2Value", "columnName": "FACTOR_2_VALUE" },
+        { "alias": "Factor2Direction", "columnName": "FACTOR_2_DIRECTION" },
+        { "alias": "Factor2Magnitude", "columnName": "FACTOR_2_MAGNITUDE" },
+        { "alias": "Factor3Name", "columnName": "FACTOR_3_NAME" },
+        { "alias": "Factor3Value", "columnName": "FACTOR_3_VALUE" },
+        { "alias": "Factor3Direction", "columnName": "FACTOR_3_DIRECTION" },
+        { "alias": "Factor3Magnitude", "columnName": "FACTOR_3_MAGNITUDE" },
+        { "alias": "Factor4Name", "columnName": "FACTOR_4_NAME" },
+        { "alias": "Factor4Value", "columnName": "FACTOR_4_VALUE" },
+        { "alias": "Factor4Direction", "columnName": "FACTOR_4_DIRECTION" },
+        { "alias": "Factor4Magnitude", "columnName": "FACTOR_4_MAGNITUDE" },
+        { "alias": "Factor5Name", "columnName": "FACTOR_5_NAME" },
+        { "alias": "Factor5Value", "columnName": "FACTOR_5_VALUE" },
+        { "alias": "Factor5Direction", "columnName": "FACTOR_5_DIRECTION" },
+        { "alias": "Factor5Magnitude", "columnName": "FACTOR_5_MAGNITUDE" },
+        { "alias": "PropensityScoredAt", "columnName": "SCORED_AT" },
+        { "alias": "PropensityModelVersion", "columnName": "MODEL_VERSION" }
       ]
     },
     {

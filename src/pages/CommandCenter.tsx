@@ -1,11 +1,11 @@
 /**
- * Command Center — Sprint 20: Hero Metrics & Nav Cleanup
+ * Command Center — Hero Metrics & Deal Positioning
  *
  * Rebuilt dashboard with TDR-aligned stat cards and charts.
  * Every metric answers a question an SE Manager would actually ask.
  *
  * Stat Cards: TDR Queue, Competitive Battles, Partner Pipeline, Stale Deals
- * Charts: TDR Coverage (donut), Score Distribution (bar), Close Urgency (area)
+ * Charts: TDR Coverage (donut), Propensity Distribution (bar), Deal Positioning (scatter)
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -14,8 +14,8 @@ import { DealsTable } from '@/components/DealsTable';
 import { DealSearch } from '@/components/DealSearch';
 import { AgendaSection } from '@/components/AgendaSection';
 import { TDRCoverageChart } from '@/components/charts/TDRCoverageChart';
-import { ScoreDistributionChart } from '@/components/charts/ScoreDistributionChart';
-import { CloseUrgencyChart } from '@/components/charts/CloseUrgencyChart';
+import { PropensityDistributionChart } from '@/components/charts/PropensityDistributionChart';
+import { PropensityQuadrantChart } from '@/components/charts/PropensityQuadrantChart';
 import { mockDeals } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
 import { MAX_STAGE_AGE_DAYS, ALLOWED_MANAGERS } from '@/lib/constants';
@@ -323,16 +323,16 @@ export default function CommandCenter() {
               </Tooltip>
             </section>
 
-            {/* Zone 2: Charts Row */}
-            <section className="grid grid-cols-3 gap-3">
-              <div className="stat-card">
+            {/* Zone 2: Charts — two compact + scatter takes 2x width */}
+            <section className="grid grid-cols-4 gap-3">
+              <div className="stat-card col-span-1">
                 <TDRCoverageChart deals={displayedDeals} />
               </div>
-              <div className="stat-card">
-                <ScoreDistributionChart deals={displayedDeals} />
+              <div className="stat-card col-span-1">
+                <PropensityDistributionChart deals={displayedDeals} />
               </div>
-              <div className="stat-card">
-                <CloseUrgencyChart deals={displayedDeals} />
+              <div className="stat-card col-span-2">
+                <PropensityQuadrantChart deals={displayedDeals} />
               </div>
             </section>
 

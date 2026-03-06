@@ -1151,6 +1151,92 @@ export function TDRIntelligence({
                 </div>
               </div>
 
+              {/* Win Propensity — ML prediction */}
+              <div className="mt-3 pt-3 border-t border-[#322b4d]">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold tabular-nums text-slate-200">
+                    {deal.propensityScore != null ? `${Math.round(deal.propensityScore * 100)}%` : '—'}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-wider text-slate-600">Win Propensity</span>
+                  {deal.propensityQuadrant && (
+                    <span className={cn(
+                      'rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ml-auto',
+                      deal.propensityQuadrant === 'HIGH' ? 'bg-violet-500/15 text-violet-300' :
+                      deal.propensityQuadrant === 'MONITOR' ? 'bg-purple-400/15 text-purple-300' :
+                      'bg-fuchsia-400/15 text-fuchsia-300'
+                    )}>
+                      {deal.propensityQuadrant}
+                    </span>
+                  )}
+                </div>
+
+                {deal.propensityScore != null && (
+                  <div className="flex-1 h-1.5 rounded-full bg-[#2a2540] overflow-hidden mt-2">
+                    <div
+                      className="h-full rounded-full transition-all duration-700 ease-out"
+                      style={{
+                        width: `${Math.round(deal.propensityScore * 100)}%`,
+                        background: deal.propensityScore >= 0.7
+                          ? 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))'
+                          : deal.propensityScore >= 0.4
+                          ? 'linear-gradient(90deg, hsl(280, 50%, 50%), hsl(290, 45%, 45%))'
+                          : 'hsl(300, 30%, 40%)',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {deal.propensityFactors && deal.propensityFactors.length > 0 && (
+                  <div className="mt-2.5 space-y-1">
+                    <span className="text-[8px] uppercase tracking-wider text-slate-600">ML Factors</span>
+                    {deal.propensityFactors.slice(0, 5).map((f, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className={cn(
+                          'text-[10px] shrink-0 w-3 text-center',
+                          f.direction === 'helps' ? 'text-emerald-400' :
+                          f.direction === 'hurts' ? 'text-red-400' : 'text-slate-600'
+                        )}>
+                          {f.direction === 'helps' ? '↑' : f.direction === 'hurts' ? '↓' : '→'}
+                        </span>
+                        <span className="text-[10px] text-slate-400 truncate flex-1">{f.name}</span>
+                        <div className="w-16 h-1 rounded-full bg-[#2a2540] overflow-hidden shrink-0">
+                          <div
+                            className="h-full rounded-full"
+                            style={{
+                              width: `${Math.round(f.magnitude * 100)}%`,
+                              background: f.direction === 'helps'
+                                ? 'hsl(152, 60%, 45%)'
+                                : f.direction === 'hurts'
+                                ? 'hsl(0, 60%, 50%)'
+                                : 'hsl(260, 10%, 45%)',
+                            }}
+                          />
+                        </div>
+                        <span className="text-[9px] text-slate-600 tabular-nums w-8 text-right shrink-0">{f.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {deal.propensityScoredAt && (
+                  <p className="text-[9px] text-slate-600 mt-2">
+                    Scored {(() => {
+                      const d = new Date(deal.propensityScoredAt!);
+                      if (isNaN(d.getTime())) return deal.propensityScoredAt;
+                      const hours = Math.floor((Date.now() - d.getTime()) / 3600000);
+                      if (hours < 1) return 'just now';
+                      if (hours < 24) return `${hours}h ago`;
+                      const days = Math.floor(hours / 24);
+                      return days === 1 ? 'yesterday' : `${days}d ago`;
+                    })()} · {deal.propensityModelVersion || 'v2'}
+                  </p>
+                )}
+
+                {deal.propensityScore == null && (
+                  <p className="text-[9px] text-slate-600 mt-1">No ML score available. Scores update nightly.</p>
+                )}
+              </div>
+
               {/* Confidence meter — how well-informed is this assessment? */}
               {lifecyclePhase !== 'NOT_STARTED' && (
                 <div className="flex items-center gap-2 mt-2 mb-1.5">

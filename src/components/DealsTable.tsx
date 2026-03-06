@@ -11,11 +11,12 @@
  *   6. Stage              — badge with tooltip
  *   7. Age                — days, color-coded
  *   8. ACV                — currency formatted
- *   9. TDR Score          — colored badge + factor tooltip
- *  10. TDRs               — 5-dot indicator
- *  11. Partner             — dynamic icon + tooltip
- *  12. Why TDR?            — factor pills with tooltips
- *  13. Action              — pin button (pinned right)
+ *   9. Win %              — ML propensity score, color-coded badge + factor tooltip
+ *  10. TDR Score           — colored badge + factor tooltip
+ *  11. TDRs               — 5-dot indicator
+ *  12. Partner             — dynamic icon + tooltip
+ *  13. Why TDR?            — factor pills + ML factor pills
+ *  14. Action              — pin button (pinned right)
  */
 
 import { useCallback, useMemo, useRef } from 'react';
@@ -393,6 +394,85 @@ function CurrencyCell({ data }: ICellRendererParams<Deal>) {
   return <span className="text-xs font-medium tabular-nums">{formatCurrency(data.acv)}</span>;
 }
 
+function getTimeAgo(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const diffMs = Date.now() - d.getTime();
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return days === 1 ? 'yesterday' : `${days}d ago`;
+}
+
+function PropensityScoreCell({ data }: ICellRendererParams<Deal>) {
+  if (!data) return null;
+  const score = data.propensityScore;
+  if (score == null) return <span className="text-xs text-muted-foreground/40">—</span>;
+
+  const pct = Math.round(score * 100);
+  const colorClass = pct >= 70 ? 'bg-violet-500/20 text-violet-700'
+    : pct >= 40 ? 'bg-purple-400/15 text-purple-600'
+    : 'bg-fuchsia-400/10 text-fuchsia-600';
+
+  const quadrant = data.propensityQuadrant;
+  const factors = data.propensityFactors;
+  const scoredAt = data.propensityScoredAt;
+  const timeAgo = scoredAt ? getTimeAgo(scoredAt) : null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={cn(
+          'inline-flex items-center justify-center rounded px-1.5 text-[11px] font-semibold tabular-nums cursor-help h-5 leading-5 min-w-[32px]',
+          colorClass
+        )}>
+          {pct}%
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs p-4">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">Win Propensity: {pct}%</p>
+            {quadrant && (
+              <span className={cn(
+                'rounded px-1.5 py-0.5 text-xs font-bold',
+                quadrant === 'HIGH' ? 'bg-violet-500/20 text-violet-700' :
+                quadrant === 'MONITOR' ? 'bg-purple-400/20 text-purple-600' :
+                'bg-fuchsia-400/20 text-fuchsia-600'
+              )}>{quadrant}</span>
+            )}
+          </div>
+          {factors && factors.length > 0 && (
+            <div className="border-t border-border/40 pt-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">ML Factors</p>
+              <ul className="space-y-1">
+                {factors.map((f, i) => (
+                  <li key={i} className="text-sm flex items-center gap-2">
+                    <span className={cn(
+                      'shrink-0',
+                      f.direction === 'helps' ? 'text-emerald-600' :
+                      f.direction === 'hurts' ? 'text-red-500' :
+                      'text-muted-foreground'
+                    )}>
+                      {f.direction === 'helps' ? '↑' : f.direction === 'hurts' ? '↓' : '→'}
+                    </span>
+                    <span className="text-foreground/80">{f.name}</span>
+                    <span className="ml-auto text-xs text-muted-foreground tabular-nums">{f.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {timeAgo && (
+            <p className="text-[10px] text-muted-foreground border-t border-border/40 pt-1.5 mt-1">Scored {timeAgo}</p>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function TDRScoreCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
   const preTDRScore = data.tdrScore ?? calculateTDRScore(data);
@@ -566,7 +646,8 @@ function PartnerIconCell({ data }: ICellRendererParams<Deal>) {
 function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
   const whyTags = getTopFactors(data, 2);
-  if (whyTags.length === 0) return <span className="text-2xs text-muted-foreground">-</span>;
+  const mlFactors = data.propensityFactors?.slice(0, 1) || [];
+  if (whyTags.length === 0 && mlFactors.length === 0) return <span className="text-2xs text-muted-foreground">-</span>;
   return (
     <div className="flex flex-wrap gap-1">
       {whyTags.map((factor, i) => {
@@ -583,7 +664,7 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
               )}>
                 <IconComponent className="h-2 w-2" />
                 {dynamicLabel}
-                      </span>
+              </span>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-md p-4">
               <p className="text-sm text-foreground leading-relaxed mb-2">{dynamicDesc}</p>
@@ -610,7 +691,23 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
           </Tooltip>
         );
       })}
-                  </div>
+      {mlFactors.map((f, i) => (
+        <Tooltip key={`ml-${i}`}>
+          <TooltipTrigger asChild>
+            <span className="inline-flex items-center gap-[2px] cursor-help rounded px-1 py-0 text-2xs font-medium leading-[20px] bg-indigo-500/10 text-indigo-700 border border-indigo-500/20">
+              <TrendingUp className="h-2 w-2" />
+              {f.direction === 'helps' ? '↑' : f.direction === 'hurts' ? '↓' : '→'} {f.name}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs p-3">
+            <p className="text-sm text-foreground"><span className="font-medium">{f.name}:</span> {f.value}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {f.direction === 'helps' ? 'Positively' : f.direction === 'hurts' ? 'Negatively' : 'Neutrally'} influences close probability (ML)
+            </p>
+          </TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
   );
 }
 
@@ -764,6 +861,22 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
       sortable: true,
       cellStyle: { textAlign: 'right' },
       headerClass: 'ag-right-aligned-header',
+    },
+    {
+      headerName: 'Win %',
+      headerTooltip: 'ML Win Propensity — predicted close probability',
+      field: 'propensityScore',
+      cellRenderer: PropensityScoreCell,
+      minWidth: 62,
+      maxWidth: 75,
+      filter: 'agNumberColumnFilter',
+      sortable: true,
+      cellStyle: { textAlign: 'center' },
+      headerClass: 'ag-right-aligned-header',
+      valueGetter: (params) => {
+        const s = params.data?.propensityScore;
+        return s != null ? Math.round(s * 100) : null;
+      },
     },
     {
       headerName: 'TDR',

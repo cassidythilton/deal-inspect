@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 6.1 · **Date:** March 6, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c (39 sprints) · **Next Up:** 28d (Domo Integration), 28e (Frontend ML), 30 (UX Polish), 31 (TDR Framework Redesign)
+**Status:** Active · **Version:** Draft 6.2 · **Date:** March 6, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e (41 sprints) · **Next Up:** 30 (UX Polish), 31 (TDR Framework Redesign)
 
 ---
 
@@ -26,14 +26,14 @@
 
 | Sprint | Name | Effort | Prerequisite | Key Deliverable |
 |--------|------|--------|-------------|-----------------|
-| **28d** | Domo Integration | 1–2 days | 28c | `DEAL_PREDICTIONS` synced as Domo dataset, joined with opportunities, manifest updated |
-| **28e** | Frontend ML Integration | 3–4 days | 28d | Propensity column, quadrant scatter plot, SHAP factor cards, portfolio metrics |
+| **28d** | Domo Integration | ✅ Complete | 28c | `DEAL_PREDICTIONS` joined in Domo, manifest + types updated, propensity fields wired |
+| **28e** | Frontend ML Integration | ✅ Complete | 28d | Win % column, Deal Positioning scatter, propensity card in Intelligence Panel, ML factor pills |
 | **30** | UX Polish & Iteration | 1–2 days | 28e + 29b | Stage Age threshold, quadrant/SHAP/diff polish, dedup, Settings→Filter bridge |
 | **31** | TDR Framework Redesign | 3–5 days (31b–31c) | 30 | Consolidate 9→5 steps, AI & ML core step (design approved in 31a), pill/tag inputs, versioning, PDF update |
 
 **Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31)
 
-**Start point:** Sprint 28d (Domo integration) — model is trained and scoring. Next step is syncing `DEAL_PREDICTIONS` into Domo and joining with the opportunities dataset.
+**Start point:** Sprint 30 (UX Polish) — ML pipeline fully operational end-to-end (Snowflake → Domo → frontend). Next step is UX refinement and visual polish.
 
 ---
 
@@ -3822,9 +3822,9 @@ The following enhancements were applied to the Slack distribution experience aft
 | **29a** | **AI Enhancement Engine** | ✅ Complete | Mar 4, 2026 | S17 + S19 + S6.5 | **AI** |
 | **29b** | **AI Enhancement UI** | ✅ Complete | Mar 4, 2026 | S29a | **AI / UX** |
 | **PERF-1** | **Performance Optimization** | ✅ Complete | Mar 5, 2026 | S28a | **Performance** |
-| **28c** | **ML Infrastructure & Model Training** | 🔲 Not Started | — | S28b (notebook run) | **ML / Snowflake** |
-| **28d** | **Code Engine & Automation** | 🔲 Not Started | — | S28c | **ML / Code Engine** |
-| **28e** | **Frontend ML Integration** | 🔲 Not Started | — | S28d | **ML / UX** |
+| **28c** | **ML Infrastructure & Model Training** | ✅ Complete | — | S28b (notebook run) | **ML / Snowflake** |
+| **28d** | **Domo Integration** | ✅ Complete | — | S28c | **ML / Data** |
+| **28e** | **Frontend ML Integration** | ✅ Complete | — | S28d | **ML / UX** |
 | **30** | **UX Polish & Iteration** | 🔲 Not Started | — | S28e + S29b | **UX** |
 | **31** | **TDR Framework Redesign** | 🔶 31a Approved | — | S30 | **UX / Architecture** |
 
@@ -6119,20 +6119,23 @@ The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking 
 - [x] All objects in `TDR_APP.ML_MODELS` schema, using `TDR_APP_WH` (Mar 6)
 - [x] Fixed empty string handling: `Demo Completed Date`, `Pricing Call Date` are TEXT with empty strings (Mar 6)
 
-**Sprint 28d — Domo Integration (Day 5–6)** *[Domo Admin + Cursor for manifest]*
-- [ ] Sync `TDR_APP.ML_MODELS.DEAL_PREDICTIONS` as a new Domo dataset
-- [ ] Create Domo dataflow joining `DEAL_PREDICTIONS` with opportunities dataset on `OPPORTUNITY_ID`
-- [ ] Update `manifest.json` with joined dataset mapping (propensity columns available as regular fields)
-- [ ] Update TypeScript types to include propensity score, quadrant, factor columns
-- [ ] Resume Snowflake Tasks: `ALTER TASK ... RESUME` for nightly scoring + weekly retrain
-- [ ] Verify end-to-end: Snowflake → Domo sync → app reads propensity as columns on Deal object
+**Sprint 28d — Domo Integration (Day 5–6)** *[Domo Admin + Cursor for manifest]* ✅ COMPLETE
+- [x] Synced `TDR_APP.ML_MODELS.DEAL_PREDICTIONS` as Domo dataset
+- [x] Created Domo Magic ETL joining `DEAL_PREDICTIONS` with opportunities dataset on `OPPORTUNITY_ID`
+- [x] Updated `manifest.json` with joined dataset mapping — propensity columns available as regular fields
+- [x] Updated TypeScript types (`Deal` interface) — `WIN_PROBABILITY`, `PROPENSITY_QUADRANT`, `FACTOR_*` fields
+- [x] Updated `useDomo.ts` transform to parse propensity + factor columns from dataset
+- [ ] Resume Snowflake Tasks: `ALTER TASK ... RESUME` for nightly scoring + weekly retrain — deferred to Sprint 30
+- [x] Verified end-to-end: Snowflake → Domo sync → app reads propensity as columns on Deal object
 
-**Sprint 28e — Frontend Integration (Day 7–10)** *[Cursor — application domain]*
-- [ ] Add Win Propensity column to Command Center deals table (AG Grid)
-- [ ] Build quadrant scatter plot as Command Center tab — gorgeous, interactive, click-to-navigate
-- [ ] Add propensity card to Intelligence Panel with SHAP factor bars (naive-user-friendly design)
-- [ ] Extend Why TDR? pills with propensity factor pills
-- [ ] Add portfolio-level propensity metrics
+**Sprint 28e — Frontend ML Integration (Day 7–10)** *[Cursor — application domain]* ✅ COMPLETE
+- [x] Add Win % column to Command Center deals table (AG Grid) — color-coded badge, sortable, tooltip with quadrant + ML factors
+- [x] Build Deal Positioning quadrant scatter plot — TDR Complexity (X) × Win Probability (Y), ACV-sized dots, dynamic axes, click-to-navigate, 2×2 quadrant labels (Prioritize/Fast Track/Investigate/Deprioritize)
+- [x] Replace Score Distribution chart with Propensity Distribution chart (HIGH/MONITOR/AT_RISK bars, purple palette)
+- [x] Remove Close Urgency chart, reorganize to 2-compact + 1-wide scatter layout
+- [x] Add propensity card to Intelligence Panel (score, quadrant badge, progress bar, top 5 SHAP factor bars, freshness indicator, graceful degradation)
+- [x] Extend Why TDR? pills with ML propensity factor pills (indigo)
+- [ ] Portfolio-level propensity metrics in stat cards — deferred to Sprint 30
 - [ ] Implement graceful degradation ("—" when model unavailable)
 - [ ] Update Documentation Hub: Architecture Diagram, AI Models Reference, Data Model Reference
 
@@ -6256,6 +6259,16 @@ First implementations of complex visualizations and interaction patterns rarely 
 
 14. **Gap indicator** — Subtle "Gap" badge on textarea fields that are empty or very terse (< ~15 chars) when sibling fields are filled. Non-blocking diagnostic cue. Step header shows count: "2 gaps identified."
 
+15. **Why TDR? pill → icon conversion** — The "Why TDR?" column renders full text pills ("Upsell", "Shaping window", "Sales Process", "New logo", etc.) that bunch together when a deal has 3+ factors. Each factor already has a mapped Lucide icon in `FACTOR_ICONS`. Convert to compact, color-coded icon-only badges (just the icon, no label text). The tooltip on hover expands to show: factor name, dynamic description, recommended strategy, and TDR preparation steps (all already wired). ML factor pills (indigo) similarly collapse to a direction arrow icon (↑/↓/→) with name + value in tooltip. Result: the column shrinks from ~200px of text clutter to ~80px of scannable glyphs, with zero information loss — everything moves to the tooltip.
+
+16. **Chart row uniformity** — *(partially addressed in 28e)* Layout is now 2-compact + 1-wide scatter (`grid-cols-4`). Remaining: evaluate if all 3 cards need identical height or if the scatter rightly gets more visual weight. Responsive behavior on narrow viewports.
+
+17. **Deal Positioning scatter polish** — *(partially addressed in 28e)* Quadrant labels, 2×2 gridlines, dynamic axis scaling, ACV-sized dots, background shading, and click-to-navigate are implemented. Remaining: final label positioning refinement after real-data UAT, responsive behavior on smaller viewports, dot overlap handling for dense clusters.
+
+18. **Portfolio-level propensity metrics** — Add aggregate propensity stats to Command Center stat cards (e.g., avg win probability, % in HIGH quadrant, pipeline-weighted propensity).
+
+19. **Resume Snowflake Tasks** — `ALTER TASK TASK_NIGHTLY_SCORE RESUME` and `ALTER TASK TASK_WEEKLY_RETRAIN RESUME` for automated nightly scoring + weekly retraining.
+
 **No-Gos:**
 - No auto-enhancement without user action
 - No enhancement that introduces facts not in SE input or account intel
@@ -6263,7 +6276,7 @@ First implementations of complex visualizations and interaction patterns rarely 
 - No custom diff renderer (use existing React diff library or simple before/after toggle)
 - No forced workflow in the Intelligence Panel — checklist is advisory, not blocking
 
-**Definition of Done:** SE can click "Enhance" on any textarea field, see an AI-enhanced version with inline diff, and Accept/Edit/Dismiss. Enhancement draws from all available context (8 layers). Context sources are visible. Edit history preserves both original and enhanced values. Settings manager changes immediately reflect in Command Center. Tech pills include Perplexity sources with provenance icons. Slack PDF tech pills are colored. Intelligence Panel shows a readout checklist. Gap indicators surface on empty/terse fields.
+**Definition of Done:** SE can click "Enhance" on any textarea field, see an AI-enhanced version with inline diff, and Accept/Edit/Dismiss. Enhancement draws from all available context (8 layers). Context sources are visible. Edit history preserves both original and enhanced values. Settings manager changes immediately reflect in Command Center. Tech pills include Perplexity sources with provenance icons. Slack PDF tech pills are colored. Intelligence Panel shows a readout checklist. Gap indicators surface on empty/terse fields. Why TDR? column renders compact icon-only badges with rich tooltips instead of text pills. Chart row renders all 3 cards at uniform size. Deal Positioning scatter has clean quadrant labels, axis titles, and background shading.
 
 ---
 
