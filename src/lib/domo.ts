@@ -197,10 +197,21 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
       '"Deal Code"', '"Webiste Domain"', '"Is Closed"',
     ].join(', ');
 
-    // Filter to open deals only. No quarter filter — early-stage deals with
-    // distant close dates are exactly what TDR should surface for inspection.
-    const sql = `SELECT ${cols} FROM ${alias} WHERE ("IsClosed" IS NULL OR "IsClosed" NOT IN ('true', '1', 'yes'))`;
-    console.log('[Domo] Fetching via SQL (open pipeline, 24 columns)...');
+    // Quarter window: current quarter through current + 4 (5 quarters forward)
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curQ = Math.ceil((now.getMonth() + 1) / 3);
+    const quarters: string[] = [];
+    for (let offset = 0; offset <= 4; offset++) {
+      let q = curQ + offset;
+      let y = curYear;
+      while (q > 4) { q -= 4; y++; }
+      quarters.push(`${y}-Q${q}`);
+    }
+    const quotedQtrs = quarters.map(q => `'${q}'`).join(', ');
+
+    const sql = `SELECT ${cols} FROM ${alias} WHERE ("IsClosed" IS NULL OR "IsClosed" NOT IN ('true', '1', 'yes')) AND ("CloseDateFQ" IS NULL OR "CloseDateFQ" IN (${quotedQtrs}))`;
+    console.log(`[Domo] Fetching via SQL (open pipeline, quarters ${quarters[0]}–${quarters[quarters.length - 1]}, 24 columns)...`);
 
     let rawOpps: Record<string, unknown>[];
     try {
