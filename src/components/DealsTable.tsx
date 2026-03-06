@@ -662,14 +662,19 @@ function DealPriorityCell({ data }: ICellRendererParams<Deal>) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
-          'inline-flex items-center cursor-help rounded px-1.5 py-0.5 text-2xs font-semibold',
+          'inline-flex items-center justify-center cursor-help rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums min-w-[28px]',
           style.bg, style.text
         )}>
-          {style.label}
+          {data.dealPriority}
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-xs p-3">
-        <p className="text-xs font-medium mb-1">Priority Score: {data.dealPriority}</p>
+        <div className="flex items-center gap-2 mb-1.5">
+          <p className="text-sm font-semibold">{style.label}</p>
+          <span className={cn('rounded px-1.5 py-0.5 text-2xs font-medium', style.bg, style.text)}>
+            {data.dealPriority}/100
+          </span>
+        </div>
         <p className="text-xs text-muted-foreground">TDR {data.tdrScore ?? 0} × 0.4 = {tdrPart}</p>
         <p className="text-xs text-muted-foreground">Win {Math.round((data.propensityScore ?? 0) * 100)}% × 0.6 = {winPart}</p>
       </TooltipContent>
@@ -942,8 +947,8 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
       headerTooltip: 'Deal Priority — composite of TDR Score (40%) + Win Propensity (60%)',
       field: 'dealPriority',
       cellRenderer: DealPriorityCell,
-      minWidth: 85,
-      maxWidth: 100,
+      minWidth: 62,
+      maxWidth: 75,
       filter: false,
       sortable: true,
       sort: 'desc',
