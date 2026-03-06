@@ -64,15 +64,18 @@ export interface Deal {
   servicesRatio?: number;
   dealComplexityIndex?: number;
   salesProcessCompleteness?: number;
-  // ML propensity fields (Sprint 28)
+  // ML propensity fields (Sprint 28c/28d)
   propensityScore?: number;
-  propensityQuadrant?: 'CRITICAL' | 'STANDARD' | 'MONITOR' | 'SKIP';
+  mlPrediction?: string;
+  propensityQuadrant?: 'HIGH' | 'MONITOR' | 'AT_RISK';
   propensityFactors?: Array<{
-    label: string;
-    value: number | string;
-    direction: 'up' | 'down' | 'neutral';
+    name: string;
+    value: string;
+    direction: 'helps' | 'hurts' | 'neutral';
     magnitude: number;
   }>;
+  propensityScoredAt?: string;
+  propensityModelVersion?: string;
 }
 
 export interface TDRStep {

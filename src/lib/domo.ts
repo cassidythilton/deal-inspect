@@ -199,6 +199,13 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
       'SnowflakeTeamPicklist', 'DomoForecastCategory',
       'NumberOfCompetitors', 'Competitors',
       'DealCode', 'WebisteDomain', 'IsClosed',
+      'PropensityScore', 'MlPrediction', 'PropensityQuadrant',
+      'Factor1Name', 'Factor1Value', 'Factor1Direction', 'Factor1Magnitude',
+      'Factor2Name', 'Factor2Value', 'Factor2Direction', 'Factor2Magnitude',
+      'Factor3Name', 'Factor3Value', 'Factor3Direction', 'Factor3Magnitude',
+      'Factor4Name', 'Factor4Value', 'Factor4Direction', 'Factor4Magnitude',
+      'Factor5Name', 'Factor5Value', 'Factor5Direction', 'Factor5Magnitude',
+      'PropensityScoredAt', 'PropensityModelVersion',
     ];
 
     // Quarter window: current quarter through current + 4

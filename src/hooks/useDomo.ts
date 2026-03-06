@@ -134,7 +134,38 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
     isPartnerPlay: hasPartner,
     isStalled: stageAge > 90,
     isEarlyStage: stageNumber <= 2,
+    // ML propensity (from DEAL_PREDICTIONS joined in Domo)
+    propensityScore: getNum('PropensityScore', 'PROPENSITY_SCORE') || undefined,
+    mlPrediction: get('MlPrediction', 'PREDICTION') || undefined,
+    propensityQuadrant: (get('PropensityQuadrant', 'QUADRANT') || undefined) as Deal['propensityQuadrant'],
+    propensityFactors: buildPropensityFactors(opp),
+    propensityScoredAt: get('PropensityScoredAt', 'SCORED_AT') || undefined,
+    propensityModelVersion: get('PropensityModelVersion', 'MODEL_VERSION') || undefined,
   };
+}
+
+function buildPropensityFactors(opp: Record<string, unknown>): Deal['propensityFactors'] {
+  const get = (key: string): string => {
+    const val = opp[key];
+    return val !== undefined && val !== null && val !== '' ? String(val) : '';
+  };
+  const getNum = (key: string): number => {
+    const v = get(key);
+    return v ? Number(v) || 0 : 0;
+  };
+
+  const factors: NonNullable<Deal['propensityFactors']> = [];
+  for (let i = 1; i <= 5; i++) {
+    const name = get(`Factor${i}Name`) || get(`FACTOR_${i}_NAME`);
+    if (!name) continue;
+    factors.push({
+      name,
+      value: get(`Factor${i}Value`) || get(`FACTOR_${i}_VALUE`),
+      direction: (get(`Factor${i}Direction`) || get(`FACTOR_${i}_DIRECTION`) || 'neutral') as 'helps' | 'hurts' | 'neutral',
+      magnitude: getNum(`Factor${i}Magnitude`) || getNum(`FACTOR_${i}_MAGNITUDE`),
+    });
+  }
+  return factors.length > 0 ? factors : undefined;
 }
 
 /**
