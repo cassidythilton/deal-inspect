@@ -157,9 +157,14 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
 /**
  * Fetch opportunities from Domo with server-side filtering.
  *
- * The v2 dataset has ~195K rows (all historical deals). We use the SQL
- * endpoint to filter to open pipeline + recently closed deals, avoiding
- * a browser-killing full-table download.
+ * The v2 dataset has ~195K rows (all historical deals). We use the Domo
+ * Data API v2 query parameters to filter server-side, avoiding a
+ * browser-killing full-table download.
+ *
+ * Strategy (in order):
+ *  1. /data/v2/ with ?fields= and &filter= (Domo's own @domoinc/query uses this)
+ *  2. /data/v1/ with same query params
+ *  3. /data/v1/ unfiltered (full dataset fallback)
  */
 export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
   const domo = (window as unknown as {
@@ -183,9 +188,8 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
   const alias = CONFIG.datasets.opportunities;
 
   try {
-    // Only select the columns consumed by transformOpportunityToDeal + filters.
-    // Uses manifest ALIAS names — the SQL endpoint requires aliases, not canonical column names.
-    const cols = [
+    // Columns consumed by transformOpportunityToDeal + filter-options builder.
+    const fields = [
       'OpportunityId', 'OpportunityName', 'AccountName',
       'Stage', 'StageAge', 'Type', 'Likely', 'AcvUsd',
       'CloseDate', 'CloseDateFQ',
@@ -195,9 +199,9 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
       'SnowflakeTeamPicklist', 'DomoForecastCategory',
       'NumberOfCompetitors', 'Competitors',
       'DealCode', 'WebisteDomain', 'IsClosed',
-    ].join(', ');
+    ];
 
-    // Quarter window: current quarter through current + 4 (5 quarters forward)
+    // Quarter window: current quarter through current + 4
     const now = new Date();
     const curYear = now.getFullYear();
     const curQ = Math.ceil((now.getMonth() + 1) / 3);
@@ -208,39 +212,87 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
       while (q > 4) { q -= 4; y++; }
       quarters.push(`${y}-Q${q}`);
     }
-    const quotedQtrs = quarters.map(q => `'${q}'`).join(', ');
 
-    const sql = `SELECT ${cols} FROM ${alias} WHERE (IsClosed IS NULL OR IsClosed NOT IN ('true', '1', 'yes')) AND (CloseDateFQ IS NULL OR CloseDateFQ IN (${quotedQtrs}))`;
-    console.log(`[Domo] Fetching via SQL (open pipeline, quarters ${quarters[0]}–${quarters[quarters.length - 1]}, 24 columns)...`);
+    // Domo filter syntax (from @domoinc/query source):
+    //   column names are single-quoted, string values are double-quoted
+    //   !in for "not in", in for "in"
+    const closedFilter = `'IsClosed' !in ["true","1","yes"]`;
+    const qtrValues = quarters.map(q => `"${q}"`).join(',');
+    const qtrFilter = `'CloseDateFQ' in [${qtrValues}]`;
+    const combinedFilter = `${closedFilter}, ${qtrFilter}`;
+
+    const fieldsParam = fields.map(f => encodeURIComponent(f)).join(',');
+
+    // Strategy 1: /data/v2/ with query params (same as @domoinc/query library)
+    const v2Url = `/data/v2/${alias}?fields=${fieldsParam}&filter=${closedFilter}, ${qtrFilter}`;
+    console.log(`[Domo] Strategy 1: /data/v2/ with fields + filter (${fields.length} cols, quarters ${quarters[0]}–${quarters[quarters.length - 1]})...`);
 
     let rawOpps: Record<string, unknown>[];
+    let strategy = '';
+
     try {
-      const sqlResult = await domo.post(`/sql/v1/${alias}`, sql, { contentType: 'text/plain' });
-      rawOpps = ((sqlResult as { rows?: unknown[] })?.rows || sqlResult || []) as Record<string, unknown>[];
-      console.log(`[Domo] SQL endpoint returned ${rawOpps.length} records`);
-    } catch (sqlErr) {
-      // Fallback: SQL endpoint may not be available in all Domo environments
-      console.warn('[Domo] SQL endpoint failed, falling back to /data/v1/:', sqlErr);
-      const rawData = await domo.get(`/data/v1/${alias}`);
-      rawOpps = (rawData || []) as Record<string, unknown>[];
-      console.log(`[Domo] Fallback fetched ${rawOpps.length} raw records`);
+      const t0 = performance.now();
+      const result = await domo.get(v2Url);
+      rawOpps = (result || []) as Record<string, unknown>[];
+      strategy = 'v2+fields+filter';
+      console.log(`[Domo] Strategy 1 OK: ${rawOpps.length} records in ${Math.round(performance.now() - t0)}ms`);
+    } catch (err1) {
+      console.warn('[Domo] Strategy 1 failed (/data/v2/ with filter):', err1);
+
+      // Strategy 2: /data/v1/ with filter only (no field selection)
+      const v1FilterUrl = `/data/v1/${alias}?filter=${combinedFilter}`;
+      console.log('[Domo] Strategy 2: /data/v1/ with filter...');
+      try {
+        const t0 = performance.now();
+        const result = await domo.get(v1FilterUrl);
+        rawOpps = (result || []) as Record<string, unknown>[];
+        strategy = 'v1+filter';
+        console.log(`[Domo] Strategy 2 OK: ${rawOpps.length} records in ${Math.round(performance.now() - t0)}ms`);
+      } catch (err2) {
+        console.warn('[Domo] Strategy 2 failed (/data/v1/ with filter):', err2);
+
+        // Strategy 3: /data/v2/ with fields only (no filter)
+        const v2FieldsUrl = `/data/v2/${alias}?fields=${fieldsParam}`;
+        console.log('[Domo] Strategy 3: /data/v2/ with fields only...');
+        try {
+          const t0 = performance.now();
+          const result = await domo.get(v2FieldsUrl);
+          rawOpps = (result || []) as Record<string, unknown>[];
+          strategy = 'v2+fields';
+          console.log(`[Domo] Strategy 3 OK: ${rawOpps.length} records in ${Math.round(performance.now() - t0)}ms`);
+        } catch (err3) {
+          console.warn('[Domo] Strategy 3 failed (/data/v2/ with fields):', err3);
+
+          // Strategy 4: /data/v1/ unfiltered (full dataset fallback)
+          console.log('[Domo] Strategy 4: /data/v1/ unfiltered (full fallback)...');
+          const t0 = performance.now();
+          const rawData = await domo.get(`/data/v1/${alias}`);
+          rawOpps = (rawData || []) as Record<string, unknown>[];
+          strategy = 'v1-full';
+          console.log(`[Domo] Strategy 4 (full fallback): ${rawOpps.length} records in ${Math.round(performance.now() - t0)}ms`);
+        }
+      }
     }
 
-    console.log(`[Domo] Fetched ${rawOpps.length} opportunity records`);
+    console.log(`[Domo] Final: ${rawOpps.length} records via ${strategy}`);
 
     if (rawOpps.length > 0) {
-      console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).sort());
-      const allKeys = Object.keys(rawOpps[0]);
-      const compKeys = allKeys.filter(k => /compet/i.test(k));
-      const hasCompetitorsAlias = allKeys.includes('Competitors');
-      console.log(`[Domo] Competitors alias present: ${hasCompetitorsAlias} | All competitor-like keys: [${compKeys.join(', ')}]`);
-      if (compKeys.length > 0) {
-        const sample = rawOpps.slice(0, 5).map(r => compKeys.map(k => `${k}=${r[k]}`).join(', '));
-        console.log('[Domo] Competitor field samples:', sample);
-      }
-      if (!hasCompetitorsAlias) {
-        console.warn('[Domo] ⚠ "Competitors" alias NOT in data — verify in Domo App Studio that the column mapping exists and the app is re-published');
-      }
+      console.log('[Domo] Sample record keys:', Object.keys(rawOpps[0]).sort());
+    }
+
+    // Client-side filtering for strategies that didn't filter server-side
+    if (strategy === 'v1-full' || strategy === 'v2+fields') {
+      const before = rawOpps.length;
+      const closedValues = new Set(['true', '1', 'yes']);
+      const qtrSet = new Set(quarters);
+      rawOpps = rawOpps.filter(r => {
+        const closed = String(r['IsClosed'] ?? r['Is Closed'] ?? '').toLowerCase();
+        if (closedValues.has(closed)) return false;
+        const fq = String(r['CloseDateFQ'] ?? r['Close Date FQ'] ?? '');
+        if (fq && !qtrSet.has(fq)) return false;
+        return true;
+      });
+      console.log(`[Domo] Client-side filter: ${before} → ${rawOpps.length} (open pipeline, ${quarters[0]}–${quarters[quarters.length - 1]})`);
     }
 
     const allOpps = rawOpps
