@@ -36,7 +36,7 @@ import { cn } from '@/lib/utils';
 import {
   Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2,
   TrendingUp, Sparkles, AlertTriangle, Layers, GitMerge, Server,
-  Briefcase, ArrowUpRight, AlertOctagon, CheckCircle2, RefreshCcw,
+  Briefcase, ArrowUpRight, AlertOctagon, RefreshCcw,
   Search,
   LucideIcon
 } from 'lucide-react';
@@ -98,6 +98,30 @@ const BRAND_PILL_STYLES = {
 
 const getFactorPillStyle = (color: string): string =>
   FACTOR_PILL_COLORS[color] || 'bg-secondary/60 text-muted-foreground';
+
+const ML_FACTOR_DISPLAY: Record<string, { name: string; explain: string }> = {
+  STAGE_NUMBER:           { name: 'Stage',              explain: 'The deal\'s current sales stage. Later stages have historically higher close rates.' },
+  DEAL_AGE_DAYS:          { name: 'Deal Age',           explain: 'How long the opportunity has been open. Very old deals tend to stall.' },
+  STAGE_AGE_DAYS:         { name: 'Stage Age',          explain: 'Days spent in the current stage. Extended time may indicate a stalled deal.' },
+  ACV:                    { name: 'Deal Size',          explain: 'Annual contract value. Larger deals often have longer but more committed cycles.' },
+  NUM_COMPETITORS:        { name: 'Competition',        explain: 'Number of known competitors on the deal. More competition lowers win probability.' },
+  HAS_PARTNER:            { name: 'Partner Involved',   explain: 'Whether a channel or technology partner is engaged. Partners can accelerate deals.' },
+  DEAL_TYPE:              { name: 'Deal Type',          explain: 'New logo vs. upsell. Upsells historically close at higher rates.' },
+  SALES_PROCESS:          { name: 'Sales Process',      explain: 'The defined sales methodology being followed for this opportunity.' },
+  FORECAST_CATEGORY:      { name: 'Forecast Category',  explain: 'The rep\'s forecast commitment level (Pipeline, Best Case, Commit, Closed).' },
+  ACCOUNT_WIN_RATE:       { name: 'Account History',    explain: 'Historical win rate for this account. Past success predicts future outcomes.' },
+  QUARTER_END_PROXIMITY:  { name: 'Quarter Timing',     explain: 'How close the deal is to quarter end. Urgency increases near deadlines.' },
+  SALES_SEGMENT:          { name: 'Segment',            explain: 'Enterprise, mid-market, or SMB classification. Segment affects close patterns.' },
+  SALES_VERTICAL:         { name: 'Vertical',           explain: 'Industry vertical (Tech, Healthcare, Finance, etc.) with distinct win patterns.' },
+};
+
+function getMLFactorDisplayName(rawName: string): string {
+  return ML_FACTOR_DISPLAY[rawName]?.name || rawName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function getMLFactorExplanation(rawName: string): string {
+  return ML_FACTOR_DISPLAY[rawName]?.explain || 'A feature used by the ML model to predict win probability.';
+}
 
 function getBrandPillStyle(factor: CriticalFactor, deal: Deal): string | null {
   if (factor.id !== 'cloudPartner') return null;
@@ -341,36 +365,42 @@ function StageBadgeCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
   const stageNum = data.stageNumber || getStageNumber(data.stage);
   const stageName = getShortStageName(data.stage);
+
+  const tdrWindow = stageNum <= 2 ? 'Peak TDR Value' : stageNum === 3 ? 'Strong TDR Value' : stageNum === 4 ? 'Limited TDR Value' : 'Minimal TDR Value';
+  const phaseName = stageNum <= 2 ? 'Architecture Shaping Window' : stageNum === 3 ? 'Evaluation Phase' : stageNum === 4 ? 'Confirmation Phase' : 'Closing Phase';
+  const badgeStyle = stageNum <= 2 ? 'bg-emerald-600 text-white' : stageNum === 3 ? 'bg-teal-600 text-white' : stageNum === 4 ? 'bg-amber-500 text-amber-950' : 'bg-slate-600 text-slate-200';
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
-          'inline-flex items-center gap-[3px] rounded px-1 py-0 text-2xs font-medium cursor-help whitespace-nowrap leading-[20px]',
+          'inline-flex items-center justify-center rounded px-1.5 text-[11px] font-semibold tabular-nums cursor-help h-5 leading-5 min-w-[24px]',
           getStageBadgeStyle(stageNum)
         )}>
-          <CheckCircle2 className={cn(
-            'h-[9px] w-[9px] shrink-0',
-            stageNum <= 2 ? 'text-emerald-600' : stageNum === 3 ? 'text-teal-600' : 'text-amber-600'
-          )} />
-          [{stageNum.toString().padStart(2, '0')}] {stageName}
-                  </span>
+          {stageNum}
+        </span>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-md p-4">
-        <p className="text-sm font-medium text-foreground mb-1">
-          {stageNum <= 2 ? 'Peak TDR Value — Architecture Shaping Window'
-            : stageNum === 3 ? 'Strong TDR Value — Evaluation Phase'
-            : stageNum === 4 ? 'Limited TDR Value — Confirmation Phase'
-            : 'Minimal TDR Value — Closing Phase'}
-        </p>
-        <p className="text-sm text-foreground/75 leading-relaxed">
-          {stageNum <= 2
-            ? 'Maximum opportunity to shape architecture decisions before they lock in.'
-            : stageNum === 3
-            ? 'Customer is actively evaluating. Influence is still possible.'
-            : stageNum === 4
-            ? 'Technical strategy likely set. Focus on risk validation.'
-            : 'Near close. Focus on risk prevention and implementation readiness.'}
-        </p>
+      <TooltipContent side="top" className="max-w-xs p-4">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">Stage {stageNum}: {stageName}</p>
+            <span className={cn('rounded px-1.5 py-0.5 text-xs font-bold', badgeStyle)}>{tdrWindow}</span>
+          </div>
+          <p className="text-sm text-foreground/75 leading-relaxed">
+            {stageNum <= 2
+              ? 'Maximum opportunity to shape architecture decisions before they lock in. Focus on positioning your solution and establishing the evaluation criteria.'
+              : stageNum === 3
+              ? 'Customer is actively evaluating. Influence is still possible but the window is narrowing. Validate technical fit and address concerns now.'
+              : stageNum === 4
+              ? 'Technical strategy likely set. Focus on risk validation, final objection handling, and ensuring no surprises during implementation.'
+              : 'Near close. Focus on risk prevention, implementation readiness, and ensuring a smooth transition to post-sale.'}
+          </p>
+          <div className="border-t border-border/40 pt-2">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{phaseName}</span> — {data.stageAge ? `${data.stageAge} days in stage` : 'Age unknown'}
+            </p>
+          </div>
+        </div>
       </TooltipContent>
     </Tooltip>
   );
@@ -644,11 +674,11 @@ function PartnerIconCell({ data }: ICellRendererParams<Deal>) {
   );
 }
 
-const QUADRANT_BADGE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  PRIORITIZE:   { bg: 'bg-purple-500/15',  text: 'text-purple-300',  label: 'Prioritize' },
-  FAST_TRACK:   { bg: 'bg-emerald-500/15', text: 'text-emerald-300', label: 'Fast Track' },
-  INVESTIGATE:  { bg: 'bg-amber-500/15',   text: 'text-amber-300',   label: 'Investigate' },
-  DEPRIORITIZE: { bg: 'bg-slate-500/15',   text: 'text-slate-400',   label: 'Deprioritize' },
+const QUADRANT_BADGE_STYLES: Record<string, { bg: string; text: string; cellBg: string; cellText: string; label: string; guidance: string }> = {
+  PRIORITIZE:   { bg: 'bg-purple-600',    text: 'text-white',       cellBg: 'bg-purple-500/20',  cellText: 'text-purple-300',  label: 'Prioritize',   guidance: 'High-complexity deal with strong win signals. Prioritize TDR to protect the technical narrative and accelerate close.' },
+  FAST_TRACK:   { bg: 'bg-emerald-600',   text: 'text-white',       cellBg: 'bg-emerald-500/20', cellText: 'text-emerald-300', label: 'Fast Track',   guidance: 'High win probability with lower technical complexity. Streamline the process — light TDR to confirm, then close.' },
+  INVESTIGATE:  { bg: 'bg-amber-500',     text: 'text-amber-950',   cellBg: 'bg-amber-500/20',   cellText: 'text-amber-300',   label: 'Investigate',  guidance: 'Complex deal with uncertain win probability. Deep-dive TDR needed to uncover blockers and build a credible technical case.' },
+  DEPRIORITIZE: { bg: 'bg-slate-600',     text: 'text-slate-200',   cellBg: 'bg-slate-500/15',   cellText: 'text-slate-400',   label: 'Deprioritize', guidance: 'Low complexity and low win probability. Standard process — invest SE time elsewhere unless new signals emerge.' },
 };
 
 function DealPriorityCell({ data }: ICellRendererParams<Deal>) {
@@ -656,31 +686,75 @@ function DealPriorityCell({ data }: ICellRendererParams<Deal>) {
     return <span className="text-2xs text-muted-foreground">—</span>;
   }
   const style = QUADRANT_BADGE_STYLES[data.dealQuadrant] || QUADRANT_BADGE_STYLES.DEPRIORITIZE;
-  const tdrPart = Math.round((data.tdrScore ?? 0) * 0.4);
-  const winPart = Math.round(Math.round((data.propensityScore ?? 0) * 100) * 0.6);
+  const tdrScore = data.tdrScore ?? 0;
+  const winPct = Math.round((data.propensityScore ?? 0) * 100);
+  const tdrPart = Math.round(tdrScore * 0.4);
+  const winPart = Math.round(winPct * 0.6);
+
+  const topFactor = data.propensityFactors?.[0];
+  const whyTags = getTopFactors(data, 1);
+  const topTdrFactor = whyTags[0];
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className={cn(
           'inline-flex items-center justify-center cursor-help rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums min-w-[28px]',
-          style.bg, style.text
+          style.cellBg, style.cellText
         )}>
           {data.dealPriority}
         </span>
       </TooltipTrigger>
-      <TooltipContent side="top" className="max-w-xs p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <span className={cn('rounded-full px-2.5 py-0.5 text-2xs font-semibold', style.bg, style.text)}>
-            {style.label}
-          </span>
-          <span className="text-sm font-semibold tabular-nums">{data.dealPriority}/100</span>
+      <TooltipContent side="top" className="max-w-xs p-4">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">Deal Priority: {data.dealPriority}/100</p>
+            <span className={cn('rounded px-1.5 py-0.5 text-xs font-bold', style.bg, style.text)}>
+              {style.label}
+            </span>
+          </div>
+          <p className="text-sm text-foreground/75 leading-relaxed">{style.guidance}</p>
+          <div className="border-t border-border/40 pt-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Score Breakdown</p>
+            <div className="space-y-0.5">
+              <p className="text-sm text-foreground/75 flex justify-between">
+                <span>TDR Index</span>
+                <span className="tabular-nums">{tdrScore} × 40% = <span className="font-medium text-foreground">{tdrPart}</span></span>
+              </p>
+              <p className="text-sm text-foreground/75 flex justify-between">
+                <span>Win Propensity</span>
+                <span className="tabular-nums">{winPct}% × 60% = <span className="font-medium text-foreground">{winPart}</span></span>
+              </p>
+            </div>
+          </div>
+          {(topTdrFactor || topFactor) && (
+            <div className="border-t border-border/40 pt-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Key Signals</p>
+              <ul className="space-y-0.5">
+                {topTdrFactor && (
+                  <li className="text-sm text-foreground/75 flex gap-2">
+                    <span className="text-muted-foreground shrink-0">·</span>
+                    <span><span className="font-medium text-foreground">{topTdrFactor.label}</span> — +{topTdrFactor.points}pts TDR</span>
+                  </li>
+                )}
+                {topFactor && (
+                  <li className="text-sm text-foreground/75 flex gap-2">
+                    <span className={cn('shrink-0', topFactor.direction === 'helps' ? 'text-emerald-600' : topFactor.direction === 'hurts' ? 'text-red-500' : 'text-muted-foreground')}>
+                      {topFactor.direction === 'helps' ? '↑' : topFactor.direction === 'hurts' ? '↓' : '→'}
+                    </span>
+                    <span><span className="font-medium text-foreground">{getMLFactorDisplayName(topFactor.name)}</span> — {topFactor.direction === 'helps' ? 'helps' : topFactor.direction === 'hurts' ? 'hurts' : 'neutral'} win probability</span>
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground">TDR {data.tdrScore ?? 0} × 0.4 = {tdrPart}</p>
-        <p className="text-xs text-muted-foreground">Win {Math.round((data.propensityScore ?? 0) * 100)}% × 0.6 = {winPart}</p>
       </TooltipContent>
     </Tooltip>
   );
 }
+
+const ICON_CONTAINER = 'inline-flex items-center justify-center cursor-help rounded h-[22px] w-[22px]';
 
 function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
@@ -697,35 +771,39 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
         return (
           <Tooltip key={i}>
             <TooltipTrigger asChild>
-              <span className={cn(
-                'inline-flex items-center justify-center cursor-help rounded p-[3px]',
-                pillStyle
-              )}>
+              <span className={cn(ICON_CONTAINER, pillStyle)}>
                 <IconComponent className="h-3 w-3" />
               </span>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-md p-4">
-              <p className="text-xs font-semibold mb-1">{dynamicLabel}</p>
-              <p className="text-sm text-foreground leading-relaxed mb-2">{dynamicDesc}</p>
-              {factor.id === 'competitiveDisplacement' && data.competitors && (
-                <p className="text-sm text-foreground/85 leading-relaxed mb-2">
-                  <span className="font-medium">Competitors:</span> {data.competitors}
-                </p>
-              )}
-              <p className="text-sm text-foreground/80 leading-relaxed mb-3">→ {factor.strategy}</p>
-              {factor.tdrPrep && factor.tdrPrep.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">TDR Preparation</p>
-                  <ul className="space-y-1">
-                    {factor.tdrPrep.map((step, j) => (
-                      <li key={j} className="text-sm text-foreground/75 leading-relaxed flex gap-2">
-                        <span className="text-muted-foreground shrink-0">·</span>
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                  </ul>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">{dynamicLabel}</p>
+                  <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-secondary text-muted-foreground">
+                    Tier {factor.tier} · +{factor.points}pts
+                  </span>
                 </div>
-              )}
+                <p className="text-sm text-foreground/75 leading-relaxed">{dynamicDesc}</p>
+                {factor.id === 'competitiveDisplacement' && data.competitors && (
+                  <p className="text-sm text-foreground/85 leading-relaxed">
+                    <span className="font-medium">Competitors:</span> {data.competitors}
+                  </p>
+                )}
+                <p className="text-sm text-foreground/80 leading-relaxed">→ {factor.strategy}</p>
+                {factor.tdrPrep && factor.tdrPrep.length > 0 && (
+                  <div className="border-t border-border/40 pt-2">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">TDR Preparation</p>
+                    <ul className="space-y-0.5">
+                      {factor.tdrPrep.map((step, j) => (
+                        <li key={j} className="text-sm text-foreground/75 leading-relaxed flex gap-2">
+                          <span className="text-muted-foreground shrink-0">·</span>
+                          <span>{step}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </TooltipContent>
           </Tooltip>
         );
@@ -740,21 +818,37 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
           : f.direction === 'hurts'
             ? 'bg-red-500/10 text-red-600'
             : 'bg-indigo-500/10 text-indigo-600';
+        const displayName = getMLFactorDisplayName(f.name);
+        const explanation = getMLFactorExplanation(f.name);
+        const dirLabel = f.direction === 'helps' ? 'Helps win probability' : f.direction === 'hurts' ? 'Hurts win probability' : 'Neutral impact';
+        const dirColor = f.direction === 'helps' ? 'text-emerald-600' : f.direction === 'hurts' ? 'text-red-500' : 'text-muted-foreground';
         return (
           <Tooltip key={`ml-${i}`}>
             <TooltipTrigger asChild>
-              <span className={cn(
-                'inline-flex items-center justify-center cursor-help rounded p-[3px] text-2xs font-bold',
-                colorClass
-              )}>
+              <span className={cn(ICON_CONTAINER, 'text-xs font-bold', colorClass)}>
                 {arrow}
               </span>
             </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs p-3">
-              <p className="text-sm text-foreground"><span className="font-medium">{f.name}:</span> {f.value}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {f.direction === 'helps' ? 'Positively' : f.direction === 'hurts' ? 'Negatively' : 'Neutrally'} influences close probability (ML)
-              </p>
+            <TooltipContent side="top" className="max-w-xs p-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold text-foreground">{displayName}</p>
+                  <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', colorClass)}>
+                    ML Factor
+                  </span>
+                </div>
+                <p className="text-sm text-foreground/75 leading-relaxed">{explanation}</p>
+                <div className="border-t border-border/40 pt-2">
+                  <p className="text-sm flex items-center gap-2">
+                    <span className={cn('font-medium', dirColor)}>{arrow} {dirLabel}</span>
+                  </p>
+                  {f.value && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Value: <span className="font-mono text-foreground/80">{f.value}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
             </TooltipContent>
           </Tooltip>
         );
@@ -877,14 +971,15 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
       getQuickFilterText: (params) => `${params.data?.salesConsultant || ''} ${params.data?.pocSalesConsultant || ''}`,
     },
     {
-      headerName: 'Stage',
+      headerName: 'Stg',
+      headerTooltip: 'Sales Stage (1–5)',
       field: 'stage',
       cellRenderer: StageBadgeCell,
-      minWidth: 150,
-      flex: 1,
-      filter: 'agTextColumnFilter',
-      filterParams: { filterOptions: ['contains'], debounceMs: 200 },
+      minWidth: 50,
+      maxWidth: 62,
+      filter: 'agNumberColumnFilter',
       sortable: true,
+      cellStyle: { textAlign: 'center' },
       comparator: (_, __, nodeA, nodeB) => {
         const a = nodeA?.data?.stageNumber || getStageNumber(nodeA?.data?.stage || '');
         const b = nodeB?.data?.stageNumber || getStageNumber(nodeB?.data?.stage || '');
