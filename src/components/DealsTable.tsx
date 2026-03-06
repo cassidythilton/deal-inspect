@@ -669,11 +669,11 @@ function DealPriorityCell({ data }: ICellRendererParams<Deal>) {
         </span>
       </TooltipTrigger>
       <TooltipContent side="top" className="max-w-xs p-3">
-        <div className="flex items-center gap-2 mb-1.5">
-          <p className="text-sm font-semibold">{style.label}</p>
-          <span className={cn('rounded px-1.5 py-0.5 text-2xs font-medium', style.bg, style.text)}>
-            {data.dealPriority}/100
+        <div className="flex items-center gap-2 mb-2">
+          <span className={cn('rounded-full px-2.5 py-0.5 text-2xs font-semibold', style.bg, style.text)}>
+            {style.label}
           </span>
+          <span className="text-sm font-semibold tabular-nums">{data.dealPriority}/100</span>
         </div>
         <p className="text-xs text-muted-foreground">TDR {data.tdrScore ?? 0} × 0.4 = {tdrPart}</p>
         <p className="text-xs text-muted-foreground">Win {Math.round((data.propensityScore ?? 0) * 100)}% × 0.6 = {winPart}</p>
@@ -943,12 +943,12 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
       headerClass: 'ag-right-aligned-header',
     },
     {
-      headerName: 'Priority',
+      headerName: 'Pri',
       headerTooltip: 'Deal Priority — composite of TDR Score (40%) + Win Propensity (60%)',
       field: 'dealPriority',
       cellRenderer: DealPriorityCell,
-      minWidth: 62,
-      maxWidth: 75,
+      minWidth: 52,
+      maxWidth: 65,
       filter: false,
       sortable: true,
       sort: 'desc',
