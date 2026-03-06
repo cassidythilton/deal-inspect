@@ -6108,13 +6108,16 @@ The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking 
 - [x] Create `DEAL_PREDICTIONS` table + `ML_MODEL_METADATA` table (Mar 6)
 - [x] Grants configured for schema and ML operations (Mar 6)
 - [x] `CREATE SNOWFLAKE.ML.CLASSIFICATION DEAL_CLOSE_PROPENSITY` — trained successfully (Mar 6)
-- [x] Evaluation metrics: **AUC-ROC 0.997**, Precision 97.8%, Recall 97.7%, F1 97.7%, Log Loss 0.059 (Mar 6)
-- [x] Feature importance validated — top factors: DAYS_SINCE_CREATED (15.2%), ACCOUNT_WIN_RATE (11.5%), STAGE_AGE (10.5%), DEAL_TYPE (7.1%), TOTAL_OPTY_COUNT (5.7%) (Mar 6)
-- [x] Create `ML_PIPELINE_FEATURES` view — 6,569 open pipeline deals (Cortex added for scoring parity) (Mar 6)
+- [x] v1 evaluation metrics: AUC 0.997, F1 97.7% — **leakage detected** in ACCOUNT_WIN_RATE, STAGE_AGE, TOTAL_OPTY_COUNT (Mar 6)
+- [x] **Leakage audit**: dropped 5 features (ACCOUNT_WIN_RATE, TYPE_SPECIFIC_WIN_RATE, TOTAL_OPTY_COUNT, STAGE_AGE, STAGE_VELOCITY_RATIO), fixed DAYS_SINCE_CREATED → DAYS_IN_PIPELINE, added RECURRING_RATIO (Mar 6)
+- [x] v2 retrain (leakage-clean): **F1 92.3% (Won)**, Precision 92.5%, Recall 92.1%, F1 97.1% (Lost) (Mar 6)
+- [x] Feature importance validated (v2) — top factors: DAYS_IN_PIPELINE (15.2%), LINE_ITEMS (9.6%), CONTRACT_TYPE (5.1%), DEAL_TYPE (4.9%), SALES_SEGMENT (4.8%) — all legitimately available at prediction time (Mar 6)
+- [x] Create `ML_PIPELINE_FEATURES` view — 6,569 open pipeline deals (Mar 6)
 - [x] Create `SCORE_PIPELINE_DEALS()` procedure + `RETRAIN_PROPENSITY_MODEL()` procedure (Mar 6)
 - [x] Create Snowflake Tasks: `TASK_NIGHTLY_SCORE` (2 AM UTC) + `TASK_WEEKLY_RETRAIN` (Sun 3 AM UTC) — created **suspended** (Mar 6)
-- [x] First batch scoring: **6,569 pipeline deals scored** — 1,906 HIGH (92.2%), 754 MONITOR (55.2%), 3,909 AT_RISK (6.1%) (Mar 6)
+- [x] v2 batch scoring: **6,569 pipeline deals scored** — 2,487 HIGH (avg 85.2%), 884 MONITOR (avg 39.1%), 3,198 AT_RISK (avg 5.0%) (Mar 6)
 - [x] All objects in `TDR_APP.ML_MODELS` schema, using `TDR_APP_WH` (Mar 6)
+- [x] Fixed empty string handling: `Demo Completed Date`, `Pricing Call Date` are TEXT with empty strings (Mar 6)
 
 **Sprint 28d — Domo Integration (Day 5–6)** *[Domo Admin + Cursor for manifest]*
 - [ ] Sync `TDR_APP.ML_MODELS.DEAL_PREDICTIONS` as a new Domo dataset
