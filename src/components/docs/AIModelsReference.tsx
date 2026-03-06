@@ -209,6 +209,57 @@ export function AIModelsReference() {
         </div>
       </div>
 
+      {/* ── ML & Enhancement Models (Sprint 28–30) ────────────────────────── */}
+      <div className="mt-8 space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <SnowflakeLogo className="h-5 w-5 shrink-0" />
+          <h3 className="text-base font-semibold text-white">ML & Enhancement Models</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <ModelCard
+            model="SNOWFLAKE.ML.CLASSIFICATION"
+            provider="Snowflake ML (in-database)"
+            costTier="low"
+            usedFor={[
+              'Propensity-to-close prediction — classifies deals as WIN / LOSS',
+              'AUC 0.997, F1 97.7% on historical data',
+              'Features: STAGE_NUMBER, DEAL_AGE_DAYS, ACV, NUM_COMPETITORS, FORECAST_CATEGORY + 8 more',
+              'Nightly scoring (2 AM UTC), weekly retraining (Sun 3 AM UTC)',
+              'Outputs stored in DEAL_PREDICTIONS table with 5 SHAP factors per deal',
+            ]}
+          />
+          <ModelCard
+            model="Domo AI (text/chat)"
+            provider="Domo Platform — /domo/ai/v1/text/chat"
+            costTier="low"
+            usedFor={[
+              'TDR field enhancement — expands SE input with 8 context layers',
+              'Tech extraction — parses Perplexity narrative signals into product names',
+              'TDR candidate recommendations — 17-factor scoring prompt',
+              'Temperature 0.1–0.3, JSON output parsing',
+            ]}
+          />
+        </div>
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-2">
+          <p className="text-sm font-medium text-white">SHAP Factor Display Names</p>
+          <p className="text-[10px] text-slate-400 mb-1">ML model features mapped to human-readable names in tooltips and Intelligence Panel</p>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-sm text-slate-300">
+            {[
+              ['STAGE_NUMBER', 'Stage'], ['DEAL_AGE_DAYS', 'Deal Age'], ['STAGE_AGE_DAYS', 'Stage Age'],
+              ['ACV', 'Deal Size'], ['NUM_COMPETITORS', 'Competition'], ['HAS_PARTNER', 'Partner Involved'],
+              ['DEAL_TYPE', 'Deal Type'], ['FORECAST_CATEGORY', 'Forecast Category'], ['ACCOUNT_WIN_RATE', 'Account History'],
+              ['QUARTER_END_PROXIMITY', 'Quarter Timing'], ['SALES_SEGMENT', 'Segment'], ['SALES_VERTICAL', 'Vertical'],
+              ['SALES_PROCESS', 'Sales Process'],
+            ].map(([raw, display]) => (
+              <div key={raw} className="flex gap-2">
+                <span className="text-slate-500 font-mono text-[10px] w-36 shrink-0">{raw}</span>
+                <span>{display}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* ── Model Selection Philosophy ─────────────────────────────────────── */}
       <div className="mt-6 rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-2">
         <p className="text-sm font-medium text-white">Model Selection Philosophy</p>

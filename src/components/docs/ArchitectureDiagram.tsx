@@ -335,6 +335,8 @@ function buildDataModel() {
     nd('dist', 'TDR_DISTRIBUTIONS', { sub: 'FK: SESSION_ID  |  Slack delivery receipts', color: C.rose, logo: 'slack', w: 260, h: 60 }),
     nd('usage', 'API_USAGE_LOG', { sub: 'Service, model, tokens, credits, latency', color: C.amber, w: 260, h: 60 }),
     nd('view', 'V_TDR_ANALYTICS (view)', { sub: 'Flattened join: sessions + inputs + cortex extracts', color: C.cyan, w: 310, h: 60 }),
+    nd('predictions', 'DEAL_PREDICTIONS', { sub: 'ML propensity scores + SHAP factors (nightly)', color: C.violet, logo: 'snowflake', w: 300, h: 60 }),
+    nd('mlmodel', 'ML.CLASSIFICATION', { sub: 'Snowflake ML — AUC 0.997, weekly retrain', color: C.violet, logo: 'cortex', w: 280, h: 60 }),
   ];
 
   const edges = [
@@ -349,6 +351,7 @@ function buildDataModel() {
     edge('sessions', 'view', { color: C.cyan, dashed: true, label: 'materialized join' }),
     edge('inputs', 'view', { color: C.cyan, dashed: true }),
     edge('cortex', 'view', { color: C.cyan, dashed: true }),
+    edge('mlmodel', 'predictions', { color: C.violet, label: 'nightly score' }),
   ];
 
   return layoutGraph(nodes, edges, 'LR', { nodeSep: 40, rankSep: 80 });
@@ -365,6 +368,8 @@ function buildCortexMap() {
     nd('opus', 'claude-4-opus', { sub: 'Deep reasoning — complex analysis', color: C.violet, w: 240, h: 60 }),
     nd('gpt', 'gpt-4.1 / o4-mini', { sub: 'Alternative reasoning models', color: C.amber, w: 230, h: 60 }),
     nd('llama8b', 'llama3.1-8b', { sub: 'Lightweight — classification + extraction', color: C.green, w: 260, h: 60 }),
+    nd('domoai', 'Domo AI (text/chat)', { sub: 'TDR field enhancement + tech extraction', color: C.amber, logo: 'domo', w: 280, h: 60 }),
+    nd('mlclass', 'ML.CLASSIFICATION', { sub: 'Propensity-to-close model (AUC 0.997)', color: C.violet, logo: 'snowflake', w: 280, h: 60 }),
     nd('llama70b', 'llama3.1-70b', { sub: 'Mid-tier — summarization', color: C.cyan, w: 220, h: 60 }),
     nd('arctic', 'arctic-embed-l-v2.0', { sub: 'Semantic embeddings for similarity search', color: C.blue, logo: 'snowflake', w: 280, h: 60 }),
     // Features

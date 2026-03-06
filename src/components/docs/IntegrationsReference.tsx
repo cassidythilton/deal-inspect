@@ -108,6 +108,32 @@ export function IntegrationsReference() {
           </AccordionContent>
         </AccordionItem>
 
+        {/* ── Snowflake ML Classification ─────────────────────────────────── */}
+        <AccordionItem value="snowflake-ml" className="border border-white/[0.08] rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
+            <IntegrationHeader
+              icon={<SnowflakeLogo className="h-4 w-4" />}
+              title="Snowflake ML Classification"
+              subtitle="Win propensity model — training, nightly scoring, weekly retraining"
+            />
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4 space-y-3">
+            <p className="text-sm text-slate-200 leading-relaxed">
+              SNOWFLAKE.ML.CLASSIFICATION predicts win probability for every deal. Model training,
+              nightly scoring, and weekly retraining run as Snowflake Tasks.
+            </p>
+            <DocTable
+              headers={['Component', 'Purpose', 'Detail']}
+              rows={[
+                ['Model Training', 'Train classification model', 'SNOWFLAKE.ML.CLASSIFICATION trained on historical deal outcomes. Weekly retraining task.'],
+                ['Nightly Scoring Task', 'Score all active deals', 'Snowflake Task runs nightly to predict win probability for each opportunity.'],
+                ['Weekly Retraining Task', 'Refresh model weights', 'Snowflake Task retrains the model on latest data weekly.'],
+                ['DEAL_PREDICTIONS', 'Prediction storage', 'TDR_APP.PUBLIC.DEAL_PREDICTIONS table stores deal_id, win_probability, and model metadata.'],
+              ]}
+            />
+          </AccordionContent>
+        </AccordionItem>
+
         {/* ── Sumble ──────────────────────────────────────────────────────── */}
         <AccordionItem value="sumble" className="border border-white/[0.08] rounded-lg overflow-hidden">
           <AccordionTrigger className="px-4 py-3 hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
@@ -188,8 +214,11 @@ export function IntegrationsReference() {
               rows={[
                 ['Code Engine', 'Server-side function execution', '25 functions across 4 groups (Persistence, Intel, Cortex, Chat). Keeps API keys server-side.'],
                 ['Datasets', 'SFDC deal data pipeline', 'dealdetails dataset maps SFDC opportunities with ACV, stage, forecast, partners, etc.'],
+                ['Magic ETL', 'Deal predictions join', 'DEAL_PREDICTIONS joined to opportunitiesmagic for propensity in portfolio views.'],
                 ['Filesets', 'Knowledge Base document store', 'PDF battle cards, playbooks, competitive docs. Queried via /domo/files/v1/filesets/{id}/query.'],
                 ['Domo AI', 'Native AI model', 'Used as chat provider and fallback summarizer. No Code Engine needed — client-side calls.'],
+                ['Domo AI Enhancement', 'TDR field enhancement', '/domo/ai/v1/text/chat endpoint for Enhance button on TDR fields. 8 context layers, inline diff view.'],
+                ['Domo AI Tech Extraction', 'Perplexity signal parsing', 'Extracts technology pills from Perplexity research for display in Intelligence Panel.'],
                 ['App Studio', 'Hosting & iframe container', 'React SPA deployed as a Domo App. Uses ryuu.js SDK for data, proxy, and auth.'],
               ]}
             />

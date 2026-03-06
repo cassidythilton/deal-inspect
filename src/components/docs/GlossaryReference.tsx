@@ -2,6 +2,7 @@
  * GlossaryReference — Key terms and FAQ for the app.
  *
  * Sprint 25: Documentation Hub
+ * Sprints 28–30: Win Propensity, Deal Priority, SHAP, AI Enhancement, UX terms
  */
 
 import {
@@ -40,6 +41,18 @@ const GLOSSARY: GlossaryTerm[] = [
   { term: 'Critical Factor', definition: 'A specific deal characteristic that drives the TDR score — e.g., "High ACV" or "Multi-Competitor" or "Stage 2 Sweet Spot." Displayed as tags on the deal grid.' },
   { term: 'Thesis', definition: 'A free-form statement by the SE summarizing their hypothesis about the deal. Editable in the TDR Workspace header. Saved to TDR_SESSIONS.' },
   { term: 'Verdict', definition: 'The final TDR outcome: Proceed (green light), Caution (proceed with flags), Pause (needs more info), Not Ready (do not proceed). Set in the Risk & Verdict step.' },
+  /* ── Sprint 28–30 ───────────────────────────────────────────────────────── */
+  { term: 'DEAL_PREDICTIONS', definition: 'Snowflake table containing ML propensity outputs. Joined to the main dataset in Domo. Fields include PropensityScore (0–1), PropensityQuadrant (HIGH/MONITOR/AT_RISK), and SHAP factors.' },
+  { term: 'Deal Priority', definition: 'Composite score = 60% Win Propensity + 40% TDR Score. Quadrants: PRIORITIZE (high both), FAST_TRACK (low TDR + high win), INVESTIGATE (high TDR + low win), DEPRIORITIZE (low both). Thresholds: TDR ≥ 50, Win ≥ 40%.' },
+  { term: 'Deal Quadrant', definition: 'PRIORITIZE, FAST_TRACK, INVESTIGATE, or DEPRIORITIZE — derived from the Deal Priority composite (60% propensity + 40% TDR).' },
+  { term: 'Domo AI Enhancement', definition: 'Domo AI endpoint used to enhance TDR field responses using 8 context layers. Powers richer, context-aware answers in the TDR workspace.' },
+  { term: 'Gap Indicator', definition: 'UX element that highlights gaps or missing information in the TDR workflow. Helps SEs identify areas needing attention.' },
+  { term: 'ML Factor', definition: 'A feature used by the Snowflake ML Classification model to predict win propensity. Display names align with SHAP factor explanations in the workspace.' },
+  { term: 'Propensity Quadrant', definition: 'HIGH, MONITOR, or AT_RISK — derived from the Win Propensity score. Indicates the model\'s confidence in deal closure.' },
+  { term: 'Readout Checklist', definition: 'Checklist in the workspace that tracks readiness for the executive Readout PDF. Ensures all required elements are complete before distribution.' },
+  { term: 'SHAP Factors', definition: 'SHapley Additive exPlanations — up to 5 factors (name, value, direction, magnitude) that explain why the ML model assigned a given Win Propensity score. Shown in Why TDR pills and expandable in the workspace.' },
+  { term: 'Stage Age Proximity Override', definition: 'Stage age filtering behavior that allows deals near the selected stage-age boundary to remain visible. Improves UX when filtering by stage age.' },
+  { term: 'Win Propensity', definition: 'ML-based 0–100% score predicting deal win probability. From Snowflake ML Classification model via DEAL_PREDICTIONS. Quadrants: HIGH, MONITOR, AT_RISK.' },
 ];
 
 /* ── FAQ data ──────────────────────────────────────────────────────────────── */

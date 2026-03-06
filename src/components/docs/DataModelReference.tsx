@@ -93,6 +93,34 @@ export function DataModelReference() {
         <p className="text-[11px] text-slate-400 ml-6">Warehouse: COMPUTE_WH | Role: TDR_APP_ROLE | Auth: JWT (RSA-256 key pair)</p>
       </div>
 
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-2">
+        <p className="text-sm font-medium text-white">Dataset Join (Domo)</p>
+        <p className="text-[11px] text-slate-400">DEAL_PREDICTIONS is joined to opportunitiesmagic in Domo. Deal views surface propensity data from this join.</p>
+      </div>
+
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-4 py-3 space-y-2">
+        <p className="text-sm font-medium text-white">Deal Type — Expanded Fields (Sprints 28–30)</p>
+        <p className="text-[11px] text-slate-400">New fields on the main Deal object, from DEAL_PREDICTIONS and expanded dataset:</p>
+        <DocTable
+          headers={['Field', 'Source', 'Notes']}
+          rows={[
+            ['propensityScore', 'DEAL_PREDICTIONS', 'Probability 0–1'],
+            ['propensityQuadrant', 'DEAL_PREDICTIONS', 'Deal quadrant'],
+            ['propensityFactors', 'DEAL_PREDICTIONS', 'Top 5 SHAP factors'],
+            ['propensityScoredAt', 'DEAL_PREDICTIONS', 'When scored'],
+            ['propensityModelVersion', 'DEAL_PREDICTIONS', 'Model version'],
+            ['dealPriority', 'Derived', 'Priority from propensity'],
+            ['dealQuadrant', 'DEAL_PREDICTIONS', 'Alias for quadrant'],
+            ['accountRevenue', 'Expanded dataset', 'AccountRevenueUsd'],
+            ['accountEmployees', 'Expanded dataset', 'AccountEmployees'],
+            ['strategicAccount', 'Expanded dataset', 'StrategicAccount'],
+            ['region', 'Expanded dataset', 'Region'],
+            ['salesSegment', 'Expanded dataset', 'SalesSegment'],
+            ['salesVertical', 'Expanded dataset', 'SalesVertical'],
+          ]}
+        />
+      </div>
+
       <Accordion type="multiple" className="space-y-2">
         <TableCard
           icon={Database}
@@ -213,6 +241,26 @@ export function DataModelReference() {
             ['DURATION_MS', 'NUMBER', 'Call duration in milliseconds'],
             ['CALLED_BY', 'VARCHAR', 'User who initiated the call'],
             ['CREATED_AT', 'TIMESTAMP', 'When the call was made'],
+          ]}
+        />
+
+        <TableCard
+          icon={Database}
+          name="DEAL_PREDICTIONS"
+          description="ML propensity scores and SHAP factors (Sprint 28c)"
+          purpose="Stores SNOWFLAKE.ML.CLASSIFICATION propensity-to-close predictions. Nightly scoring at 2 AM UTC, weekly retraining Sun 3 AM UTC. Joined to opportunitiesmagic in Domo for deal views."
+          keyColumns={[
+            ['OPPORTUNITY_ID', 'VARCHAR', 'Primary key — SFDC opportunity ID'],
+            ['PREDICTION', 'VARCHAR', 'Binary prediction (close / no-close)'],
+            ['PROPENSITY_SCORE', 'NUMBER', 'Probability score 0–1'],
+            ['QUADRANT', 'VARCHAR', 'Deal quadrant classification'],
+            ['FACTOR_1_NAME / FACTOR_1_VALUE / FACTOR_1_DIRECTION / FACTOR_1_MAGNITUDE', 'VARCHAR / NUMBER', 'Top SHAP factor 1'],
+            ['FACTOR_2_NAME / FACTOR_2_VALUE / FACTOR_2_DIRECTION / FACTOR_2_MAGNITUDE', 'VARCHAR / NUMBER', 'Top SHAP factor 2'],
+            ['FACTOR_3_NAME / FACTOR_3_VALUE / FACTOR_3_DIRECTION / FACTOR_3_MAGNITUDE', 'VARCHAR / NUMBER', 'Top SHAP factor 3'],
+            ['FACTOR_4_NAME / FACTOR_4_VALUE / FACTOR_4_DIRECTION / FACTOR_4_MAGNITUDE', 'VARCHAR / NUMBER', 'Top SHAP factor 4'],
+            ['FACTOR_5_NAME / FACTOR_5_VALUE / FACTOR_5_DIRECTION / FACTOR_5_MAGNITUDE', 'VARCHAR / NUMBER', 'Top SHAP factor 5'],
+            ['SCORED_AT', 'TIMESTAMP', 'When prediction was generated'],
+            ['MODEL_VERSION', 'VARCHAR', 'Model version used for scoring'],
           ]}
         />
 

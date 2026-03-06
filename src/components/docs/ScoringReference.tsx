@@ -2,9 +2,11 @@
  * ScoringReference — Deep-dive documentation for the TDR Index Score.
  *
  * Covers Pre-TDR Score, Post-TDR Score, Confidence Score,
- * Priority Bands, Confidence Bands, and Lifecycle Phases.
+ * Win Propensity Score, Deal Priority composite, Priority Bands,
+ * Confidence Bands, and Lifecycle Phases.
  *
  * Sprint 25: Documentation Hub
+ * Sprints 28–30: Win Propensity, Deal Priority composite
  */
 
 import {
@@ -158,6 +160,54 @@ export function ScoringReference() {
                 <ScoreBadge color="#ef4444" label="Insufficient < 20" />
               </div>
             </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* ── Win Propensity Score ─────────────────────────────────────────── */}
+        <AccordionItem value="win-propensity" className="border border-white/[0.08] rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 text-sm font-medium text-white hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
+            Win Propensity Score (0–100%) — ML Win Probability
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4 space-y-3">
+            <p className="text-sm text-slate-200 leading-relaxed">
+              A Snowflake ML Classification model predicts the probability that a deal will close (win).
+              The score is expressed as 0–100% and comes from the <em className="text-violet-300">DEAL_PREDICTIONS</em> table,
+              joined to the main dataset in Domo.
+            </p>
+            <p className="text-xs font-medium text-slate-200">Propensity Quadrants:</p>
+            <div className="flex flex-wrap gap-2">
+              <ScoreBadge color="#22c55e" label="HIGH" />
+              <ScoreBadge color="#3b82f6" label="MONITOR" />
+              <ScoreBadge color="#f59e0b" label="AT_RISK" />
+            </div>
+            <p className="text-sm text-slate-200 leading-relaxed">
+              <strong>SHAP Factors</strong> explain why the model assigned a given score. Each factor has a name,
+              value, direction (positive/negative), and magnitude. Up to 5 SHAP factors are shown in the workspace
+              and Why TDR pills, with display names aligned to ML factor definitions.
+            </p>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* ── Deal Priority Composite ──────────────────────────────────────── */}
+        <AccordionItem value="deal-priority" className="border border-white/[0.08] rounded-lg overflow-hidden">
+          <AccordionTrigger className="px-4 py-3 text-sm font-medium text-white hover:bg-white/[0.03] [&[data-state=open]]:bg-white/[0.04]">
+            Deal Priority — Composite Score (60% Propensity + 40% TDR)
+          </AccordionTrigger>
+          <AccordionContent className="px-4 pb-4 space-y-3">
+            <p className="text-sm text-slate-200 leading-relaxed">
+              A composite score combining <em className="text-violet-300">Win Propensity</em> (60%) and <em className="text-violet-300">TDR Score</em> (40%)
+              to drive portfolio prioritization. Thresholds: TDR ≥ 50, Win ≥ 40%.
+            </p>
+            <p className="text-xs font-medium text-slate-200">Deal Quadrants:</p>
+            <DocTable
+              headers={['Quadrant', 'Criteria', 'Meaning']}
+              rows={[
+                ['PRIORITIZE', 'High TDR + High Win', 'High complexity and high win probability — top focus'],
+                ['FAST_TRACK', 'Low TDR + High Win', 'Lower complexity but strong win signal — move quickly'],
+                ['INVESTIGATE', 'High TDR + Low Win', 'Complex deal with lower win probability — needs attention'],
+                ['DEPRIORITIZE', 'Low TDR + Low Win', 'Lower complexity and lower win — lower urgency'],
+              ]}
+            />
           </AccordionContent>
         </AccordionItem>
 

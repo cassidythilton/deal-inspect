@@ -94,7 +94,10 @@ export function CapabilitiesGuide() {
           </p>
           <FeatureList items={[
             { name: 'AG Grid Deal Table', description: 'Sortable, filterable grid with custom cell renderers for TDR Score, ACV, Stage, and Priority.' },
-            { name: 'Hero Metrics', description: 'Three stat cards — Active TDRs, Average TDR Score, and Critical Deals — updated from Snowflake session data.' },
+            { name: 'Deal Priority Column', description: 'Composite score (60% propensity + 40% TDR) with color-coded quadrant badges for prioritization.' },
+            { name: 'Stage Column', description: 'Compressed to number-only display for compact table layout.' },
+            { name: 'Hero Metrics', description: 'Five stat cards including Active TDRs, Average TDR Score, Critical Deals, and Win Propensity — updated from Snowflake session data.' },
+            { name: 'Win Propensity Stat Card', description: 'Fifth stat card showing portfolio-level win probability from ML model predictions.' },
             { name: 'TDR Score Rendering', description: 'Color-coded score badge with priority label (CRITICAL/HIGH/MEDIUM/LOW) and critical factor tags.' },
             { name: 'Smart Search', description: 'Full-text search across account name, opportunity name, deal code, and owner.' },
             { name: 'Manager Filter', description: 'Filter deals by SE manager hierarchy (configurable in Settings).' },
@@ -128,6 +131,12 @@ export function CapabilitiesGuide() {
             { name: 'Competitive Landscape', description: 'Competitor positioning and differentiation strategy.' },
             { name: 'Usage & Adoption Plan', description: 'User adoption plan, success metrics, and rollout timeline.' },
           ]} />
+          <p className="text-xs font-medium text-slate-200 mt-2">UX Enhancements:</p>
+          <FeatureList items={[
+            { name: 'Gap Indicators', description: 'Visual indicators on TDR inputs showing which fields need attention or completion.' },
+            { name: 'Icon-Only Why TDR Pills', description: 'Compact icon-only pills with rich tooltips explaining TDR rationale.' },
+            { name: 'AI Enhancement', description: 'Enhance button on TDR fields — Domo AI endpoint with 8 context layers and inline diff view for suggested improvements.' },
+          ]} />
           <p className="text-[11px] text-slate-400 mt-2 italic">
             All inputs auto-save to Snowflake via Code Engine. Step completion status persists across sessions.
           </p>
@@ -145,6 +154,11 @@ export function CapabilitiesGuide() {
             contextual intelligence as the SE works through the review.
           </p>
           <FeatureList items={[
+            { name: 'Deal Priority Hero', description: 'Hero section displaying composite Deal Priority score with quadrant context.' },
+            { name: 'SHAP "Why this score?"', description: 'Expandable section explaining model predictions via SHAP feature importance.' },
+            { name: 'Readout Checklist', description: 'Progress checklist: Enrich → Research → Action Plan → TDR Brief for structured workflow.' },
+            { name: 'Account Firmographics Display', description: 'Firmographic data (revenue, employees, industry) surfaced from enrichment.' },
+            { name: 'Perplexity Tech Pill Extraction', description: 'Domo AI extracts technology signals from Perplexity research into pill badges.' },
             { name: 'Zone 1: TDR Score & Priority', description: 'Live-updating Pre-TDR or Post-TDR score with breakdown chart, priority band, confidence meter, and lifecycle phase context.' },
             { name: 'Zone 2: Account Enrichment', description: 'One-click "Enrich All" button triggers 4 Sumble endpoints (Tech Stack, Org, Jobs, People) + Perplexity research in parallel. Results cached in Snowflake.' },
             { name: 'Zone 3: AI Artifacts', description: 'Action Plan (7-section synthesis), TDR Brief (AI-generated narrative), Structured Extract (competitors, risks, use cases), Classified Findings, Entity Extraction.' },
@@ -217,6 +231,7 @@ export function CapabilitiesGuide() {
             { name: 'Account Intelligence', description: 'Sumble tech stack, org profile, hiring signals, key people. Perplexity research with citations.' },
             { name: 'TDR Score & Factors', description: 'Visual score breakdown showing which factors fired and why.' },
             { name: 'Slack Distribution', description: 'Channel picker, editable AI summary, PDF attached. Persisted to TDR_DISTRIBUTIONS.' },
+            { name: 'Slack Share Caching', description: 'Session-level cache for readout payload and PDF to avoid redundant regeneration.' },
           ]} />
         </div>
       </CapabilityCard>
@@ -233,6 +248,8 @@ export function CapabilitiesGuide() {
           </p>
           <FeatureList items={[
             { name: 'NLQ Hero Bar', description: '"Ask Your TDR Data" — type a natural language question, Cortex generates SQL, executes it, returns a table + narrative answer.' },
+            { name: 'Win Propensity Distribution', description: 'Chart showing distribution of ML-predicted win probability across the portfolio.' },
+            { name: 'Deal Positioning Scatter Plot', description: 'TDR complexity vs Win probability in 4 quadrants for strategic deal placement.' },
             { name: 'Competitor Distribution', description: 'Which competitors appear most across the portfolio.' },
             { name: 'Platform Distribution', description: 'Cloud platforms mentioned in TDR data (Snowflake, AWS, Azure, etc.).' },
             { name: 'Entry Layer Analysis', description: 'How Domo is positioned across deals (BI, ETL, Apps, etc.).' },

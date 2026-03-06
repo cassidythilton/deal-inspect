@@ -33,7 +33,7 @@
 
 **Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace)
 
-**Start point:** Sprint 31 (TDR Framework Redesign) — ML pipeline and UX polish complete. Next step is the structural TDR consolidation (9 → 5 steps).
+**Start point:** Sprint 31 (TDR Framework Redesign) — ML pipeline, UX polish, table polish, and documentation all complete. Next step is the structural TDR consolidation (9 → 5 steps).
 
 ---
 
@@ -6272,7 +6272,7 @@ First implementations of complex visualizations and interaction patterns rarely 
 - No custom diff renderer (use existing React diff library or simple before/after toggle)
 - No forced workflow in the Intelligence Panel — checklist is advisory, not blocking
 
-**Sprint 30b — Combined Priority + Table Polish + Docs** 🔲 IN PROGRESS
+**Sprint 30b — Combined Priority + Table Polish + Docs** ✅ COMPLETE
 
 > **Shaping documents:** `shaping/sprint-30-combined-score-and-docs.md`, `shaping/sprint-30b-table-polish.md`
 
@@ -6282,14 +6282,14 @@ First implementations of complex visualizations and interaction patterns rarely 
 23. ~~**Stage column compression**~~ ✅ — Cell shows stage number only (was `[04] Confirm Solu`). Rich tooltip: full stage name, TDR value window badge, expanded guidance, stage age context. Column shrunk from `minWidth: 150` to `50/62` — ~100px reclaimed.
 24. ~~**Why TDR? icon uniformity**~~ ✅ — All icons (factor + ML direction arrows) share `ICON_CONTAINER` class (22×22px, same border-radius/padding). Factor tooltips restructured with tier/points badge. ML factor tooltips upgraded: human-readable names via `ML_FACTOR_DISPLAY` lookup (13 factors), plain-English explanations, direction label, and value display. Consistent `space-y-2` tooltip structure across both types.
 25. ~~**Column header readability**~~ ✅ — Headers: "Stg" (was "Stage"), "Pri" (was "Priority"). All fit at rendered widths with `headerTooltip` for full descriptions. ~100px freed by Stage compression distributes to remaining columns.
-26. **Perplexity tech pills** — Extract tech names from `perplexityData.technologySignals` via Domo AI LLM endpoint. Categorize using `TECH_CATEGORY_STYLES`. Render as pills with `SourceBadge source="perplexity"`. Cache extraction in component state.
-27. **Slack PDF tech pill colors** — Match `PDF_TECH_CATEGORY_COLORS` in `TDRReadoutDocument.tsx` to use category-specific hex colors instead of default gray.
-28. **Intelligence Panel readout checklist** — Advisory "Readout Checklist" in Situation Room: Enrich → Research → Action Plan → TDR Brief. Status per item (not started / complete / stale). Non-blocking.
-29. **Slack share caching** — Cache assembled readout payload in session to avoid redundant `assembleReadout()` + `generatePDF()` on repeated shares.
-30. **SHAP "Why this score?" expandable** — Expandable section below propensity card in Intelligence Panel. Shows all 5 factors with plain English labels, direction, magnitude bars.
-31. **Expanded dataset columns** — Surface `accountRevenue`, `accountEmployees`, `region`, `salesSegment`, `salesVertical`, `strategicAccount` in deal detail tooltips or Intelligence Panel header. Map in `transformOpportunityToDeal`.
-32. **Documentation overhaul** — Update all 7 doc components (`ArchitectureDiagram`, `DataModelReference`, `ScoringReference`, `CapabilitiesGuide`, `IntegrationsReference`, `AIModelsReference`, `GlossaryReference`) to reflect Sprints 28–30: ML pipeline, propensity charts, composite priority, icon pills, gap indicator, dedup, stage age fix, stat cards.
-33. **Deal Priority in TDR Workspace** — Surface the composite Deal Priority score as the **hero metric** in Zone A (Situation Room) of the Intelligence Panel. Large score + quadrant pill (high-contrast solid colors) + prescriptive guidance + formula breakdown. Existing TDR Score and Win Propensity demoted to "Contributing Scores" with reduced visual weight. See `shaping/sprint-30b-priority-in-workspace.md`.
+26. ~~**Perplexity tech pills**~~ ✅ — `extractTechFromSignals` via Domo AI LLM extracts tech names from narrative signals, renders as categorized pills with `SourceBadge source="perplexity"`. Merges into `allTechnologies` map. Falls back to raw narrative if extraction returns empty.
+27. ~~**Slack PDF tech pill colors**~~ ✅ — `getTechColor` applies keyword-based category colors to flat tech lists and extracted entities in PDF. All tech pills now category-colored (orange for CRM, blue for BI, violet for DW, etc.).
+28. ~~**Intelligence Panel readout checklist**~~ ✅ — 4-step advisory workflow (Enrich → Research → Action Plan → TDR Brief) with green ✓ / gray — status indicators. Non-blocking. Sits below signal strip in Zone A.
+29. ~~**Slack share caching**~~ ✅ — Session-level `_cache` object in `tdrReadout.ts` caches `assembleReadout` payload and PDF base64. Repeated shares skip regeneration when same `sessionId`.
+30. ~~**SHAP "Why this score?" expandable**~~ ✅ — `ChevronRight` toggle below Win Propensity. Shows all 5 factors with `getMLFactorDisplayName` (human-readable), `getMLFactorExplanation` (plain English), direction badges (Helps/Hurts/Neutral), and magnitude bars.
+31. ~~**Expanded dataset columns**~~ ✅ — `accountRevenue`, `accountEmployees`, `strategicAccount`, `region`, `salesSegment`, `salesVertical` fetched in `/data/v2/` fields, mapped in `transformOpportunityToDeal`, surfaced as firmographics row in Intelligence Panel deal header.
+32. ~~**Documentation overhaul**~~ ✅ — All 7 doc components updated: ArchitectureDiagram (DEAL_PREDICTIONS + ML.CLASSIFICATION nodes, Domo AI node), DataModelReference (predictions table, new Deal fields), ScoringReference (Win Propensity + Deal Priority sections), CapabilitiesGuide (14 new feature entries), IntegrationsReference (Snowflake ML, Domo AI enhancement/extraction, Magic ETL), AIModelsReference (ML Classification, Domo AI, SHAP factors), GlossaryReference (11 new terms). Version bumped to v1.70.0.
+33. ~~**Deal Priority in TDR Workspace**~~ ✅ — Hero metric in Zone A: `text-3xl` bold score + quadrant pill (solid color) + prescriptive guidance + formula breakdown. Existing TDR Score and Win Propensity demoted to "Score Components" section header with `text-lg`. See `shaping/sprint-30b-priority-in-workspace.md`.
 
 **Definition of Done:** SE can sort the deals table by Deal Priority to surface PRIORITIZE deals first. All score tooltips have comparable depth. Stage column is number-only. Why TDR? icons are visually uniform. Deal Priority is the hero metric in the TDR Workspace Intelligence Panel. Perplexity-sourced tech renders as categorized pills with provenance icon. Slack PDF tech pills are color-coded. Intelligence Panel shows a readout checklist. Documentation Hub accurately reflects the Sprint 30 app. All 7 doc sections updated.
 
