@@ -1,0 +1,38 @@
+---
+description: Keep IMPLEMENTATION_STRATEGY.md in sync with actual progress
+globs: IMPLEMENTATION_STRATEGY.md
+alwaysApply: false
+---
+
+# Roadmap Hygiene — IMPLEMENTATION_STRATEGY.md
+
+Keep the roadmap document accurate. A stale roadmap is worse than no roadmap.
+
+## When to Update
+
+After completing ANY sprint, sub-sprint, or unplanned work:
+
+1. **Header status line** — bump `Sprints Completed`, update `Next Up`, increment `Version`
+2. **"Current State & What's Next" section** — move completed items from "What's next" table to "What's done" table
+3. **Progress Dashboard table** — add row with Status ✅, date, and scope
+4. **Sub-sprint checklists** — flip `- [ ]` to `- [x]`, add ✅ DONE + date to sub-sprint header
+5. **Sprint header** — update status emoji: 🔲 NOT STARTED → 🔶 IN PROGRESS → ✅ DONE
+
+## Unplanned Work
+
+When unplanned work is significant enough to warrant tracking (e.g., PERF-1):
+- Add a new sub-sprint entry under the most relevant parent sprint
+- Add a row to the Progress Dashboard
+- Mention it in the "What's done" table with date and key outcome
+
+## Version Numbering
+
+- Patch (5.8 → 5.9): minor status updates, checklist flips
+- Minor (5.8 → 6.0): sprint completion, new sprint added, structural change
+
+## Anti-Patterns
+
+- NEVER leave completed work marked as 🔲 NOT STARTED
+- NEVER let the "Next Up" list reference already-shipped sprints
+- NEVER update the doc without also updating the Progress Dashboard table
+- NEVER skip the date on completed items — future-you needs the timeline

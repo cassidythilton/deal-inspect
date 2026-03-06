@@ -2,26 +2,37 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 5.8 · **Date:** March 5, 2026 · **Sprints Completed:** 1–27, OSS-1 (33 sprints) · **Next Up:** 28 (Dataset Swap & Deal Close Propensity ML), 29 (AI-Enhanced TDR Responses), 30 (UX Polish & Iteration), 31 (TDR Framework Redesign)
+**Status:** Active · **Version:** Draft 6.0 · **Date:** March 5, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1 (37 sprints) · **Next Up:** 28c (ML Infrastructure), 28d (Code Engine), 28e (Frontend ML), 30 (UX Polish), 31 (TDR Framework Redesign)
 
 ---
 
 ### Current State & What's Next
 
-**Where we are:** Pillars 1–13 are complete (33 sprints, Feb 9 – Mar 3, 2026). The app is a fully functional, AI-native deal intelligence platform with Snowflake persistence, Cortex AI processing, external enrichment (Sumble + Perplexity), inline chat, Knowledge Base filesets, two-phase TDR scoring, action plan synthesis, PDF readout with Slack distribution, frontier models, performance optimization, UX polish, and a 7-section Documentation Hub.
+**Where we are:** Pillars 1–13 are complete (33 sprints, Feb 9 – Mar 3, 2026). Sprint 28a (dataset swap), 28b (EDA), 29a (AI enhancement engine), and 29b (UI integration) shipped Mar 3–4. A critical performance sprint (PERF-1) shipped Mar 5, reducing app load from ~40 seconds to ~1 second via `/data/v2/` server-side filtering. The app is live at v1.63.0 with all UAT passed.
 
-**What's next (4 sprints, ~13–20 days total):**
+**What's done (recently):**
 
-| Sprint | Name | Effort | Can Parallel? | Key Deliverable |
-|--------|------|--------|--------------|-----------------|
-| **28** | Dataset Swap & Deal Close Propensity ML | 7–10 days (5 sub-sprints: 28a–28e) | — | Expand dataset from 34 to 65 columns, train `SNOWFLAKE.ML.CLASSIFICATION` model, surface propensity score + SHAP factors in two-axis quadrant |
-| **29** | AI-Enhanced TDR Responses | 2–3 days (2 sub-sprints: 29a–29b) | ✅ with S28 | Per-field "Enhance" button on TDR textareas, 8-layer context-aware AI improvement, inline diff |
-| **30** | UX Polish & Iteration | 1–2 days | — (after S28 + S29) | Stage Age threshold fix, quadrant/SHAP/diff polish, duplicate records, Settings→Filter bridge, Perplexity tech pills, Slack PDF colors, Intelligence Panel checklist, gap indicators |
-| **31** | TDR Framework Redesign | 3–5 days (3 sub-sprints: 31a–31c) | — (after S29 + S30) | Consolidate 9 steps to ~5–6, AI & ML core step with value continuum, resizable textareas, semi-auto step completion, pill/tag inputs, TDR versioning, PDF readout update |
+| Sprint | Name | Status | Date | Key Outcome |
+|--------|------|--------|------|-------------|
+| **28a** | Dataset Swap | ✅ DONE | Mar 3 | v2 dataset (195K rows), manifest + types + transform updated, 33 new fields |
+| **28b** | EDA Notebook Overhaul | ✅ DONE | Mar 4 | Notebook retargeted to v2, candidates identified. **Needs execution against Snowflake for go/no-go.** |
+| **29a** | AI Enhancement Engine | ✅ DONE | Mar 4 | `domoAi.ts` — prompt construction, 8 context layers, Domo AI endpoint |
+| **29b** | AI Enhancement UI | ✅ DONE | Mar 4 | Enhance button, inline diff, accept/edit/dismiss, dealContext wiring |
+| **PERF-1** | Performance Optimization | ✅ DONE | Mar 5 | `/data/v2/` with `?fields=` + `&filter=` — 40s → 1s load, 194K → 5K records |
+
+**What's next (remaining sprints, ~10–15 days):**
+
+| Sprint | Name | Effort | Prerequisite | Key Deliverable |
+|--------|------|--------|-------------|-----------------|
+| **28c** | ML Infrastructure & Model Training | 2–3 days | 28b EDA notebook must be run (go/no-go gate) | `ML_FEATURE_STORE` view, `ML_TRAINING_DATA` view, `DEAL_CLOSE_PROPENSITY` model, metadata table |
+| **28d** | Code Engine & Automation | 1–2 days | 28c | `getWinProbability`, `batchScoreDeals`, `getModelMetrics`, `retrainModel` + Snowflake Tasks |
+| **28e** | Frontend ML Integration | 3–4 days | 28d | Propensity column, quadrant scatter plot, SHAP factor cards, portfolio metrics |
+| **30** | UX Polish & Iteration | 1–2 days | 28e + 29b | Stage Age threshold, quadrant/SHAP/diff polish, dedup, Settings→Filter bridge |
+| **31** | TDR Framework Redesign | 3–5 days (31b–31c) | 30 | Consolidate 9→5 steps, AI & ML core step (design approved in 31a), pill/tag inputs, versioning, PDF update |
 
 **Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31)
 
-**Start point:** Sprint 28a (dataset swap) or Sprint 29a (enhancement engine) — these two sprints are independent and can run in parallel. Sprint 30 follows after both are functional. Sprint 31 follows Sprint 30 and requires user approval before step restructuring proceeds.
+**Start point:** Sprint 28c (ML infrastructure) — requires running the EDA notebook (28b) against Snowflake first to validate ≥100 closed deals for `SNOWFLAKE.ML.CLASSIFICATION`. This is the go/no-go gate for the ML pipeline.
 
 ---
 
@@ -3805,8 +3816,16 @@ The following enhancements were applied to the Slack distribution experience aft
 | **27** | **Intelligence Panel Decision Architecture** | ✅ Complete | Feb 14, 2026 | S26 | **UX / Architecture** |
 | **25** | **Documentation Hub & Architecture Diagram** | ✅ Complete | Feb 14, 2026 | S24 + S27 | **Documentation / Visualization** |
 | **OSS-1** | **Open-Source Readiness & README Overhaul** | ✅ Complete | Mar 3, 2026 | S25 | **Security / Documentation** |
-| **28** | **Dataset Swap & Deal Close Propensity ML** | 🔲 Not Started | — | S18 | **Data / ML / Scoring / UX** |
-| **29** | **AI-Enhanced TDR Responses** | 🔲 Not Started | — | S17 + S19 + S6.5 | **AI / UX** |
+| **28a** | **Dataset Swap** | ✅ Complete | Mar 3, 2026 | S18 | **Data** |
+| **28b** | **EDA Notebook Overhaul** | ✅ Complete | Mar 4, 2026 | S28a | **Data / ML Prep** |
+| **29a** | **AI Enhancement Engine** | ✅ Complete | Mar 4, 2026 | S17 + S19 + S6.5 | **AI** |
+| **29b** | **AI Enhancement UI** | ✅ Complete | Mar 4, 2026 | S29a | **AI / UX** |
+| **PERF-1** | **Performance Optimization** | ✅ Complete | Mar 5, 2026 | S28a | **Performance** |
+| **28c** | **ML Infrastructure & Model Training** | 🔲 Not Started | — | S28b (notebook run) | **ML / Snowflake** |
+| **28d** | **Code Engine & Automation** | 🔲 Not Started | — | S28c | **ML / Code Engine** |
+| **28e** | **Frontend ML Integration** | 🔲 Not Started | — | S28d | **ML / UX** |
+| **30** | **UX Polish & Iteration** | 🔲 Not Started | — | S28e + S29b | **UX** |
+| **31** | **TDR Framework Redesign** | 🔶 31a Approved | — | S30 | **UX / Architecture** |
 
 **Post-Sprint Enhancements (Feb 14, 2026):**
 - Sprint 25 — Documentation Hub: 7-section in-app reference at `/docs` with sticky Table of Contents sidebar and accordion navigation. Sections: (1) Architecture Diagram — interactive 5-layer SVG (System Overview, Data Model, Cortex AI Model Map, Enrichment Pipeline, User Workflow) with pill-toggle layer switcher, (2) Scoring Reference — Pre-TDR, Post-TDR, and Confidence Score methodology with detailed factor/weight tables, (3) Capabilities Guide — 9 accordion sections covering every app feature, (4) Integrations Reference — Snowflake Cortex, Sumble, Perplexity, Domo Platform, Slack with endpoints and capabilities, (5) Data Model Reference — all 10 Snowflake tables/views with key columns, (6) AI Models Reference — every model across 3 providers with cost tier and use cases, (7) Glossary & FAQ — 20+ terms and common questions.
@@ -5938,7 +5957,7 @@ The README was rewritten from 830 lines of internal implementation detail to 510
 
 ---
 
-### Sprint 28 — Dataset Swap & Deal Close Propensity ML Model 🔲 NOT STARTED
+### Sprint 28 — Dataset Swap & Deal Close Propensity ML Model 🔶 IN PROGRESS (28a ✅, 28b ✅, PERF-1 ✅ — 28c/28d/28e remaining)
 
 > **Goal:** (1) Swap the primary app dataset to an expanded version with 65 column mappings (up from 34), including historical outcomes, account firmographics, sales milestones, and engagement signals. (2) Build a `SNOWFLAKE.ML.CLASSIFICATION` propensity-to-close model that predicts close probability for every deal. (3) Surface the propensity score as a primary metric alongside TDR Score in a two-axis quadrant. (4) Display SHAP-like factor explanations inline per deal, designed for naive users.
 > **Risk to app:** Low–Medium — dataset swap requires careful column reconciliation to avoid regressions. 2 existing columns missing from v2 (remap `Mgr Forecast Name` → `Forecast Manager`; drop unused `Current FQ`). ML model is additive; existing TDR scoring continues unchanged.
@@ -6044,26 +6063,35 @@ The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking 
 
 **Sub-Sprint Breakdown:**
 
-**Sprint 28a — Dataset Swap (Day 1)** *[Cursor — application domain]*
-- [ ] Swap `dataSetId` from `6f12ec25-0018-4ed3-adfe-93ebdfad41fe` to `6ae5896e-e13d-48ac-a9fb-c6e9116b4bb4` in `dist/manifest.json`, `public/manifest.json`, and root `manifest.json`
-- [ ] Remap `Mgr Forecast Name` → `Forecast Manager` in manifest field mappings (alias stays `MgrForecastName`)
-- [ ] Drop `Current FQ` from manifest (not used in frontend)
-- [ ] Add 33 new field mappings (65 total) per reconciliation table in shaping doc
-- [ ] Expand `DomoOpportunity` interface in `src/lib/domo.ts` with new fields
-- [ ] Expand `OPPORTUNITY_FIELD_MAP` with new alias → canonical mappings
-- [ ] Expand `Deal` interface in `src/types/tdr.ts` with new optional properties
-- [ ] Extend `transformOpportunityToDeal()` in `src/hooks/useDomo.ts` for new fields
-- [ ] Verify all existing pages, components, and scoring work without regressions
-- [ ] Verify `domoAi.ts` AI payload still works with expanded data
+**Sprint 28a — Dataset Swap (Day 1)** *[Cursor — application domain]* ✅ DONE (Mar 3, 2026)
+- [x] Swap `dataSetId` from `6f12ec25-0018-4ed3-adfe-93ebdfad41fe` to `6ae5896e-e13d-48ac-a9fb-c6e9116b4bb4` in `dist/manifest.json`, `public/manifest.json`, and root `manifest.json`
+- [x] Remap `Mgr Forecast Name` → `Forecast Manager` in manifest field mappings (alias stays `MgrForecastName`)
+- [x] Drop `Current FQ` from manifest (not used in frontend)
+- [x] Add 33 new field mappings (65 total) per reconciliation table in shaping doc
+- [x] Expand `DomoOpportunity` interface in `src/lib/domo.ts` with new fields
+- [x] Expand `OPPORTUNITY_FIELD_MAP` with new alias → canonical mappings
+- [x] Expand `Deal` interface in `src/types/tdr.ts` with new optional properties
+- [x] Extend `transformOpportunityToDeal()` in `src/hooks/useDomo.ts` for new fields
+- [x] Verify all existing pages, components, and scoring work without regressions
+- [x] Verify `domoAi.ts` AI payload still works with expanded data
 
-**Sprint 28b — Exploratory Data Analysis (Day 2)** *[Cursor + Cortex CLI for live Snowflake queries]*
-- [ ] Overhaul `notebooks/01_data_exploration.ipynb` to target `TDR_APP.PUBLIC.Forecast_Page_Opportunities_Magic_SNFv2`
-- [ ] Validate label distribution: Won count, Lost count, Open count, class balance
-- [ ] Feature completeness: null rates for all 19 ML feature source columns across closed and open deals
-- [ ] Won vs Lost distribution analysis for key numeric features
-- [ ] Correlation analysis: identify multicollinear features to avoid redundancy
-- [ ] Derived feature preview: account win rate, stage velocity, services ratio, sales process completeness
-- [ ] Output: clear go/no-go on training viability (minimum ~100 closed deals required)
+**Sprint 28b — Exploratory Data Analysis (Day 2)** *[Cursor + Cortex CLI for live Snowflake queries]* ✅ DONE (Mar 4, 2026)
+- [x] Overhaul `notebooks/01_data_exploration.ipynb` to target `TDR_APP.PUBLIC.Forecast_Page_Opportunities_Magic_SNFv2`
+- [x] Validate label distribution: Won count, Lost count, Open count, class balance
+- [x] Feature completeness: null rates for all 19 ML feature source columns across closed and open deals
+- [x] Won vs Lost distribution analysis for key numeric features
+- [x] Correlation analysis: identify multicollinear features to avoid redundancy
+- [x] Derived feature preview: account win rate, stage velocity, services ratio, sales process completeness
+- [ ] **PENDING:** Execute notebook against live Snowflake data — go/no-go gate for Sprint 28c
+
+**Sprint PERF-1 — Performance Optimization** *[Cursor — application domain]* ✅ DONE (Mar 5, 2026)
+- [x] Diagnosed 40-second load time: `/sql/v1/` endpoint returning 400, falling back to unfiltered `/data/v1/` (194,762 rows)
+- [x] Reverse-engineered `@domoinc/query` library source — discovered `/data/v2/` endpoint with `?fields=` + `&filter=` query params
+- [x] Implemented multi-strategy cascade: `/data/v2/` with fields+filter → `/data/v1/` with filter → `/data/v2/` with fields → `/data/v1/` full fallback
+- [x] Strategy 1 succeeded: 5,375 records in 1,008ms (24 columns, server-side filter for open deals + 5-quarter window)
+- [x] Fixed "all managers" filter bug: `DEFAULT_MANAGER` was `'all'` (string) but TopBar sets `null` — mismatch caused empty first render
+- [x] Default quarter filter set to current quarter; SQL fetches current+4 quarters for early-stage deal visibility
+- [x] App version bumped to v1.63.0, all UAT passed
 
 **Sprint 28c — ML Infrastructure & Model Training (Day 3–4)** *[Cortex CLI — all Snowflake domain]*
 - [ ] Create `ML_FEATURE_STORE` view (19 derived features)
@@ -6106,7 +6134,7 @@ The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking 
 
 ---
 
-### Sprint 29 — AI-Enhanced TDR Responses 🔲 NOT STARTED
+### Sprint 29 — AI-Enhanced TDR Responses ✅ DONE (Mar 4, 2026)
 
 > **Goal:** Add per-field AI enhancement to TDR textarea inputs. When an SE types a terse response, they can click "Enhance" to get an AI-improved version that preserves their intent but adds specificity, structure, and completeness — drawing from deal context, account intel, and the Knowledge Base. The SE reviews a before/after diff and explicitly accepts, edits, or dismisses the enhancement.
 > **Risk to app:** Low — additive UX feature on existing textarea fields. No changes to TDR step structure, field definitions, or save infrastructure. Enhancement is opt-in (button click), not automatic.
@@ -6149,22 +6177,21 @@ A context-source badge shows what was used: "Enhanced using: Perplexity research
 - No new Snowflake tables — edit history in `TDR_STEP_INPUTS` captures original and enhanced values
 - "AI-enhanced" badge on accepted fields so reviewers know which inputs had AI assist
 
-**Sprint 29a — Enhancement Engine & Prompt Construction (Day 1–2)**
-- [ ] Create `src/lib/tdrEnhance.ts` — prompt assembly function that collects all 8 context layers for a given field
-- [ ] Add `enhanceField` function using Domo AI endpoint (`/domo/ai/v1/text/chat`) — sends assembled prompt, returns enhanced text
-- [ ] Build per-field-type prompt templates that encode the TDR forcing functions (one-sentence for Customer Decision, constraint for Architectural Truth, etc.)
-- [ ] Add fileset context integration — query relevant KB documents for the deal's industry/competitors and include in prompt
-- [ ] Test with sample inputs from `samples/TDR-*.md` to validate enhancement quality
+**Sprint 29a — Enhancement Engine & Prompt Construction (Day 1–2)** ✅ DONE (Mar 4, 2026)
+- [x] Created enhancement logic in `src/lib/domoAi.ts` — `enhanceTDRField()` with layered prompt construction
+- [x] Implemented 8 context layers: field identity, step context, raw input, sibling fields, cross-step context, deal metadata, account intel, KB filesets
+- [x] Added `ENHANCE_SYSTEM_PROMPT` and `buildEnhancementPrompt()` for context-aware enhancement
+- [x] Uses Domo AI endpoint (`/domo/ai/v1/text/chat`) — Anthropic model, low latency
+- [x] Returns `EnhancementResult` with enhanced text and context sources used
 
-**Sprint 29b — UI Integration & Diff View (Day 2–3)**
-- [ ] Add "Enhance" button to textarea fields in `TDRInputs.tsx` — sparkle icon + text, bottom-right of field, disabled when empty
-- [ ] Build inline diff component — shows original vs. enhanced with highlighted changes, Accept/Edit/Dismiss buttons
-- [ ] Wire Accept → `onSaveInput` (bypasses debounce, immediate save)
-- [ ] Wire Edit → replace textarea value, enter normal auto-save flow
-- [ ] Wire Dismiss → close diff, no changes
-- [ ] Add "AI-enhanced" badge to fields that accepted an enhancement
-- [ ] Add context-source indicator ("Enhanced using: ...")
-- [ ] Add "Enrich account data for better enhancements" nudge when Sumble/Perplexity data is missing
+**Sprint 29b — UI Integration & Diff View (Day 2–3)** ✅ DONE (Mar 4, 2026)
+- [x] Added "Enhance" button (sparkle icon) to textarea fields in `TDRInputs.tsx`, disabled when empty
+- [x] Built inline violet card showing AI-enhanced result with context sources
+- [x] Wired Accept → replaces field content, saves via `onSaveInput`
+- [x] Wired Edit → enhanced text enters textarea for manual tweaks
+- [x] Wired Dismiss → closes card, no changes
+- [x] Added context-source indicator ("Enhanced using: deal metadata, field context, ...")
+- [x] Wired `dealContext` prop through `TDRWorkspace.tsx` → `TDRInputs.tsx` for live deal metadata
 
 ---
 
