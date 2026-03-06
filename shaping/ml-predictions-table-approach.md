@@ -1,6 +1,6 @@
 ---
 shaping: true
-status: draft
+status: approved
 appetite: medium (2–3 sprints)
 supersedes: Parts 3–5 of shaping/dataset-swap-and-propensity-model.md (Sprint 28c–28e)
 ---
@@ -155,51 +155,22 @@ Same as original `RETRAIN_PROPENSITY_MODEL`. Drops and recreates the classificat
 
 | Task | Schedule | Calls |
 |------|----------|-------|
-| `NIGHTLY_SCORE_DEALS` | Every 6 hours (or nightly) | `SCORE_PIPELINE_DEALS()` |
+| `NIGHTLY_SCORE_DEALS` | Nightly (e.g. 2 AM UTC) | `SCORE_PIPELINE_DEALS()` |
 | `WEEKLY_RETRAIN_MODEL` | Weekly (Sunday 2 AM) | `RETRAIN_PROPENSITY_MODEL()` |
 
-#### 1E. Joined view — predictions + opportunities
+#### 1E. Domo integration
 
-```sql
-CREATE OR REPLACE VIEW TDR_APP.TDR_DATA.V_OPPORTUNITIES_WITH_PREDICTIONS AS
-SELECT
-  o.*,
-  p.PROPENSITY_SCORE,
-  p.PREDICTION AS ML_PREDICTION,
-  p.QUADRANT AS PROPENSITY_QUADRANT,
-  p.FACTOR_1_NAME, p.FACTOR_1_VALUE, p.FACTOR_1_DIRECTION, p.FACTOR_1_MAGNITUDE,
-  p.FACTOR_2_NAME, p.FACTOR_2_VALUE, p.FACTOR_2_DIRECTION, p.FACTOR_2_MAGNITUDE,
-  p.FACTOR_3_NAME, p.FACTOR_3_VALUE, p.FACTOR_3_DIRECTION, p.FACTOR_3_MAGNITUDE,
-  p.FACTOR_4_NAME, p.FACTOR_4_VALUE, p.FACTOR_4_DIRECTION, p.FACTOR_4_MAGNITUDE,
-  p.FACTOR_5_NAME, p.FACTOR_5_VALUE, p.FACTOR_5_DIRECTION, p.FACTOR_5_MAGNITUDE,
-  p.SCORED_AT AS PROPENSITY_SCORED_AT,
-  p.MODEL_VERSION AS PROPENSITY_MODEL_VERSION
-FROM TDR_APP.PUBLIC.FORECAST_PAGE_OPPORTUNITIES_MAGIC_SNFV2 o
-LEFT JOIN TDR_APP.TDR_DATA.DEAL_PREDICTIONS p
-  ON o."Opportunity Id" = p.OPPORTUNITY_ID;
-```
-
-**The app can consume this joined view as its dataset**, OR the join can be done at the Domo level (Domo Magic ETL or dataflow joining the two datasets). Either way, predictions arrive as columns on the deal.
+No Snowflake joined view needed. The `DEAL_PREDICTIONS` table syncs to Domo as a standalone dataset. The join to `opportunitiesmagic` is configured in Domo (Magic ETL or dataflow, LEFT JOIN on `Opportunity Id`). The joined output feeds the app — predictions arrive as columns on every deal.
 
 ### Part 2: Domo Integration (replaces 28d Code Engine)
 
-Two options for getting predictions into the app:
+**Decision: Separate predictions dataset + Domo join (Option B).**
 
-**Option A: Snowflake view → Domo dataset (preferred)**
-- Point the existing Domo dataset connector at `V_OPPORTUNITIES_WITH_PREDICTIONS` instead of the raw table
-- Predictions arrive as columns on the existing `opportunitiesmagic` dataset
-- No manifest changes beyond adding field mappings for the new prediction columns
-- **Pro:** Single data source, zero new APIs, predictions refresh with the regular dataset sync
-- **Con:** Requires changing the Snowflake connector's source query in Domo
-
-**Option B: Separate predictions dataset + Domo join**
-- Create a second Domo dataset from `DEAL_PREDICTIONS`
-- Join in Domo via Magic ETL or dataflow, keyed on `Opportunity Id`
-- Add joined dataset to manifest
-- **Pro:** Keeps raw opportunities untouched
-- **Con:** Second dataset to manage, join logic in Domo, potential sync timing issues
-
-**Recommendation: Option A.** One source of truth. One dataset. Predictions are just more columns.
+- `DEAL_PREDICTIONS` table syncs to Domo as its own dataset
+- Join to `opportunitiesmagic` in Domo (Magic ETL or dataflow), keyed on `Opportunity Id`
+- The joined output becomes the app's source — predictions appear as columns on every deal
+- **Pro:** Keeps raw opportunities dataset untouched, clean separation of concerns, Domo handles the join
+- **Note:** The join in Domo is configured once and runs automatically on each sync
 
 ### Part 3: Frontend Integration (28e — simplified)
 
@@ -303,8 +274,6 @@ All originally planned surfaces remain:
 - [ ] Create `SCORE_PIPELINE_DEALS()` stored procedure (batch scoring with factor extraction)
 - [ ] Create `RETRAIN_PROPENSITY_MODEL()` stored procedure
 - [ ] Create Snowflake Tasks: nightly scoring + weekly retrain
-- [ ] Create `V_OPPORTUNITIES_WITH_PREDICTIONS` joined view
-- [ ] **Decision:** Confirm Domo dataset connector points at joined view (Option A) or separate dataset (Option B)
 - [ ] Run first batch scoring — verify predictions populate for all open pipeline deals
 
 ### Sprint 28d — Domo Integration & Manifest (0.5–1 day)
@@ -312,7 +281,8 @@ All originally planned surfaces remain:
 
 This sprint shrinks from 1–2 days to half a day. No Code Engine functions.
 
-- [ ] Update Domo dataset connector to source from joined view (if Option A) or create second dataset (if Option B)
+- [ ] Create Domo dataset from `DEAL_PREDICTIONS` Snowflake table
+- [ ] Configure Domo join (Magic ETL / dataflow): `DEAL_PREDICTIONS` LEFT JOIN `opportunitiesmagic` on `Opportunity Id`
 - [ ] Add ~24 new field mappings to `manifest.json` (both `dist/` and `public/`)
 - [ ] Expand `DomoOpportunity` interface with prediction fields
 - [ ] Expand `OPPORTUNITY_FIELD_MAP` with prediction aliases
@@ -392,13 +362,17 @@ This computation happens inside the `SCORE_PIPELINE_DEALS()` stored procedure, s
 
 ---
 
+## Resolved Questions
+
+1. **Domo integration approach:** → **Option B — separate predictions dataset + Domo join.** `DEAL_PREDICTIONS` syncs as its own Domo dataset, joined to `opportunitiesmagic` in Domo on `Opportunity Id`. No Snowflake view needed.
+
+2. **Scoring frequency:** → **Nightly.** Snowflake Task runs `SCORE_PIPELINE_DEALS()` once per night.
+
+3. **Flat columns vs. JSON for factors:** → **Flat columns.** 5 factors × 4 fields = 20 columns. No JSON parsing in Domo or frontend.
+
 ## Open Questions
 
-1. **Domo connector reconfiguration (Option A vs. B):** Does the existing Domo dataset connector support pointing at a Snowflake view? If so, Option A is strictly better. If the connector is locked to a specific table, Option B (second dataset + Domo join) is the fallback. **User to confirm.**
-
-2. **Factor extraction from SNOWFLAKE.ML.CLASSIFICATION:** The exact output format of `!PREDICT()` determines how we extract per-prediction factor contributions. Need to test during 28c to confirm whether the prediction output includes per-feature probabilities or only the aggregate score. **Resolved during implementation.**
-
-3. **Scoring frequency:** Nightly vs. every 6 hours. Depends on how often the source data refreshes from SFDC. If SFDC syncs every 6 hours, scoring every 6 hours makes sense. If daily, nightly is fine. **User to confirm.**
+1. **Factor extraction from SNOWFLAKE.ML.CLASSIFICATION:** The exact output format of `!PREDICT()` determines how we extract per-prediction factor contributions. Need to test during 28c to confirm whether the prediction output includes per-feature probabilities or only the aggregate score. **Resolved during implementation.**
 
 ---
 
