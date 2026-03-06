@@ -183,23 +183,24 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
   const alias = CONFIG.datasets.opportunities;
 
   try {
-    // Build quarter window: current quarter ± 1 (3-quarter window for performance)
-    const now = new Date();
-    const curYear = now.getFullYear();
-    const curQ = Math.ceil((now.getMonth() + 1) / 3);
-    const quarters: string[] = [];
-    for (let offset = -1; offset <= 1; offset++) {
-      let q = curQ + offset;
-      let y = curYear;
-      while (q > 4) { q -= 4; y++; }
-      while (q < 1) { q += 4; y--; }
-      quarters.push(`${y}-Q${q}`);
-    }
-    const quotedQtrs = quarters.map(q => `'${q}'`).join(', ');
+    // Only select the columns consumed by transformOpportunityToDeal + filters.
+    // The v2 dataset has 200+ columns; pulling all of them is the main perf bottleneck.
+    const cols = [
+      '"Opportunity Id"', '"Opportunity Name"', '"Account Name"',
+      '"Stage"', '"Stage Age"', '"Type"', '"Likely"', '"ACV (USD)"',
+      '"Close Date"', '"Close Date FQ"',
+      '"Domo Opportunity Owner"', '"Forecast Manager"',
+      '"Sales Consultant"', '"PoC Sales Consultant"',
+      '"Primary Partner Role"', '"Partners Involved"', '"Partner Influence"',
+      '"Snowflake Team Picklist"', '"Domo Forecast Category"',
+      '"Number of Competitors"', '"competitors"',
+      '"Deal Code"', '"Webiste Domain"', '"Is Closed"',
+    ].join(', ');
 
-    // Server-side filter: open pipeline deals within a tight close-date window
-    const sql = `SELECT * FROM ${alias} WHERE ("IsClosed" IS NULL OR "IsClosed" NOT IN ('true', '1', 'yes')) AND ("CloseDateFQ" IS NULL OR "CloseDateFQ" IN (${quotedQtrs}))`;
-    console.log(`[Domo] Fetching via SQL (open pipeline, quarters ${quarters[0]}–${quarters[quarters.length - 1]})...`);
+    // Filter to open deals only. No quarter filter — early-stage deals with
+    // distant close dates are exactly what TDR should surface for inspection.
+    const sql = `SELECT ${cols} FROM ${alias} WHERE ("IsClosed" IS NULL OR "IsClosed" NOT IN ('true', '1', 'yes'))`;
+    console.log('[Domo] Fetching via SQL (open pipeline, 24 columns)...');
 
     let rawOpps: Record<string, unknown>[];
     try {

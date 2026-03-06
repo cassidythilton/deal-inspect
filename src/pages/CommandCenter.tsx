@@ -35,15 +35,8 @@ import {
 } from '@/components/ui/tooltip';
 import { calculateTDRScore, TDR_PRIORITY_THRESHOLDS_NEW } from '@/lib/tdrCriticalFactors';
 
-// Default manager on load — show all managers
-const DEFAULT_MANAGER: string = 'all';
-
-// Get current quarter in format matching Domo data (e.g., "2026-Q1")
-const getCurrentQuarter = () => {
-  const now = new Date();
-  const q = Math.floor(now.getMonth() / 3) + 1;
-  return `${now.getFullYear()}-Q${q}`;
-};
+// null = show all managers (matches what TopBar sets when "All AE Managers" is selected)
+const DEFAULT_MANAGER: string | null = null;
 
 const STALE_THRESHOLD_DAYS = 60;
 
@@ -60,7 +53,7 @@ export default function CommandCenter() {
     selectedSEManager: null,
     selectedSE: null,
     selectedManager: DEFAULT_MANAGER,
-    selectedQuarters: [getCurrentQuarter()],
+    selectedQuarters: null,
     selectedPriority: null,
     includeCurrentQuarter: true,
     showAgendaOnly: false,
