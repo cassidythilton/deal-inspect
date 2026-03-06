@@ -155,11 +155,25 @@ const OPPORTUNITY_FIELD_MAP: Record<string, string> = {
 };
 
 /**
- * Fetch opportunities from Domo with pre-filtering for stage age
+ * Fetch opportunities from Domo with server-side filtering.
+ *
+ * The v2 dataset has ~195K rows (all historical deals). We use the SQL
+ * endpoint to filter to open pipeline + recently closed deals, avoiding
+ * a browser-killing full-table download.
  */
 export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
-  const domo = (window as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo
-    || (globalThis as unknown as { domo?: { get: (url: string) => Promise<unknown[]> } }).domo;
+  const domo = (window as unknown as {
+    domo?: {
+      get: (url: string) => Promise<unknown[]>;
+      post: (url: string, body?: unknown, options?: unknown) => Promise<unknown>;
+    };
+  }).domo
+    || (globalThis as unknown as {
+      domo?: {
+        get: (url: string) => Promise<unknown[]>;
+        post: (url: string, body?: unknown, options?: unknown) => Promise<unknown>;
+      };
+    }).domo;
 
   if (!domo) {
     console.log('[Domo] Dev mode - no domo SDK, returning empty data');
@@ -167,17 +181,29 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
   }
 
   const alias = CONFIG.datasets.opportunities;
-  console.log(`[Domo] Fetching opportunities from /data/v1/${alias}...`);
 
   try {
-    const rawData = await domo.get(`/data/v1/${alias}`);
-    const rawOpps = (rawData || []) as Record<string, unknown>[];
+    // Server-side filter: only open pipeline deals (exclude historical closed)
+    const sql = `SELECT * FROM ${alias} WHERE "IsClosed" IS NULL OR "IsClosed" NOT IN ('true', '1', 'yes')`;
+    console.log(`[Domo] Fetching opportunities via SQL endpoint (filtering out closed deals)...`);
 
-    console.log(`[Domo] Fetched ${rawOpps.length} raw opportunity records`);
+    let rawOpps: Record<string, unknown>[];
+    try {
+      const sqlResult = await domo.post(`/sql/v1/${alias}`, sql, { contentType: 'text/plain' });
+      rawOpps = ((sqlResult as { rows?: unknown[] })?.rows || sqlResult || []) as Record<string, unknown>[];
+      console.log(`[Domo] SQL endpoint returned ${rawOpps.length} records`);
+    } catch (sqlErr) {
+      // Fallback: SQL endpoint may not be available in all Domo environments
+      console.warn('[Domo] SQL endpoint failed, falling back to /data/v1/:', sqlErr);
+      const rawData = await domo.get(`/data/v1/${alias}`);
+      rawOpps = (rawData || []) as Record<string, unknown>[];
+      console.log(`[Domo] Fallback fetched ${rawOpps.length} raw records`);
+    }
+
+    console.log(`[Domo] Fetched ${rawOpps.length} opportunity records`);
 
     if (rawOpps.length > 0) {
       console.log('[Domo] Sample opportunity fields:', Object.keys(rawOpps[0]).sort());
-      // Log competitor field presence for debugging
       const allKeys = Object.keys(rawOpps[0]);
       const compKeys = allKeys.filter(k => /compet/i.test(k));
       const hasCompetitorsAlias = allKeys.includes('Competitors');
