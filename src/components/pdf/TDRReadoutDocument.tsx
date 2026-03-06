@@ -770,6 +770,25 @@ function getCategoryColor(category: string): { bg: string; text: string } {
   return PDF_TECH_CATEGORY_COLORS[category] || PDF_TECH_CATEGORY_COLORS.Other;
 }
 
+const TECH_KW_MAP: [string, string[]][] = [
+  ['CRM',    ['salesforce', 'hubspot', 'dynamics']],
+  ['BI',     ['tableau', 'power bi', 'looker', 'qlik', 'thoughtspot', 'sisense', 'domo', 'metabase', 'mode']],
+  ['DW',     ['snowflake', 'databricks', 'bigquery', 'redshift', 'synapse', 'teradata']],
+  ['ETL',    ['dbt', 'fivetran', 'airflow', 'informatica', 'talend', 'matillion', 'mulesoft', 'kafka', 'spark']],
+  ['Cloud',  ['aws', 'azure', 'gcp', 'google cloud']],
+  ['ML',     ['tensorflow', 'pytorch', 'sagemaker', 'datarobot', 'mlflow', 'vertex ai']],
+  ['ERP',    ['netsuite', 'sap', 'workday', 'oracle erp']],
+  ['DevOps', ['kubernetes', 'docker', 'terraform', 'jenkins', 'github', 'gitlab', 'datadog', 'splunk']],
+];
+
+function getTechColor(techName: string): { bg: string; text: string } {
+  const l = techName.toLowerCase();
+  for (const [cat, keywords] of TECH_KW_MAP) {
+    if (keywords.some(k => l.includes(k))) return getCategoryColor(cat);
+  }
+  return getCategoryColor('Other');
+}
+
 /** Capitalize the first character of a string */
 function capitalize(str: string): string {
   if (!str) return str;
@@ -1105,13 +1124,14 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
                 );
               }
 
-              // Fallback: flat list with default styling
+              // Fallback: flat list with category-colored pills
               if (isStringArray(sumble.technologies) && sumble.technologies.length > 0) {
                 return (
                   <View style={styles.tagRow}>
-                    {sumble.technologies.map((tech: string, i: number) => (
-                      <Text key={i} style={styles.tag}>{sanitize(tech)}</Text>
-                    ))}
+                    {sumble.technologies.map((tech: string, i: number) => {
+                      const tc = getTechColor(tech);
+                      return <Text key={i} style={[styles.tag, { backgroundColor: tc.bg, color: tc.text }]}>{sanitize(tech)}</Text>;
+                    })}
                   </View>
                 );
               }
@@ -1212,7 +1232,10 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
               <View style={{ marginBottom: 6 }}>
                 <Text style={[styles.smallText, { fontWeight: 600 }]}>Technologies</Text>
                 <View style={styles.tagRow}>
-                  {extractedEntities.technologies.map((t, i) => <Text key={i} style={styles.tag}>{safeString(t)}</Text>)}
+                  {extractedEntities.technologies.map((t, i) => {
+                    const tc = getTechColor(safeString(t));
+                    return <Text key={i} style={[styles.tag, { backgroundColor: tc.bg, color: tc.text }]}>{safeString(t)}</Text>;
+                  })}
                 </View>
               </View>
             )}

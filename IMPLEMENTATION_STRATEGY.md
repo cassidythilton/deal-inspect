@@ -31,7 +31,7 @@
 | **30** | UX Polish & Iteration | ✅ Complete | 28e + 29b | Stage age fix, dedup, settings bridge, gap indicator, icon pills, propensity stat card, scatter polish |
 | **31** | TDR Framework Redesign | 3–5 days (31b–31c) | 30 | Consolidate 9→5 steps, AI & ML core step (design approved in 31a), pill/tag inputs, versioning, PDF update |
 
-**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish)
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace)
 
 **Start point:** Sprint 31 (TDR Framework Redesign) — ML pipeline and UX polish complete. Next step is the structural TDR consolidation (9 → 5 steps).
 
@@ -6289,8 +6289,9 @@ First implementations of complex visualizations and interaction patterns rarely 
 30. **SHAP "Why this score?" expandable** — Expandable section below propensity card in Intelligence Panel. Shows all 5 factors with plain English labels, direction, magnitude bars.
 31. **Expanded dataset columns** — Surface `accountRevenue`, `accountEmployees`, `region`, `salesSegment`, `salesVertical`, `strategicAccount` in deal detail tooltips or Intelligence Panel header. Map in `transformOpportunityToDeal`.
 32. **Documentation overhaul** — Update all 7 doc components (`ArchitectureDiagram`, `DataModelReference`, `ScoringReference`, `CapabilitiesGuide`, `IntegrationsReference`, `AIModelsReference`, `GlossaryReference`) to reflect Sprints 28–30: ML pipeline, propensity charts, composite priority, icon pills, gap indicator, dedup, stage age fix, stat cards.
+33. **Deal Priority in TDR Workspace** — Surface the composite Deal Priority score as the **hero metric** in Zone A (Situation Room) of the Intelligence Panel. Large score + quadrant pill (high-contrast solid colors) + prescriptive guidance + formula breakdown. Existing TDR Score and Win Propensity demoted to "Contributing Scores" with reduced visual weight. See `shaping/sprint-30b-priority-in-workspace.md`.
 
-**Definition of Done:** SE can sort the deals table by Deal Priority to surface PRIORITIZE deals first. All score tooltips have comparable depth. Stage column is number-only. Why TDR? icons are visually uniform. Perplexity-sourced tech renders as categorized pills with provenance icon. Slack PDF tech pills are color-coded. Intelligence Panel shows a readout checklist. Documentation Hub accurately reflects the Sprint 30 app. All 7 doc sections updated.
+**Definition of Done:** SE can sort the deals table by Deal Priority to surface PRIORITIZE deals first. All score tooltips have comparable depth. Stage column is number-only. Why TDR? icons are visually uniform. Deal Priority is the hero metric in the TDR Workspace Intelligence Panel. Perplexity-sourced tech renders as categorized pills with provenance icon. Slack PDF tech pills are color-coded. Intelligence Panel shows a readout checklist. Documentation Hub accurately reflects the Sprint 30 app. All 7 doc sections updated.
 
 ---
 

@@ -169,11 +169,11 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-sm p-3">
               <p className="text-xs mb-2">TDR complexity (X) vs ML win probability (Y). Dot size = ACV. {scoredCount}/{deals.length} scored. Click to open.</p>
-              <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                <div><span className="font-semibold text-foreground">Prioritize</span> <span className="text-muted-foreground">— complex & likely to close, TDR maximizes value</span></div>
-                <div><span className="font-semibold text-foreground">Fast Track</span> <span className="text-muted-foreground">— likely to close, low complexity, light-touch TDR</span></div>
-                <div><span className="font-semibold text-foreground">Investigate</span> <span className="text-muted-foreground">— complex but unlikely, diagnose blockers first</span></div>
-                <div><span className="font-semibold text-foreground">Deprioritize</span> <span className="text-muted-foreground">— low complexity & probability, monitor only</span></div>
+              <div className="grid grid-cols-2 gap-2 text-[10px]">
+                <div className="flex items-start gap-1.5"><span className="rounded px-1 py-0.5 text-[9px] font-bold bg-purple-600 text-white shrink-0 mt-px">Prioritize</span> <span className="text-muted-foreground">complex & likely to close, TDR maximizes value</span></div>
+                <div className="flex items-start gap-1.5"><span className="rounded px-1 py-0.5 text-[9px] font-bold bg-emerald-600 text-white shrink-0 mt-px">Fast Track</span> <span className="text-muted-foreground">likely to close, low complexity, light-touch TDR</span></div>
+                <div className="flex items-start gap-1.5"><span className="rounded px-1 py-0.5 text-[9px] font-bold bg-amber-500 text-amber-950 shrink-0 mt-px">Investigate</span> <span className="text-muted-foreground">complex but unlikely, diagnose blockers first</span></div>
+                <div className="flex items-start gap-1.5"><span className="rounded px-1 py-0.5 text-[9px] font-bold bg-slate-600 text-slate-200 shrink-0 mt-px">Deprioritize</span> <span className="text-muted-foreground">low complexity & probability, monitor only</span></div>
               </div>
             </TooltipContent>
           </Tooltip>

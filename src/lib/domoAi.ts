@@ -411,3 +411,31 @@ export function isAIEnabled(): boolean {
   }
 }
 
+/**
+ * Extract technology product names from Perplexity narrative signals.
+ * Uses Domo AI to parse sentences like "The company uses Snowflake for data warehousing"
+ * into structured tech names like ["Snowflake"].
+ */
+export async function extractTechFromSignals(signals: string[]): Promise<string[]> {
+  if (!signals || signals.length === 0) return [];
+
+  const prompt = `Extract specific technology and software product names from these sentences. Return ONLY a JSON array of product names (no descriptions, no categories). Examples: "Snowflake", "Salesforce", "Tableau", "dbt", "AWS", "Kubernetes".
+
+Sentences:
+${signals.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+Return a JSON array of unique product names found. If no products found, return [].`;
+
+  try {
+    const raw = await callDomoAI(prompt, 'You are a technology name extractor. Return only valid JSON arrays.', 0.1);
+    const match = raw.match(/\[[\s\S]*?\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+    return [...new Set(parsed.filter((t: unknown) => typeof t === 'string' && t.length > 0))] as string[];
+  } catch (err) {
+    console.warn('[Domo AI] Tech extraction failed:', err);
+    return [];
+  }
+}
+

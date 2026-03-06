@@ -141,6 +141,12 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
     propensityFactors: buildPropensityFactors(opp),
     propensityScoredAt: get('PropensityScoredAt', 'SCORED_AT') || undefined,
     propensityModelVersion: get('PropensityModelVersion', 'MODEL_VERSION') || undefined,
+    accountRevenue: getNum('AccountRevenueUsd', 'Account Revenue USD') || undefined,
+    accountEmployees: getNum('AccountEmployees', 'Account Employees') || undefined,
+    strategicAccount: (get('StrategicAccount', 'Strategic Account') || '').toLowerCase() === 'true' || undefined,
+    region: get('Region') || undefined,
+    salesSegment: get('SalesSegment', 'Sales Segment') || undefined,
+    salesVertical: get('SalesVertical', 'Sales Vertical') || undefined,
   };
 }
 

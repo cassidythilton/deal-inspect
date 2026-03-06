@@ -163,6 +163,9 @@ export interface ReadoutSummaryResult {
   error?: string;
 }
 
+// ─── Session Cache ───────────────────────────────────────────────────────────
+const _cache: { sessionId?: string; payload?: ReadoutPayload; pdfBase64?: string } = {};
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export const tdrReadout = {
@@ -170,6 +173,11 @@ export const tdrReadout = {
    * Assemble the full TDR readout payload from Snowflake.
    */
   async assembleReadout(sessionId: string): Promise<ReadoutPayload> {
+    if (_cache.sessionId === sessionId && _cache.payload?.success) {
+      console.log('[Readout] Returning cached payload');
+      return _cache.payload;
+    }
+
     if (!isDomoEnvironment()) {
       console.log('[Readout] Dev mode: returning mock readout payload');
       return { ...MOCK_READOUT };
@@ -178,6 +186,9 @@ export const tdrReadout = {
     try {
       const raw = await callCodeEngine<unknown>('assembleTDRReadout', { sessionId });
       const result = extractResult(raw) as unknown as ReadoutPayload;
+      _cache.sessionId = sessionId;
+      _cache.payload = result;
+      _cache.pdfBase64 = undefined;
       return result;
     } catch (err) {
       console.error('[Readout] assembleReadout failed:', err);
@@ -330,19 +341,25 @@ export const tdrReadout = {
       return { success: false, error: payload.error || 'Failed to assemble readout data' };
     }
 
-    // 2. Generate PDF as base64
+    // 2. Generate PDF as base64 (use cache if same session)
     let pdfBase64 = '';
-    try {
-      const blob = await this.generatePDF(payload);
-      const arrayBuffer = await blob.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
+    if (_cache.sessionId === sessionId && _cache.pdfBase64) {
+      console.log('[Readout] Using cached PDF');
+      pdfBase64 = _cache.pdfBase64;
+    } else {
+      try {
+        const blob = await this.generatePDF(payload);
+        const arrayBuffer = await blob.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        pdfBase64 = btoa(binary);
+        _cache.pdfBase64 = pdfBase64;
+      } catch (pdfErr) {
+        console.warn('[Readout] PDF generation failed, sending without attachment:', pdfErr);
       }
-      pdfBase64 = btoa(binary);
-    } catch (pdfErr) {
-      console.warn('[Readout] PDF generation failed, sending without attachment:', pdfErr);
     }
 
     // 3. Generate or use custom summary

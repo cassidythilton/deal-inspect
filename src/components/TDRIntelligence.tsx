@@ -58,6 +58,7 @@ import {
   ClipboardList,
   Shield,
   HelpCircle,
+  ChevronRight,
 } from 'lucide-react';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
 import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
@@ -68,6 +69,8 @@ import type { TDRBrief, ClassifiedFinding, ExtractedEntities, BriefSection, Sent
 import { calculateTDRScore, calculatePostTDRScore, getPriorityFromScore, detectCriticalFactors, calculateTDRConfidence } from '@/lib/tdrCriticalFactors';
 import type { PostTDRScoreBreakdown, TDRConfidenceBreakdown } from '@/lib/tdrCriticalFactors';
 import { getAppSettings } from '@/lib/appSettings';
+import { getMLFactorDisplayName, getMLFactorExplanation } from '@/lib/constants';
+import { extractTechFromSignals } from '@/lib/domoAi';
 import { filesetIntel } from '@/lib/filesetIntel';
 import type { FilesetSearchResult, FilesetSummary } from '@/lib/filesetIntel';
 import { CortexLogo, SnowflakeLogo } from '@/components/CortexBranding';
@@ -625,6 +628,11 @@ export function TDRIntelligence({
 
   // ── TDR Score context ──
   const [scoreContextOpen, setScoreContextOpen] = useState(false);
+  const [shapExpanded, setShapExpanded] = useState(false);
+
+  // ── Perplexity tech extraction ──
+  const [perplexityTechNames, setPerplexityTechNames] = useState<string[]>([]);
+  const [perplexityTechLoading, setPerplexityTechLoading] = useState(false);
 
   // ── Pre-fill domain ──
   useEffect(() => {
@@ -734,6 +742,17 @@ export function TDRIntelligence({
     };
     doSearch();
   }, [deal, filesetSearched, sessionId]);
+
+  // ── Extract tech names from Perplexity signals ──
+  useEffect(() => {
+    const signals = perplexityData?.technologySignals;
+    if (!signals || signals.length === 0 || perplexityTechNames.length > 0 || perplexityTechLoading) return;
+    setPerplexityTechLoading(true);
+    extractTechFromSignals(signals)
+      .then(names => setPerplexityTechNames(names))
+      .catch(() => {})
+      .finally(() => setPerplexityTechLoading(false));
+  }, [perplexityData?.technologySignals, perplexityTechNames.length, perplexityTechLoading]);
 
   // ── Load or generate KB summary ──
   useEffect(() => {
@@ -938,8 +957,10 @@ export function TDRIntelligence({
       s.add('sumble');
       map.set(t, s);
     });
-    (perplexityData?.technologySignals ?? []).forEach(signal => {
-      // Tech signals are sentences, not bare names — skip merging into tech grid
+    perplexityTechNames.forEach(t => {
+      const s = map.get(t) ?? new Set();
+      s.add('perplexity');
+      map.set(t, s);
     });
     (extractedEntities?.technologies ?? []).forEach(t => {
       const s = map.get(t) ?? new Set();
@@ -1068,8 +1089,19 @@ export function TDRIntelligence({
                   </>
                 )}
               </div>
+              {/* Account firmographics */}
+              {(deal.accountRevenue || deal.accountEmployees || deal.salesSegment || deal.salesVertical || deal.region) && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-slate-500">
+                  {deal.accountRevenue && <span className="tabular-nums">${deal.accountRevenue >= 1e9 ? `${(deal.accountRevenue / 1e9).toFixed(1)}B` : deal.accountRevenue >= 1e6 ? `${(deal.accountRevenue / 1e6).toFixed(0)}M` : `${(deal.accountRevenue / 1e3).toFixed(0)}K`} rev</span>}
+                  {deal.accountEmployees && <span className="tabular-nums">{deal.accountEmployees >= 1000 ? `${(deal.accountEmployees / 1000).toFixed(1)}K` : deal.accountEmployees} emp</span>}
+                  {deal.salesSegment && <span>{deal.salesSegment}</span>}
+                  {deal.salesVertical && <span>{deal.salesVertical}</span>}
+                  {deal.region && <span>{deal.region}</span>}
+                  {deal.strategicAccount && <span className="text-violet-400 font-medium">Strategic</span>}
+                </div>
+              )}
               {/* Deal team — inline with header */}
-              <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
+              <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-500">
                 {[
                   { label: 'AE', value: deal.accountExecutive || deal.owner },
                   { label: 'SE', value: deal.salesConsultant },
@@ -1084,11 +1116,52 @@ export function TDRIntelligence({
               </div>
             </div>
 
-            {/* TDR Score with context */}
+            {/* Deal Priority — hero metric */}
+            {deal.dealPriority != null && deal.dealQuadrant && (() => {
+              const qStyles: Record<string, { bg: string; text: string; bar: string; guidance: string }> = {
+                PRIORITIZE:   { bg: 'bg-purple-600',  text: 'text-white',     bar: 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))', guidance: 'High-complexity deal with strong win signals. Prioritize TDR to protect the technical narrative and accelerate close.' },
+                FAST_TRACK:   { bg: 'bg-emerald-600', text: 'text-white',     bar: 'linear-gradient(90deg, hsl(152, 60%, 45%), hsl(160, 55%, 40%))', guidance: 'High win probability with lower technical complexity. Streamline — light TDR to confirm, then close.' },
+                INVESTIGATE:  { bg: 'bg-amber-500',   text: 'text-amber-950', bar: 'linear-gradient(90deg, hsl(38, 65%, 50%), hsl(45, 60%, 55%))',   guidance: 'Complex deal with uncertain win probability. Deep-dive TDR needed to uncover blockers and build a credible case.' },
+                DEPRIORITIZE: { bg: 'bg-slate-600',   text: 'text-slate-200', bar: 'hsl(260, 10%, 40%)',                                             guidance: 'Low complexity and low win probability. Standard process — invest SE time elsewhere unless new signals emerge.' },
+              };
+              const q = qStyles[deal.dealQuadrant] || qStyles.DEPRIORITIZE;
+              const tdrPart = Math.round((displayScore) * 0.4);
+              const winPct = Math.round((deal.propensityScore ?? 0) * 100);
+              const winPart = Math.round(winPct * 0.6);
+              return (
+                <div className="px-5 py-3 border-b border-[#322b4d]">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-3xl font-bold tabular-nums text-white">{deal.dealPriority}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] uppercase tracking-wider text-slate-500">Deal Priority</span>
+                        <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-bold', q.bg, q.text)}>
+                          {deal.dealQuadrant.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="flex-1 h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out"
+                          style={{ width: `${deal.dealPriority}%`, background: q.bar }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2">{q.guidance}</p>
+                  <div className="flex gap-4 text-[10px] text-slate-500">
+                    <span className="tabular-nums">TDR {displayScore} × 40% = <span className="text-slate-300 font-medium">{tdrPart}</span></span>
+                    <span className="tabular-nums">Win {winPct}% × 60% = <span className="text-slate-300 font-medium">{winPart}</span></span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Contributing Scores */}
             <div className="px-5 py-3">
+              <p className="text-[9px] uppercase tracking-wider text-slate-600 mb-2">Score Components</p>
               <div className="flex items-center gap-3 mb-2">
                 <span className={cn(
-                  'text-2xl font-bold tabular-nums',
+                  'text-lg font-bold tabular-nums',
                   priority === 'CRITICAL' ? 'text-violet-300' :
                   priority === 'HIGH' ? 'text-violet-400' :
                   priority === 'MEDIUM' ? 'text-amber-400' : 'text-slate-400'
@@ -1187,34 +1260,56 @@ export function TDRIntelligence({
                 )}
 
                 {deal.propensityFactors && deal.propensityFactors.length > 0 && (
-                  <div className="mt-2.5 space-y-1">
-                    <span className="text-[8px] uppercase tracking-wider text-slate-600">ML Factors</span>
-                    {deal.propensityFactors.slice(0, 5).map((f, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className={cn(
-                          'text-[10px] shrink-0 w-3 text-center',
-                          f.direction === 'helps' ? 'text-emerald-400' :
-                          f.direction === 'hurts' ? 'text-red-400' : 'text-slate-600'
-                        )}>
-                          {f.direction === 'helps' ? '↑' : f.direction === 'hurts' ? '↓' : '→'}
-                        </span>
-                        <span className="text-[10px] text-slate-400 truncate flex-1">{f.name}</span>
-                        <div className="w-16 h-1 rounded-full bg-[#2a2540] overflow-hidden shrink-0">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${Math.round(f.magnitude * 100)}%`,
-                              background: f.direction === 'helps'
-                                ? 'hsl(152, 60%, 45%)'
-                                : f.direction === 'hurts'
-                                ? 'hsl(0, 60%, 50%)'
-                                : 'hsl(260, 10%, 45%)',
-                            }}
-                          />
-                        </div>
-                        <span className="text-[9px] text-slate-600 tabular-nums w-8 text-right shrink-0">{f.value}</span>
+                  <div className="mt-2.5">
+                    <button
+                      onClick={() => setShapExpanded(!shapExpanded)}
+                      className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors w-full"
+                    >
+                      <ChevronRight className={cn('h-3 w-3 transition-transform', shapExpanded && 'rotate-90')} />
+                      Why this score?
+                    </button>
+                    {shapExpanded && (
+                      <div className="mt-2 space-y-2 pl-1">
+                        {deal.propensityFactors.slice(0, 5).map((f, i) => {
+                          const displayName = getMLFactorDisplayName(f.name);
+                          const explanation = getMLFactorExplanation(f.name);
+                          const dirLabel = f.direction === 'helps' ? 'Helps' : f.direction === 'hurts' ? 'Hurts' : 'Neutral';
+                          return (
+                            <div key={i} className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  'text-[10px] shrink-0 w-3 text-center font-bold',
+                                  f.direction === 'helps' ? 'text-emerald-400' :
+                                  f.direction === 'hurts' ? 'text-red-400' : 'text-slate-600'
+                                )}>
+                                  {f.direction === 'helps' ? '↑' : f.direction === 'hurts' ? '↓' : '→'}
+                                </span>
+                                <span className="text-[10px] font-medium text-slate-300 flex-1">{displayName}</span>
+                                <span className={cn(
+                                  'text-[8px] font-medium px-1 py-0.5 rounded',
+                                  f.direction === 'helps' ? 'bg-emerald-500/10 text-emerald-400' :
+                                  f.direction === 'hurts' ? 'bg-red-500/10 text-red-400' : 'bg-slate-500/10 text-slate-500'
+                                )}>{dirLabel}</span>
+                                <div className="w-12 h-1 rounded-full bg-[#2a2540] overflow-hidden shrink-0">
+                                  <div
+                                    className="h-full rounded-full"
+                                    style={{
+                                      width: `${Math.round(f.magnitude * 100)}%`,
+                                      background: f.direction === 'helps'
+                                        ? 'hsl(152, 60%, 45%)'
+                                        : f.direction === 'hurts'
+                                        ? 'hsl(0, 60%, 50%)'
+                                        : 'hsl(260, 10%, 45%)',
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              <p className="text-[9px] text-slate-600 pl-5 leading-relaxed">{explanation}</p>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    )}
                   </div>
                 )}
 
@@ -1462,6 +1557,29 @@ export function TDRIntelligence({
                 </div>
               ))}
             </div>
+
+            {/* Readout checklist — advisory workflow */}
+            <div className="px-5 pb-3">
+              <p className="text-[8px] uppercase tracking-wider text-slate-600 mb-1.5">Readout Checklist</p>
+              <div className="grid grid-cols-4 gap-1">
+                {[
+                  { label: 'Enrich', done: !!(sumbleData?.success || perplexityData?.success) },
+                  { label: 'Research', done: !!perplexityData?.success },
+                  { label: 'Action Plan', done: !!actionPlanResult?.success },
+                  { label: 'TDR Brief', done: !!briefData?.success },
+                ].map(item => (
+                  <div key={item.label} className={cn(
+                    'flex flex-col items-center rounded-md border py-1 px-0.5 transition-colors',
+                    item.done
+                      ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
+                      : 'border-slate-500/10 bg-slate-500/5 text-slate-600'
+                  )}>
+                    <span className="text-[8px] uppercase tracking-wider">{item.label}</span>
+                    <span className="text-[10px] font-semibold">{item.done ? '✓' : '—'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         );
       })()}
@@ -1615,8 +1733,38 @@ export function TDRIntelligence({
 
           {/* Perplexity tech signals */}
           {perplexityData?.technologySignals && perplexityData.technologySignals.length > 0 && (
-            <div className="space-y-1">
-              {perplexityData.technologySignals.map((signal, i) => (
+            <div className="space-y-1.5">
+              {perplexityTechNames.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-2xs text-slate-500 w-16 shrink-0">Perplexity</span>
+                  {perplexityTechNames.map(tech => {
+                    const style = TECH_CATEGORY_STYLES[(() => {
+                      const l = tech.toLowerCase();
+                      if (['salesforce', 'hubspot', 'dynamics'].some(k => l.includes(k))) return 'CRM';
+                      if (['tableau', 'power bi', 'looker', 'qlik', 'domo', 'metabase'].some(k => l.includes(k))) return 'BI';
+                      if (['snowflake', 'databricks', 'bigquery', 'redshift'].some(k => l.includes(k))) return 'DW';
+                      if (['dbt', 'fivetran', 'airflow', 'informatica', 'kafka'].some(k => l.includes(k))) return 'ETL';
+                      if (['aws', 'azure', 'gcp', 'google cloud'].some(k => l.includes(k))) return 'Cloud';
+                      if (['tensorflow', 'pytorch', 'sagemaker', 'datarobot'].some(k => l.includes(k))) return 'ML';
+                      if (['netsuite', 'sap', 'workday'].some(k => l.includes(k))) return 'ERP';
+                      if (['kubernetes', 'docker', 'terraform', 'datadog'].some(k => l.includes(k))) return 'DevOps';
+                      return 'Other';
+                    })()] || TECH_CATEGORY_STYLES.Other;
+                    return (
+                      <span key={tech} className={cn('inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-medium', style.bg, style.text)}>
+                        {tech}
+                        <SourceBadge source="perplexity" />
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              {perplexityTechLoading && (
+                <p className="text-[9px] text-slate-600 flex items-center gap-1">
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" /> Extracting technologies...
+                </p>
+              )}
+              {perplexityTechNames.length === 0 && !perplexityTechLoading && perplexityData.technologySignals.map((signal, i) => (
                 <div key={i} className="flex items-start gap-1.5 text-xs">
                   <SourceBadge source="perplexity" />
                   <span className="text-slate-400">{signal}</span>

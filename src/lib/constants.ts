@@ -84,3 +84,27 @@ export const TDR_STEPS = [
   },
 ] as const;
 
+export const ML_FACTOR_DISPLAY: Record<string, { name: string; explain: string }> = {
+  STAGE_NUMBER:           { name: 'Stage',              explain: 'The deal\'s current sales stage. Later stages have historically higher close rates.' },
+  DEAL_AGE_DAYS:          { name: 'Deal Age',           explain: 'How long the opportunity has been open. Very old deals tend to stall.' },
+  STAGE_AGE_DAYS:         { name: 'Stage Age',          explain: 'Days spent in the current stage. Extended time may indicate a stalled deal.' },
+  ACV:                    { name: 'Deal Size',          explain: 'Annual contract value. Larger deals often have longer but more committed cycles.' },
+  NUM_COMPETITORS:        { name: 'Competition',        explain: 'Number of known competitors on the deal. More competition lowers win probability.' },
+  HAS_PARTNER:            { name: 'Partner Involved',   explain: 'Whether a channel or technology partner is engaged. Partners can accelerate deals.' },
+  DEAL_TYPE:              { name: 'Deal Type',          explain: 'New logo vs. upsell. Upsells historically close at higher rates.' },
+  SALES_PROCESS:          { name: 'Sales Process',      explain: 'The defined sales methodology being followed for this opportunity.' },
+  FORECAST_CATEGORY:      { name: 'Forecast Category',  explain: 'The rep\'s forecast commitment level (Pipeline, Best Case, Commit, Closed).' },
+  ACCOUNT_WIN_RATE:       { name: 'Account History',    explain: 'Historical win rate for this account. Past success predicts future outcomes.' },
+  QUARTER_END_PROXIMITY:  { name: 'Quarter Timing',     explain: 'How close the deal is to quarter end. Urgency increases near deadlines.' },
+  SALES_SEGMENT:          { name: 'Segment',            explain: 'Enterprise, mid-market, or SMB classification. Segment affects close patterns.' },
+  SALES_VERTICAL:         { name: 'Vertical',           explain: 'Industry vertical (Tech, Healthcare, Finance, etc.) with distinct win patterns.' },
+};
+
+export function getMLFactorDisplayName(rawName: string): string {
+  return ML_FACTOR_DISPLAY[rawName]?.name || rawName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+export function getMLFactorExplanation(rawName: string): string {
+  return ML_FACTOR_DISPLAY[rawName]?.explain || 'A feature used by the ML model to predict win probability.';
+}
+

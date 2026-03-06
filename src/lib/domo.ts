@@ -206,6 +206,8 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
       'Factor4Name', 'Factor4Value', 'Factor4Direction', 'Factor4Magnitude',
       'Factor5Name', 'Factor5Value', 'Factor5Direction', 'Factor5Magnitude',
       'PropensityScoredAt', 'PropensityModelVersion',
+      'AccountRevenueUsd', 'AccountEmployees', 'StrategicAccount',
+      'Region', 'SalesSegment', 'SalesVertical',
     ];
 
     // Quarter window: current quarter through current + 4
