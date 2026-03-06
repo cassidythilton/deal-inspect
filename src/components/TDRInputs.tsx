@@ -496,6 +496,17 @@ export function TDRInputs({
     return '';
   };
 
+  const GAP_CHAR_THRESHOLD = 15;
+  const hasAnyContent = config.fields.some(f => getFieldValue(f.id).trim().length > GAP_CHAR_THRESHOLD);
+  const gapFields = new Set(
+    hasAnyContent
+      ? config.fields
+          .filter(f => !f.optional && getFieldValue(f.id).trim().length < GAP_CHAR_THRESHOLD)
+          .map(f => f.id)
+      : []
+  );
+  const gapCount = gapFields.size;
+
   // Handle local change (controlled input) — caches to sessionStorage + starts debounce timer
   const handleChange = (fieldId: string, value: string) => {
     const key = `${activeStep.id}::${fieldId}`;
@@ -587,7 +598,11 @@ export function TDRInputs({
           <p className="mt-1 text-sm text-muted-foreground">{activeStep.description}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Auto-save status */}
+          {gapCount > 0 && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-2xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+              {gapCount} gap{gapCount > 1 ? 's' : ''}
+            </span>
+          )}
           {autoSaving && (
             <span className="flex items-center gap-1 text-2xs text-muted-foreground animate-pulse">
               <Loader2 className="h-3 w-3 animate-spin" />
@@ -668,6 +683,11 @@ export function TDRInputs({
                 {field.optional && (
                   <span className="rounded bg-secondary px-1.5 py-0.5 text-2xs text-muted-foreground">
                     optional
+                  </span>
+                )}
+                {gapFields.has(field.id) && (
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-2xs font-medium text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                    gap
                   </span>
                 )}
                 {isSaved && (

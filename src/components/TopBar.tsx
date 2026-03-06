@@ -17,7 +17,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { ALLOWED_MANAGERS } from '@/lib/constants';
 
 export interface SEFilterOptions {
   seManagers: string[];
@@ -43,6 +42,7 @@ interface TopBarProps {
   onSEFilterChange?: (filters: Partial<SEFilterState>) => void;
   onRefresh?: () => void;
   agendaCount?: number;
+  managers?: readonly string[];
 }
 
 export function TopBar({
@@ -50,6 +50,7 @@ export function TopBar({
   seFilterState,
   onSEFilterChange,
   agendaCount = 0,
+  managers: managersProp,
 }: TopBarProps) {
   // Sort quarters in descending order (newest first)
   const quarters = (seFilterOptions?.quarters || [])
@@ -65,8 +66,7 @@ export function TopBar({
       return b.localeCompare(a);
     });
 
-  // Filter lists
-  const managers = ALLOWED_MANAGERS;
+  const managers = managersProp || [];
   const salesEngineers = seFilterOptions?.salesConsultants || [];
   const pocArchitects = seFilterOptions?.pocSalesConsultants || [];
   const seManagers = seFilterOptions?.seManagers || [];

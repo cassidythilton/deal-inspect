@@ -645,11 +645,11 @@ function PartnerIconCell({ data }: ICellRendererParams<Deal>) {
 
 function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
-  const whyTags = getTopFactors(data, 2);
-  const mlFactors = data.propensityFactors?.slice(0, 1) || [];
+  const whyTags = getTopFactors(data, 3);
+  const mlFactors = data.propensityFactors?.slice(0, 2) || [];
   if (whyTags.length === 0 && mlFactors.length === 0) return <span className="text-2xs text-muted-foreground">-</span>;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex items-center gap-0.5">
       {whyTags.map((factor, i) => {
         const IconComponent = FACTOR_ICONS[factor.icon] || Zap;
         const dynamicLabel = getDynamicFactorLabel(factor, data);
@@ -659,14 +659,14 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
           <Tooltip key={i}>
             <TooltipTrigger asChild>
               <span className={cn(
-                'inline-flex items-center gap-[2px] cursor-help rounded px-1 py-0 text-2xs font-medium leading-[20px]',
+                'inline-flex items-center justify-center cursor-help rounded p-[3px]',
                 pillStyle
               )}>
-                <IconComponent className="h-2 w-2" />
-                {dynamicLabel}
+                <IconComponent className="h-3 w-3" />
               </span>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-md p-4">
+              <p className="text-xs font-semibold mb-1">{dynamicLabel}</p>
               <p className="text-sm text-foreground leading-relaxed mb-2">{dynamicDesc}</p>
               {factor.id === 'competitiveDisplacement' && data.competitors && (
                 <p className="text-sm text-foreground/85 leading-relaxed mb-2">
@@ -691,22 +691,35 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
           </Tooltip>
         );
       })}
-      {mlFactors.map((f, i) => (
-        <Tooltip key={`ml-${i}`}>
-          <TooltipTrigger asChild>
-            <span className="inline-flex items-center gap-[2px] cursor-help rounded px-1 py-0 text-2xs font-medium leading-[20px] bg-indigo-500/10 text-indigo-700 border border-indigo-500/20">
-              <TrendingUp className="h-2 w-2" />
-              {f.direction === 'helps' ? '↑' : f.direction === 'hurts' ? '↓' : '→'} {f.name}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs p-3">
-            <p className="text-sm text-foreground"><span className="font-medium">{f.name}:</span> {f.value}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {f.direction === 'helps' ? 'Positively' : f.direction === 'hurts' ? 'Negatively' : 'Neutrally'} influences close probability (ML)
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      ))}
+      {mlFactors.length > 0 && whyTags.length > 0 && (
+        <span className="mx-0.5 h-3 w-px bg-border/50" />
+      )}
+      {mlFactors.map((f, i) => {
+        const arrow = f.direction === 'helps' ? '↑' : f.direction === 'hurts' ? '↓' : '→';
+        const colorClass = f.direction === 'helps'
+          ? 'bg-emerald-500/10 text-emerald-600'
+          : f.direction === 'hurts'
+            ? 'bg-red-500/10 text-red-600'
+            : 'bg-indigo-500/10 text-indigo-600';
+        return (
+          <Tooltip key={`ml-${i}`}>
+            <TooltipTrigger asChild>
+              <span className={cn(
+                'inline-flex items-center justify-center cursor-help rounded p-[3px] text-2xs font-bold',
+                colorClass
+              )}>
+                {arrow}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs p-3">
+              <p className="text-sm text-foreground"><span className="font-medium">{f.name}:</span> {f.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {f.direction === 'helps' ? 'Positively' : f.direction === 'hurts' ? 'Negatively' : 'Neutrally'} influences close probability (ML)
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      })}
     </div>
   );
 }
@@ -921,8 +934,8 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
     {
       headerName: 'Why TDR?',
       cellRenderer: WhyTDRCell,
-      minWidth: 200,
-      flex: 2.5,
+      minWidth: 90,
+      flex: 1,
       sortable: false,
       filter: false,
     },

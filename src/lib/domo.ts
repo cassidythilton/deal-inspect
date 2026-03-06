@@ -3,7 +3,7 @@
  * Handles all data fetching from Domo datasets with pre-filtering
  */
 
-import { MAX_STAGE_AGE_DAYS } from './constants';
+import { MAX_STAGE_AGE_DAYS, CLOSE_DATE_PROXIMITY_DAYS } from './constants';
 
 export { MAX_STAGE_AGE_DAYS };
 
@@ -302,19 +302,48 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
       console.log(`[Domo] Client-side filter: ${before} → ${rawOpps.length} (open pipeline, ${quarters[0]}–${quarters[quarters.length - 1]})`);
     }
 
+    const nowMs = Date.now();
+    const proximityMs = CLOSE_DATE_PROXIMITY_DAYS * 86_400_000;
+
     const allOpps = rawOpps
       .map((record) => normalizeRecord<DomoOpportunity>(record, OPPORTUNITY_FIELD_MAP))
       .filter((opp) => {
         const stageAge = opp['Stage Age'];
         if (stageAge === null || stageAge === undefined) return true;
-        return stageAge <= MAX_STAGE_AGE_DAYS;
+        if (stageAge <= MAX_STAGE_AGE_DAYS) return true;
+
+        const closeStr = opp['Close Date'] as string | undefined;
+        if (closeStr) {
+          const closeMs = new Date(closeStr).getTime();
+          if (!isNaN(closeMs) && closeMs - nowMs <= proximityMs && closeMs >= nowMs) return true;
+        }
+
+        return false;
       });
 
     const filteredOut = rawOpps.length - allOpps.length;
-    console.log(`[Domo] Pre-filtered ${filteredOut} deals with Stage Age > ${MAX_STAGE_AGE_DAYS} days`);
-    console.log(`[Domo] Returning ${allOpps.length} opportunities`);
+    console.log(`[Domo] Pre-filtered ${filteredOut} deals with Stage Age > ${MAX_STAGE_AGE_DAYS}d (${CLOSE_DATE_PROXIMITY_DAYS}d proximity override active)`);
 
-    return allOpps;
+    // Deduplicate by Opportunity Id — keep the record with the most non-empty fields
+    const dedupMap = new Map<string, DomoOpportunity>();
+    for (const opp of allOpps) {
+      const id = opp['Opportunity Id'];
+      if (!id) continue;
+      const existing = dedupMap.get(id);
+      if (!existing) {
+        dedupMap.set(id, opp);
+      } else {
+        const richness = (o: DomoOpportunity) =>
+          Object.values(o).filter(v => v != null && String(v).trim() !== '').length;
+        if (richness(opp) > richness(existing)) dedupMap.set(id, opp);
+      }
+    }
+    const deduped = Array.from(dedupMap.values());
+    const dupCount = allOpps.length - deduped.length;
+    if (dupCount > 0) console.log(`[Domo] Deduped ${dupCount} duplicate Opportunity IDs`);
+    console.log(`[Domo] Returning ${deduped.length} opportunities`);
+
+    return deduped;
   } catch (error) {
     console.error('[Domo] Failed to fetch opportunities:', error);
     return [];

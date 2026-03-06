@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 6.2 · **Date:** March 6, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e (41 sprints) · **Next Up:** 30 (UX Polish), 31 (TDR Framework Redesign)
+**Status:** Active · **Version:** Draft 6.3 · **Date:** March 6, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30 (42 sprints) · **Next Up:** 31 (TDR Framework Redesign)
 
 ---
 
@@ -28,12 +28,12 @@
 |--------|------|--------|-------------|-----------------|
 | **28d** | Domo Integration | ✅ Complete | 28c | `DEAL_PREDICTIONS` joined in Domo, manifest + types updated, propensity fields wired |
 | **28e** | Frontend ML Integration | ✅ Complete | 28d | Win % column, Deal Positioning scatter, propensity card in Intelligence Panel, ML factor pills |
-| **30** | UX Polish & Iteration | 1–2 days | 28e + 29b | Stage Age threshold, quadrant/SHAP/diff polish, dedup, Settings→Filter bridge |
+| **30** | UX Polish & Iteration | ✅ Complete | 28e + 29b | Stage age fix, dedup, settings bridge, gap indicator, icon pills, propensity stat card, scatter polish |
 | **31** | TDR Framework Redesign | 3–5 days (31b–31c) | 30 | Consolidate 9→5 steps, AI & ML core step (design approved in 31a), pill/tag inputs, versioning, PDF update |
 
 **Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31)
 
-**Start point:** Sprint 30 (UX Polish) — ML pipeline fully operational end-to-end (Snowflake → Domo → frontend). Next step is UX refinement and visual polish.
+**Start point:** Sprint 31 (TDR Framework Redesign) — ML pipeline and UX polish complete. Next step is the structural TDR consolidation (9 → 5 steps).
 
 ---
 
@@ -3825,7 +3825,7 @@ The following enhancements were applied to the Slack distribution experience aft
 | **28c** | **ML Infrastructure & Model Training** | ✅ Complete | — | S28b (notebook run) | **ML / Snowflake** |
 | **28d** | **Domo Integration** | ✅ Complete | — | S28c | **ML / Data** |
 | **28e** | **Frontend ML Integration** | ✅ Complete | — | S28d | **ML / UX** |
-| **30** | **UX Polish & Iteration** | 🔲 Not Started | — | S28e + S29b | **UX** |
+| **30** | **UX Polish & Iteration** | ✅ Complete | — | S28e + S29b | **UX** |
 | **31** | **TDR Framework Redesign** | 🔶 31a Approved | — | S30 | **UX / Architecture** |
 
 **Post-Sprint Enhancements (Feb 14, 2026):**
@@ -6215,7 +6215,7 @@ A context-source badge shows what was used: "Enhanced using: Perplexity research
 
 ---
 
-### Sprint 30 — UX Polish & Iteration 🔲 NOT STARTED
+### Sprint 30 — UX Polish & Iteration ✅ COMPLETE
 
 > **Goal:** Dedicated time for holistic UX evaluation and refinement of Sprint 28 and Sprint 29 deliverables. New ML visualizations (propensity quadrant, SHAP factors), AI enhancement UI (diff view, context badges), and the expanded dataset columns all need real-user feedback cycles before they're production-ready. This sprint also addresses pre-existing data visibility issues discovered during UAT (e.g., Stage Age filtering threshold).
 > **Risk to app:** None — purely additive refinements to existing, working features.
@@ -6227,47 +6227,43 @@ First implementations of complex visualizations and interaction patterns rarely 
 
 **Scope (candidate items — prioritized during sprint):**
 
-1. **Stage Age Threshold Review** — The current hard filter (`Stage Age > 365 days → hidden`) drops legitimate deals. Example: "New York State Olympic Regional Development Authority Renewal" has Stage Age = 1,072 days but a close date of 3/22/26 — a real, active deal invisible to the app. Options:
-   - Increase threshold (e.g., 730 days)
-   - Make threshold configurable per deal type (renewals get longer leash)
-   - Replace hard cutoff with a "stale deal" visual indicator instead of exclusion
-   - Add close-date proximity override (if close date is within 90 days, always show regardless of stage age)
+1. ~~**Stage Age Threshold Review**~~ ✅ — Increased threshold to 730 days. Added 90-day close-date proximity override: deals with close dates within 90 days of today are always shown regardless of stage age. Fixes the "New York State Olympic Regional" visibility bug.
 
-2. **Propensity Quadrant Polish** — Scatter plot readability, dot sizing (ACV-weighted?), hover tooltips, quadrant label placement, color palette for CRITICAL/STANDARD/MONITOR/SKIP, responsive behavior on smaller screens.
+2. **Propensity Quadrant Polish** ✅ — Scatter plot has dynamic X/Y axes (both start and end adapt to data), tighter 5-unit snapping, ACV-sized dots, 2×2 quadrant labels anchored to far corners, background shading, click-to-navigate.
 
-3. **SHAP Factor Display** — Plain English labels, directional arrows, magnitude bar sizing, card layout (horizontal vs. vertical), "Why this score?" expandable section placement.
+3. **SHAP Factor Display** — Partially addressed in Sprint 28e (factor bars in Intelligence Panel card, ML pills in table). Remaining: "Why this score?" expandable section.
 
-4. **AI Enhancement Diff View** — Diff rendering clarity (word-level vs. line-level), button placement, animation on accept/dismiss, re-enhance affordance, mobile responsiveness.
+4. **AI Enhancement Diff View** — Deferred to Sprint 31 (requires Sprint 29 AI Enhancement).
 
-5. **Context-Source Badges** — Visual weight, truncation on narrow viewports, tooltip on hover for full context list.
+5. **Context-Source Badges** — Deferred to Sprint 31 (requires Sprint 29 AI Enhancement).
 
-6. **Expanded Dataset Column Visibility** — New columns from the dataset swap (firmographics, engagement signals, milestones) may warrant surfacing in deal detail views or tooltips. Evaluate which are useful vs. noise.
+6. **Expanded Dataset Column Visibility** — Ongoing evaluation. No new columns surfaced yet.
 
-7. **Duplicate Record Handling** — Investigate and handle cases where the dataset contains duplicate Opportunity IDs with differing field values (e.g., different `Mgr Forecast Name` on each row). Determine deduplication strategy: latest record wins, prefer non-placeholder values, or flag for review.
+7. ~~**Duplicate Record Handling**~~ ✅ — Implemented richness-based deduplication in `domo.ts`. For duplicate Opportunity IDs, the record with the most non-empty fields wins. Logged to console.
 
-8. **TDR Step Restructuring** — Moved to Sprint 31 (TDR Framework Redesign) — see below. Substantially expanded via `shaping/tdr-quality-of-life.md`.
+8. **TDR Step Restructuring** — Moved to Sprint 31 (TDR Framework Redesign).
 
-9. **Settings → Filter bridge** — `appSettings.allowedManagers` in localStorage is disconnected from `ALLOWED_MANAGERS` in `constants.ts`. Bridge them so manager additions in Settings immediately reflect in the Command Center dropdown.
+9. ~~**Settings → Filter bridge**~~ ✅ — `getActiveManagers()` in `appSettings.ts` is now the single source of truth. `TopBar`, `CommandCenter`, and `useDomo` all read from it. Manager changes in Settings immediately apply without code changes.
 
-10. **Perplexity tech pills** — Technical landscape pills only show Sumble-sourced technologies. Perplexity-cited tech (e.g., "Alteryx" from a Papa Johns research pull) should render as pills with a Perplexity source icon.
+10. **Perplexity tech pills** — Deferred to Sprint 31 (requires Perplexity integration data).
 
-11. **Slack PDF tech pill colors** — Tech stack pills in the Slack PDF render without color. Match `TECH_CATEGORY_STYLES` from the app.
+11. **Slack PDF tech pill colors** — Deferred to Sprint 31.
 
-12. **Intelligence Panel guided workflow** — Add a "Readout Checklist" indicator showing the recommended sequence: Enrich → Research → Action Plan → TDR Brief. Each item shows status (not started / complete / stale). Communicates the sequence without enforcing it.
+12. **Intelligence Panel guided workflow** — Deferred to Sprint 31.
 
-13. **Slack share caching** — Reuse recently generated TDR brief and PDF for Slack distribution instead of regenerating. Skip redundant `generateReadoutSummary()` call if summary hasn't changed.
+13. **Slack share caching** — Deferred to Sprint 31.
 
-14. **Gap indicator** — Subtle "Gap" badge on textarea fields that are empty or very terse (< ~15 chars) when sibling fields are filled. Non-blocking diagnostic cue. Step header shows count: "2 gaps identified."
+14. ~~**Gap indicator**~~ ✅ — Amber "gap" badge on textarea fields that are empty or terse (< 15 chars) when sibling fields have content. Step header shows aggregate count ("2 gaps"). Non-blocking diagnostic cue.
 
-15. **Why TDR? pill → icon conversion** — The "Why TDR?" column renders full text pills ("Upsell", "Shaping window", "Sales Process", "New logo", etc.) that bunch together when a deal has 3+ factors. Each factor already has a mapped Lucide icon in `FACTOR_ICONS`. Convert to compact, color-coded icon-only badges (just the icon, no label text). The tooltip on hover expands to show: factor name, dynamic description, recommended strategy, and TDR preparation steps (all already wired). ML factor pills (indigo) similarly collapse to a direction arrow icon (↑/↓/→) with name + value in tooltip. Result: the column shrinks from ~200px of text clutter to ~80px of scannable glyphs, with zero information loss — everything moves to the tooltip.
+15. ~~**Why TDR? pill → icon conversion**~~ ✅ — Converted to compact icon-only badges (just the Lucide icon, no text label). ML factor pills collapse to direction arrows (↑/↓/→) color-coded by direction (green/red/indigo). Column width reduced from ~200px to ~90px. All detail preserved in rich tooltips: factor name, description, strategy, TDR prep steps.
 
-16. **Chart row uniformity** — *(partially addressed in 28e)* Layout is now 2-compact + 1-wide scatter (`grid-cols-4`). Remaining: evaluate if all 3 cards need identical height or if the scatter rightly gets more visual weight. Responsive behavior on narrow viewports.
+16. **Chart row uniformity** ✅ — 2-compact + 1-wide scatter layout (`grid-cols-4`). All cards share consistent `stat-card` styling.
 
-17. **Deal Positioning scatter polish** — *(partially addressed in 28e)* Quadrant labels, 2×2 gridlines, dynamic axis scaling, ACV-sized dots, background shading, and click-to-navigate are implemented. Remaining: final label positioning refinement after real-data UAT, responsive behavior on smaller viewports, dot overlap handling for dense clusters.
+17. **Deal Positioning scatter polish** ✅ — Dynamic X-axis domain (adapts to data range, not fixed at 0), quadrant labels anchored with proportional positioning, background shading uses dynamic domain bounds.
 
-18. **Portfolio-level propensity metrics** — Add aggregate propensity stats to Command Center stat cards (e.g., avg win probability, % in HIGH quadrant, pipeline-weighted propensity).
+18. ~~**Portfolio-level propensity metrics**~~ ✅ — 5th stat card "Win Propensity" added to Command Center: average ML win probability, count of high-propensity deals (60%+), and their pipeline ACV. Grid changed to `grid-cols-5`.
 
-19. **Resume Snowflake Tasks** — `ALTER TASK TASK_NIGHTLY_SCORE RESUME` and `ALTER TASK TASK_WEEKLY_RETRAIN RESUME` for automated nightly scoring + weekly retraining.
+19. **Resume Snowflake Tasks** — Requires `ALTER TASK ... RESUME` via Cortex CLI. Deferred to user execution.
 
 **No-Gos:**
 - No auto-enhancement without user action
@@ -6429,9 +6425,8 @@ Sprint 29 — AI-Enhanced TDR Responses 🔲
     │  Filesets + Sumble + Perplexity + SE inputs + deal metadata
     │
     ▼
-Sprint 30 — UX Polish & Iteration 🔲
-    │  (depends on S28 + S29)
-    │  Stage Age threshold, quadrant/SHAP/diff polish
+Sprint 30 — UX Polish & Iteration ✅
+    │  Stage age fix, dedup, settings bridge, gap indicator, icon pills
     │  Settings→Filter bridge, Perplexity tech pills
     │  Slack PDF colors, Intelligence Panel checklist
     │  Gap indicators, duplicate record handling
@@ -6470,7 +6465,7 @@ Sprint 31 — TDR Framework Redesign 🔲
 | **OSS-1: Open-Source Readiness** | — | S25 | 0.5 day | ✅ Mar 3 |
 | **S28: Dataset Swap & Propensity ML** | — | S18 | 7–10 days (5 sub-sprints) | 🔲 Not Started |
 | **S29: AI-Enhanced TDR Responses** | ✅ with S28 | S17 + S19 + S6.5 | 2–3 days (2 sub-sprints) | 🔲 Not Started |
-| **S30: UX Polish & Iteration** | — | S28 + S29 | 1–2 days | 🔲 Not Started |
+| **S30: UX Polish & Iteration** | — | S28 + S29 | 1–2 days | ✅ Complete |
 | **S31: TDR Framework Redesign** | — | S29 + S30 | 3–5 days (3 sub-sprints) | 🔲 Not Started |
 
 ---

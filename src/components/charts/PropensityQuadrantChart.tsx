@@ -134,11 +134,14 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
 
     const xs = points.map(p => p.tdrScore);
     const ys = points.map(p => p.propensity);
+    const xMin = Math.min(...xs);
     const xMax = Math.max(...xs);
     const yMin = Math.min(...ys);
     const yMax = Math.max(...ys);
 
+    let x0 = snap(Math.max(0, xMin - 5), 5, 'down');
     let x1 = snap(xMax + 5, 5, 'up');
+    if (x0 > COMPLEXITY_THRESHOLD - 5) x0 = snap(COMPLEXITY_THRESHOLD - 10, 5, 'down');
     if (x1 < COMPLEXITY_THRESHOLD + 5) x1 = COMPLEXITY_THRESHOLD + 10;
 
     let y0 = snap(Math.max(0, yMin - 5), 5, 'down');
@@ -146,7 +149,7 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
     if (y0 > WIN_THRESHOLD - 5) y0 = snap(WIN_THRESHOLD - 10, 5, 'down');
     if (y1 < WIN_THRESHOLD + 5) y1 = snap(WIN_THRESHOLD + 10, 5, 'up');
 
-    return { xDomain: [0, x1] as [number, number], yDomain: [y0, y1] as [number, number] };
+    return { xDomain: [x0, x1] as [number, number], yDomain: [y0, y1] as [number, number] };
   }, [points]);
 
   const handleClick = useCallback((_: unknown, entry: { payload?: ScatterPoint } | undefined) => {
@@ -193,8 +196,8 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 5, right: 10, bottom: 20, left: 20 }}>
                 {/* Two-band background */}
-                <ReferenceArea x1={0} x2={xDomain[1]} y1={WIN_THRESHOLD} y2={yDomain[1]} fill="hsl(263, 50%, 50%)" fillOpacity={0.035} />
-                <ReferenceArea x1={0} x2={xDomain[1]} y1={yDomain[0]} y2={WIN_THRESHOLD} fill="hsl(300, 30%, 50%)" fillOpacity={0.035} />
+                <ReferenceArea x1={xDomain[0]} x2={xDomain[1]} y1={WIN_THRESHOLD} y2={yDomain[1]} fill="hsl(263, 50%, 50%)" fillOpacity={0.035} />
+                <ReferenceArea x1={xDomain[0]} x2={xDomain[1]} y1={yDomain[0]} y2={WIN_THRESHOLD} fill="hsl(300, 30%, 50%)" fillOpacity={0.035} />
 
                 <XAxis
                   type="number" dataKey="tdrScore" name="TDR Score"
@@ -232,8 +235,8 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
                   label={{ value: 'PRIORITIZE', fontSize: 8, fill: 'hsl(260, 20%, 55%)', opacity: 0.55, fontWeight: 600 }}
                   fill="transparent" />
                 <ReferenceArea
-                  x1={0}
-                  x2={COMPLEXITY_THRESHOLD * 0.4}
+                  x1={xDomain[0]}
+                  x2={xDomain[0] + (COMPLEXITY_THRESHOLD - xDomain[0]) * 0.4}
                   y1={WIN_THRESHOLD + (yDomain[1] - WIN_THRESHOLD) * 0.75}
                   y2={yDomain[1]}
                   label={{ value: 'FAST TRACK', fontSize: 8, fill: 'hsl(260, 20%, 55%)', opacity: 0.55, fontWeight: 600 }}
@@ -246,8 +249,8 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
                   label={{ value: 'INVESTIGATE', fontSize: 8, fill: 'hsl(260, 20%, 55%)', opacity: 0.55, fontWeight: 600 }}
                   fill="transparent" />
                 <ReferenceArea
-                  x1={0}
-                  x2={COMPLEXITY_THRESHOLD * 0.4}
+                  x1={xDomain[0]}
+                  x2={xDomain[0] + (COMPLEXITY_THRESHOLD - xDomain[0]) * 0.4}
                   y1={yDomain[0]}
                   y2={yDomain[0] + (WIN_THRESHOLD - yDomain[0]) * 0.3}
                   label={{ value: 'DEPRIORITIZE', fontSize: 8, fill: 'hsl(260, 20%, 55%)', opacity: 0.55, fontWeight: 600 }}

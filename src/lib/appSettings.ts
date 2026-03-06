@@ -105,3 +105,11 @@ export function parseManagerList(text: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Returns the active manager list — Settings overrides take precedence,
+ * falling back to DEFAULT_APP_SETTINGS.allowedManagers.
+ */
+export function getActiveManagers(): string[] {
+  return getAppSettings().allowedManagers;
+}
+

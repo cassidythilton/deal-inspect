@@ -27,8 +27,10 @@ export const TDR_PRIORITY_OPTIONS = [
   { id: 'low', label: 'Low (<25)', maxScore: 25 },
 ] as const;
 
-// Maximum stage age in days for data filtering (performance optimization)
-export const MAX_STAGE_AGE_DAYS = 365;
+// Stage age filtering: deals with stage age above this are hidden UNLESS
+// their close date is within CLOSE_DATE_PROXIMITY_DAYS of today.
+export const MAX_STAGE_AGE_DAYS = 730;
+export const CLOSE_DATE_PROXIMITY_DAYS = 90;
 
 // PoC SE Manager - SEs reporting to this person are PoC Architects
 export const POC_SE_MANAGER = 'Dan Wentworth';

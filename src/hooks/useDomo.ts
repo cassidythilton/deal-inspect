@@ -16,7 +16,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOpportunities, fetchSEMapping, DomoSEMapping, isDomoEnvironment } from '@/lib/domo';
 import { Deal } from '@/types/tdr';
-import { ALLOWED_MANAGERS } from '@/lib/constants';
+import { getActiveManagers } from '@/lib/appSettings';
 import { calculateTDRScore } from '@/lib/tdrCriticalFactors';
 // AppDB retired in Sprint 12 — Snowflake is the single source of truth
 import type { TDRSession } from '@/lib/appDb';
@@ -356,7 +356,8 @@ export function useDeals() {
 
   // ── Filter options ──
   const filterOptions = useMemo(() => {
-    const allowedSet = new Set(ALLOWED_MANAGERS.map(m => m.toLowerCase()));
+    const activeManagers = getActiveManagers();
+    const allowedSet = new Set(activeManagers.map(m => m.toLowerCase()));
     const currentYear = new Date().getFullYear();
 
     // SE Managers — from the SE mapping dataset
@@ -442,7 +443,7 @@ export function useDeals() {
       salesConsultants: Array.from(salesConsultants).sort(),
       pocSalesConsultants: Array.from(pocSalesConsultants).sort(),
       forecastManagers: Array.from(forecastManagers).filter(mgr =>
-        (ALLOWED_MANAGERS as readonly string[]).includes(mgr)
+        activeManagers.includes(mgr)
       ).sort(),
       quarters: Array.from(quarters).sort(),
     };

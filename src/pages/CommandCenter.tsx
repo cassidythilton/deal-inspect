@@ -18,13 +18,15 @@ import { PropensityDistributionChart } from '@/components/charts/PropensityDistr
 import { PropensityQuadrantChart } from '@/components/charts/PropensityQuadrantChart';
 import { mockDeals } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
-import { MAX_STAGE_AGE_DAYS, ALLOWED_MANAGERS } from '@/lib/constants';
+import { MAX_STAGE_AGE_DAYS } from '@/lib/constants';
+import { getActiveManagers } from '@/lib/appSettings';
 import { Deal } from '@/types/tdr';
 import {
   ShieldAlert,
   Swords,
   Handshake,
   Clock,
+  TrendingUp,
   Loader2,
 } from 'lucide-react';
 import {
@@ -65,6 +67,8 @@ export default function CommandCenter() {
     showAgendaOnly: false,
   });
 
+  const activeManagers = useMemo(() => getActiveManagers(), []);
+
   // Fetch deals from Domo
   const {
     deals: domoDeals, filterOptions, isLoading, isDomoConnected, refetch,
@@ -93,10 +97,10 @@ export default function CommandCenter() {
       deals = mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
     }
 
-    const allowedSet = new Set(ALLOWED_MANAGERS.map(m => m.toLowerCase()));
+    const allowedSet = new Set(activeManagers.map(m => m.toLowerCase()));
     const filtered = deals.filter((d) => allowedSet.has(d.owner?.toLowerCase() || ''));
     return filtered;
-  }, [domoDeals, isDomoConnected]);
+  }, [domoDeals, isDomoConnected, activeManagers]);
 
   // All deals (unfiltered by manager) for the global search
   const allDeals = useMemo(() => {
@@ -202,11 +206,20 @@ export default function CommandCenter() {
     const staleDeals = displayedDeals.filter(d => d.stageAge && d.stageAge > STALE_THRESHOLD_DAYS);
     const staleACV = staleDeals.reduce((s, d) => s + d.acv, 0);
 
+    // Win Propensity: deals with ML scores
+    const scoredDeals = displayedDeals.filter(d => d.propensityScore != null && d.propensityScore > 0);
+    const avgPropensity = scoredDeals.length > 0
+      ? Math.round(scoredDeals.reduce((s, d) => s + (d.propensityScore || 0), 0) / scoredDeals.length)
+      : 0;
+    const highPropensity = scoredDeals.filter(d => (d.propensityScore || 0) >= 60);
+    const highPropensityACV = highPropensity.reduce((s, d) => s + d.acv, 0);
+
     return {
       queue: { count: tdrQueue.length, acv: queueACV },
       competitive: { count: competitiveDeals.length, acv: competitiveACV },
       partner: { count: partnerDeals.length, acv: partnerACV },
       stale: { count: staleDeals.length, acv: staleACV },
+      propensity: { avgScore: avgPropensity, highCount: highPropensity.length, highACV: highPropensityACV, scoredCount: scoredDeals.length },
     };
   }, [displayedDeals]);
 
@@ -232,12 +245,13 @@ export default function CommandCenter() {
           onSEFilterChange={handleSEFilterChange}
           onRefresh={refetch}
           agendaCount={pinnedDeals.length}
+          managers={activeManagers}
         />
 
         <main className="flex-1 p-6 bg-background">
           <div className="mx-auto max-w-7xl space-y-4">
             {/* Zone 1: TDR-Aligned Stat Cards */}
-            <section className="grid grid-cols-4 gap-3">
+            <section className="grid grid-cols-5 gap-3">
               {/* TDR Queue */}
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -319,6 +333,27 @@ export default function CommandCenter() {
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
                   <p className="text-xs">Deals stuck in the <strong>same stage for {STALE_THRESHOLD_DAYS}+ days</strong>. May need intervention or pipeline hygiene.</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Win Propensity */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="stat-card cursor-help group">
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp className="h-3.5 w-3.5 text-emerald-500/70" />
+                      <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Win Propensity
+                      </span>
+                    </div>
+                    <div className="mt-1 text-2xl font-semibold tabular-nums">{metrics.propensity.avgScore}%</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
+                      {metrics.propensity.highCount} high · {formatValue(metrics.propensity.highACV)}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="text-xs">Average ML win probability across <strong>{metrics.propensity.scoredCount} scored deals</strong>. {metrics.propensity.highCount} deals have 60%+ propensity ({formatValue(metrics.propensity.highACV)} pipeline).</p>
                 </TooltipContent>
               </Tooltip>
             </section>
