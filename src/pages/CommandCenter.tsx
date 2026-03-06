@@ -38,6 +38,12 @@ import { calculateTDRScore, TDR_PRIORITY_THRESHOLDS_NEW } from '@/lib/tdrCritica
 // null = show all managers (matches what TopBar sets when "All AE Managers" is selected)
 const DEFAULT_MANAGER: string | null = null;
 
+const getCurrentQuarter = () => {
+  const now = new Date();
+  const q = Math.ceil((now.getMonth() + 1) / 3);
+  return `${now.getFullYear()}-Q${q}`;
+};
+
 const STALE_THRESHOLD_DAYS = 60;
 
 const formatValue = (val: number) => {
@@ -53,7 +59,7 @@ export default function CommandCenter() {
     selectedSEManager: null,
     selectedSE: null,
     selectedManager: DEFAULT_MANAGER,
-    selectedQuarters: null,
+    selectedQuarters: [getCurrentQuarter()],
     selectedPriority: null,
     includeCurrentQuarter: true,
     showAgendaOnly: false,
