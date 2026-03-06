@@ -35,8 +35,8 @@ import {
 } from '@/components/ui/tooltip';
 import { calculateTDRScore, TDR_PRIORITY_THRESHOLDS_NEW } from '@/lib/tdrCriticalFactors';
 
-// Default manager on load — first allowed manager
-const DEFAULT_MANAGER: string = ALLOWED_MANAGERS[0];
+// Default manager on load — show all managers
+const DEFAULT_MANAGER: string = 'all';
 
 // Get current quarter in format matching Domo data (e.g., "2026-Q1")
 const getCurrentQuarter = () => {
