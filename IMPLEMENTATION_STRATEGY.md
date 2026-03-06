@@ -6082,7 +6082,7 @@ The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking 
 - [x] Won vs Lost distribution analysis for key numeric features
 - [x] Correlation analysis: identify multicollinear features to avoid redundancy
 - [x] Derived feature preview: account win rate, stage velocity, services ratio, sales process completeness
-- [ ] **PENDING:** Execute notebook against live Snowflake data — go/no-go gate for Sprint 28c
+- [x] **GO — EDA executed against live Snowflake (Mar 6, 2026).** 194,762 total rows. 188,193 closed deals (49,684 Won / 138,509 Lost / 26.4% win rate). 134 candidate features, 87 with <10% null. Threshold was ≥500 labeled deals — dataset has 376× that. Class imbalance ~1:2.8 (Won:Lost) — moderate, manageable by `SNOWFLAKE.ML.CLASSIFICATION` auto-tuning.
 
 **Sprint PERF-1 — Performance Optimization** *[Cursor — application domain]* ✅ DONE (Mar 5, 2026)
 - [x] Diagnosed 40-second load time: `/sql/v1/` endpoint returning 400, falling back to unfiltered `/data/v1/` (194,762 rows)
