@@ -12,6 +12,7 @@
 --   1. Schema & grants (Section 1)
 --   2. ML_FEATURE_STORE view (Section 2)
 --   3. ML_TRAINING_DATA view (Section 3)
+--   3b. ML_PIPELINE_FEATURES view (Section 3b)
 --   4. DEAL_PREDICTIONS table (Section 4)
 --   5. ML_MODEL_METADATA table (Section 5)
 --   6. Train model (Section 6)
@@ -19,6 +20,14 @@
 --   8. Retrain procedure (Section 8)
 --   9. Snowflake Tasks (Section 9)
 --  10. First batch score (Section 10)
+--
+-- Reconciliation (Mar 6, 2026):
+--   Cortex CLI fixed two type mismatches at runtime:
+--   - "Created Date" is TIMESTAMP, not epoch — removed /1000 conversion
+--   - "People AI Engagement Level" is FLOAT, not VARCHAR — added TRY_CAST
+--   - Added ML_PIPELINE_FEATURES view for scoring parity with training
+--   The ML_TRAINING_DATA_CLEAN view Cortex created in Snowflake is no longer
+--   needed since these fixes are now in the root views.
 -- =============================================================================
 
 -- ═══════════════════════════════════════════════════════════════════════
@@ -110,19 +119,19 @@ SELECT
     o."Sales Segment" AS SALES_SEGMENT,
     o."Sales Vertical" AS SALES_VERTICAL,
 
-    -- Engagement
-    -- Bucket to ≤20 categories (validation found 101 unique values)
+    -- Engagement ("People AI Engagement Level" is FLOAT in source, not VARCHAR)
+    -- Bucket numeric scores: ≥80 = Very High, ≥60 = High, ≥40 = Medium, ≥20 = Low, else None
     CASE
         WHEN o."People AI Engagement Level" IS NULL THEN 'Unknown'
-        WHEN LOWER(o."People AI Engagement Level") LIKE '%very high%' THEN 'Very High'
-        WHEN LOWER(o."People AI Engagement Level") LIKE '%high%' THEN 'High'
-        WHEN LOWER(o."People AI Engagement Level") LIKE '%medium%'
-          OR LOWER(o."People AI Engagement Level") LIKE '%moderate%' THEN 'Medium'
-        WHEN LOWER(o."People AI Engagement Level") LIKE '%low%' THEN 'Low'
-        WHEN LOWER(o."People AI Engagement Level") LIKE '%none%'
-          OR LOWER(o."People AI Engagement Level") LIKE '%no engagement%' THEN 'None'
-        ELSE 'Other'
+        WHEN o."People AI Engagement Level" >= 80 THEN 'Very High'
+        WHEN o."People AI Engagement Level" >= 60 THEN 'High'
+        WHEN o."People AI Engagement Level" >= 40 THEN 'Medium'
+        WHEN o."People AI Engagement Level" >= 20 THEN 'Low'
+        ELSE 'None'
     END AS ENGAGEMENT_LEVEL_BUCKETED,
+
+    -- Stage timing
+    o."Stage Age" AS STAGE_AGE,
 
     -- Partner
     o."Partner Influence" AS PARTNER_INFLUENCE,
@@ -204,10 +213,10 @@ SELECT
         CASE WHEN o."Has ADM/AE Sync Agenda" IS NOT NULL AND o."Has ADM/AE Sync Agenda" != '' THEN 1 ELSE 0 END
     )::FLOAT / 6.0 AS SALES_PROCESS_COMPLETENESS,
 
-    -- Days since created
+    -- Days since created ("Created Date" is already TIMESTAMP, not epoch)
     CASE
         WHEN o."Created Date" IS NOT NULL
-        THEN DATEDIFF('day', TO_TIMESTAMP(o."Created Date" / 1000), CURRENT_TIMESTAMP())
+        THEN DATEDIFF('day', o."Created Date", CURRENT_TIMESTAMP())
         ELSE NULL
     END AS DAYS_SINCE_CREATED,
 
@@ -254,6 +263,7 @@ SELECT
     NUM_COMPETITORS,
     ACCOUNT_REVENUE_LOG, ACCOUNT_EMPLOYEES_LOG, STRATEGIC_ACCOUNT,
     REGION, SALES_SEGMENT, SALES_VERTICAL,
+    STAGE_AGE,
     ENGAGEMENT_LEVEL_BUCKETED, PARTNER_INFLUENCE, IS_PARTNER,
     LEAD_SOURCE_BUCKETED,
     ACCOUNT_WIN_RATE, TYPE_SPECIFIC_WIN_RATE, STAGE_VELOCITY_RATIO,
@@ -264,6 +274,34 @@ SELECT
 FROM TDR_APP.ML_MODELS.ML_FEATURE_STORE
 WHERE IS_CLOSED = 'true'
   AND STAGE_RAW NOT IN ('Duplicate', 'Obsolete', 'Closed Pending Option');
+
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- SECTION 3b: ML_PIPELINE_FEATURES VIEW
+-- ═══════════════════════════════════════════════════════════════════════
+-- Open pipeline deals only — same feature columns as ML_TRAINING_DATA
+-- but without the target label. Used by SCORE_PIPELINE_DEALS procedure.
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE OR REPLACE VIEW TDR_APP.ML_MODELS.ML_PIPELINE_FEATURES AS
+SELECT
+    OPPORTUNITY_ID,
+    ACV_USD, ACV_LOG, ACV_RECURRING, ACV_NON_RECURRING,
+    TCV_USD, PLATFORM_PRICE, PROF_SERVICES_PRICE, LINE_ITEMS,
+    DEAL_TYPE, DEAL_CODE, CONTRACT_TYPE, PRICING_TYPE, CPQ, NON_COMPETITIVE_DEAL,
+    NUM_COMPETITORS,
+    ACCOUNT_REVENUE_LOG, ACCOUNT_EMPLOYEES_LOG, STRATEGIC_ACCOUNT,
+    REGION, SALES_SEGMENT, SALES_VERTICAL,
+    STAGE_AGE,
+    ENGAGEMENT_LEVEL_BUCKETED, PARTNER_INFLUENCE, IS_PARTNER,
+    LEAD_SOURCE_BUCKETED,
+    ACCOUNT_WIN_RATE, TYPE_SPECIFIC_WIN_RATE, STAGE_VELOCITY_RATIO,
+    SERVICES_RATIO, ACV_NORMALIZED, REVENUE_PER_EMPLOYEE,
+    SALES_PROCESS_COMPLETENESS, DAYS_SINCE_CREATED,
+    TOTAL_OPTY_COUNT, DEAL_COMPLEXITY_INDEX
+FROM TDR_APP.ML_MODELS.ML_FEATURE_STORE
+WHERE IS_CLOSED IS NULL
+   OR IS_CLOSED != 'true';
 
 
 -- ═══════════════════════════════════════════════════════════════════════
@@ -418,6 +456,7 @@ BEGIN
                 'REGION', f.REGION,
                 'SALES_SEGMENT', f.SALES_SEGMENT,
                 'SALES_VERTICAL', f.SALES_VERTICAL,
+                'STAGE_AGE', f.STAGE_AGE,
                 'ENGAGEMENT_LEVEL_BUCKETED', f.ENGAGEMENT_LEVEL_BUCKETED,
                 'PARTNER_INFLUENCE', f.PARTNER_INFLUENCE,
                 'IS_PARTNER', f.IS_PARTNER,
@@ -450,9 +489,7 @@ BEGIN
         f.TOTAL_OPTY_COUNT,
         f.PARTNER_INFLUENCE,
         f.LEAD_SOURCE_BUCKETED
-    FROM TDR_APP.ML_MODELS.ML_FEATURE_STORE f
-    WHERE f.IS_CLOSED IS NULL
-       OR f.IS_CLOSED != 'true';
+    FROM TDR_APP.ML_MODELS.ML_PIPELINE_FEATURES f;
 
     -- Step 2: Compute population baselines for factor context
     CREATE OR REPLACE TEMPORARY TABLE _baselines AS
@@ -563,9 +600,9 @@ BEGIN
         PROPENSITY_SCORE,
         CASE WHEN PREDICTION = '1' THEN 'Won' ELSE 'Lost' END AS PREDICTION,
         CASE
-            WHEN PROPENSITY_SCORE >= 0.5 THEN 'CRITICAL'
+            WHEN PROPENSITY_SCORE >= 0.5 THEN 'HIGH'
             WHEN PROPENSITY_SCORE >= 0.3 THEN 'MONITOR'
-            ELSE 'STANDARD'
+            ELSE 'AT_RISK'
         END AS QUADRANT,
         f1_raw:"name"::VARCHAR AS FACTOR_1_NAME,
         f1_raw:"value"::VARCHAR AS FACTOR_1_VALUE,

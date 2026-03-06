@@ -2,7 +2,7 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 6.0 · **Date:** March 5, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1 (37 sprints) · **Next Up:** 28c (ML Infrastructure), 28d (Code Engine), 28e (Frontend ML), 30 (UX Polish), 31 (TDR Framework Redesign)
+**Status:** Active · **Version:** Draft 6.1 · **Date:** March 6, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c (39 sprints) · **Next Up:** 28d (Domo Integration), 28e (Frontend ML), 30 (UX Polish), 31 (TDR Framework Redesign)
 
 ---
 
@@ -19,20 +19,21 @@
 | **29a** | AI Enhancement Engine | ✅ DONE | Mar 4 | `domoAi.ts` — prompt construction, 8 context layers, Domo AI endpoint |
 | **29b** | AI Enhancement UI | ✅ DONE | Mar 4 | Enhance button, inline diff, accept/edit/dismiss, dealContext wiring |
 | **PERF-1** | Performance Optimization | ✅ DONE | Mar 5 | `/data/v2/` with `?fields=` + `&filter=` — 40s → 1s load, 194K → 5K records |
+| **28b+** | Pre-Training Data Validation | ✅ DONE | Mar 5 | 7 critical checks passed, 38 safe features, warnings on high-cardinality fields |
+| **28c** | ML Infrastructure & Model Training | ✅ DONE | Mar 6 | Model trained (AUC 0.997, F1 97.7%), 6,569 deals scored, tasks created |
 
-**What's next (remaining sprints, ~10–15 days):**
+**What's next (remaining sprints, ~8–12 days):**
 
 | Sprint | Name | Effort | Prerequisite | Key Deliverable |
 |--------|------|--------|-------------|-----------------|
-| **28c** | ML Infrastructure & Model Training | 2–3 days | 28b EDA notebook must be run (go/no-go gate) | `ML_FEATURE_STORE` view, `ML_TRAINING_DATA` view, `DEAL_CLOSE_PROPENSITY` model, metadata table |
-| **28d** | Code Engine & Automation | 1–2 days | 28c | `getWinProbability`, `batchScoreDeals`, `getModelMetrics`, `retrainModel` + Snowflake Tasks |
+| **28d** | Domo Integration | 1–2 days | 28c | `DEAL_PREDICTIONS` synced as Domo dataset, joined with opportunities, manifest updated |
 | **28e** | Frontend ML Integration | 3–4 days | 28d | Propensity column, quadrant scatter plot, SHAP factor cards, portfolio metrics |
 | **30** | UX Polish & Iteration | 1–2 days | 28e + 29b | Stage Age threshold, quadrant/SHAP/diff polish, dedup, Settings→Filter bridge |
 | **31** | TDR Framework Redesign | 3–5 days (31b–31c) | 30 | Consolidate 9→5 steps, AI & ML core step (design approved in 31a), pill/tag inputs, versioning, PDF update |
 
 **Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31)
 
-**Start point:** Sprint 28c (ML infrastructure) — requires running the EDA notebook (28b) against Snowflake first to validate ≥100 closed deals for `SNOWFLAKE.ML.CLASSIFICATION`. This is the go/no-go gate for the ML pipeline.
+**Start point:** Sprint 28d (Domo integration) — model is trained and scoring. Next step is syncing `DEAL_PREDICTIONS` into Domo and joining with the opportunities dataset.
 
 ---
 
@@ -6100,22 +6101,28 @@ The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking 
 - [x] Temporal split recommendation: train on pre-2026, hold out 2026-Q1 as test set
 - [x] Results saved to `notebooks/validation_results.json`
 
-**Sprint 28c — ML Infrastructure & Model Training (Day 3–4)** *[Cortex CLI — all Snowflake domain]*
-- [ ] Create `ML_FEATURE_STORE` view (using validated safe feature list from 02_pre_training_validation.py)
-- [ ] Create `ML_TRAINING_DATA` view (closed deals + labels, deduplicated per Opportunity Id)
-- [ ] Create `DEAL_ML_PREDICTIONS` table, `ML_MODEL_METADATA` table
-- [ ] Grants for `TDR_APP_ROLE`: `CREATE SNOWFLAKE.ML.CLASSIFICATION`, `CORTEX_USER`
-- [ ] `CREATE SNOWFLAKE.ML.CLASSIFICATION DEAL_CLOSE_PROPENSITY` on training data
-- [ ] Validate via `SHOW_EVALUATION_METRICS()` — target AUC-ROC ≥ 0.70
-- [ ] Extract `SHOW_FEATURE_IMPORTANCE()` — verify top features make business sense
-- [ ] Log metadata to `ML_MODEL_METADATA`
+**Sprint 28c — ML Infrastructure & Model Training (Day 3–4)** ✅ DONE (Mar 6, 2026) *[Cortex CLI — all Snowflake domain]*
+- [x] Create `ML_FEATURE_STORE` view — 194,762 rows, 38 safe features + derived features (Mar 6)
+- [x] Create `ML_TRAINING_DATA` view — 173,770 closed deals (49,206 Won / 124,564 Lost, 28.3% win rate), excludes Duplicate/Obsolete (Mar 6)
+- [x] Create `ML_TRAINING_DATA_CLEAN` view — Cortex added to handle type coercions (People AI Engagement Level FLOAT→VARCHAR) (Mar 6)
+- [x] Create `DEAL_PREDICTIONS` table + `ML_MODEL_METADATA` table (Mar 6)
+- [x] Grants configured for schema and ML operations (Mar 6)
+- [x] `CREATE SNOWFLAKE.ML.CLASSIFICATION DEAL_CLOSE_PROPENSITY` — trained successfully (Mar 6)
+- [x] Evaluation metrics: **AUC-ROC 0.997**, Precision 97.8%, Recall 97.7%, F1 97.7%, Log Loss 0.059 (Mar 6)
+- [x] Feature importance validated — top factors: DAYS_SINCE_CREATED (15.2%), ACCOUNT_WIN_RATE (11.5%), STAGE_AGE (10.5%), DEAL_TYPE (7.1%), TOTAL_OPTY_COUNT (5.7%) (Mar 6)
+- [x] Create `ML_PIPELINE_FEATURES` view — 6,569 open pipeline deals (Cortex added for scoring parity) (Mar 6)
+- [x] Create `SCORE_PIPELINE_DEALS()` procedure + `RETRAIN_PROPENSITY_MODEL()` procedure (Mar 6)
+- [x] Create Snowflake Tasks: `TASK_NIGHTLY_SCORE` (2 AM UTC) + `TASK_WEEKLY_RETRAIN` (Sun 3 AM UTC) — created **suspended** (Mar 6)
+- [x] First batch scoring: **6,569 pipeline deals scored** — 1,906 HIGH (92.2%), 754 MONITOR (55.2%), 3,909 AT_RISK (6.1%) (Mar 6)
+- [x] All objects in `TDR_APP.ML_MODELS` schema, using `TDR_APP_WH` (Mar 6)
 
-**Sprint 28d — Code Engine & Automation (Day 5–6)** *[Cursor for CE code + Cortex CLI for Tasks/Procedures]*
-- [ ] Write Code Engine functions: `getWinProbability`, `batchScoreDeals`, `getModelMetrics`, `retrainModel`
-- [ ] Add `packageMapping` entries to manifest for all 4 functions
-- [ ] Create nightly batch scoring Task and weekly retrain Task
-- [ ] Create `RETRAIN_PROPENSITY_MODEL` stored procedure
-- [ ] Write `src/lib/mlPredictions.ts` — frontend service wrapping CE calls
+**Sprint 28d — Domo Integration (Day 5–6)** *[Domo Admin + Cursor for manifest]*
+- [ ] Sync `TDR_APP.ML_MODELS.DEAL_PREDICTIONS` as a new Domo dataset
+- [ ] Create Domo dataflow joining `DEAL_PREDICTIONS` with opportunities dataset on `OPPORTUNITY_ID`
+- [ ] Update `manifest.json` with joined dataset mapping (propensity columns available as regular fields)
+- [ ] Update TypeScript types to include propensity score, quadrant, factor columns
+- [ ] Resume Snowflake Tasks: `ALTER TASK ... RESUME` for nightly scoring + weekly retrain
+- [ ] Verify end-to-end: Snowflake → Domo sync → app reads propensity as columns on Deal object
 
 **Sprint 28e — Frontend Integration (Day 7–10)** *[Cursor — application domain]*
 - [ ] Add Win Propensity column to Command Center deals table (AG Grid)
