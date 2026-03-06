@@ -31,7 +31,7 @@
 | **30** | UX Polish & Iteration | ✅ Complete | 28e + 29b | Stage age fix, dedup, settings bridge, gap indicator, icon pills, propensity stat card, scatter polish |
 | **31** | TDR Framework Redesign | 3–5 days (31b–31c) | 30 | Consolidate 9→5 steps, AI & ML core step (design approved in 31a), pill/tag inputs, versioning, PDF update |
 
-**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31)
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b)
 
 **Start point:** Sprint 31 (TDR Framework Redesign) — ML pipeline and UX polish complete. Next step is the structural TDR consolidation (9 → 5 steps).
 
@@ -6245,7 +6245,7 @@ First implementations of complex visualizations and interaction patterns rarely 
 
 9. ~~**Settings → Filter bridge**~~ ✅ — `getActiveManagers()` in `appSettings.ts` is now the single source of truth. `TopBar`, `CommandCenter`, and `useDomo` all read from it. Manager changes in Settings immediately apply without code changes.
 
-10. **Perplexity tech pills** — Deferred to Sprint 31 (requires Perplexity integration data).
+10. **Perplexity tech pills** — Perplexity data flows via the Research button (`perplexityData.technologySignals`), but tech signals are narrative strings, not pill-ready names. Use Domo AI/LLM endpoint to extract technology names from narrative signals, categorize them using `TECH_CATEGORY_STYLES`, and render as pills with a Perplexity provenance icon. See `TDRIntelligence.tsx` lines 941–943 (currently skipped) and 1617–1624 (narrative rendering).
 
 11. **Slack PDF tech pill colors** — Deferred to Sprint 31.
 
@@ -6263,7 +6263,7 @@ First implementations of complex visualizations and interaction patterns rarely 
 
 18. ~~**Portfolio-level propensity metrics**~~ ✅ — 5th stat card "Win Propensity" added to Command Center: average ML win probability, count of high-propensity deals (60%+), and their pipeline ACV. Grid changed to `grid-cols-5`.
 
-19. **Resume Snowflake Tasks** — Requires `ALTER TASK ... RESUME` via Cortex CLI. Deferred to user execution.
+19. ~~**Resume Snowflake Tasks**~~ ✅ — `ALTER TASK TASK_NIGHTLY_SCORE RESUME` and `ALTER TASK TASK_WEEKLY_RETRAIN RESUME` executed. Nightly scoring (2 AM UTC) and weekly retraining (Sun 3 AM UTC) are live.
 
 **No-Gos:**
 - No auto-enhancement without user action
@@ -6272,7 +6272,21 @@ First implementations of complex visualizations and interaction patterns rarely 
 - No custom diff renderer (use existing React diff library or simple before/after toggle)
 - No forced workflow in the Intelligence Panel — checklist is advisory, not blocking
 
-**Definition of Done:** SE can click "Enhance" on any textarea field, see an AI-enhanced version with inline diff, and Accept/Edit/Dismiss. Enhancement draws from all available context (8 layers). Context sources are visible. Edit history preserves both original and enhanced values. Settings manager changes immediately reflect in Command Center. Tech pills include Perplexity sources with provenance icons. Slack PDF tech pills are colored. Intelligence Panel shows a readout checklist. Gap indicators surface on empty/terse fields. Why TDR? column renders compact icon-only badges with rich tooltips instead of text pills. Chart row renders all 3 cards at uniform size. Deal Positioning scatter has clean quadrant labels, axis titles, and background shading.
+**Sprint 30b — Combined Priority + Docs + Remaining Polish** 🔲 IN PROGRESS
+
+> **Shaping document:** `shaping/sprint-30-combined-score-and-docs.md`
+
+20. ~~**Resume Snowflake Tasks**~~ ✅ — nightly scoring + weekly retrain are live.
+21. **Deal Priority column** — Composite score (60% propensity + 40% TDR) with quadrant badge (PRIORITIZE / FAST TRACK / INVESTIGATE / DEPRIORITIZE) in the deals table. Sortable. Default sort. Matches scatter plot thresholds exactly.
+22. **Perplexity tech pills** — Extract tech names from `perplexityData.technologySignals` via Domo AI LLM endpoint. Categorize using `TECH_CATEGORY_STYLES`. Render as pills with `SourceBadge source="perplexity"`. Cache extraction in component state.
+23. **Slack PDF tech pill colors** — Match `PDF_TECH_CATEGORY_COLORS` in `TDRReadoutDocument.tsx` to use category-specific hex colors instead of default gray.
+24. **Intelligence Panel readout checklist** — Advisory "Readout Checklist" in Situation Room: Enrich → Research → Action Plan → TDR Brief. Status per item (not started / complete / stale). Non-blocking.
+25. **Slack share caching** — Cache assembled readout payload in session to avoid redundant `assembleReadout()` + `generatePDF()` on repeated shares.
+26. **SHAP "Why this score?" expandable** — Expandable section below propensity card in Intelligence Panel. Shows all 5 factors with plain English labels, direction, magnitude bars.
+27. **Expanded dataset columns** — Surface `accountRevenue`, `accountEmployees`, `region`, `salesSegment`, `salesVertical`, `strategicAccount` in deal detail tooltips or Intelligence Panel header. Map in `transformOpportunityToDeal`.
+28. **Documentation overhaul** — Update all 7 doc components (`ArchitectureDiagram`, `DataModelReference`, `ScoringReference`, `CapabilitiesGuide`, `IntegrationsReference`, `AIModelsReference`, `GlossaryReference`) to reflect Sprints 28–30: ML pipeline, propensity charts, composite priority, icon pills, gap indicator, dedup, stage age fix, stat cards.
+
+**Definition of Done:** SE can sort the deals table by Deal Priority to surface PRIORITIZE deals first. Perplexity-sourced tech renders as categorized pills with provenance icon. Slack PDF tech pills are color-coded. Intelligence Panel shows a readout checklist. Documentation Hub accurately reflects the Sprint 30 app. All 7 doc sections updated.
 
 ---
 
