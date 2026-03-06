@@ -13,10 +13,11 @@
  *   8. ACV                — currency formatted
  *   9. Win %              — ML propensity score, color-coded badge + factor tooltip
  *  10. TDR Score           — colored badge + factor tooltip
- *  11. TDRs               — 5-dot indicator
- *  12. Partner             — dynamic icon + tooltip
- *  13. Why TDR?            — factor pills + ML factor pills
- *  14. Action              — pin button (pinned right)
+ *  11. Priority            — composite score (60% propensity + 40% TDR), quadrant badge
+ *  12. TDRs               — 5-dot indicator
+ *  13. Partner             — dynamic icon + tooltip
+ *  14. Why TDR?            — icon-only badges + ML direction arrows
+ *  15. Action              — pin button (pinned right)
  */
 
 import { useCallback, useMemo, useRef } from 'react';
@@ -643,6 +644,39 @@ function PartnerIconCell({ data }: ICellRendererParams<Deal>) {
   );
 }
 
+const QUADRANT_BADGE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  PRIORITIZE:   { bg: 'bg-purple-500/15',  text: 'text-purple-300',  label: 'Prioritize' },
+  FAST_TRACK:   { bg: 'bg-emerald-500/15', text: 'text-emerald-300', label: 'Fast Track' },
+  INVESTIGATE:  { bg: 'bg-amber-500/15',   text: 'text-amber-300',   label: 'Investigate' },
+  DEPRIORITIZE: { bg: 'bg-slate-500/15',   text: 'text-slate-400',   label: 'Deprioritize' },
+};
+
+function DealPriorityCell({ data }: ICellRendererParams<Deal>) {
+  if (!data?.dealQuadrant || data.dealPriority == null) {
+    return <span className="text-2xs text-muted-foreground">—</span>;
+  }
+  const style = QUADRANT_BADGE_STYLES[data.dealQuadrant] || QUADRANT_BADGE_STYLES.DEPRIORITIZE;
+  const tdrPart = Math.round((data.tdrScore ?? 0) * 0.4);
+  const winPart = Math.round(Math.round((data.propensityScore ?? 0) * 100) * 0.6);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={cn(
+          'inline-flex items-center cursor-help rounded px-1.5 py-0.5 text-2xs font-semibold',
+          style.bg, style.text
+        )}>
+          {style.label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-xs p-3">
+        <p className="text-xs font-medium mb-1">Priority Score: {data.dealPriority}</p>
+        <p className="text-xs text-muted-foreground">TDR {data.tdrScore ?? 0} × 0.4 = {tdrPart}</p>
+        <p className="text-xs text-muted-foreground">Win {Math.round((data.propensityScore ?? 0) * 100)}% × 0.6 = {winPart}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
   if (!data) return null;
   const whyTags = getTopFactors(data, 3);
@@ -900,9 +934,20 @@ export function DealsTable({ deals, onPinDeal, onDisplayedRowsChange }: DealsTab
       maxWidth: 72,
       filter: 'agNumberColumnFilter',
       sortable: true,
-      sort: 'desc',
       cellStyle: { textAlign: 'center' },
       headerClass: 'ag-right-aligned-header',
+    },
+    {
+      headerName: 'Priority',
+      headerTooltip: 'Deal Priority — composite of TDR Score (40%) + Win Propensity (60%)',
+      field: 'dealPriority',
+      cellRenderer: DealPriorityCell,
+      minWidth: 85,
+      maxWidth: 100,
+      filter: false,
+      sortable: true,
+      sort: 'desc',
+      cellStyle: { textAlign: 'center' },
     },
     {
       headerName: 'TDRs',

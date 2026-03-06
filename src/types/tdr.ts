@@ -76,6 +76,9 @@ export interface Deal {
   }>;
   propensityScoredAt?: string;
   propensityModelVersion?: string;
+  // Composite priority (Sprint 30b)
+  dealPriority?: number;
+  dealQuadrant?: 'PRIORITIZE' | 'FAST_TRACK' | 'INVESTIGATE' | 'DEPRIORITIZE';
 }
 
 export interface TDRStep {

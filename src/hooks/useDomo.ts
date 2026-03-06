@@ -313,6 +313,18 @@ export function useDeals() {
 
       deal.tdrScore = calculateTDRScore(deal);
 
+      // Composite Deal Priority (Sprint 30b)
+      if (deal.propensityScore != null && deal.tdrScore != null) {
+        const pct = Math.round(deal.propensityScore * 100);
+        deal.dealPriority = Math.round(pct * 0.6 + deal.tdrScore * 0.4);
+        const highWin = pct >= 40;
+        const highComplexity = deal.tdrScore >= 50;
+        deal.dealQuadrant = highComplexity && highWin ? 'PRIORITIZE'
+          : !highComplexity && highWin ? 'FAST_TRACK'
+          : highComplexity && !highWin ? 'INVESTIGATE'
+          : 'DEPRIORITIZE';
+      }
+
       // Enrich with TDR sessions from AppDB (multiple per deal)
       const sessions = tdrSessionsByDeal.get(deal.id);
       if (sessions && sessions.length > 0) {
