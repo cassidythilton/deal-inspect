@@ -6093,11 +6093,12 @@ The original plan called for a custom XGBoost + LightGBM + RF + LogReg stacking 
 - [x] Default quarter filter set to current quarter; SQL fetches current+4 quarters for early-stage deal visibility
 - [x] App version bumped to v1.63.0, all UAT passed
 
-**Sprint 28b+ — Pre-Training Data Validation** *[Python script — run before 28c]* 🔲 NOT STARTED
-- [ ] Run `python notebooks/02_pre_training_validation.py` against live Snowflake
-- [ ] **Gate:** All critical checks must pass (dedup, label/stage consistency, leakage audit)
-- [ ] Review warnings (outliers, cardinality, temporal drift) — address before training if possible
-- [ ] Confirm safe feature list output → feeds into `ML_FEATURE_STORE` view design
+**Sprint 28b+ — Pre-Training Data Validation** *[Python script]* ✅ DONE (Mar 6, 2026)
+- [x] Ran `python notebooks/02_pre_training_validation.py` against live Snowflake
+- [x] **Gate: ALL CRITICAL CHECKS PASSED** — 0 duplicates, labels consistent, 16 leakage columns identified, 38 safe features confirmed
+- [x] Warnings noted: `Lead Source` (183 values) and `People AI Engagement Level` (101 values) need bucketing; "Duplicate" (13,136) and "Obsolete" (802) stage deals must be excluded from training
+- [x] Temporal split recommendation: train on pre-2026, hold out 2026-Q1 as test set
+- [x] Results saved to `notebooks/validation_results.json`
 
 **Sprint 28c — ML Infrastructure & Model Training (Day 3–4)** *[Cortex CLI — all Snowflake domain]*
 - [ ] Create `ML_FEATURE_STORE` view (using validated safe feature list from 02_pre_training_validation.py)

@@ -84,20 +84,38 @@ RESULTS = {
 
 
 def connect():
-    """Connect to Snowflake using environment variables or .env file."""
-    params = {
-        "account": os.environ.get("SNOWFLAKE_ACCOUNT", ""),
-        "user": os.environ.get("SNOWFLAKE_USER", ""),
-        "password": os.environ.get("SNOWFLAKE_PASSWORD", ""),
-        "warehouse": os.environ.get("SNOWFLAKE_WAREHOUSE", "TDR_APP_WH"),
-        "database": os.environ.get("SNOWFLAKE_DATABASE", "TDR_APP"),
-        "schema": os.environ.get("SNOWFLAKE_SCHEMA", "PUBLIC"),
-        "role": os.environ.get("SNOWFLAKE_ROLE", "TDR_APP_ROLE"),
-    }
-    if not params["account"]:
-        print("ERROR: Set SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PASSWORD env vars.")
+    """Connect to Snowflake using ~/.snowflake/connections.toml (same as EDA notebook)."""
+    from pathlib import Path
+    try:
+        import toml
+    except ImportError:
+        print("ERROR: toml not installed. Run: pip install toml")
         sys.exit(1)
-    return snowflake.connector.connect(**params)
+
+    toml_path = Path.home() / ".snowflake" / "connections.toml"
+    if not toml_path.exists():
+        print(f"ERROR: {toml_path} not found.")
+        print("  Create it or set SNOWFLAKE_ACCOUNT/USER/PASSWORD env vars.")
+        sys.exit(1)
+
+    config = toml.load(toml_path)
+    conn_name = "default" if "default" in config else list(config.keys())[0]
+    cfg = config[conn_name]
+
+    print(f"  Connection: {conn_name}")
+    print(f"  Account:    {cfg.get('account', '?')}")
+    print(f"  User:       {cfg.get('user', '?')}")
+    print(f"  Auth:       {cfg.get('authenticator', 'snowflake')}")
+
+    return snowflake.connector.connect(
+        account=cfg["account"],
+        user=cfg["user"],
+        authenticator=cfg.get("authenticator", "snowflake"),
+        database=cfg.get("database", "TDR_APP"),
+        schema=cfg.get("schema", "PUBLIC"),
+        warehouse=cfg.get("warehouse", "TDR_APP_WH"),
+        role=cfg.get("role", None),
+    )
 
 
 def section(title):
