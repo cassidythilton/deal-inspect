@@ -183,9 +183,23 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
   const alias = CONFIG.datasets.opportunities;
 
   try {
-    // Server-side filter: only open pipeline deals (exclude historical closed)
-    const sql = `SELECT * FROM ${alias} WHERE "IsClosed" IS NULL OR "IsClosed" NOT IN ('true', '1', 'yes')`;
-    console.log(`[Domo] Fetching opportunities via SQL endpoint (filtering out closed deals)...`);
+    // Build quarter window: current - 1 through current + 3
+    const now = new Date();
+    const curYear = now.getFullYear();
+    const curQ = Math.ceil((now.getMonth() + 1) / 3);
+    const quarters: string[] = [];
+    for (let offset = -1; offset <= 3; offset++) {
+      let q = curQ + offset;
+      let y = curYear;
+      while (q > 4) { q -= 4; y++; }
+      while (q < 1) { q += 4; y--; }
+      quarters.push(`${y}-Q${q}`);
+    }
+    const quotedQtrs = quarters.map(q => `'${q}'`).join(', ');
+
+    // Server-side filter: open pipeline deals within a relevant close-date window
+    const sql = `SELECT * FROM ${alias} WHERE ("IsClosed" IS NULL OR "IsClosed" NOT IN ('true', '1', 'yes')) AND ("CloseDateFQ" IS NULL OR "CloseDateFQ" IN (${quotedQtrs}))`;
+    console.log(`[Domo] Fetching via SQL (open pipeline, quarters ${quarters[0]}–${quarters[quarters.length - 1]})...`);
 
     let rawOpps: Record<string, unknown>[];
     try {
