@@ -24,10 +24,22 @@
 -- Reconciliation (Mar 6, 2026):
 --   Cortex CLI fixed two type mismatches at runtime:
 --   - "Created Date" is TIMESTAMP, not epoch — removed /1000 conversion
---   - "People AI Engagement Level" is FLOAT, not VARCHAR — added TRY_CAST
+--   - "People AI Engagement Level" is FLOAT, not VARCHAR — numeric bucketing
 --   - Added ML_PIPELINE_FEATURES view for scoring parity with training
---   The ML_TRAINING_DATA_CLEAN view Cortex created in Snowflake is no longer
---   needed since these fixes are now in the root views.
+--
+-- Leakage audit (Mar 6, 2026):
+--   DROPPED 5 features that leaked outcome into training data:
+--   - ACCOUNT_WIN_RATE: Account rollup includes current deal's own outcome
+--   - TYPE_SPECIFIC_WIN_RATE: Same — New Logo/Upsell counts include self
+--   - TOTAL_OPTY_COUNT: Account rollup includes deals opened after this one
+--   - STAGE_AGE: For closed deals = time in "Closed Won/Lost" stage, not
+--     pre-close stage. Semantic mismatch between train and score.
+--   - STAGE_VELOCITY_RATIO: Derived from STAGE_AGE, same problem
+--   FIXED DAYS_SINCE_CREATED → DAYS_IN_PIPELINE:
+--   - Was: DATEDIFF(Created Date, NOW()) — all old deals get huge values
+--   - Now: DATEDIFF(Created Date, COALESCE(Close Date, NOW()))
+--     Training sees actual deal lifecycle; scoring sees time-in-pipeline
+--   ADDED: RECURRING_RATIO (recurring ACV / total ACV)
 -- =============================================================================
 
 -- ═══════════════════════════════════════════════════════════════════════
@@ -53,29 +65,24 @@ USE WAREHOUSE TDR_APP_WH;
 -- ═══════════════════════════════════════════════════════════════════════
 -- SECTION 2: ML_FEATURE_STORE VIEW
 -- ═══════════════════════════════════════════════════════════════════════
--- Computes derived features from the raw opportunity table.
--- 38 safe features (validated by 02_pre_training_validation.py) plus
--- ~15 derived features = the complete feature set for the model.
+-- Leakage-clean feature set. All features must be available at the time
+-- of prediction (while the deal is still open).
 --
--- This is a VIEW, not a table. Features are computed on read.
--- For training: ML_TRAINING_DATA references this view.
--- For scoring:  SCORE_PIPELINE_DEALS queries this view.
+-- DROPPED (leakage):
+--   ACCOUNT_WIN_RATE, TYPE_SPECIFIC_WIN_RATE — rollups include self
+--   TOTAL_OPTY_COUNT — rollup includes future deals
+--   STAGE_AGE — for closed deals = time in "Closed Won/Lost" stage
+--   STAGE_VELOCITY_RATIO — derived from STAGE_AGE
+--
+-- FIXED:
+--   DAYS_IN_PIPELINE — uses Close Date for closed, NOW() for open
+--
+-- ADDED:
+--   RECURRING_RATIO — recurring ACV / total ACV
 -- ═══════════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE VIEW TDR_APP.ML_MODELS.ML_FEATURE_STORE AS
 WITH
-segment_stage_averages AS (
-    SELECT
-        "Sales Segment" AS sales_segment,
-        AVG(NULLIF("Stage Age", 0)) AS avg_stage_age
-    FROM TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNFv2"
-    WHERE "Sales Segment" IS NOT NULL
-      AND "Stage Age" IS NOT NULL
-      AND "Stage Age" > 0
-      AND "Is Closed" = 'true'
-    GROUP BY "Sales Segment"
-),
-
 segment_acv_stats AS (
     SELECT
         "Sales Segment" AS sales_segment,
@@ -90,7 +97,7 @@ segment_acv_stats AS (
 SELECT
     o."Opportunity Id" AS OPPORTUNITY_ID,
 
-    -- ── Raw features (from validation safe list) ──────────────────────
+    -- ── Raw features ────────────────────────────────────────────────
 
     -- Deal economics
     o."ACV (USD)" AS ACV_USD,
@@ -119,8 +126,7 @@ SELECT
     o."Sales Segment" AS SALES_SEGMENT,
     o."Sales Vertical" AS SALES_VERTICAL,
 
-    -- Engagement ("People AI Engagement Level" is FLOAT in source, not VARCHAR)
-    -- Bucket numeric scores: ≥80 = Very High, ≥60 = High, ≥40 = Medium, ≥20 = Low, else None
+    -- Engagement ("People AI Engagement Level" is FLOAT in source)
     CASE
         WHEN o."People AI Engagement Level" IS NULL THEN 'Unknown'
         WHEN o."People AI Engagement Level" >= 80 THEN 'Very High'
@@ -130,14 +136,11 @@ SELECT
         ELSE 'None'
     END AS ENGAGEMENT_LEVEL_BUCKETED,
 
-    -- Stage timing
-    o."Stage Age" AS STAGE_AGE,
-
     -- Partner
     o."Partner Influence" AS PARTNER_INFLUENCE,
     o."Is Partner" AS IS_PARTNER,
 
-    -- Lead source (bucket to ≤20 categories — validation found 183 unique values)
+    -- Lead source (bucketed — 183 unique values → 9 buckets)
     CASE
         WHEN o."Lead Source" IS NULL THEN 'Unknown'
         WHEN LOWER(o."Lead Source") LIKE '%inbound%' THEN 'Inbound'
@@ -151,43 +154,22 @@ SELECT
         ELSE 'Other'
     END AS LEAD_SOURCE_BUCKETED,
 
-    -- ── Derived features ──────────────────────────────────────────────
+    -- ── Derived features (all leakage-safe) ─────────────────────────
 
-    -- Account win rate
-    CASE
-        WHEN COALESCE(o."Total Closed Won Count", 0) + COALESCE(o."Total Closed Lost Count", 0) > 0
-        THEN o."Total Closed Won Count"::FLOAT /
-             (o."Total Closed Won Count" + o."Total Closed Lost Count")::FLOAT
-        ELSE NULL
-    END AS ACCOUNT_WIN_RATE,
-
-    -- Type-specific win rate
-    CASE
-        WHEN o."Type" = 'New Logo'
-             AND (COALESCE(o."New Logo Won Count", 0) + COALESCE(o."New Logo Lost Count", 0)) > 0
-        THEN o."New Logo Won Count"::FLOAT /
-             (o."New Logo Won Count" + o."New Logo Lost Count")::FLOAT
-        WHEN o."Type" IN ('Upsell', 'Acquisition')
-             AND (COALESCE(o."Upsell Won Count", 0) + COALESCE(o."Upsell Lost Count", 0)) > 0
-        THEN o."Upsell Won Count"::FLOAT /
-             (o."Upsell Won Count" + o."Upsell Lost Count")::FLOAT
-        ELSE NULL
-    END AS TYPE_SPECIFIC_WIN_RATE,
-
-    -- Stage velocity ratio (deal's stage age vs segment average)
-    CASE
-        WHEN ssa.avg_stage_age IS NOT NULL AND ssa.avg_stage_age > 0
-        THEN o."Stage Age"::FLOAT / ssa.avg_stage_age
-        ELSE NULL
-    END AS STAGE_VELOCITY_RATIO,
-
-    -- Services ratio
+    -- Services ratio (prof services as fraction of total price)
     CASE
         WHEN COALESCE(o."Platform Price", 0) + COALESCE(o."Professional Services Price", 0) > 0
         THEN COALESCE(o."Professional Services Price", 0)::FLOAT /
              (COALESCE(o."Platform Price", 0) + COALESCE(o."Professional Services Price", 0))::FLOAT
         ELSE 0
     END AS SERVICES_RATIO,
+
+    -- Recurring ratio (recurring ACV as fraction of total ACV)
+    CASE
+        WHEN COALESCE(o."ACV (USD)", 0) > 0
+        THEN COALESCE(o."ACV (USD) Recurring", 0)::FLOAT / o."ACV (USD)"::FLOAT
+        ELSE 0
+    END AS RECURRING_RATIO,
 
     -- ACV normalized within segment (z-score)
     CASE
@@ -213,15 +195,13 @@ SELECT
         CASE WHEN o."Has ADM/AE Sync Agenda" IS NOT NULL AND o."Has ADM/AE Sync Agenda" != '' THEN 1 ELSE 0 END
     )::FLOAT / 6.0 AS SALES_PROCESS_COMPLETENESS,
 
-    -- Days since created ("Created Date" is already TIMESTAMP, not epoch)
+    -- Days in pipeline (leakage-safe: uses Close Date for closed, NOW for open)
     CASE
         WHEN o."Created Date" IS NOT NULL
-        THEN DATEDIFF('day', o."Created Date", CURRENT_TIMESTAMP())
+        THEN DATEDIFF('day', o."Created Date",
+                      COALESCE(o."Close Date", CURRENT_TIMESTAMP()))
         ELSE NULL
-    END AS DAYS_SINCE_CREATED,
-
-    -- Account deal density
-    COALESCE(o."Total Opty Count", 0) AS TOTAL_OPTY_COUNT,
+    END AS DAYS_IN_PIPELINE,
 
     -- Deal complexity index (normalized composite)
     (
@@ -230,13 +210,12 @@ SELECT
         CASE WHEN COALESCE(o."Professional Services Price", 0) > 0 THEN 3 ELSE 0 END * 0.3
     ) AS DEAL_COMPLEXITY_INDEX,
 
-    -- ── Labels (only populated for closed deals) ──────────────────────
+    -- ── Labels (only populated for closed deals) ────────────────────
     o."Is Closed" AS IS_CLOSED,
     o."Is Won" AS IS_WON,
     o."Stage" AS STAGE_RAW
 
 FROM TDR_APP.PUBLIC."Forecast_Page_Opportunities_Magic_SNFv2" o
-LEFT JOIN segment_stage_averages ssa ON o."Sales Segment" = ssa.sales_segment
 LEFT JOIN segment_acv_stats sas ON o."Sales Segment" = sas.sales_segment
 WHERE o."Opportunity Id" IS NOT NULL;
 
@@ -256,20 +235,18 @@ SELECT
     -- Target label
     CASE WHEN IS_WON = 'true' THEN 1 ELSE 0 END AS IS_WON_LABEL,
 
-    -- All features (excluding leakage columns IS_CLOSED, IS_WON, STAGE_RAW)
+    -- All features (leakage-clean)
     ACV_USD, ACV_LOG, ACV_RECURRING, ACV_NON_RECURRING,
     TCV_USD, PLATFORM_PRICE, PROF_SERVICES_PRICE, LINE_ITEMS,
     DEAL_TYPE, DEAL_CODE, CONTRACT_TYPE, PRICING_TYPE, CPQ, NON_COMPETITIVE_DEAL,
     NUM_COMPETITORS,
     ACCOUNT_REVENUE_LOG, ACCOUNT_EMPLOYEES_LOG, STRATEGIC_ACCOUNT,
     REGION, SALES_SEGMENT, SALES_VERTICAL,
-    STAGE_AGE,
     ENGAGEMENT_LEVEL_BUCKETED, PARTNER_INFLUENCE, IS_PARTNER,
     LEAD_SOURCE_BUCKETED,
-    ACCOUNT_WIN_RATE, TYPE_SPECIFIC_WIN_RATE, STAGE_VELOCITY_RATIO,
-    SERVICES_RATIO, ACV_NORMALIZED, REVENUE_PER_EMPLOYEE,
-    SALES_PROCESS_COMPLETENESS, DAYS_SINCE_CREATED,
-    TOTAL_OPTY_COUNT, DEAL_COMPLEXITY_INDEX
+    SERVICES_RATIO, RECURRING_RATIO, ACV_NORMALIZED, REVENUE_PER_EMPLOYEE,
+    SALES_PROCESS_COMPLETENESS, DAYS_IN_PIPELINE,
+    DEAL_COMPLEXITY_INDEX
 
 FROM TDR_APP.ML_MODELS.ML_FEATURE_STORE
 WHERE IS_CLOSED = 'true'
@@ -292,13 +269,11 @@ SELECT
     NUM_COMPETITORS,
     ACCOUNT_REVENUE_LOG, ACCOUNT_EMPLOYEES_LOG, STRATEGIC_ACCOUNT,
     REGION, SALES_SEGMENT, SALES_VERTICAL,
-    STAGE_AGE,
     ENGAGEMENT_LEVEL_BUCKETED, PARTNER_INFLUENCE, IS_PARTNER,
     LEAD_SOURCE_BUCKETED,
-    ACCOUNT_WIN_RATE, TYPE_SPECIFIC_WIN_RATE, STAGE_VELOCITY_RATIO,
-    SERVICES_RATIO, ACV_NORMALIZED, REVENUE_PER_EMPLOYEE,
-    SALES_PROCESS_COMPLETENESS, DAYS_SINCE_CREATED,
-    TOTAL_OPTY_COUNT, DEAL_COMPLEXITY_INDEX
+    SERVICES_RATIO, RECURRING_RATIO, ACV_NORMALIZED, REVENUE_PER_EMPLOYEE,
+    SALES_PROCESS_COMPLETENESS, DAYS_IN_PIPELINE,
+    DEAL_COMPLEXITY_INDEX
 FROM TDR_APP.ML_MODELS.ML_FEATURE_STORE
 WHERE IS_CLOSED IS NULL
    OR IS_CLOSED != 'true';
@@ -426,10 +401,10 @@ AS
 $$
 DECLARE
     scored_count INTEGER DEFAULT 0;
-    model_version VARCHAR DEFAULT 'v1';
+    model_version VARCHAR DEFAULT 'v2_leakage_clean';
 BEGIN
 
-    -- Step 1: Score all open pipeline deals
+    -- Step 1: Score all open pipeline deals (leakage-clean feature set)
     CREATE OR REPLACE TEMPORARY TABLE _scored_deals AS
     SELECT
         f.OPPORTUNITY_ID,
@@ -456,37 +431,29 @@ BEGIN
                 'REGION', f.REGION,
                 'SALES_SEGMENT', f.SALES_SEGMENT,
                 'SALES_VERTICAL', f.SALES_VERTICAL,
-                'STAGE_AGE', f.STAGE_AGE,
                 'ENGAGEMENT_LEVEL_BUCKETED', f.ENGAGEMENT_LEVEL_BUCKETED,
                 'PARTNER_INFLUENCE', f.PARTNER_INFLUENCE,
                 'IS_PARTNER', f.IS_PARTNER,
                 'LEAD_SOURCE_BUCKETED', f.LEAD_SOURCE_BUCKETED,
-                'ACCOUNT_WIN_RATE', f.ACCOUNT_WIN_RATE,
-                'TYPE_SPECIFIC_WIN_RATE', f.TYPE_SPECIFIC_WIN_RATE,
-                'STAGE_VELOCITY_RATIO', f.STAGE_VELOCITY_RATIO,
                 'SERVICES_RATIO', f.SERVICES_RATIO,
+                'RECURRING_RATIO', f.RECURRING_RATIO,
                 'ACV_NORMALIZED', f.ACV_NORMALIZED,
                 'REVENUE_PER_EMPLOYEE', f.REVENUE_PER_EMPLOYEE,
                 'SALES_PROCESS_COMPLETENESS', f.SALES_PROCESS_COMPLETENESS,
-                'DAYS_SINCE_CREATED', f.DAYS_SINCE_CREATED,
-                'TOTAL_OPTY_COUNT', f.TOTAL_OPTY_COUNT,
+                'DAYS_IN_PIPELINE', f.DAYS_IN_PIPELINE,
                 'DEAL_COMPLEXITY_INDEX', f.DEAL_COMPLEXITY_INDEX
             )
         ) AS PRED,
-        -- Keep raw features for factor computation
-        f.ACCOUNT_WIN_RATE,
-        f.TYPE_SPECIFIC_WIN_RATE,
-        f.STAGE_VELOCITY_RATIO,
         f.SERVICES_RATIO,
+        f.RECURRING_RATIO,
         f.ACV_NORMALIZED,
         f.SALES_PROCESS_COMPLETENESS,
-        f.DAYS_SINCE_CREATED,
+        f.DAYS_IN_PIPELINE,
         f.DEAL_COMPLEXITY_INDEX,
         f.REVENUE_PER_EMPLOYEE,
         f.ENGAGEMENT_LEVEL_BUCKETED,
         f.ACV_LOG,
         f.NUM_COMPETITORS,
-        f.TOTAL_OPTY_COUNT,
         f.PARTNER_INFLUENCE,
         f.LEAD_SOURCE_BUCKETED
     FROM TDR_APP.ML_MODELS.ML_PIPELINE_FEATURES f;
@@ -494,17 +461,14 @@ BEGIN
     -- Step 2: Compute population baselines for factor context
     CREATE OR REPLACE TEMPORARY TABLE _baselines AS
     SELECT
-        AVG(ACCOUNT_WIN_RATE) AS avg_account_win_rate,
-        AVG(STAGE_VELOCITY_RATIO) AS avg_stage_velocity,
         AVG(SERVICES_RATIO) AS avg_services_ratio,
-        AVG(ACV_NORMALIZED) AS avg_acv_norm,
+        AVG(RECURRING_RATIO) AS avg_recurring_ratio,
         AVG(SALES_PROCESS_COMPLETENESS) AS avg_process,
-        AVG(DAYS_SINCE_CREATED) AS avg_days_created,
+        AVG(DAYS_IN_PIPELINE) AS avg_days_pipeline,
         AVG(DEAL_COMPLEXITY_INDEX) AS avg_complexity,
         AVG(REVENUE_PER_EMPLOYEE) AS avg_rev_per_emp,
         AVG(ACV_LOG) AS avg_acv_log,
-        AVG(NUM_COMPETITORS) AS avg_competitors,
-        AVG(TOTAL_OPTY_COUNT) AS avg_opty_count
+        AVG(NUM_COMPETITORS) AS avg_competitors
     FROM TDR_APP.ML_MODELS.ML_FEATURE_STORE
     WHERE IS_CLOSED = 'true';
 
@@ -516,42 +480,27 @@ BEGIN
             ROUND(s.PRED:"probability"::OBJECT:"1"::FLOAT, 4) AS PROPENSITY_SCORE,
             s.PRED:"class"::VARCHAR AS PREDICTION,
             b.*,
-            s.ACCOUNT_WIN_RATE,
-            s.TYPE_SPECIFIC_WIN_RATE,
-            s.STAGE_VELOCITY_RATIO,
             s.SERVICES_RATIO,
+            s.RECURRING_RATIO,
             s.ACV_NORMALIZED,
             s.SALES_PROCESS_COMPLETENESS,
-            s.DAYS_SINCE_CREATED,
+            s.DAYS_IN_PIPELINE,
             s.DEAL_COMPLEXITY_INDEX,
             s.REVENUE_PER_EMPLOYEE,
             s.ENGAGEMENT_LEVEL_BUCKETED,
             s.ACV_LOG,
             s.NUM_COMPETITORS,
-            s.TOTAL_OPTY_COUNT,
             s.PARTNER_INFLUENCE,
             s.LEAD_SOURCE_BUCKETED
         FROM _scored_deals s
         CROSS JOIN _baselines b
     ),
-    -- Rank factors by deviation from baseline * importance
-    -- Using a simplified factor derivation: compare deal value to population average
-    -- Direction: above avg for positive-correlated features → helps
     factor_ranked AS (
         SELECT
             OPPORTUNITY_ID,
             PROPENSITY_SCORE,
             PREDICTION,
-            -- Factor array built from key features
             ARRAY_CONSTRUCT(
-                OBJECT_CONSTRUCT('name', 'Account Win Rate',
-                    'value', ROUND(COALESCE(ACCOUNT_WIN_RATE, 0), 2)::VARCHAR,
-                    'direction', CASE WHEN COALESCE(ACCOUNT_WIN_RATE, 0) > COALESCE(avg_account_win_rate, 0.3) THEN 'helps' WHEN COALESCE(ACCOUNT_WIN_RATE, 0) < COALESCE(avg_account_win_rate, 0.3) * 0.7 THEN 'hurts' ELSE 'neutral' END,
-                    'magnitude', ABS(COALESCE(ACCOUNT_WIN_RATE, 0) - COALESCE(avg_account_win_rate, 0.3))),
-                OBJECT_CONSTRUCT('name', 'Stage Velocity',
-                    'value', ROUND(COALESCE(STAGE_VELOCITY_RATIO, 1), 1)::VARCHAR || 'x',
-                    'direction', CASE WHEN COALESCE(STAGE_VELOCITY_RATIO, 1) < 1.0 THEN 'helps' WHEN COALESCE(STAGE_VELOCITY_RATIO, 1) > 1.5 THEN 'hurts' ELSE 'neutral' END,
-                    'magnitude', ABS(COALESCE(STAGE_VELOCITY_RATIO, 1) - 1.0)),
                 OBJECT_CONSTRUCT('name', 'Sales Process',
                     'value', ROUND(COALESCE(SALES_PROCESS_COMPLETENESS, 0) * 100)::VARCHAR || '%',
                     'direction', CASE WHEN COALESCE(SALES_PROCESS_COMPLETENESS, 0) > 0.6 THEN 'helps' WHEN COALESCE(SALES_PROCESS_COMPLETENESS, 0) < 0.3 THEN 'hurts' ELSE 'neutral' END,
@@ -573,21 +522,26 @@ BEGIN
                     'direction', CASE WHEN COALESCE(DEAL_COMPLEXITY_INDEX, 0) < COALESCE(avg_complexity, 1) THEN 'helps' WHEN COALESCE(DEAL_COMPLEXITY_INDEX, 0) > COALESCE(avg_complexity, 1) * 2 THEN 'hurts' ELSE 'neutral' END,
                     'magnitude', ABS(COALESCE(DEAL_COMPLEXITY_INDEX, 0) - COALESCE(avg_complexity, 1))),
                 OBJECT_CONSTRUCT('name', 'Deal Age',
-                    'value', COALESCE(DAYS_SINCE_CREATED, 0)::VARCHAR || ' days',
-                    'direction', CASE WHEN COALESCE(DAYS_SINCE_CREATED, 0) < COALESCE(avg_days_created, 120) THEN 'helps' WHEN COALESCE(DAYS_SINCE_CREATED, 0) > COALESCE(avg_days_created, 120) * 1.5 THEN 'hurts' ELSE 'neutral' END,
-                    'magnitude', ABS(COALESCE(DAYS_SINCE_CREATED, 0) - COALESCE(avg_days_created, 120))::FLOAT / GREATEST(COALESCE(avg_days_created, 120), 1))
+                    'value', COALESCE(DAYS_IN_PIPELINE, 0)::VARCHAR || ' days',
+                    'direction', CASE WHEN COALESCE(DAYS_IN_PIPELINE, 0) < COALESCE(avg_days_pipeline, 90) THEN 'helps' WHEN COALESCE(DAYS_IN_PIPELINE, 0) > COALESCE(avg_days_pipeline, 90) * 1.5 THEN 'hurts' ELSE 'neutral' END,
+                    'magnitude', ABS(COALESCE(DAYS_IN_PIPELINE, 0) - COALESCE(avg_days_pipeline, 90))::FLOAT / GREATEST(COALESCE(avg_days_pipeline, 90), 1)),
+                OBJECT_CONSTRUCT('name', 'Services Mix',
+                    'value', ROUND(COALESCE(SERVICES_RATIO, 0) * 100)::VARCHAR || '%',
+                    'direction', CASE WHEN COALESCE(SERVICES_RATIO, 0) > COALESCE(avg_services_ratio, 0.2) * 1.5 THEN 'hurts' WHEN COALESCE(SERVICES_RATIO, 0) < COALESCE(avg_services_ratio, 0.2) * 0.5 THEN 'helps' ELSE 'neutral' END,
+                    'magnitude', ABS(COALESCE(SERVICES_RATIO, 0) - COALESCE(avg_services_ratio, 0.2))),
+                OBJECT_CONSTRUCT('name', 'Revenue Mix',
+                    'value', ROUND(COALESCE(RECURRING_RATIO, 0) * 100)::VARCHAR || '% recurring',
+                    'direction', CASE WHEN COALESCE(RECURRING_RATIO, 0) > COALESCE(avg_recurring_ratio, 0.5) THEN 'helps' WHEN COALESCE(RECURRING_RATIO, 0) < COALESCE(avg_recurring_ratio, 0.5) * 0.5 THEN 'hurts' ELSE 'neutral' END,
+                    'magnitude', ABS(COALESCE(RECURRING_RATIO, 0) - COALESCE(avg_recurring_ratio, 0.5)))
             ) AS all_factors
         FROM scored
     ),
-    -- Sort factors by magnitude (highest impact first) and pick top 5
     top_factors AS (
         SELECT
             OPPORTUNITY_ID,
             PROPENSITY_SCORE,
             PREDICTION,
             all_factors,
-            -- Sort by magnitude descending, take top 5
-            -- Snowflake doesn't have ARRAY_SORT by nested key, so we use a lateral flatten + reorder
             all_factors[0] AS f1_raw,
             all_factors[1] AS f2_raw,
             all_factors[2] AS f3_raw,
@@ -628,43 +582,11 @@ BEGIN
         :model_version AS MODEL_VERSION
     FROM top_factors;
 
-    -- Step 4: Merge into DEAL_PREDICTIONS
-    MERGE INTO TDR_APP.ML_MODELS.DEAL_PREDICTIONS dp
-    USING _predictions_with_factors pf
-    ON dp.OPPORTUNITY_ID = pf.OPPORTUNITY_ID
-    WHEN MATCHED THEN UPDATE SET
-        PROPENSITY_SCORE = pf.PROPENSITY_SCORE,
-        PREDICTION = pf.PREDICTION,
-        QUADRANT = pf.QUADRANT,
-        FACTOR_1_NAME = pf.FACTOR_1_NAME, FACTOR_1_VALUE = pf.FACTOR_1_VALUE,
-        FACTOR_1_DIRECTION = pf.FACTOR_1_DIRECTION, FACTOR_1_MAGNITUDE = pf.FACTOR_1_MAGNITUDE,
-        FACTOR_2_NAME = pf.FACTOR_2_NAME, FACTOR_2_VALUE = pf.FACTOR_2_VALUE,
-        FACTOR_2_DIRECTION = pf.FACTOR_2_DIRECTION, FACTOR_2_MAGNITUDE = pf.FACTOR_2_MAGNITUDE,
-        FACTOR_3_NAME = pf.FACTOR_3_NAME, FACTOR_3_VALUE = pf.FACTOR_3_VALUE,
-        FACTOR_3_DIRECTION = pf.FACTOR_3_DIRECTION, FACTOR_3_MAGNITUDE = pf.FACTOR_3_MAGNITUDE,
-        FACTOR_4_NAME = pf.FACTOR_4_NAME, FACTOR_4_VALUE = pf.FACTOR_4_VALUE,
-        FACTOR_4_DIRECTION = pf.FACTOR_4_DIRECTION, FACTOR_4_MAGNITUDE = pf.FACTOR_4_MAGNITUDE,
-        FACTOR_5_NAME = pf.FACTOR_5_NAME, FACTOR_5_VALUE = pf.FACTOR_5_VALUE,
-        FACTOR_5_DIRECTION = pf.FACTOR_5_DIRECTION, FACTOR_5_MAGNITUDE = pf.FACTOR_5_MAGNITUDE,
-        SCORED_AT = pf.SCORED_AT,
-        MODEL_VERSION = pf.MODEL_VERSION
-    WHEN NOT MATCHED THEN INSERT (
-        OPPORTUNITY_ID, PROPENSITY_SCORE, PREDICTION, QUADRANT,
-        FACTOR_1_NAME, FACTOR_1_VALUE, FACTOR_1_DIRECTION, FACTOR_1_MAGNITUDE,
-        FACTOR_2_NAME, FACTOR_2_VALUE, FACTOR_2_DIRECTION, FACTOR_2_MAGNITUDE,
-        FACTOR_3_NAME, FACTOR_3_VALUE, FACTOR_3_DIRECTION, FACTOR_3_MAGNITUDE,
-        FACTOR_4_NAME, FACTOR_4_VALUE, FACTOR_4_DIRECTION, FACTOR_4_MAGNITUDE,
-        FACTOR_5_NAME, FACTOR_5_VALUE, FACTOR_5_DIRECTION, FACTOR_5_MAGNITUDE,
-        SCORED_AT, MODEL_VERSION
-    ) VALUES (
-        pf.OPPORTUNITY_ID, pf.PROPENSITY_SCORE, pf.PREDICTION, pf.QUADRANT,
-        pf.FACTOR_1_NAME, pf.FACTOR_1_VALUE, pf.FACTOR_1_DIRECTION, pf.FACTOR_1_MAGNITUDE,
-        pf.FACTOR_2_NAME, pf.FACTOR_2_VALUE, pf.FACTOR_2_DIRECTION, pf.FACTOR_2_MAGNITUDE,
-        pf.FACTOR_3_NAME, pf.FACTOR_3_VALUE, pf.FACTOR_3_DIRECTION, pf.FACTOR_3_MAGNITUDE,
-        pf.FACTOR_4_NAME, pf.FACTOR_4_VALUE, pf.FACTOR_4_DIRECTION, pf.FACTOR_4_MAGNITUDE,
-        pf.FACTOR_5_NAME, pf.FACTOR_5_VALUE, pf.FACTOR_5_DIRECTION, pf.FACTOR_5_MAGNITUDE,
-        pf.SCORED_AT, pf.MODEL_VERSION
-    );
+    -- Step 4: Merge into DEAL_PREDICTIONS (truncate + reload for clean slate)
+    TRUNCATE TABLE TDR_APP.ML_MODELS.DEAL_PREDICTIONS;
+
+    INSERT INTO TDR_APP.ML_MODELS.DEAL_PREDICTIONS
+    SELECT * FROM _predictions_with_factors;
 
     SELECT COUNT(*) INTO :scored_count FROM _predictions_with_factors;
 
@@ -673,7 +595,7 @@ BEGIN
     DROP TABLE IF EXISTS _baselines;
     DROP TABLE IF EXISTS _predictions_with_factors;
 
-    RETURN 'Scored ' || :scored_count || ' pipeline deals';
+    RETURN 'Scored ' || :scored_count || ' pipeline deals (model ' || :model_version || ')';
 END;
 $$;
 
