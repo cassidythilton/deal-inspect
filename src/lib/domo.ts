@@ -184,17 +184,17 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
 
   try {
     // Only select the columns consumed by transformOpportunityToDeal + filters.
-    // The v2 dataset has 200+ columns; pulling all of them is the main perf bottleneck.
+    // Uses manifest ALIAS names — the SQL endpoint requires aliases, not canonical column names.
     const cols = [
-      '"Opportunity Id"', '"Opportunity Name"', '"Account Name"',
-      '"Stage"', '"Stage Age"', '"Type"', '"Likely"', '"ACV (USD)"',
-      '"Close Date"', '"Close Date FQ"',
-      '"Domo Opportunity Owner"', '"Forecast Manager"',
-      '"Sales Consultant"', '"PoC Sales Consultant"',
-      '"Primary Partner Role"', '"Partners Involved"', '"Partner Influence"',
-      '"Snowflake Team Picklist"', '"Domo Forecast Category"',
-      '"Number of Competitors"', '"competitors"',
-      '"Deal Code"', '"Webiste Domain"', '"Is Closed"',
+      'OpportunityId', 'OpportunityName', 'AccountName',
+      'Stage', 'StageAge', 'Type', 'Likely', 'AcvUsd',
+      'CloseDate', 'CloseDateFQ',
+      'DomoOpportunityOwner', 'MgrForecastName',
+      'SalesConsultant', 'PocSalesConsultant',
+      'PrimaryPartnerRole', 'PartnersInvolved', 'PartnerInfluence',
+      'SnowflakeTeamPicklist', 'DomoForecastCategory',
+      'NumberOfCompetitors', 'Competitors',
+      'DealCode', 'WebisteDomain', 'IsClosed',
     ].join(', ');
 
     // Quarter window: current quarter through current + 4 (5 quarters forward)
@@ -210,7 +210,7 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
     }
     const quotedQtrs = quarters.map(q => `'${q}'`).join(', ');
 
-    const sql = `SELECT ${cols} FROM ${alias} WHERE ("IsClosed" IS NULL OR "IsClosed" NOT IN ('true', '1', 'yes')) AND ("CloseDateFQ" IS NULL OR "CloseDateFQ" IN (${quotedQtrs}))`;
+    const sql = `SELECT ${cols} FROM ${alias} WHERE (IsClosed IS NULL OR IsClosed NOT IN ('true', '1', 'yes')) AND (CloseDateFQ IS NULL OR CloseDateFQ IN (${quotedQtrs}))`;
     console.log(`[Domo] Fetching via SQL (open pipeline, quarters ${quarters[0]}–${quarters[quarters.length - 1]}, 24 columns)...`);
 
     let rawOpps: Record<string, unknown>[];
