@@ -1,0 +1,50 @@
+---
+description: Commit and push to GitHub after completing meaningful work units
+globs: 
+alwaysApply: true
+---
+
+# Git Hygiene — Keep GitHub Current
+
+The local repo must stay in sync with GitHub. Stale local-only work is a risk.
+
+## When to Commit & Push
+
+Commit and push to `origin/main` after **each** of these events:
+
+1. **Sprint completion** — when all checklist items for a sprint (or sub-sprint) are done
+2. **Major milestone within a sprint** — deploying procedures to Snowflake, completing a frontend page, shipping Code Engine functions
+3. **Document updates** — when `IMPLEMENTATION_STRATEGY.md`, `SPRINT_ARCHIVE.md`, or shaping docs have significant changes
+4. **End of a conversation** — if substantive code or config has changed during the session, commit before the conversation ends
+
+## Commit Message Format
+
+Follow the existing pattern: short subject line describing the sprint or change, followed by a blank line and bullet-pointed details.
+
+```
+Sprint 32a complete: Model Calibration & Retrain
+
+- ML_TRAINING_DATA_CLEAN: 3-year recency filter + 730-day cap
+- SCORE_PIPELINE_DEALS: score capping [3%,97%] + snapshots
+- Model retrained: F1 0.923 -> 0.956
+```
+
+## Grouping Rules
+
+- **Separate commits per logical unit**: don't lump Sprint 31 + Sprint 32a into one commit
+- **Group related files**: SQL + the IMPLEMENTATION_STRATEGY.md update that references it belong together
+- **Don't commit `dist/`**: it's in `.gitignore`
+- **Don't commit secrets**: no `.env`, credentials, or API keys
+
+## Push Cadence
+
+- Push immediately after committing — don't accumulate local-only commits
+- If multiple commits are ready, push them all at once
+- Always verify with `git status` after push to confirm clean state
+
+## Anti-Patterns
+
+- NEVER end a session with uncommitted sprint work
+- NEVER accumulate more than 2 sprints of uncommitted changes
+- NEVER force push to `main` without explicit user request
+- NEVER skip the push — a local-only commit doesn't protect the work
