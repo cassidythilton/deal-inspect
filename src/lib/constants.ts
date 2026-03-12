@@ -84,27 +84,87 @@ export const TDR_STEPS = [
   },
 ] as const;
 
-export const ML_FACTOR_DISPLAY: Record<string, { name: string; explain: string }> = {
-  STAGE_NUMBER:           { name: 'Stage',              explain: 'The deal\'s current sales stage. Later stages have historically higher close rates.' },
-  DEAL_AGE_DAYS:          { name: 'Deal Age',           explain: 'How long the opportunity has been open. Very old deals tend to stall.' },
-  STAGE_AGE_DAYS:         { name: 'Stage Age',          explain: 'Days spent in the current stage. Extended time may indicate a stalled deal.' },
-  ACV:                    { name: 'Deal Size',          explain: 'Annual contract value. Larger deals often have longer but more committed cycles.' },
-  NUM_COMPETITORS:        { name: 'Competition',        explain: 'Number of known competitors on the deal. More competition lowers win probability.' },
-  HAS_PARTNER:            { name: 'Partner Involved',   explain: 'Whether a channel or technology partner is engaged. Partners can accelerate deals.' },
-  DEAL_TYPE:              { name: 'Deal Type',          explain: 'New logo vs. upsell. Upsells historically close at higher rates.' },
-  SALES_PROCESS:          { name: 'Sales Process',      explain: 'The defined sales methodology being followed for this opportunity.' },
-  FORECAST_CATEGORY:      { name: 'Forecast Category',  explain: 'The rep\'s forecast commitment level (Pipeline, Best Case, Commit, Closed).' },
-  ACCOUNT_WIN_RATE:       { name: 'Account History',    explain: 'Historical win rate for this account. Past success predicts future outcomes.' },
-  QUARTER_END_PROXIMITY:  { name: 'Quarter Timing',     explain: 'How close the deal is to quarter end. Urgency increases near deadlines.' },
-  SALES_SEGMENT:          { name: 'Segment',            explain: 'Enterprise, mid-market, or SMB classification. Segment affects close patterns.' },
-  SALES_VERTICAL:         { name: 'Vertical',           explain: 'Industry vertical (Tech, Healthcare, Finance, etc.) with distinct win patterns.' },
-};
-
 export function getMLFactorDisplayName(rawName: string): string {
-  return ML_FACTOR_DISPLAY[rawName]?.name || rawName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  return rawName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-export function getMLFactorExplanation(rawName: string): string {
-  return ML_FACTOR_DISPLAY[rawName]?.explain || 'A feature used by the ML model to predict win probability.';
+export function getMLFactorExplanation(
+  rawName: string,
+  value?: string,
+  direction?: 'helps' | 'hurts' | 'neutral'
+): string {
+  const v = value ?? '';
+  const dir = direction ?? 'neutral';
+
+  switch (rawName) {
+    case 'Sales Process': {
+      const pct = parseInt(v);
+      if (dir === 'hurts') {
+        if (!isNaN(pct) && pct < 30) return `Only ${v} of sales milestones completed (discovery, demo, pricing, gate calls). Advance these to strengthen the deal.`;
+        return `${v} of milestones completed — below the threshold that correlates with wins. Schedule outstanding discovery, demo, or pricing calls.`;
+      }
+      if (dir === 'helps') return `${v} of milestones completed — a thorough process strongly correlates with closing.`;
+      return `${v} of sales milestones completed.`;
+    }
+
+    case 'Deal Size': {
+      if (dir === 'helps') return `ACV is ${v.toLowerCase()} for this segment. Larger deals in this segment close at higher rates historically.`;
+      if (dir === 'hurts') return `ACV is ${v.toLowerCase()} for this segment. Smaller deals often lack executive sponsorship — consider whether the business case justifies buyer effort.`;
+      return `ACV is ${v.toLowerCase()} for this segment.`;
+    }
+
+    case 'Competition': {
+      if (v === '0 competitors' || v.startsWith('0 ')) {
+        return 'No named competitors — non-competitive deals close at significantly higher rates.';
+      }
+      if (dir === 'hurts') return `${v} in play. Higher competition lowers win rate. Sharpen differentiation and identify the decision criteria the competition can\'t meet.`;
+      if (dir === 'helps') return `${v} — manageable competitive field. Clear positioning should maintain advantage.`;
+      return `${v} involved.`;
+    }
+
+    case 'Engagement Level': {
+      if (dir === 'helps') return `${v} engagement — strong buyer interaction is the strongest behavioral predictor of close.`;
+      if (dir === 'hurts') {
+        if (v === 'None' || v === 'Unknown') return 'No engagement data detected. Increase stakeholder touchpoints — deals with low engagement close at half the rate.';
+        return `${v} engagement. Increase executive involvement and meeting cadence — deals at this engagement level close at below-average rates.`;
+      }
+      return `${v} engagement level.`;
+    }
+
+    case 'Deal Complexity': {
+      const idx = parseFloat(v);
+      if (dir === 'hurts') {
+        if (!isNaN(idx) && idx > 3) return `Complexity score ${v} (driven by line items, competitors, and services). High-complexity deals take longer and close less often — simplify scope or phase the rollout.`;
+        return `Complexity score ${v} — above average. Consider reducing scope or breaking into phases.`;
+      }
+      if (dir === 'helps') return `Complexity score ${v} — simpler deals with fewer moving parts close faster and more reliably.`;
+      return `Complexity score ${v}.`;
+    }
+
+    case 'Deal Age': {
+      const days = parseInt(v);
+      if (dir === 'hurts') {
+        if (!isNaN(days) && days > 365) return `${v} in pipeline — well beyond the typical close window. Create urgency with a time-bound offer or re-qualify the opportunity.`;
+        return `${v} in pipeline — exceeds the average for wins. Identify what's stalling the deal and set a concrete next-step deadline.`;
+      }
+      if (dir === 'helps') return `${v} in pipeline — within the typical window for successful deals. Momentum is a positive signal.`;
+      return `${v} in pipeline.`;
+    }
+
+    case 'Services Mix': {
+      if (dir === 'hurts') return `Professional services are ${v} of the deal. High services ratios indicate implementation complexity that can delay or derail deals.`;
+      if (dir === 'helps') return `Services are ${v} of the deal — a healthy platform-to-services ratio that correlates with faster closes.`;
+      return `Professional services make up ${v} of the deal.`;
+    }
+
+    case 'Revenue Mix': {
+      if (dir === 'helps') return `${v} — strong recurring revenue base. Recurring-heavy deals signal long-term buyer commitment and close at higher rates.`;
+      if (dir === 'hurts') return `${v} — low recurring component. Deals weighted toward non-recurring revenue may indicate uncertainty about long-term adoption.`;
+      return `${v}.`;
+    }
+
+    default:
+      return `${rawName}: ${v || 'N/A'}. ${dir === 'helps' ? 'Positively' : dir === 'hurts' ? 'Negatively' : 'Minimally'} impacts win probability.`;
+  }
 }
 

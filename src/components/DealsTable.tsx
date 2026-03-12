@@ -798,7 +798,7 @@ function WhyTDRCell({ data }: ICellRendererParams<Deal>) {
             ? 'bg-red-500/10 text-red-600'
             : 'bg-indigo-500/10 text-indigo-600';
         const displayName = getMLFactorDisplayName(f.name);
-        const explanation = getMLFactorExplanation(f.name);
+        const explanation = getMLFactorExplanation(f.name, f.value, f.direction);
         const dirLabel = f.direction === 'helps' ? 'Helps win probability' : f.direction === 'hurts' ? 'Hurts win probability' : 'Neutral impact';
         const dirColor = f.direction === 'helps' ? 'text-emerald-600' : f.direction === 'hurts' ? 'text-red-500' : 'text-muted-foreground';
         return (

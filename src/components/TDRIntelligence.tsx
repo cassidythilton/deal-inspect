@@ -1272,7 +1272,7 @@ export function TDRIntelligence({
                       <div className="mt-2 space-y-2 pl-1">
                         {deal.propensityFactors.slice(0, 5).map((f, i) => {
                           const displayName = getMLFactorDisplayName(f.name);
-                          const explanation = getMLFactorExplanation(f.name);
+                          const explanation = getMLFactorExplanation(f.name, f.value, f.direction);
                           const dirLabel = f.direction === 'helps' ? 'Helps' : f.direction === 'hurts' ? 'Hurts' : 'Neutral';
                           return (
                             <div key={i} className="space-y-0.5">
@@ -1304,7 +1304,7 @@ export function TDRIntelligence({
                                   />
                                 </div>
                               </div>
-                              <p className="text-[9px] text-slate-600 pl-5 leading-relaxed">{explanation}</p>
+                              <p className="text-[9px] text-slate-500 pl-5 leading-relaxed">{explanation}</p>
                             </div>
                           );
                         })}
