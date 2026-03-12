@@ -691,7 +691,8 @@ export const cortexAi = {
 
   /**
    * Force-regenerate an action plan (bypasses cache).
-   * Deletes the existing cached plan first, then generates fresh.
+   * Calls the dedicated regenerateActionPlan CE function which deletes the
+   * cached row in CORTEX_ANALYSIS_RESULTS before generating fresh.
    */
   async regenerateActionPlan(sessionId: string): Promise<ActionPlanResult> {
     if (!isDomoEnvironment()) {
@@ -700,14 +701,8 @@ export const cortexAi = {
     }
 
     try {
-      // The CE function checks for cache first — we need to delete it
-      // For now we'll pass a forceRefresh flag if the CE supports it,
-      // or just call generate which will return cached. We handle this
-      // by having the CE function check for a 'force' param in the future.
-      // As a workaround, call generateActionPlan — if it returns cached,
-      // the user can see it was cached and decide to wait for a full rebuild.
       console.log('[CortexAI] Regenerating action plan for session:', sessionId);
-      const raw = await callCodeEngine<unknown>('generateActionPlan', { sessionId });
+      const raw = await callCodeEngine<unknown>('regenerateActionPlan', { sessionId });
       const result = extractResult(raw) as unknown as ActionPlanResult;
       return result;
     } catch (err: unknown) {

@@ -685,8 +685,10 @@ export function TDRIntelligence({
     const loadCachedActionPlan = async () => {
       try {
         const cached = await cortexAi.getLatestActionPlan(sessionId);
-        if (cached.hasPlan && cached.actionPlan) {
-          setActionPlanResult({ success: true, actionPlan: cached.actionPlan, modelUsed: cached.modelUsed, createdAt: cached.createdAt, cached: true });
+        const plan = cached.actionPlan?.trim() ?? '';
+        const isEmpty = !plan || plan === 'No action plan generated.' || plan.length < 20;
+        if (cached.hasPlan && !isEmpty) {
+          setActionPlanResult({ success: true, actionPlan: plan, modelUsed: cached.modelUsed, createdAt: cached.createdAt, cached: true });
         }
       } catch (err) { console.warn('[TDRIntelligence] Failed to load cached action plan:', err); }
     };
@@ -1615,7 +1617,7 @@ export function TDRIntelligence({
                   ) : (
                     <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-slate-500 hover:text-white hover:bg-[#2d2744]"
                       disabled={actionPlanLoading || !sessionId}
-                      onClick={async () => { if (!sessionId) return; setActionPlanLoading(true); try { const result = await cortexAi.generateActionPlan(sessionId); setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
+                      onClick={async () => { if (!sessionId) return; setActionPlanLoading(true); try { const result = await cortexAi.regenerateActionPlan(sessionId); const plan = result.actionPlan?.trim() ?? ''; if (result.success && (!plan || plan === 'No action plan generated.' || plan.length < 20)) { result.success = false; result.error = 'Action plan generation returned empty — try again.'; } setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
                       {actionPlanLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : 'Run'}
                     </Button>
                   )}
@@ -2015,7 +2017,7 @@ export function TDRIntelligence({
                 {actionPlanResult.createdAt && ` · ${new Date(actionPlanResult.createdAt).toLocaleString()}`}
               </span>
               <Button variant="outline" size="sm" className="gap-1.5 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white" disabled={actionPlanLoading}
-                onClick={async () => { if (!sessionId) return; setActionPlanLoading(true); try { const result = await cortexAi.regenerateActionPlan(sessionId); setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
+                onClick={async () => { if (!sessionId) return; setActionPlanLoading(true); try { const result = await cortexAi.regenerateActionPlan(sessionId); const plan = result.actionPlan?.trim() ?? ''; if (result.success && (!plan || plan === 'No action plan generated.' || plan.length < 20)) { result.success = false; result.error = 'Regeneration returned empty — try again.'; } setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
                 {actionPlanLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}Regenerate
               </Button>
             </div>

@@ -372,6 +372,13 @@
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
+      "alias": "regenerateActionPlan",
+      "parameters": [
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
       "alias": "getLatestActionPlan",
       "parameters": [
         { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
