@@ -1,22 +1,39 @@
 ---
-description: Keep IMPLEMENTATION_STRATEGY.md in sync with actual progress
-globs: IMPLEMENTATION_STRATEGY.md
+description: Keep IMPLEMENTATION_STRATEGY.md and SPRINT_ARCHIVE.md in sync with actual progress
+globs: IMPLEMENTATION_STRATEGY.md,SPRINT_ARCHIVE.md
 alwaysApply: false
 ---
 
-# Roadmap Hygiene — IMPLEMENTATION_STRATEGY.md
+# Roadmap Hygiene — IMPLEMENTATION_STRATEGY.md + Sprint Archive
 
 Keep the roadmap document accurate. A stale roadmap is worse than no roadmap.
 
-## When to Update
+## Document Structure
 
-After completing ANY sprint, sub-sprint, or unplanned work:
+The implementation strategy uses a two-file system:
+
+- **`IMPLEMENTATION_STRATEGY.md`** — Active document. Contains the executive summary, current state, Progress Dashboard, active sprints (currently Sprint 28+), sprint timeline, pillars summary, and readout spec. ~4,000 lines.
+- **`SPRINT_ARCHIVE.md`** — Historical archive. Contains full sprint records for Sprints 1–27 and OSS-1 (37 sprints, Feb 9 – Mar 3, 2026). Preserves all task checklists, learnings & decisions, files changed, and bug fix notes. ~2,900 lines.
+
+## When to Update (After Completing Any Sprint)
 
 1. **Header status line** — bump `Sprints Completed`, update `Next Up`, increment `Version`
 2. **"Current State & What's Next" section** — move completed items from "What's next" table to "What's done" table
 3. **Progress Dashboard table** — add row with Status ✅, date, and scope
 4. **Sub-sprint checklists** — flip `- [ ]` to `- [x]`, add ✅ DONE + date to sub-sprint header
 5. **Sprint header** — update status emoji: 🔲 NOT STARTED → 🔶 IN PROGRESS → ✅ DONE
+6. **Sprint summary table** — update status for the sprint row
+7. **Sprint timeline diagram** — update emoji for the sprint entry
+
+## Sprint Archiving Protocol
+
+When a sprint series is fully complete and stable (all sub-sprints done, no active references from current work):
+
+1. **Move the detailed sprint entry** from `IMPLEMENTATION_STRATEGY.md` Section 18 to `SPRINT_ARCHIVE.md`
+2. **Keep the Progress Dashboard row** in the main doc (compact, scannable overview)
+3. **Keep the sprint timeline entry** in the main doc (diagram reference)
+4. **Update the archive notice** at the top of Section 18 if the date range changes
+5. **Goal:** Keep `IMPLEMENTATION_STRATEGY.md` under ~4,500 lines. When it grows past that, archive the oldest completed sprints.
 
 ## Unplanned Work
 
@@ -36,3 +53,5 @@ When unplanned work is significant enough to warrant tracking (e.g., PERF-1):
 - NEVER let the "Next Up" list reference already-shipped sprints
 - NEVER update the doc without also updating the Progress Dashboard table
 - NEVER skip the date on completed items — future-you needs the timeline
+- NEVER delete sprint details without archiving them to `SPRINT_ARCHIVE.md` first
+- NEVER archive sprints that are still actively referenced by in-progress work

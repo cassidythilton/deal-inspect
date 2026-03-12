@@ -1,6 +1,7 @@
 ---
 shaping: true
-status: captured
+status: superseded
+superseded_by: shaping/blog-genai-agentic-expansion.md
 type: blog-post
 appetite: small (1 session)
 ---
