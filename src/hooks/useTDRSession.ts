@@ -301,6 +301,49 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
     }
   }, [session]);
 
+  // ── Previous iterations (for history view) ──
+  const [previousSessions, setPreviousSessions] = useState<SnowflakeSession[]>([]);
+
+  useEffect(() => {
+    if (!deal?.id) return;
+    snowflakeStore.getSessionsByOpp(deal.id)
+      .then(sessions => {
+        const completed = sessions.filter(s => s.status === 'completed');
+        setPreviousSessions(completed);
+      })
+      .catch(() => {});
+  }, [deal?.id, session?.sessionId]);
+
+  const startNewIteration = useCallback(async () => {
+    if (!deal || !session) return;
+    try {
+      if (session.status === 'in-progress') {
+        await snowflakeStore.updateSession(session.sessionId, { status: 'completed' });
+      }
+      const maxIter = Math.max(session.iteration ?? 1, ...previousSessions.map(s => s.iteration ?? 1));
+      const newSession = await snowflakeStore.createSession({
+        opportunityId: deal.id,
+        opportunityName: deal.dealName,
+        accountName: deal.account,
+        acv: deal.acv,
+        stage: deal.stage,
+        status: 'in-progress',
+        owner: deal.owner,
+        createdBy: 'current-user',
+      });
+      if (newSession) {
+        (newSession as { iteration: number }).iteration = maxIter + 1;
+      }
+      setSession(newSession);
+      setInputValues(new Map());
+      setInputs([]);
+      setCompletedSteps(new Set());
+      setPreviousSessions(prev => [...prev, session]);
+    } catch (err) {
+      console.error('[useTDRSession] Failed to start new iteration:', err);
+    }
+  }, [deal, session, previousSessions]);
+
   return {
     session,
     isLoading,
@@ -313,6 +356,8 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
     markStepIncomplete,
     completeSession,
     isSaving,
+    previousSessions,
+    startNewIteration,
   };
 }
 

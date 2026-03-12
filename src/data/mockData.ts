@@ -140,90 +140,56 @@ export const mockMetrics: MetricCard[] = [
 ];
 
 export const tdrSteps: TDRStep[] = [
-  // ── Required Steps (5) — the lean TDR core ──
+  // ── Required Steps (4) ──
   {
-    id: 'context',
-    title: 'Deal Context & Stakes',
-    description: 'Why is this deal worth technical inspection?',
+    id: 'deal-context',
+    title: 'Deal Context',
+    description: 'Strategic value, customer decision, timing, and key stakeholders',
     isComplete: false,
     isActive: true,
     required: true,
-    coreQuestion: 'Why is this deal worth technical inspection?',
+    coreQuestion: 'Why is this deal worth technical inspection right now?',
   },
   {
-    id: 'decision',
-    title: 'Business Decision',
-    description: 'The customer is trying to decide X so they can Y.',
+    id: 'tech-architecture',
+    title: 'Technical Architecture',
+    description: 'Current state, target architecture, Domo layers, and competitive positioning',
     isComplete: false,
     isActive: false,
     required: true,
-    coreQuestion: 'In one sentence: what is the customer trying to decide?',
+    coreQuestion: 'What architectural truth must we accept, and where does Domo fit?',
   },
   {
-    id: 'current-arch',
-    title: 'Architecture',
-    description: 'Current state → Target state — what must change?',
-    isComplete: false,
-    isActive: false,
-    required: true,
-    coreQuestion: 'What architectural truth must we accept in this account?',
-  },
-  {
-    id: 'domo-role',
-    title: "Domo's Composable Role",
-    description: 'Entry layer, in-scope, out-of-scope, why now',
-    isComplete: false,
-    isActive: false,
-    required: true,
-    coreQuestion: 'Where does Domo enter this architecture and what is explicitly out of scope?',
-  },
-  {
-    id: 'risk',
+    id: 'risk-verdict',
     title: 'Risk & Verdict',
-    description: 'Top risks, key assumption, and verdict',
+    description: 'Top risks, key assumption, partner posture, and verdict',
     isComplete: false,
     isActive: false,
     required: true,
     coreQuestion: 'What is the one assumption that must be true for this deal to succeed?',
   },
-  // ── Optional Steps (4) — collapsed by default ──
   {
-    id: 'target-arch',
-    title: 'Target Architecture Detail',
-    description: 'Detailed integration points and data flows',
+    id: 'ai-ml',
+    title: 'AI & ML Opportunity Assessment',
+    description: 'AI opportunity level, signals, problem statement, data readiness, and value',
     isComplete: false,
     isActive: false,
-    required: false,
-    coreQuestion: 'How will data flow through the target system?',
+    required: true,
+    coreQuestion: 'Is there an AI or ML opportunity in this deal, and at what level of the value continuum?',
   },
+  // ── Optional Step (1) ──
   {
-    id: 'partner',
-    title: 'Partner & AI Implications',
-    description: 'Partner posture, AI readiness, compute alignment',
-    isComplete: false,
-    isActive: false,
-    required: false,
-    coreQuestion: 'Which partner matters and are we amplifying or conflicting?',
-  },
-  {
-    id: 'ai-strategy',
-    title: 'AI Strategy & Data Science',
-    description: 'AI/ML use cases and data science needs',
-    isComplete: false,
-    isActive: false,
-    required: false,
-    coreQuestion: 'Is AI real or future? What decision could become autonomous?',
-  },
-  {
-    id: 'usage',
-    title: 'Usage & Adoption Detail',
-    description: 'User counts, adoption plan, KPIs — defer post-TDR',
+    id: 'adoption',
+    title: 'Adoption & Success',
+    description: 'Expected users and adoption success criteria',
     isComplete: false,
     isActive: false,
     required: false,
     coreQuestion: 'What does adoption success look like?',
   },
 ];
+
+export const LEGACY_STEP_IDS = ['context', 'decision', 'current-arch', 'domo-role', 'risk', 'target-arch', 'partner', 'ai-strategy', 'usage'] as const;
 
 export const hygieneIssues: HygieneIssue[] = [
   {

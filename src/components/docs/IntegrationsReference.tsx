@@ -217,7 +217,7 @@ export function IntegrationsReference() {
                 ['Magic ETL', 'Deal predictions join', 'DEAL_PREDICTIONS joined to opportunitiesmagic for propensity in portfolio views.'],
                 ['Filesets', 'Knowledge Base document store', 'PDF battle cards, playbooks, competitive docs. Queried via /domo/files/v1/filesets/{id}/query.'],
                 ['Domo AI', 'Native AI model', 'Used as chat provider and fallback summarizer. No Code Engine needed — client-side calls.'],
-                ['Domo AI Enhancement', 'TDR field enhancement', '/domo/ai/v1/text/chat endpoint for Enhance button on TDR fields. 8 context layers, inline diff view.'],
+                ['Domo AI Enhancement', 'TDR field enhancement', '/domo/ai/v1/text/chat endpoint for Enhance button on TDR fields. 8 context layers, word-level inline diff view (additions in emerald, removals in red strikethrough), and color-coded context-source badges (slate/blue/violet/amber/cyan/emerald).'],
                 ['Domo AI Tech Extraction', 'Perplexity signal parsing', 'Extracts technology pills from Perplexity research for display in Intelligence Panel.'],
                 ['App Studio', 'Hosting & iframe container', 'React SPA deployed as a Domo App. Uses ryuu.js SDK for data, proxy, and auth.'],
               ]}

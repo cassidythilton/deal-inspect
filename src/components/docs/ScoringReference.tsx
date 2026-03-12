@@ -7,6 +7,7 @@
  *
  * Sprint 25: Documentation Hub
  * Sprints 28–30: Win Propensity, Deal Priority composite
+ * Sprint 31: 5-step TDR framework, semi-auto completion
  */
 
 import {
@@ -115,7 +116,7 @@ export function ScoringReference() {
                 ['Pre-TDR Base', 'varies', 'Carried forward from the Pre-TDR calculation above'],
                 ['Named Competitor Threat', '0-10 pts', '2+ dangerous competitors \u2192 10 | 1 dangerous \u2192 7 | Named but not dangerous \u2192 3'],
                 ['Enrichment Depth', '0-5 pts', 'Sumble \u2192 +2 | Perplexity \u2192 +2 | Both \u2192 +1 bonus'],
-                ['TDR Input Completeness', '0-10 pts', '\u226590% steps \u2192 10 | \u226570% \u2192 7 | \u226550% \u2192 5 | \u226520% \u2192 2'],
+                ['TDR Input Completeness', '0-10 pts', '\u226590% of 5 steps \u2192 10 | \u226570% \u2192 7 | \u226550% \u2192 5 | \u226520% \u2192 2'],
                 ['Risk Awareness', '0-5 pts', '\u22653 risk categories \u2192 5 | 2 \u2192 3 | 1 \u2192 2'],
                 ['Fileset Match Signal', '0-5 pts', 'Strong KB match \u2192 5 | Partial \u2192 2'],
               ]}
@@ -141,8 +142,8 @@ export function ScoringReference() {
             <DocTable
               headers={['Dimension', 'Weight', 'How It\u2019s Measured']}
               rows={[
-                ['Required Steps Completed', '0-40 pts', 'Proportional: (completed / total) x 40'],
-                ['Optional Steps Completed', '0-10 pts', 'Proportional: (completed / total) x 10'],
+                ['Required Steps Completed', '0-40 pts', 'Proportional: (completed / 4 required) x 40. Steps auto-mark complete when required fields have content (semi-auto completion).'],
+                ['Optional Steps Completed', '0-10 pts', 'Proportional: (completed / 1 optional) x 10'],
                 ['External Intelligence', '0-15 pts', 'Sumble \u2192 +6 | Perplexity \u2192 +6 | Both bonus \u2192 +3'],
                 ['AI Outputs Generated', '0-15 pts', 'Action Plan \u2192 +8 | TDR Brief \u2192 +7'],
                 ['Knowledge Base Match', '0-10 pts', 'Strong match \u2192 10 | Partial \u2192 5'],

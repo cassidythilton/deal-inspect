@@ -91,7 +91,7 @@ export default function Documentation() {
               </p>
             </div>
           </div>
-          <span className="text-[10px] text-slate-500 font-mono">v1.70.0</span>
+          <span className="text-[10px] text-slate-500 font-mono">v1.80.0</span>
         </div>
       </header>
 
@@ -191,7 +191,7 @@ export default function Documentation() {
             {/* Footer */}
             <div className="pt-6 pb-8 text-center">
               <p className="text-[10px] text-slate-600">
-                DealInspect -- TDR Intelligence Platform -- v1.70.0 -- Sprint 30b
+                DealInspect -- TDR Intelligence Platform -- v1.80.0 -- Sprint 31
               </p>
             </div>
           </div>

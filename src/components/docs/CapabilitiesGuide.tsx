@@ -109,36 +109,40 @@ export function CapabilitiesGuide() {
       <CapabilityCard
         icon={FileSearch}
         title="TDR Workspace"
-        subtitle="9-step guided review with auto-save"
+        subtitle="5-step guided review with auto-save"
       >
         <div className="space-y-3">
           <p className="text-sm text-slate-200 leading-relaxed">
             The core of the app. A three-panel layout for conducting Technical Deal Reviews:
-            Steps (left), Inputs (center), Intelligence + Chat (right).
+            Steps (left), Inputs (center), Intelligence + Chat (right). Sprint 31 consolidated
+            the framework from 9 steps to 5 streamlined steps.
           </p>
-          <p className="text-xs font-medium text-slate-200">Required Steps (5):</p>
+          <p className="text-xs font-medium text-slate-200">Required Steps (4):</p>
           <FeatureList items={[
-            { name: 'Deal Context & Stakes', description: 'Strategic value, timing, and why this deal matters now.' },
-            { name: 'Business Decision', description: 'In one sentence — what is the customer trying to decide?' },
-            { name: 'Architecture', description: 'Current state \u2192 Target state. What architectural truth must we accept?' },
-            { name: "Domo's Composable Role", description: 'Entry layer, in-scope vs. out-of-scope, and the "why now" for Domo.' },
+            { name: 'Deal Context', description: 'Strategic value, timing, business decision, and why this deal matters now.' },
+            { name: 'Technical Architecture', description: 'Current state \u2192 Target state, Domo layers (multi-select), and composable role.' },
             { name: 'Risk & Verdict', description: 'Top risks, key assumptions, and the final go/no-go verdict.' },
+            { name: 'AI & ML Opportunity Assessment', description: 'Required 5-field step with value continuum framework, AI level, problem/value, signals, and data readiness.' },
           ]} />
-          <p className="text-xs font-medium text-slate-200 mt-2">Optional Steps (4):</p>
+          <p className="text-xs font-medium text-slate-200 mt-2">Optional Step (1):</p>
           <FeatureList items={[
-            { name: 'Target Architecture Detail', description: 'Detailed integration points and data flow mapping.' },
-            { name: 'Partner & AI Implications', description: 'Partner alignment strategy and AI/ML considerations.' },
-            { name: 'Competitive Landscape', description: 'Competitor positioning and differentiation strategy.' },
-            { name: 'Usage & Adoption Plan', description: 'User adoption plan, success metrics, and rollout timeline.' },
+            { name: 'Adoption & Success', description: 'User adoption plan, success metrics, and rollout timeline.' },
           ]} />
-          <p className="text-xs font-medium text-slate-200 mt-2">UX Enhancements:</p>
+          <p className="text-xs font-medium text-slate-200 mt-2">Sprint 31 UX Enhancements:</p>
           <FeatureList items={[
+            { name: 'Pill/Tag Inputs', description: 'Multi-select pills for Domo Layers, AI Signals, and AI Data Readiness.' },
+            { name: 'Dynamic AI Hints', description: 'AI problem/value field hints change based on selected AI level; hidden when "No AI Opportunity Identified" is selected.' },
+            { name: 'Semi-Auto Completion', description: 'Steps auto-mark complete when required fields have substantive content via isStepAutoComplete().' },
+            { name: 'TDR Versioning', description: '"Start New Iteration" button, previousSessions tracking, and iteration count display.' },
+            { name: 'AI Enhancement Diff View', description: 'Word-level inline diff — additions in emerald green, removals in red strikethrough. Falls back to plain text if no changes.' },
+            { name: 'Context-Source Badges', description: 'Color-coded pills (slate/blue/violet/amber/cyan/emerald) show which context layer contributed to AI enhancement.' },
             { name: 'Gap Indicators', description: 'Visual indicators on TDR inputs showing which fields need attention or completion.' },
             { name: 'Icon-Only Why TDR Pills', description: 'Compact icon-only pills with rich tooltips explaining TDR rationale.' },
-            { name: 'AI Enhancement', description: 'Enhance button on TDR fields — Domo AI endpoint with 8 context layers and inline diff view for suggested improvements.' },
+            { name: 'resize: vertical', description: 'All textareas support vertical resizing for better content editing.' },
           ]} />
           <p className="text-[11px] text-slate-400 mt-2 italic">
             All inputs auto-save to Snowflake via Code Engine. Step completion status persists across sessions.
+            PDF readout supports both new 5-step and legacy 9-step session structures.
           </p>
         </div>
       </CapabilityCard>
@@ -156,7 +160,7 @@ export function CapabilitiesGuide() {
           <FeatureList items={[
             { name: 'Deal Priority Hero', description: 'Hero section displaying composite Deal Priority score with quadrant context.' },
             { name: 'SHAP "Why this score?"', description: 'Expandable section explaining model predictions via SHAP feature importance.' },
-            { name: 'Readout Checklist', description: 'Progress checklist: Enrich → Research → Action Plan → TDR Brief for structured workflow.' },
+            { name: 'Unified Readout Workflow', description: '"Prepare Readout — Complete in Order" with 4 numbered steps: Enrich → Research → Action Plan → TDR Brief. Each has Run button, status indicator (✓ when done), and View link. Action Plan and Brief are standalone dialogs.' },
             { name: 'Account Firmographics Display', description: 'Firmographic data (revenue, employees, industry) surfaced from enrichment.' },
             { name: 'Perplexity Tech Pill Extraction', description: 'Domo AI extracts technology signals from Perplexity research into pill badges.' },
             { name: 'Zone 1: TDR Score & Priority', description: 'Live-updating Pre-TDR or Post-TDR score with breakdown chart, priority band, confidence meter, and lifecycle phase context.' },

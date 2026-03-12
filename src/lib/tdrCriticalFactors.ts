@@ -595,7 +595,7 @@ export function calculatePostTDRScore(
   // ── TDR Input Completeness (0-10) ──────────────────────────────────────
   // How much of the TDR has the SE actually filled out?
   const completed = context.completedStepCount ?? 0;
-  const total = context.totalStepCount ?? 9;
+  const total = context.totalStepCount ?? 4;
   if (total > 0) {
     const ratio = completed / total;
     if (ratio >= 0.9) tdrInputCompleteness = 10;      // 90%+ complete
@@ -664,7 +664,7 @@ export function calculateTDRConfidence(
 ): TDRConfidenceBreakdown {
   // Required steps (0-40) — the backbone of the TDR
   const reqCompleted = context.completedStepCount ?? 0;
-  const reqTotal = context.totalStepCount ?? 5;
+  const reqTotal = context.totalStepCount ?? 4;
   const requiredSteps = reqTotal > 0
     ? Math.round((reqCompleted / reqTotal) * 40)
     : 0;

@@ -257,7 +257,7 @@ function buildOverview() {
     // Experience Layer
     nd('exp', 'EXPERIENCE LAYER', { sub: 'React SPA — Vite + Shadcn/ui', color: C.violet, tier: 'group', w: 240, h: 52 }),
     nd('cmd', 'Command Center', { sub: 'Deal grid, metrics, scoring', color: C.violet, w: 210, h: 56 }),
-    nd('ws', 'TDR Workspace', { sub: '9-step technical review', color: C.violet, w: 210, h: 56 }),
+    nd('ws', 'TDR Workspace', { sub: '5-step technical review', color: C.violet, w: 210, h: 56 }),
     nd('intel', 'Intelligence Panel', { sub: '4-zone enrichment display', color: C.violet, w: 210, h: 56 }),
     nd('analytics', 'Analytics + NLQ', { sub: 'Charts and natural-language queries', color: C.violet, w: 230, h: 56 }),
     nd('docs', 'Documentation Hub', { sub: 'Architecture and reference', color: C.violet, w: 210, h: 56 }),
@@ -270,7 +270,7 @@ function buildOverview() {
     nd('grpD', 'Group D: Chat + Distribution', { sub: '4 functions — multi-provider chat, Slack', color: C.rose, w: 280, h: 56 }),
 
     // Persistence
-    nd('sf', 'SNOWFLAKE PERSISTENCE', { sub: '9 tables + 1 analytics view', color: C.blue, logo: 'snowflake', tier: 'group', w: 280, h: 52 }),
+    nd('sf', 'SNOWFLAKE PERSISTENCE', { sub: '10 tables + 1 analytics view + ML model', color: C.blue, logo: 'snowflake', tier: 'group', w: 320, h: 52 }),
     nd('sessions', 'TDR_SESSIONS', { sub: 'Session lifecycle + scoring', color: C.blue, logo: 'snowflake', w: 220, h: 56 }),
     nd('inputs', 'TDR_STEP_INPUTS', { sub: 'SE answers per step', color: C.blue, w: 200, h: 56 }),
     nd('cache', 'CORTEX_ANALYSIS_RESULTS', { sub: 'AI output cache (24h TTL)', color: C.cyan, logo: 'cortex', w: 240, h: 56 }),
@@ -281,6 +281,12 @@ function buildOverview() {
     nd('classify', 'AI_CLASSIFY', { sub: 'llama3.1-8b', color: C.cyan, w: 160, h: 56 }),
     nd('embed', 'AI_EMBED + Search', { sub: 'arctic-embed-l-v2.0', color: C.cyan, logo: 'snowflake', w: 190, h: 56 }),
     nd('analyst', 'Cortex Analyst', { sub: 'NLQ-to-SQL for analytics', color: C.cyan, w: 200, h: 56 }),
+
+    // ML Pipeline
+    nd('ml', 'ML PIPELINE', { sub: 'Snowflake-native model training + scoring', color: C.violet, logo: 'snowflake', tier: 'group', w: 320, h: 52 }),
+    nd('mlmodel', 'ML.CLASSIFICATION', { sub: 'Propensity-to-close — weekly retrain', color: C.violet, logo: 'cortex', w: 260, h: 56 }),
+    nd('predictions', 'DEAL_PREDICTIONS', { sub: '6,500+ deals scored nightly', color: C.violet, logo: 'snowflake', w: 240, h: 56 }),
+    nd('domoai', 'Domo AI', { sub: 'Field enhancement + tech extraction', color: C.amber, logo: 'domo', w: 240, h: 56 }),
 
     // External APIs
     nd('ext', 'EXTERNAL APIS', { color: C.green, tier: 'group', w: 160, h: 44 }),
@@ -314,6 +320,13 @@ function buildOverview() {
     edge('ext', 'sumble', { color: C.green }),
     edge('ext', 'pplx', { color: C.rose }),
     edge('grpD', 'slack', { color: C.rose, label: 'Webhook' }),
+    // ML Pipeline
+    edge('sf', 'ml', { color: C.violet, label: 'training data' }),
+    edge('ml', 'mlmodel', { color: C.violet }),
+    edge('mlmodel', 'predictions', { color: C.violet, label: 'nightly score' }),
+    edge('predictions', 'cmd', { color: C.violet, dashed: true, label: 'propensity scores' }),
+    // Domo AI
+    edge('ce', 'domoai', { color: C.amber, label: 'LLM API' }),
   ];
 
   return layoutGraph(nodes, edges, 'LR', { nodeSep: 40, rankSep: 80 });
@@ -471,14 +484,86 @@ function buildEnrichment() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// LAYER 5: User Workflow
+// LAYER 5: ML Pipeline
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function buildMLPipeline() {
+  const nodes = [
+    // Data Sources
+    nd('src', 'TRAINING DATA', { sub: 'Historical closed deals from Snowflake', color: C.blue, logo: 'snowflake', tier: 'group', w: 280, h: 52 }),
+    nd('opps', 'Forecast Opportunities', { sub: '65 columns — ACV, stage, competitors, firmographics', color: C.blue, w: 300, h: 56 }),
+    nd('outcomes', 'Historical Outcomes', { sub: 'Won / Lost labels for supervised learning', color: C.blue, w: 260, h: 56 }),
+
+    // Feature Engineering
+    nd('feat', 'FEATURE ENGINEERING', { sub: 'Leakage-free feature set', color: C.amber, tier: 'group', w: 260, h: 52 }),
+    nd('f1', 'DAYS_IN_PIPELINE', { sub: 'Deal age from creation to present', color: C.amber, w: 240, h: 50 }),
+    nd('f2', 'STAGE_NUMBER', { sub: 'Ordinal sales stage (1–8)', color: C.amber, w: 210, h: 50 }),
+    nd('f3', 'ACV', { sub: 'Annual contract value', color: C.amber, w: 160, h: 50 }),
+    nd('f4', 'NUM_COMPETITORS', { sub: 'Known competitive threats', color: C.amber, w: 210, h: 50 }),
+    nd('f5', 'QUARTER_END_PROXIMITY', { sub: 'Days to fiscal quarter close', color: C.amber, w: 240, h: 50 }),
+    nd('f6', 'FORECAST_CATEGORY', { sub: 'Pipeline / Best Case / Commit', color: C.amber, w: 230, h: 50 }),
+    nd('f7', 'HAS_PARTNER + DEAL_TYPE', { sub: 'Partner engaged, New Logo vs Upsell', color: C.amber, w: 260, h: 50 }),
+
+    // Model
+    nd('model', 'SNOWFLAKE ML.CLASSIFICATION', { sub: 'Gradient boosted trees — trains on historical deals', color: C.violet, logo: 'cortex', tier: 'group', w: 340, h: 52 }),
+    nd('train', 'Model Training', { sub: 'Weekly retrain via Snowflake Task', color: C.violet, logo: 'snowflake', w: 250, h: 56 }),
+    nd('eval', 'Evaluation', { sub: 'AUC 0.997 · F1 97.7% · Won F1 92.3%', color: C.cyan, w: 260, h: 56 }),
+    nd('shap', 'SHAP Factors', { sub: 'Top 5 factors per deal with direction + magnitude', color: C.cyan, w: 290, h: 56 }),
+
+    // Scoring
+    nd('score', 'BATCH SCORING', { sub: 'Nightly — all open pipeline deals', color: C.green, tier: 'group', w: 240, h: 52 }),
+    nd('predict', 'DEAL_PREDICTIONS', { sub: '6,500+ deals scored — propensity + quadrant + factors', color: C.green, logo: 'snowflake', w: 340, h: 56 }),
+
+    // Downstream
+    nd('domo', 'DOMO SYNC', { sub: 'Magic ETL LEFT JOIN to opportunitiesmagic', color: C.amber, logo: 'domo', tier: 'group', w: 310, h: 52 }),
+    nd('table', 'Command Center', { sub: 'Win % column, Deal Priority, quadrant pills', color: C.violet, w: 280, h: 56 }),
+    nd('scatter', 'Deal Positioning', { sub: 'Propensity × TDR Score scatter plot', color: C.violet, w: 260, h: 56 }),
+    nd('panel', 'Intelligence Panel', { sub: 'Deal Priority hero, SHAP expandable, propensity card', color: C.violet, w: 310, h: 56 }),
+  ];
+
+  const edges = [
+    edge('src', 'opps', { color: C.blue }),
+    edge('src', 'outcomes', { color: C.blue }),
+    edge('opps', 'feat', { color: C.amber, label: 'select features' }),
+    edge('outcomes', 'feat', { color: C.amber }),
+    edge('feat', 'f1', { color: C.amber }),
+    edge('feat', 'f2', { color: C.amber }),
+    edge('feat', 'f3', { color: C.amber }),
+    edge('feat', 'f4', { color: C.amber }),
+    edge('feat', 'f5', { color: C.amber }),
+    edge('feat', 'f6', { color: C.amber }),
+    edge('feat', 'f7', { color: C.amber }),
+    edge('f1', 'model', { color: C.violet }),
+    edge('f2', 'model', { color: C.violet }),
+    edge('f3', 'model', { color: C.violet }),
+    edge('f4', 'model', { color: C.violet }),
+    edge('f5', 'model', { color: C.violet }),
+    edge('f6', 'model', { color: C.violet }),
+    edge('f7', 'model', { color: C.violet }),
+    edge('model', 'train', { color: C.violet }),
+    edge('train', 'eval', { color: C.cyan, label: 'metrics' }),
+    edge('train', 'shap', { color: C.cyan, label: 'explain' }),
+    edge('train', 'score', { color: C.green, label: 'nightly task' }),
+    edge('score', 'predict', { color: C.green }),
+    edge('predict', 'domo', { color: C.amber, label: 'Domo dataset sync' }),
+    edge('domo', 'table', { color: C.violet, label: 'UI' }),
+    edge('domo', 'scatter', { color: C.violet }),
+    edge('domo', 'panel', { color: C.violet }),
+  ];
+
+  return layoutGraph(nodes, edges, 'TB', { nodeSep: 30, rankSep: 60 });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LAYER 6: User Workflow
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildWorkflow() {
   const nodes = [
     nd('s1', '1. Deal Selection', { sub: 'Command Center grid', color: C.violet, w: 180, h: 56 }),
     nd('s2', '2. Open TDR', { sub: 'Creates Snowflake session', color: C.violet, logo: 'snowflake', w: 200, h: 56 }),
-    nd('s3', '3. SE Inputs', { sub: '5 required steps + 4 optional', color: C.amber, w: 210, h: 56 }),
+    nd('s3', '3. SE Inputs', { sub: '4 required + 1 optional (5-step framework)', color: C.amber, w: 240, h: 56 }),
+    nd('ver', 'TDR Versioning', { sub: 'Start New Iteration, previousSessions', color: C.violet, w: 210, h: 56 }),
     nd('s4', '4. Enrichment', { sub: 'Sumble + Perplexity + KB', color: C.green, logo: 'sumble', w: 210, h: 56 }),
     nd('s5', '5. AI Analysis', { sub: 'Cortex briefs + extracts', color: C.cyan, logo: 'cortex', w: 200, h: 56 }),
     nd('s6', '6. Action Plan', { sub: 'AI-synthesized recommendations', color: C.cyan, w: 220, h: 56 }),
@@ -490,6 +575,8 @@ function buildWorkflow() {
   const edges = [
     edge('s1', 's2', { color: C.violet }),
     edge('s2', 's3', { color: C.violet }),
+    edge('s2', 'ver', { color: C.violet, dashed: true, label: 'new iteration' }),
+    edge('ver', 's3', { color: C.violet, dashed: true }),
     edge('s3', 's4', { color: C.green, label: 'auto or manual' }),
     edge('s4', 's5', { color: C.cyan }),
     edge('s5', 's6', { color: C.cyan }),
@@ -512,10 +599,11 @@ type LayerDef = {
 };
 
 const LAYERS: LayerDef[] = [
-  { id: 'overview', label: 'System Overview', description: 'Five-tier architecture from UI to external APIs', build: buildOverview, height: 620 },
+  { id: 'overview', label: 'System Overview', description: 'Full architecture: UI → Code Engine → Snowflake + ML Pipeline + External APIs', build: buildOverview, height: 720 },
   { id: 'datamodel', label: 'Data Model', description: 'Snowflake tables, foreign keys, and the analytics view', build: buildDataModel, height: 520 },
   { id: 'cortex', label: 'Cortex AI Models', description: 'Which models power which features (Cortex, Perplexity, Domo AI)', build: buildCortexMap, height: 580 },
   { id: 'enrichment', label: 'Enrichment Pipeline', description: 'Three parallel data flows: Sumble, Perplexity, and Knowledge Base', build: buildEnrichment, height: 620 },
+  { id: 'ml', label: 'ML Pipeline', description: 'Propensity-to-close: training data → features → model → scoring → UI', build: buildMLPipeline, height: 780 },
   { id: 'workflow', label: 'User Workflow', description: 'End-to-end SE journey from deal selection to Slack readout', build: buildWorkflow, height: 420 },
 ];
 

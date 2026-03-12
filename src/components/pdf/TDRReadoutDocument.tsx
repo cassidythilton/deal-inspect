@@ -33,8 +33,16 @@ const PDF_FONT = 'Helvetica';
 
 // ─── Humanization Maps ──────────────────────────────────────────────────────
 // Convert raw step/field IDs from Snowflake into professional display labels.
+// Supports both NEW 5-step structure and OLD 9-step structure (backward compat).
 
 const STEP_LABELS: Record<string, string> = {
+  // NEW 5-step structure
+  'deal-context': 'Deal Context & Stakes',
+  'tech-architecture': 'Technical Architecture',
+  'risk-verdict': 'Risk & Verdict',
+  'ai-ml': 'AI & ML Opportunity Assessment',
+  'adoption': 'Adoption & Success',
+  // OLD 9-step structure (backward compat)
   'context': 'Deal Context & Stakes',
   'decision': 'Business Decision',
   'current-arch': 'Architecture',
@@ -48,45 +56,53 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 const FIELD_LABELS: Record<string, string> = {
-  // Context
+  // NEW: Deal Context
   'strategic-value': 'Strategic Value',
-  'why-now': 'Why This Deal Matters Now',
-  'key-stakeholders': 'Key Stakeholders',
-  // Decision
   'customer-goal': 'Customer Decision',
-  'success-criteria': 'Success Criteria',
+  'why-now': 'Why This Deal Matters Now',
+  'key-technical-stakeholders': 'Key Technical Stakeholders',
   'timeline': 'Decision Timeline',
-  // Architecture
-  'system-of-record': 'System of Record',
+  // NEW: Tech Architecture
   'cloud-platform': 'Cloud / Data Platform',
-  'arch-truth': 'Architectural Truth',
-  'target-change': 'What Changes in Target State',
-  'pain-points': 'Pain Points',
-  // Domo Role
-  'entry-layer': 'Entry Layer',
-  'in-scope': 'In-Scope Layers',
+  'current-state': 'Current Architecture & Constraints',
+  'target-state': 'Target Architecture & Data Flow',
+  'domo-layers': 'Domo Layers',
   'out-of-scope': 'Out of Scope',
-  'why-composition': 'Why This Composition Works Now',
-  // Risk
+  'why-domo': 'Why Domo Wins Here',
+  // NEW: Risk & Verdict
   'top-risks': 'Top Technical Risks',
   'key-assumption': 'Key Assumption',
   'verdict': 'Verdict',
-  // Target Arch Detail
+  'partner-name': 'Key Partner',
+  'partner-posture': 'Partner Posture',
+  // NEW: AI & ML
+  'ai-level': 'AI Opportunity Level',
+  'ai-signals': 'Opportunity Signals',
+  'ai-problem': 'Problem Statement',
+  'ai-data': 'Data Readiness',
+  'ai-value': 'Value & Accountability',
+  // NEW: Adoption
+  'expected-users': 'Expected Users',
+  'adoption-success': 'Adoption & Success Criteria',
+  // OLD (backward compat)
+  'key-stakeholders': 'Key Stakeholders',
+  'success-criteria': 'Success Criteria',
+  'system-of-record': 'System of Record',
+  'arch-truth': 'Architectural Truth',
+  'target-change': 'What Changes in Target State',
+  'pain-points': 'Pain Points',
+  'entry-layer': 'Entry Layer',
+  'in-scope': 'In-Scope Layers',
+  'why-composition': 'Why This Composition Works Now',
   'proposed-solution': 'Proposed Solution Detail',
   'integration-points': 'Integration Points',
   'data-flow': 'Data Flow',
-  // Partner
-  'partner-name': 'Key Partner',
-  'partner-posture': 'Partner Posture',
   'compute-alignment': 'Where Does Compute Execute?',
-  // AI Strategy
   'ai-reality': 'AI Reality Check',
   'autonomous-decision': 'Autonomous Decision Potential',
-  // Usage
   'user-count': 'Expected Users',
   'adoption-plan': 'Adoption Plan',
   'success-metrics': 'Success Metrics',
-  // Thesis
   'domo-thesis': 'Why Domo Belongs',
 };
 
@@ -105,7 +121,9 @@ function humanizeFieldId(fieldId: string): string {
 }
 
 // Step ordering for consistent PDF output
+// NEW 5-step structure first, then OLD 9-step (backward compat)
 const STEP_ORDER = [
+  'deal-context', 'tech-architecture', 'risk-verdict', 'ai-ml', 'adoption',
   'context', 'decision', 'current-arch', 'domo-role', 'risk',
   'thesis', 'target-arch', 'partner', 'ai-strategy', 'usage',
 ];
@@ -483,6 +501,23 @@ const s = (text: string) => sanitize(text);
 function isStringArray(val: unknown): val is string[] {
   return Array.isArray(val) && val.every(item => typeof item === 'string');
 }
+
+/** Parse field value as JSON array of strings (domo-layers, ai-signals, ai-data) */
+function parseJsonArray(value: string): string[] | null {
+  if (!value?.trim()) return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+      return parsed;
+    }
+  } catch {
+    // Not valid JSON — treat as plain text
+  }
+  return null;
+}
+
+/** Field IDs that store JSON arrays and should render as pills */
+const PILL_FIELD_IDS = new Set(['domo-layers', 'ai-signals', 'ai-data']);
 
 // ─── Helper: Normalize AI-generated content ────────────────────────────────
 // Cortex and other LLMs often return content with literal \n escapes,
@@ -900,6 +935,119 @@ function ActionPlanQuickActions({ content, styles }: { content: string; styles: 
   );
 }
 
+// ─── Step Field Rendering (handles pills for JSON array fields) ───────────────
+
+function StepFieldView({ field, styles }: { field: { fieldId: string; value: string }; styles: ReturnType<typeof createStyles> }) {
+  const arr = PILL_FIELD_IDS.has(field.fieldId) ? parseJsonArray(field.value) : null;
+  const label = humanizeFieldId(field.fieldId);
+  if (arr && arr.length > 0) {
+    return (
+      <View style={{ marginBottom: 8 }}>
+        <Text style={styles.fieldLabel}>{label}</Text>
+        <View style={styles.tagRow}>
+          {arr.map((item, i) => (
+            <Text key={i} style={styles.tag}>{s(item)}</Text>
+          ))}
+        </View>
+      </View>
+    );
+  }
+  const text = field.value ? s(normalizeContent(field.value)) : '--';
+  return (
+    <View style={{ marginBottom: 6 }}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={styles.fieldValue}>{text}</Text>
+    </View>
+  );
+}
+
+// ─── AI & ML Step Card (special layout: level prominent, signals/data as pills) ─
+
+function AIMLStepCard({
+  stepId,
+  fields,
+  styles,
+}: {
+  stepId: string;
+  fields: { fieldId: string; value: string }[];
+  styles: ReturnType<typeof createStyles>;
+}) {
+  const getField = (id: string) => fields.find(f => f.fieldId === id);
+  const getValue = (id: string) => getField(id)?.value ?? '';
+  // Support both new (ai-level) and old (ai-reality) field IDs
+  const aiLevel = getValue('ai-level') || getValue('ai-reality');
+  const aiSignals = parseJsonArray(getValue('ai-signals'));
+  const aiProblem = getValue('ai-problem');
+  const aiData = parseJsonArray(getValue('ai-data'));
+  const aiValue = getValue('ai-value') || getValue('autonomous-decision');
+  const otherFields = fields.filter(
+    f => !['ai-level', 'ai-reality', 'ai-signals', 'ai-problem', 'ai-data', 'ai-value', 'autonomous-decision'].includes(f.fieldId)
+  );
+
+  return (
+    <View style={styles.card} wrap={false}>
+      <Text style={styles.stepHeader}>{humanizeStepId(stepId)}</Text>
+
+      {/* AI Opportunity Level — prominent label */}
+      {aiLevel && (
+        <View style={{ marginBottom: 10 }}>
+          <Text style={styles.fieldLabel}>AI Opportunity Level</Text>
+          <View style={[styles.scoreBox, { marginVertical: 4 }]}>
+            <Text style={[styles.scoreBadge, { fontSize: 12, paddingHorizontal: 10, paddingVertical: 4 }]}>
+              {s(aiLevel)}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Opportunity Signals — pills */}
+      {aiSignals && aiSignals.length > 0 && (
+        <View style={{ marginBottom: 8 }}>
+          <Text style={styles.fieldLabel}>Opportunity Signals</Text>
+          <View style={styles.tagRow}>
+            {aiSignals.map((item, i) => (
+              <Text key={i} style={styles.tag}>{s(item)}</Text>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Problem Statement */}
+      {aiProblem && (
+        <View style={{ marginBottom: 8 }}>
+          <Text style={styles.fieldLabel}>Problem Statement</Text>
+          <Text style={styles.fieldValue}>{s(normalizeContent(aiProblem))}</Text>
+        </View>
+      )}
+
+      {/* Data Readiness — pills */}
+      {aiData && aiData.length > 0 && (
+        <View style={{ marginBottom: 8 }}>
+          <Text style={styles.fieldLabel}>Data Readiness</Text>
+          <View style={styles.tagRow}>
+            {aiData.map((item, i) => (
+              <Text key={i} style={styles.tag}>{s(item)}</Text>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Value & Accountability */}
+      {aiValue && (
+        <View style={{ marginBottom: 8 }}>
+          <Text style={styles.fieldLabel}>Value & Accountability</Text>
+          <Text style={styles.fieldValue}>{s(normalizeContent(aiValue))}</Text>
+        </View>
+      )}
+
+      {/* Any other fields (e.g. from old ai-strategy step) */}
+      {otherFields.map((f, j) => (
+        <StepFieldView key={j} field={f} styles={styles} />
+      ))}
+    </View>
+  );
+}
+
 // ─── Main Document ──────────────────────────────────────────────────────────
 
 interface TDRReadoutDocumentProps {
@@ -1045,17 +1193,22 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         <Text style={styles.sectionTitle}>{nextSection()}. Deal Context & Stakes</Text>
         {inputsByStep.size > 0 ? (
           <>
-            {Array.from(inputsByStep.entries()).map(([stepId, fields]) => (
-              <View key={stepId} style={styles.card} wrap={false}>
-                <Text style={styles.stepHeader}>{humanizeStepId(stepId)}</Text>
-                {fields.map((f, j) => (
-                  <View key={j} style={{ marginBottom: 6 }}>
-                    <Text style={styles.fieldLabel}>{humanizeFieldId(f.fieldId)}</Text>
-                    <Text style={styles.fieldValue}>{s(normalizeContent(f.value))}</Text>
-                  </View>
-                ))}
-              </View>
-            ))}
+            {Array.from(inputsByStep.entries()).map(([stepId, fields]) => {
+              const isAIStep = stepId === 'ai-ml' || stepId === 'ai-strategy';
+              if (isAIStep) {
+                return (
+                  <AIMLStepCard key={stepId} stepId={stepId} fields={fields} styles={styles} />
+                );
+              }
+              return (
+                <View key={stepId} style={styles.card} wrap={false}>
+                  <Text style={styles.stepHeader}>{humanizeStepId(stepId)}</Text>
+                  {fields.map((f, j) => (
+                    <StepFieldView key={j} field={f} styles={styles} />
+                  ))}
+                </View>
+              );
+            })}
           </>
         ) : (
           <Text style={styles.emptySection}>No TDR step inputs recorded yet.</Text>

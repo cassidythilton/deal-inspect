@@ -82,9 +82,9 @@ interface TDRIntelligenceProps {
   riskFlags: string[];
   sessionId?: string;
   completedStepCount?: number;    // required steps completed
-  requiredStepCount?: number;     // total required steps (default 5)
+  requiredStepCount?: number;     // total required steps (default 4)
   optionalCompletedCount?: number; // optional steps completed
-  optionalTotalCount?: number;    // total optional steps (default 4)
+  optionalTotalCount?: number;    // total optional steps (default 1)
   totalStepCount?: number;        // all steps
 }
 
@@ -548,10 +548,10 @@ export function TDRIntelligence({
   riskFlags,
   sessionId,
   completedStepCount = 0,
-  requiredStepCount = 5,
+  requiredStepCount = 4,
   optionalCompletedCount = 0,
-  optionalTotalCount = 4,
-  totalStepCount = 9,
+  optionalTotalCount = 1,
+  totalStepCount = 5,
 }: TDRIntelligenceProps) {
 
   // ── Account Intelligence State ──
@@ -1558,26 +1558,90 @@ export function TDRIntelligence({
               ))}
             </div>
 
-            {/* Readout checklist — advisory workflow */}
+            {/* Readout Workflow — unified actionable steps */}
             <div className="px-5 pb-3">
-              <p className="text-[8px] uppercase tracking-wider text-slate-600 mb-1.5">Readout Checklist</p>
-              <div className="grid grid-cols-4 gap-1">
-                {[
-                  { label: 'Enrich', done: !!(sumbleData?.success || perplexityData?.success) },
-                  { label: 'Research', done: !!perplexityData?.success },
-                  { label: 'Action Plan', done: !!actionPlanResult?.success },
-                  { label: 'TDR Brief', done: !!briefData?.success },
-                ].map(item => (
-                  <div key={item.label} className={cn(
-                    'flex flex-col items-center rounded-md border py-1 px-0.5 transition-colors',
-                    item.done
-                      ? 'border-emerald-500/20 bg-emerald-500/5 text-emerald-400'
-                      : 'border-slate-500/10 bg-slate-500/5 text-slate-600'
-                  )}>
-                    <span className="text-[8px] uppercase tracking-wider">{item.label}</span>
-                    <span className="text-[10px] font-semibold">{item.done ? '✓' : '—'}</span>
+              <p className="text-[8px] uppercase tracking-wider text-slate-600 mb-2">Prepare Readout — Complete in Order</p>
+              <div className="space-y-1.5">
+                {/* Step 1: Enrich */}
+                <div className={cn('flex items-center gap-2 rounded-md border px-2.5 py-1.5 transition-colors',
+                  (sumbleData?.success || perplexityData?.success) ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-500/10 bg-slate-500/5'
+                )}>
+                  <span className={cn('text-[10px] font-bold tabular-nums w-4 text-center shrink-0',
+                    (sumbleData?.success || perplexityData?.success) ? 'text-emerald-400' : 'text-slate-600'
+                  )}>{(sumbleData?.success || perplexityData?.success) ? '✓' : '1'}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-300">Enrich</span>
+                    <span className="text-[9px] text-slate-600 ml-1.5">Tech stack & firmographics</span>
                   </div>
-                ))}
+                  {!(sumbleData?.success || perplexityData?.success) && (
+                    <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-slate-500 hover:text-white hover:bg-[#2d2744]"
+                      onClick={handleEnrichAll} disabled={enrichAllLoading || !domain.trim()}>
+                      {enrichAllLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : 'Run'}
+                    </Button>
+                  )}
+                </div>
+                {/* Step 2: Research */}
+                <div className={cn('flex items-center gap-2 rounded-md border px-2.5 py-1.5 transition-colors',
+                  perplexityData?.success ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-500/10 bg-slate-500/5'
+                )}>
+                  <span className={cn('text-[10px] font-bold tabular-nums w-4 text-center shrink-0',
+                    perplexityData?.success ? 'text-emerald-400' : 'text-slate-600'
+                  )}>{perplexityData?.success ? '✓' : '2'}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-300">Research</span>
+                    <span className="text-[9px] text-slate-600 ml-1.5">Competitive & market intel</span>
+                  </div>
+                  {!perplexityData?.success && (
+                    <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-slate-500 hover:text-white hover:bg-[#2d2744]"
+                      onClick={handleResearchPerplexity} disabled={perplexityLoading}>
+                      {perplexityLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : 'Run'}
+                    </Button>
+                  )}
+                </div>
+                {/* Step 3: Action Plan */}
+                <div className={cn('flex items-center gap-2 rounded-md border px-2.5 py-1.5 transition-colors',
+                  actionPlanResult?.success ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-500/10 bg-slate-500/5'
+                )}>
+                  <span className={cn('text-[10px] font-bold tabular-nums w-4 text-center shrink-0',
+                    actionPlanResult?.success ? 'text-emerald-400' : 'text-slate-600'
+                  )}>{actionPlanResult?.success ? '✓' : '3'}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-300">Action Plan</span>
+                    <span className="text-[9px] text-slate-600 ml-1.5">AI-synthesized next steps</span>
+                  </div>
+                  {actionPlanResult?.success ? (
+                    <button className="text-[9px] text-violet-400/70 hover:text-violet-300 transition-colors"
+                      onClick={() => setActionPlanOpen(true)}>View</button>
+                  ) : (
+                    <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-slate-500 hover:text-white hover:bg-[#2d2744]"
+                      disabled={actionPlanLoading || !sessionId}
+                      onClick={async () => { if (!sessionId) return; setActionPlanLoading(true); try { const result = await cortexAi.generateActionPlan(sessionId); setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
+                      {actionPlanLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : 'Run'}
+                    </Button>
+                  )}
+                </div>
+                {/* Step 4: TDR Brief */}
+                <div className={cn('flex items-center gap-2 rounded-md border px-2.5 py-1.5 transition-colors',
+                  briefData?.success ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-slate-500/10 bg-slate-500/5'
+                )}>
+                  <span className={cn('text-[10px] font-bold tabular-nums w-4 text-center shrink-0',
+                    briefData?.success ? 'text-emerald-400' : 'text-slate-600'
+                  )}>{briefData?.success ? '✓' : '4'}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-medium text-slate-300">TDR Brief</span>
+                    <span className="text-[9px] text-slate-600 ml-1.5">Executive summary → PDF/Slack</span>
+                  </div>
+                  {briefData?.success ? (
+                    <button className="text-[9px] text-cyan-400/70 hover:text-cyan-300 transition-colors"
+                      onClick={() => setBriefOpen(true)}>View</button>
+                  ) : (
+                    <Button variant="ghost" size="sm" className="h-5 px-2 text-[9px] text-slate-500 hover:text-white hover:bg-[#2d2744]"
+                      disabled={briefLoading || !sessionId || (!sumbleData && !perplexityData)}
+                      onClick={handleGenerateBrief}>
+                      {briefLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : 'Run'}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1930,75 +1994,40 @@ export function TDRIntelligence({
           AI-synthesized strategy from all sources
           ══════════════════════════════════════════════════════════════ */}
 
-      {/* Strategic Action Plan */}
-      {sessionId && (
-        <CollapsibleSection title="Strategic Action Plan" icon={Zap} iconColor="text-violet-400" defaultExpanded={true}
-          badge={actionPlanResult?.success ? <span className="text-[9px] text-emerald-400 font-medium">{actionPlanResult.cached ? 'cached' : 'ready'}</span> : undefined}
-        >
-          {actionPlanResult?.success && actionPlanResult.actionPlan ? (
-            <div className="space-y-2">
-              <p className="text-[11px] text-slate-400 line-clamp-3 leading-relaxed">
-                {actionPlanResult.actionPlan.replace(/\\n/g, ' ').replace(/\*\*/g, '').replace(/^\d+\.\s*[A-Za-z &]+/m, '').trim().substring(0, 200)}...
-              </p>
-              <Dialog open={actionPlanOpen} onOpenChange={setActionPlanOpen}>
-                <DialogTrigger asChild>
-                  <button className="flex items-center gap-1 text-[10px] text-violet-400/80 hover:text-violet-300 transition-colors mt-1">
-                    <ClipboardList className="h-2.5 w-2.5" />View full plan
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-[#1a1528] border-[#362f50] text-slate-200">
-                  <DialogHeader className="pb-3 border-b border-[#322b4d]">
-                    <DialogTitle className="flex items-center gap-2.5 text-base">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/15"><Zap className="h-4 w-4 text-violet-400" /></div>
-                      <div>
-                        <span className="text-slate-100">Strategic Action Plan</span>
-                        {actionPlanResult.cached && <span className="ml-2 text-[10px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded-full font-normal">cached</span>}
-                      </div>
-                    </DialogTitle>
-                    <DialogDescription className="text-slate-500 text-xs mt-1">{deal?.account} — Synthesized from all intelligence sources</DialogDescription>
-                  </DialogHeader>
-                  <div className="mt-4">{renderActionPlan(actionPlanResult.actionPlan)}</div>
-                  <div className="mt-6 pt-4 border-t border-[#322b4d] flex items-center justify-between">
-                    <span className="text-[10px] text-slate-600">
-                      {actionPlanResult.modelUsed && `Model: ${actionPlanResult.modelUsed}`}
-                      {actionPlanResult.createdAt && ` · ${new Date(actionPlanResult.createdAt).toLocaleString()}`}
-                    </span>
-                    <Button variant="outline" size="sm" className="gap-1.5 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white" disabled={actionPlanLoading}
-                      onClick={async () => { setActionPlanLoading(true); try { const result = await cortexAi.regenerateActionPlan(sessionId); setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
-                      {actionPlanLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}Regenerate
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+      {/* Action Plan Dialog (triggered from workflow step 3) */}
+      {actionPlanResult?.success && actionPlanResult.actionPlan && (
+        <Dialog open={actionPlanOpen} onOpenChange={setActionPlanOpen}>
+          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-[#1a1528] border-[#362f50] text-slate-200">
+            <DialogHeader className="pb-3 border-b border-[#322b4d]">
+              <DialogTitle className="flex items-center gap-2.5 text-base">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-violet-500/15"><Zap className="h-4 w-4 text-violet-400" /></div>
+                <div>
+                  <span className="text-slate-100">Strategic Action Plan</span>
+                  {actionPlanResult.cached && <span className="ml-2 text-[10px] bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded-full font-normal">cached</span>}
+                </div>
+              </DialogTitle>
+              <DialogDescription className="text-slate-500 text-xs mt-1">{deal?.account} — Synthesized from all intelligence sources</DialogDescription>
+            </DialogHeader>
+            <div className="mt-4">{renderActionPlan(actionPlanResult.actionPlan)}</div>
+            <div className="mt-6 pt-4 border-t border-[#322b4d] flex items-center justify-between">
+              <span className="text-[10px] text-slate-600">
+                {actionPlanResult.modelUsed && `Model: ${actionPlanResult.modelUsed}`}
+                {actionPlanResult.createdAt && ` · ${new Date(actionPlanResult.createdAt).toLocaleString()}`}
+              </span>
+              <Button variant="outline" size="sm" className="gap-1.5 border-[#362f50] text-slate-400 hover:bg-[#221d38] hover:text-white" disabled={actionPlanLoading}
+                onClick={async () => { if (!sessionId) return; setActionPlanLoading(true); try { const result = await cortexAi.regenerateActionPlan(sessionId); setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
+                {actionPlanLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}Regenerate
+              </Button>
             </div>
-          ) : actionPlanResult && !actionPlanResult.success ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-amber-400"><AlertCircle className="h-3.5 w-3.5" /><span>Generation failed</span></div>
-              <p className="text-[10px] text-slate-600 break-all">{actionPlanResult.error}</p>
-              <button className="flex items-center gap-1 text-[10px] text-slate-600 hover:text-slate-300 transition-colors" disabled={actionPlanLoading}
-                onClick={async () => { setActionPlanLoading(true); try { const result = await cortexAi.generateActionPlan(sessionId); setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
-                {actionPlanLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <RefreshCw className="h-2.5 w-2.5" />}Retry
-              </button>
-            </div>
-          ) : (
-            <button
-              className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-md text-[11px] font-medium text-violet-300 border border-violet-500/25 bg-violet-500/5 hover:bg-violet-500/10 hover:text-violet-200 transition-all disabled:opacity-40"
-              disabled={actionPlanLoading}
-              onClick={async () => { setActionPlanLoading(true); try { const result = await cortexAi.generateActionPlan(sessionId); setActionPlanResult(result); } catch (err) { console.error(err); } setActionPlanLoading(false); }}>
-              {actionPlanLoading ? <><Loader2 className="h-3 w-3 animate-spin" />Synthesizing...</> : <><Zap className="h-3 w-3" />Generate Action Plan</>}
-            </button>
-          )}
-        </CollapsibleSection>
+          </DialogContent>
+        </Dialog>
       )}
 
-      {/* TDR Brief + Structured Extract chips */}
-      {sessionId && (
-        <CollapsibleSection title="TDR Brief & Verdict" icon={Sparkles} iconColor="text-cyan-400" defaultExpanded={false}
-          badge={briefData?.success ? <span className="text-[9px] text-cyan-400 font-medium">{formatDate(briefGeneratedAt)}</span> : undefined}
-        >
-          {/* Structured Extract key chips */}
+      {/* TDR Brief — Structured Extract chips + Verdict (always visible when data exists) */}
+      {sessionId && (extractionResult?.success || briefData?.success) && (
+        <div className="border-b border-[#2a2540] px-5 py-3 space-y-2.5">
           {extractionResult?.success && extractionResult.structured && (
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="flex flex-wrap gap-2">
               {extractionResult.structured.VERDICT && (
                 <div className="rounded-md bg-[#1e1a30] border border-[#322b4d] px-2.5 py-1">
                   <p className="text-[9px] text-slate-600">Verdict</p>
@@ -2025,66 +2054,45 @@ export function TDRIntelligence({
               )}
             </div>
           )}
-
-          {/* Thesis */}
           {extractionResult?.structured?.THESIS && (
-            <div className="mb-3 flex items-start gap-1.5">
+            <div className="flex items-start gap-1.5">
               <SourceBadge source="cortex" />
               <p className="text-xs text-slate-400 italic leading-relaxed">"{extractionResult.structured.THESIS}"</p>
             </div>
           )}
-
-          {/* Brief buttons */}
-          <div className="flex gap-2">
-            {briefData?.success ? (
-              <>
-                <Button variant="outline" size="sm" className="flex-1 gap-1.5 text-xs h-8 border-cyan-500/20 bg-cyan-500/5 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200"
-                  onClick={() => setBriefOpen(true)}><CortexLogo className="h-3 w-3" />View Brief</Button>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8 border-[#362f50] bg-transparent text-slate-500 hover:bg-[#221d38] hover:text-white"
-                  onClick={handleGenerateBrief} disabled={briefLoading}>
-                  {briefLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                </Button>
-              </>
-            ) : (
-              <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs h-8 border-cyan-500/20 bg-cyan-500/5 text-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200"
-                onClick={handleGenerateBrief} disabled={briefLoading || (!sumbleData && !perplexityData)}>
-                {briefLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CortexLogo className="h-3 w-3" />}Generate TDR Brief
-              </Button>
-            )}
-          </div>
-
-          {/* Brief Dialog */}
-          <Dialog open={briefOpen} onOpenChange={setBriefOpen}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#1e1a30] border-[#362f50] text-white">
-              <DialogHeader>
-                <DialogTitle className="text-white flex items-center gap-2"><CortexLogo className="h-4 w-4" />TDR Brief</DialogTitle>
-                <DialogDescription className="text-slate-500 flex items-center gap-1.5">
-                  <SnowflakeLogo className="h-3 w-3 inline-block shrink-0" />
-                  {briefData?.modelUsed ? `${briefData.modelUsed}${briefGeneratedAt ? ` · ${formatDate(briefGeneratedAt)}` : ''}` : 'Generating brief...'}
-                </DialogDescription>
-              </DialogHeader>
-              {briefLoading ? (
-                <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
-                  <CortexLogo className="h-8 w-8 animate-pulse" /><p className="text-sm">Analyzing session data, tech stack, and research...</p>
-                </div>
-              ) : briefData && !briefData.success ? (
-                <div className="rounded-md bg-red-500/10 border border-red-500/20 p-4"><p className="text-sm text-red-300">Brief generation failed</p><p className="text-xs text-red-400/70 mt-1">{briefData.error}</p></div>
-              ) : briefSections.length > 0 ? (
-                <div className="space-y-5">
-                  {briefSections.map((section, i) => (
-                    <div key={i}>
-                      <h4 className="text-sm font-semibold text-slate-100 mb-2 border-b border-[#322b4d] pb-1.5">{section.heading}</h4>
-                      <div className="text-xs text-slate-400 leading-relaxed">{renderMarkdownBlock(section.content, `s${i}`)}</div>
-                    </div>
-                  ))}
-                </div>
-              ) : briefData?.brief ? (
-                <div className="text-xs text-slate-400 leading-relaxed">{renderMarkdownBlock(briefData.brief, 'fallback')}</div>
-              ) : null}
-            </DialogContent>
-          </Dialog>
-        </CollapsibleSection>
+        </div>
       )}
+
+      {/* Brief Dialog (triggered from workflow step 4) */}
+      <Dialog open={briefOpen} onOpenChange={setBriefOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-[#1e1a30] border-[#362f50] text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2"><CortexLogo className="h-4 w-4" />TDR Brief</DialogTitle>
+            <DialogDescription className="text-slate-500 flex items-center gap-1.5">
+              <SnowflakeLogo className="h-3 w-3 inline-block shrink-0" />
+              {briefData?.modelUsed ? `${briefData.modelUsed}${briefGeneratedAt ? ` · ${formatDate(briefGeneratedAt)}` : ''}` : 'Generating brief...'}
+            </DialogDescription>
+          </DialogHeader>
+          {briefLoading ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-slate-400">
+              <CortexLogo className="h-8 w-8 animate-pulse" /><p className="text-sm">Analyzing session data, tech stack, and research...</p>
+            </div>
+          ) : briefData && !briefData.success ? (
+            <div className="rounded-md bg-red-500/10 border border-red-500/20 p-4"><p className="text-sm text-red-300">Brief generation failed</p><p className="text-xs text-red-400/70 mt-1">{briefData.error}</p></div>
+          ) : briefSections.length > 0 ? (
+            <div className="space-y-5">
+              {briefSections.map((section, i) => (
+                <div key={i}>
+                  <h4 className="text-sm font-semibold text-slate-100 mb-2 border-b border-[#322b4d] pb-1.5">{section.heading}</h4>
+                  <div className="text-xs text-slate-400 leading-relaxed">{renderMarkdownBlock(section.content, `s${i}`)}</div>
+                </div>
+              ))}
+            </div>
+          ) : briefData?.brief ? (
+            <div className="text-xs text-slate-400 leading-relaxed">{renderMarkdownBlock(briefData.brief, 'fallback')}</div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       {/* Knowledge Base Summary */}
       {(filesetSummary || filesetLoading) && (

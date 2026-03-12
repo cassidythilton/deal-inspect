@@ -28,6 +28,49 @@ import { isDomoEnvironment } from '@/lib/domo';
 
 /** Debounce interval for auto-save (ms) */
 const AUTOSAVE_DELAY_MS = 1500;
+
+const CONTEXT_SOURCE_STYLES: Record<string, { bg: string; text: string; icon?: string }> = {
+  'SE input':            { bg: 'bg-slate-500/15', text: 'text-slate-400' },
+  'field purpose':       { bg: 'bg-slate-500/15', text: 'text-slate-400' },
+  'sibling fields':      { bg: 'bg-blue-500/15', text: 'text-blue-400' },
+  'cross-step context':  { bg: 'bg-violet-500/15', text: 'text-violet-400' },
+  'deal metadata':       { bg: 'bg-amber-500/15', text: 'text-amber-400' },
+  'knowledge base':      { bg: 'bg-cyan-500/15', text: 'text-cyan-400' },
+  'enrichment':          { bg: 'bg-emerald-500/15', text: 'text-emerald-400' },
+};
+
+function computeWordDiff(original: string, enhanced: string): { type: 'same' | 'add' | 'remove'; text: string }[] {
+  const origWords = original.split(/(\s+)/);
+  const enhWords = enhanced.split(/(\s+)/);
+
+  const origSet = new Set(origWords);
+  const result: { type: 'same' | 'add' | 'remove'; text: string }[] = [];
+
+  let oi = 0;
+  let ei = 0;
+  while (oi < origWords.length && ei < enhWords.length) {
+    if (origWords[oi] === enhWords[ei]) {
+      result.push({ type: 'same', text: origWords[oi] });
+      oi++; ei++;
+    } else {
+      let foundAhead = -1;
+      for (let look = ei + 1; look < Math.min(ei + 20, enhWords.length); look++) {
+        if (enhWords[look] === origWords[oi]) { foundAhead = look; break; }
+      }
+      if (foundAhead > -1) {
+        for (let k = ei; k < foundAhead; k++) result.push({ type: 'add', text: enhWords[k] });
+        ei = foundAhead;
+      } else {
+        result.push({ type: 'remove', text: origWords[oi] });
+        oi++;
+      }
+    }
+  }
+  while (oi < origWords.length) { result.push({ type: 'remove', text: origWords[oi] }); oi++; }
+  while (ei < enhWords.length) { result.push({ type: 'add', text: enhWords[ei] }); ei++; }
+
+  return result;
+}
 /** sessionStorage key prefix for draft values */
 const DRAFT_KEY_PREFIX = 'tdr-draft-';
 
@@ -68,60 +111,167 @@ interface TDRInputsProps {
 interface FieldConfig {
   id: string;
   label: string;
-  type: 'text' | 'textarea' | 'select';
+  type: 'text' | 'textarea' | 'select' | 'multi-select';
   options?: string[];
+  /** For select fields: option subtitles shown below the label */
+  optionDescriptions?: Record<string, string>;
   placeholder?: string;
   /** Hint text shown below the field for guidance */
   hint?: string;
+  /** Dynamic hints that change based on another field's value */
+  dynamicHints?: Record<string, string>;
+  /** The field ID that controls dynamic hints */
+  dynamicHintSource?: string;
   /** Whether this field is optional within a required step */
   optional?: boolean;
+  /** Whether selecting certain values should hide this field */
+  hiddenWhen?: { sourceField: string; values: string[] };
 }
 
-const stepInputConfigs: Record<string, { fields: FieldConfig[] }> = {
-  // ── REQUIRED: Section 0 — Deal Context & Stakes (2-3 min) ──
-  'context': {
+const SUBSTANTIVE_THRESHOLD = 15;
+
+export function isStepAutoComplete(stepId: string, getValue: (fieldId: string) => string): boolean {
+  const config = stepInputConfigs[stepId];
+  if (!config) return false;
+  const requiredFields = config.fields.filter(f => !f.optional);
+  if (requiredFields.length === 0) return false;
+  return requiredFields.every(f => {
+    const val = getValue(f.id);
+    if (f.type === 'select') return val.trim().length > 0;
+    if (f.type === 'multi-select') {
+      try { const arr = JSON.parse(val); return Array.isArray(arr) && arr.length > 0; }
+      catch { return val.trim().length > 0; }
+    }
+    return val.trim().length >= SUBSTANTIVE_THRESHOLD;
+  });
+}
+
+export const stepInputConfigs: Record<string, { fields: FieldConfig[] }> = {
+  // ── Step 1: Deal Context (required) ──
+  'deal-context': {
     fields: [
       { id: 'strategic-value', label: 'Strategic Value', type: 'select', options: ['High', 'Medium', 'Low'] },
-      { id: 'why-now', label: 'Why This Deal Matters Now', type: 'textarea', placeholder: 'Why is this deal worth technical inspection right now?', hint: 'Focus on timing — what makes this deal urgent or important today?' },
-      { id: 'key-stakeholders', label: 'Key Stakeholders', type: 'text', placeholder: 'Names and roles of key decision makers...', optional: true },
-    ],
-  },
-  // ── REQUIRED: Section 1 — Business Decision (5 min) ──
-  'decision': {
-    fields: [
       { id: 'customer-goal', label: 'Customer Decision', type: 'textarea', placeholder: 'The customer is trying to decide _____ so they can _____.', hint: 'One sentence. If you can\'t say it in one sentence — pause the review.' },
-      { id: 'success-criteria', label: 'Success Criteria', type: 'textarea', placeholder: 'How will the customer measure success?', optional: true },
+      { id: 'why-now', label: 'Why This Deal Matters Now', type: 'textarea', placeholder: 'Why is this deal worth technical inspection right now?', hint: 'Focus on timing — what makes this deal urgent or important today?' },
+      { id: 'key-technical-stakeholders', label: 'Key Technical Stakeholders', type: 'text', placeholder: 'Names and roles of key technical decision makers...', optional: true },
       { id: 'timeline', label: 'Decision Timeline', type: 'select', options: ['This Quarter', 'Next Quarter', '6+ Months'], optional: true },
     ],
   },
-  // ── REQUIRED: Section 2 — Architecture: Current → Target (8-10 min) ──
-  'current-arch': {
+  // ── Step 2: Technical Architecture (required) ──
+  'tech-architecture': {
     fields: [
-      { id: 'system-of-record', label: 'System of Record', type: 'textarea', placeholder: 'Where does the system of record live? (e.g., Snowflake, Databricks, BigQuery, on-prem SQL Server...)', hint: 'Is this platform strategic or incidental to the customer?' },
       { id: 'cloud-platform', label: 'Cloud / Data Platform', type: 'select', options: ['Snowflake', 'Databricks', 'BigQuery', 'Azure Synapse', 'AWS Redshift', 'On-Prem / Other', 'Multiple'] },
-      { id: 'arch-truth', label: 'Architectural Truth', type: 'textarea', placeholder: 'What architectural truth must we accept in this account?', hint: 'What existing constraint or decision can we NOT change?' },
-      { id: 'target-change', label: 'What Changes in Target State', type: 'textarea', placeholder: 'What is different in the target architecture vs. today?', hint: 'Don\'t list everything — focus on what changes and why.' },
-      { id: 'pain-points', label: 'Pain Points', type: 'textarea', placeholder: 'Current challenges driving the change...', optional: true },
+      { id: 'current-state', label: 'Current Architecture & Constraints', type: 'textarea', placeholder: 'What is the current system of record? What architectural constraint must we accept? What hurts?', hint: 'Consolidate the current state: where data lives, what cannot change, and what pain is driving the project.' },
+      { id: 'target-state', label: 'Target Architecture & Data Flow', type: 'textarea', placeholder: 'What does the target architecture look like? How will data flow through the system?', hint: 'Describe the future state including integrations, data flow, and what changes from today.' },
+      { id: 'domo-layers', label: 'Domo Layers', type: 'multi-select', options: ['Data Integration', 'Data Warehouse', 'Visualization / BI', 'Embedded Analytics', 'App Development', 'Automation / Alerts', 'AI / ML'], placeholder: 'Select or type Domo capabilities in scope...' },
+      { id: 'out-of-scope', label: 'Out of Scope', type: 'textarea', placeholder: 'What is explicitly NOT Domo\'s job in this architecture?', hint: 'Drawing boundaries is as important as defining scope.', optional: true },
+      { id: 'why-domo', label: 'Why Domo Wins Here', type: 'textarea', placeholder: 'Given the architecture constraints, why is Domo the right solution over alternatives?', hint: 'What specific capability or integration gives Domo the edge in this deal?', optional: true },
     ],
   },
-  // ── REQUIRED: Section 3 — Domo's Composable Role (10 min) — TDR Heart ──
-  'domo-role': {
-    fields: [
-      { id: 'entry-layer', label: 'Entry Layer', type: 'select', options: ['Data Integration', 'Data Warehouse', 'Visualization / BI', 'Embedded Analytics', 'App Development', 'Automation / Alerts', 'AI / ML'] },
-      { id: 'in-scope', label: 'In-Scope Layers', type: 'textarea', placeholder: 'Which Domo capabilities are in scope for this deal?', hint: 'Be specific — what will Domo actually do in production?' },
-      { id: 'out-of-scope', label: 'Out of Scope', type: 'textarea', placeholder: 'What is explicitly NOT Domo\'s job in this architecture?', hint: 'Drawing boundaries is as important as defining scope.' },
-      { id: 'why-composition', label: 'Why This Composition Works Now', type: 'textarea', placeholder: 'Why does this specific configuration of Domo make sense for this customer right now?', hint: 'This is the TDR heart. If this answer is weak — the deal is not ready.' },
-    ],
-  },
-  // ── REQUIRED: Section 4 — Risk & Verdict (5 min) ──
-  'risk': {
+  // ── Step 3: Risk & Verdict (required) ──
+  'risk-verdict': {
     fields: [
       { id: 'top-risks', label: 'Top 1–2 Technical Risks', type: 'textarea', placeholder: 'What could go wrong technically?', hint: 'Focus on the risks that would actually kill the deal.' },
       { id: 'key-assumption', label: 'Key Assumption', type: 'textarea', placeholder: 'What is the ONE assumption that must be true for this deal to succeed?', hint: 'If this assumption is wrong, everything else falls apart.' },
       { id: 'verdict', label: 'Verdict', type: 'select', options: ['Proceed', 'Proceed with Corrections', 'Rework Before Advancing'], hint: 'Your professional judgment as an SE.' },
+      { id: 'partner-name', label: 'Key Partner', type: 'text', placeholder: 'Which partner matters most?', optional: true },
+      { id: 'partner-posture', label: 'Partner Posture', type: 'select', options: ['Amplifying', 'Neutral', 'Conflicting', 'None'], optional: true },
     ],
   },
-  // ── OPTIONAL: Target Architecture Detail ──
+  // ── Step 4: AI & ML Opportunity Assessment (required — NEW core step) ──
+  'ai-ml': {
+    fields: [
+      {
+        id: 'ai-level', label: 'AI Opportunity Level', type: 'select',
+        options: ['Rules & Automation', 'Predictive AI', 'Generative AI', 'Autonomous AI (Agentic)', 'No AI Opportunity Identified'],
+        optionDescriptions: {
+          'Rules & Automation': 'Automate a repeatable process — alerts, ETL, scheduled workflows',
+          'Predictive AI': 'Predict an outcome — who will churn, what will sell, where\'s the risk',
+          'Generative AI': 'Generate or summarize content — reports, insights, recommendations',
+          'Autonomous AI (Agentic)': 'AI that takes action — multi-step tasks, tool use, autonomous decisions',
+          'No AI Opportunity Identified': 'No immediate AI/ML opportunity in this deal',
+        },
+      },
+      {
+        id: 'ai-signals', label: 'Opportunity Signals', type: 'multi-select',
+        options: ['Manual review loops', 'Reactive decisions (fire drills, escalations)', 'Stalled AI pilots (demo works, nothing ships)', 'Prediction would change the outcome', 'Workflow bottlenecks (handoffs, approvals, queue time)', 'None identified'],
+      },
+      {
+        id: 'ai-problem', label: 'Problem Statement', type: 'textarea',
+        placeholder: 'What specific problem could AI solve in this deal?',
+        dynamicHintSource: 'ai-level',
+        dynamicHints: {
+          'Rules & Automation': 'What process is manual and repeatable? What rules would govern it? Where are the bottlenecks?',
+          'Predictive AI': 'What outcome do you want to predict? What decision does the prediction enable? What happens if you know the answer earlier?',
+          'Generative AI': 'What content is being created manually? What would the AI summarize, generate, or explain? Who consumes the output?',
+          'Autonomous AI (Agentic)': 'What goal should the agent pursue? What tools or systems does it need access to? Where do humans stay in the loop?',
+        },
+        hiddenWhen: { sourceField: 'ai-level', values: ['No AI Opportunity Identified'] },
+      },
+      {
+        id: 'ai-data', label: 'Data Readiness', type: 'multi-select',
+        options: ['Structured data (CRM, ERP, databases)', 'Unstructured data (documents, emails, tickets)', 'No data today', 'Unknown / needs discovery'],
+      },
+      {
+        id: 'ai-value', label: 'Value & Accountability', type: 'textarea',
+        placeholder: 'What value does solving this with AI unlock?',
+        dynamicHintSource: 'ai-level',
+        dynamicHints: {
+          'Rules & Automation': 'How much time is spent on this process today? What\'s the error rate? How would you know the automation is working?',
+          'Predictive AI': 'What\'s the cost of a wrong prediction? What\'s the value of a right one? What metric proves the model works?',
+          'Generative AI': 'How much time is spent creating this content manually? What quality bar must the output meet? How do you catch a bad generation?',
+          'Autonomous AI (Agentic)': 'What\'s the risk if the agent makes a wrong decision? What guardrails are needed? What does success look like after 90 days?',
+        },
+        hiddenWhen: { sourceField: 'ai-level', values: ['No AI Opportunity Identified'] },
+      },
+    ],
+  },
+  // ── Step 5: Adoption & Success (optional) ──
+  'adoption': {
+    fields: [
+      { id: 'expected-users', label: 'Expected Users', type: 'text', placeholder: 'Number and type of users...' },
+      { id: 'adoption-success', label: 'Adoption & Success Criteria', type: 'textarea', placeholder: 'What does adoption success look like? What are the key metrics?', hint: 'Combine your adoption plan with measurable success criteria.' },
+    ],
+  },
+  // ── Legacy step configs (read-only for old sessions) ──
+  'context': {
+    fields: [
+      { id: 'strategic-value', label: 'Strategic Value', type: 'select', options: ['High', 'Medium', 'Low'] },
+      { id: 'why-now', label: 'Why This Deal Matters Now', type: 'textarea', placeholder: 'Why is this deal worth technical inspection right now?' },
+      { id: 'key-stakeholders', label: 'Key Stakeholders', type: 'text', placeholder: 'Names and roles of key decision makers...', optional: true },
+    ],
+  },
+  'decision': {
+    fields: [
+      { id: 'customer-goal', label: 'Customer Decision', type: 'textarea', placeholder: 'The customer is trying to decide _____ so they can _____.' },
+      { id: 'success-criteria', label: 'Success Criteria', type: 'textarea', placeholder: 'How will the customer measure success?', optional: true },
+      { id: 'timeline', label: 'Decision Timeline', type: 'select', options: ['This Quarter', 'Next Quarter', '6+ Months'], optional: true },
+    ],
+  },
+  'current-arch': {
+    fields: [
+      { id: 'system-of-record', label: 'System of Record', type: 'textarea', placeholder: 'Where does the system of record live?' },
+      { id: 'cloud-platform', label: 'Cloud / Data Platform', type: 'select', options: ['Snowflake', 'Databricks', 'BigQuery', 'Azure Synapse', 'AWS Redshift', 'On-Prem / Other', 'Multiple'] },
+      { id: 'arch-truth', label: 'Architectural Truth', type: 'textarea', placeholder: 'What architectural truth must we accept?' },
+      { id: 'target-change', label: 'What Changes in Target State', type: 'textarea', placeholder: 'What changes in the target architecture?' },
+      { id: 'pain-points', label: 'Pain Points', type: 'textarea', placeholder: 'Current challenges...', optional: true },
+    ],
+  },
+  'domo-role': {
+    fields: [
+      { id: 'entry-layer', label: 'Entry Layer', type: 'select', options: ['Data Integration', 'Data Warehouse', 'Visualization / BI', 'Embedded Analytics', 'App Development', 'Automation / Alerts', 'AI / ML'] },
+      { id: 'in-scope', label: 'In-Scope Layers', type: 'textarea', placeholder: 'Which Domo capabilities are in scope?' },
+      { id: 'out-of-scope', label: 'Out of Scope', type: 'textarea', placeholder: 'What is explicitly NOT Domo\'s job?' },
+      { id: 'why-composition', label: 'Why This Composition Works Now', type: 'textarea', placeholder: 'Why does this specific configuration of Domo make sense?' },
+    ],
+  },
+  'risk': {
+    fields: [
+      { id: 'top-risks', label: 'Top 1–2 Technical Risks', type: 'textarea', placeholder: 'What could go wrong technically?' },
+      { id: 'key-assumption', label: 'Key Assumption', type: 'textarea', placeholder: 'What is the ONE assumption that must be true?' },
+      { id: 'verdict', label: 'Verdict', type: 'select', options: ['Proceed', 'Proceed with Corrections', 'Rework Before Advancing'] },
+    ],
+  },
   'target-arch': {
     fields: [
       { id: 'proposed-solution', label: 'Proposed Solution Detail', type: 'textarea', placeholder: 'Detailed target architecture description...' },
@@ -129,7 +279,6 @@ const stepInputConfigs: Record<string, { fields: FieldConfig[] }> = {
       { id: 'data-flow', label: 'Data Flow', type: 'textarea', placeholder: 'How will data flow through the system?' },
     ],
   },
-  // ── OPTIONAL: Partner & AI Implications ──
   'partner': {
     fields: [
       { id: 'partner-name', label: 'Key Partner', type: 'text', placeholder: 'Which partner matters most?' },
@@ -137,14 +286,12 @@ const stepInputConfigs: Record<string, { fields: FieldConfig[] }> = {
       { id: 'compute-alignment', label: 'Where Does Compute Execute?', type: 'textarea', placeholder: 'Partner cloud, Domo cloud, customer cloud...', optional: true },
     ],
   },
-  // ── OPTIONAL: AI Strategy & Data Science ──
   'ai-strategy': {
     fields: [
-      { id: 'ai-reality', label: 'AI Reality Check', type: 'select', options: ['Production today', 'Piloting', 'Roadmap only', 'Not applicable'], hint: 'Is AI real or future in this account?' },
+      { id: 'ai-reality', label: 'AI Reality Check', type: 'select', options: ['Production today', 'Piloting', 'Roadmap only', 'Not applicable'] },
       { id: 'autonomous-decision', label: 'Autonomous Decision Potential', type: 'textarea', placeholder: 'What decision could become autonomous?', optional: true },
     ],
   },
-  // ── OPTIONAL: Usage & Adoption Detail (defer post-TDR) ──
   'usage': {
     fields: [
       { id: 'user-count', label: 'Expected Users', type: 'text', placeholder: 'Number of users...' },
@@ -674,6 +821,15 @@ export function TDRInputs({
           const isSaved = savedFields.has(fieldKey);
           const currentValue = getFieldValue(field.id);
 
+          if (field.hiddenWhen) {
+            const sourceValue = getFieldValue(field.hiddenWhen.sourceField);
+            if (field.hiddenWhen.values.includes(sourceValue)) return null;
+          }
+
+          const resolvedHint = field.dynamicHintSource
+            ? field.dynamicHints?.[getFieldValue(field.dynamicHintSource)] || field.hint
+            : field.hint;
+
           return (
             <div key={field.id} className="space-y-1.5">
               <div className="flex items-center gap-2">
@@ -726,7 +882,7 @@ export function TDRInputs({
                   <Textarea
                     id={field.id}
                     placeholder={field.placeholder}
-                    className="min-h-20 resize-none text-sm"
+                    className="min-h-20 resize-y text-sm"
                     value={currentValue}
                     onChange={(e) => handleChange(field.id, e.target.value)}
                     onBlur={() => handleBlur(field.id, field.label)}
@@ -754,54 +910,74 @@ export function TDRInputs({
                       </button>
                     </div>
                   )}
-                  {/* Enhancement result */}
-                  {enhancementResult[field.id] && (
-                    <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 dark:border-violet-800/50 dark:bg-violet-950/20">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-1 text-2xs font-medium text-violet-700 dark:text-violet-300">
-                          <Sparkles className="h-3 w-3" />
-                          AI-Enhanced
-                        </span>
-                        <span className="text-2xs text-muted-foreground">
-                          Using: {enhancementResult[field.id].contextSources.join(', ')}
-                        </span>
+                  {/* Enhancement result with inline diff + context badges */}
+                  {enhancementResult[field.id] && (() => {
+                    const enh = enhancementResult[field.id];
+                    const diff = computeWordDiff(currentValue, enh.enhanced);
+                    const hasChanges = diff.some(d => d.type !== 'same');
+                    return (
+                      <div className="rounded-lg border border-violet-200 bg-violet-50/50 p-3 dark:border-violet-800/50 dark:bg-violet-950/20">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="flex items-center gap-1 text-2xs font-medium text-violet-700 dark:text-violet-300">
+                            <Sparkles className="h-3 w-3" />
+                            AI-Enhanced
+                          </span>
+                          <div className="flex items-center gap-1 flex-wrap justify-end">
+                            {enh.contextSources.map(src => {
+                              const style = CONTEXT_SOURCE_STYLES[src] || { bg: 'bg-slate-500/15', text: 'text-slate-400' };
+                              return (
+                                <span key={src} className={cn('rounded-full px-1.5 py-0.5 text-[9px] font-medium', style.bg, style.text)}>
+                                  {src}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        {hasChanges ? (
+                          <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                            {diff.map((d, i) => (
+                              d.type === 'same' ? <span key={i}>{d.text}</span> :
+                              d.type === 'add' ? <span key={i} className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 rounded-sm px-0.5">{d.text}</span> :
+                              <span key={i} className="bg-red-500/10 text-red-400 line-through opacity-60 rounded-sm px-0.5">{d.text}</span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap text-sm text-foreground">{enh.enhanced}</p>
+                        )}
+                        <div className="mt-3 flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 gap-1 bg-violet-600 text-xs hover:bg-violet-700"
+                            onClick={() => acceptEnhancement(field.id)}
+                          >
+                            <Check className="h-3 w-3" />
+                            Accept
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 text-xs"
+                            onClick={() => {
+                              handleChange(field.id, enhancementResult[field.id].enhanced);
+                              dismissEnhancement(field.id);
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 gap-1 text-xs text-muted-foreground"
+                            onClick={() => dismissEnhancement(field.id)}
+                          >
+                            <X className="h-3 w-3" />
+                            Dismiss
+                          </Button>
+                        </div>
                       </div>
-                      <p className="whitespace-pre-wrap text-sm text-foreground">
-                        {enhancementResult[field.id].enhanced}
-                      </p>
-                      <div className="mt-3 flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          className="h-7 gap-1 bg-violet-600 text-xs hover:bg-violet-700"
-                          onClick={() => acceptEnhancement(field.id)}
-                        >
-                          <Check className="h-3 w-3" />
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 gap-1 text-xs"
-                          onClick={() => {
-                            handleChange(field.id, enhancementResult[field.id].enhanced);
-                            dismissEnhancement(field.id);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 gap-1 text-xs text-muted-foreground"
-                          onClick={() => dismissEnhancement(field.id)}
-                        >
-                          <X className="h-3 w-3" />
-                          Dismiss
-                        </Button>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
               {field.type === 'select' && (
@@ -815,14 +991,61 @@ export function TDRInputs({
                   <SelectContent>
                     {field.options?.map((option) => (
                       <SelectItem key={option} value={option.toLowerCase()} className="text-sm">
-                        {option}
+                        <div>
+                          <span>{option}</span>
+                          {field.optionDescriptions?.[option] && (
+                            <p className="text-2xs text-muted-foreground mt-0.5 leading-relaxed">{field.optionDescriptions[option]}</p>
+                          )}
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
-              {field.hint && (
-                <p className="text-2xs text-muted-foreground italic">{field.hint}</p>
+              {field.type === 'multi-select' && (() => {
+                const selectedValues: string[] = (() => {
+                  try { return currentValue ? JSON.parse(currentValue) : []; }
+                  catch { return currentValue ? currentValue.split(',').map(s => s.trim()).filter(Boolean) : []; }
+                })();
+                const toggleValue = (val: string) => {
+                  const exclusive = ['No data today', 'Unknown / needs discovery', 'None identified'];
+                  let next: string[];
+                  if (exclusive.includes(val)) {
+                    next = selectedValues.includes(val) ? [] : [val];
+                  } else {
+                    const filtered = selectedValues.filter(v => !exclusive.includes(v));
+                    next = filtered.includes(val) ? filtered.filter(v => v !== val) : [...filtered, val];
+                  }
+                  handleChange(field.id, JSON.stringify(next));
+                  if (onSaveInput && activeStep) {
+                    onSaveInput({ stepId: activeStep.id, stepLabel: activeStep.title, fieldId: field.id, fieldLabel: field.label, fieldValue: JSON.stringify(next), stepOrder });
+                  }
+                };
+                return (
+                  <div className="flex flex-wrap gap-1.5">
+                    {field.options?.map(option => {
+                      const isSelected = selectedValues.includes(option);
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => toggleValue(option)}
+                          className={cn(
+                            'rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                            isSelected
+                              ? 'border-violet-500 bg-violet-600/15 text-violet-700 dark:text-violet-300'
+                              : 'border-border bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground'
+                          )}
+                        >
+                          {option}
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+              {resolvedHint && (
+                <p className="text-2xs text-muted-foreground italic">{resolvedHint}</p>
               )}
             </div>
           );

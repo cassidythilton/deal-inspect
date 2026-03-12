@@ -68,10 +68,33 @@ const MOCK_READOUT: ReadoutPayload = {
     updatedAt: new Date().toISOString(),
   },
   inputs: [
-    { stepId: 'step-1', fieldId: 'Strategic Value', value: 'Account is migrating from legacy Teradata to Snowflake and evaluating BI consolidation.', savedAt: new Date().toISOString() },
-    { stepId: 'step-1', fieldId: 'Business Impact', value: 'Unified analytics across 15 business units — $2M annual reporting cost reduction.', savedAt: new Date().toISOString() },
-    { stepId: 'step-2', fieldId: 'Current Architecture', value: 'Snowflake (Enterprise), AWS, Tableau, dbt, Kafka, Salesforce CRM.', savedAt: new Date().toISOString() },
-    { stepId: 'step-3', fieldId: 'Competitive Analysis', value: 'Tableau entrenched for exec dashboards. ThoughtSpot POC planned Q1 2026.', savedAt: new Date().toISOString() },
+    // Step 1: Deal Context
+    { stepId: 'deal-context', fieldId: 'strategic-value', value: 'High', savedAt: new Date().toISOString() },
+    { stepId: 'deal-context', fieldId: 'customer-goal', value: 'Account is migrating from legacy Teradata to Snowflake and evaluating BI consolidation.', savedAt: new Date().toISOString() },
+    { stepId: 'deal-context', fieldId: 'why-now', value: 'Unified analytics across 15 business units — $2M annual reporting cost reduction.', savedAt: new Date().toISOString() },
+    { stepId: 'deal-context', fieldId: 'key-technical-stakeholders', value: 'CTO, VP Data Engineering', savedAt: new Date().toISOString() },
+    { stepId: 'deal-context', fieldId: 'timeline', value: 'This Quarter', savedAt: new Date().toISOString() },
+    // Step 2: Technical Architecture
+    { stepId: 'tech-architecture', fieldId: 'cloud-platform', value: 'Snowflake', savedAt: new Date().toISOString() },
+    { stepId: 'tech-architecture', fieldId: 'current-state', value: 'Snowflake (Enterprise), AWS, Tableau, dbt, Kafka, Salesforce CRM. Legacy Teradata being retired.', savedAt: new Date().toISOString() },
+    { stepId: 'tech-architecture', fieldId: 'target-state', value: 'Domo as unified analytics layer. Data flows from Snowflake via MagicETL. Embedded analytics for customer-facing apps.', savedAt: new Date().toISOString() },
+    { stepId: 'tech-architecture', fieldId: 'domo-layers', value: '["Data Integration","Visualization / BI","Embedded Analytics"]', savedAt: new Date().toISOString() },
+    { stepId: 'tech-architecture', fieldId: 'why-domo', value: 'Composable architecture, embedded analytics, and Snowflake-native integration.', savedAt: new Date().toISOString() },
+    // Step 3: Risk & Verdict
+    { stepId: 'risk-verdict', fieldId: 'top-risks', value: 'Tableau entrenched for exec dashboards. ThoughtSpot POC planned Q1 2026.', savedAt: new Date().toISOString() },
+    { stepId: 'risk-verdict', fieldId: 'key-assumption', value: 'CTO will champion Domo over ThoughtSpot if architecture story resonates.', savedAt: new Date().toISOString() },
+    { stepId: 'risk-verdict', fieldId: 'verdict', value: 'Proceed', savedAt: new Date().toISOString() },
+    { stepId: 'risk-verdict', fieldId: 'partner-name', value: 'Snowflake', savedAt: new Date().toISOString() },
+    { stepId: 'risk-verdict', fieldId: 'partner-posture', value: 'Amplifying', savedAt: new Date().toISOString() },
+    // Step 4: AI & ML
+    { stepId: 'ai-ml', fieldId: 'ai-level', value: 'Generative AI', savedAt: new Date().toISOString() },
+    { stepId: 'ai-ml', fieldId: 'ai-signals', value: '["Manual review loops","Workflow bottlenecks (handoffs, approvals, queue time)"]', savedAt: new Date().toISOString() },
+    { stepId: 'ai-ml', fieldId: 'ai-problem', value: 'Reports and summaries are created manually. AI could generate executive briefings from data.', savedAt: new Date().toISOString() },
+    { stepId: 'ai-ml', fieldId: 'ai-data', value: '["Structured data (CRM, ERP, databases)"]', savedAt: new Date().toISOString() },
+    { stepId: 'ai-ml', fieldId: 'ai-value', value: 'Reduce report creation time by 60%. Clear ownership with Data team.', savedAt: new Date().toISOString() },
+    // Step 5: Adoption
+    { stepId: 'adoption', fieldId: 'expected-users', value: '150 power users, 500 viewers', savedAt: new Date().toISOString() },
+    { stepId: 'adoption', fieldId: 'adoption-success', value: 'Adoption plan: phased rollout. Success metrics: 80% weekly active users within 90 days.', savedAt: new Date().toISOString() },
   ],
   sumble: {
     technologies: { BI: ['Tableau', 'Looker'], DW: ['Snowflake'], Cloud: ['AWS'], CRM: ['Salesforce'] },

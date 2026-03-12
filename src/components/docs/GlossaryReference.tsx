@@ -3,6 +3,7 @@
  *
  * Sprint 25: Documentation Hub
  * Sprints 28–30: Win Propensity, Deal Priority, SHAP, AI Enhancement, UX terms
+ * Sprint 31: TDR Iteration, AI Enhancement Diff, Value Continuum, Semi-Auto Completion, Readout Workflow, Domo Layers
  */
 
 import {
@@ -53,6 +54,13 @@ const GLOSSARY: GlossaryTerm[] = [
   { term: 'SHAP Factors', definition: 'SHapley Additive exPlanations — up to 5 factors (name, value, direction, magnitude) that explain why the ML model assigned a given Win Propensity score. Shown in Why TDR pills and expandable in the workspace.' },
   { term: 'Stage Age Proximity Override', definition: 'Stage age filtering behavior that allows deals near the selected stage-age boundary to remain visible. Improves UX when filtering by stage age.' },
   { term: 'Win Propensity', definition: 'ML-based 0–100% score predicting deal win probability. From Snowflake ML Classification model via DEAL_PREDICTIONS. Quadrants: HIGH, MONITOR, AT_RISK.' },
+  /* ── Sprint 31 ───────────────────────────────────────────────────────────── */
+  { term: 'AI Enhancement Diff', definition: 'Word-level inline diff view for Domo AI field enhancements. Additions shown in emerald green, removals in red strikethrough. Falls back to plain text if no changes detected. Uses computeWordDiff().' },
+  { term: 'Domo Layers', definition: 'Multi-select pill/tag input for the Technical Architecture step. Lets SEs select which Domo product layers (BI, ETL, Apps, etc.) are in scope for the deal.' },
+  { term: 'Readout Workflow', definition: '"Prepare Readout — Complete in Order" — unified 4-step flow in Zone A: Enrich → Research → Action Plan → TDR Brief. Each step has Run button, status indicator (✓ when done), and View link. Replaces scattered accordion sections.' },
+  { term: 'Semi-Auto Completion', definition: 'Steps auto-mark complete when required fields have substantive content via isStepAutoComplete(). Reduces manual step-checking.' },
+  { term: 'TDR Iteration', definition: '"Start New Iteration" creates a new version of the TDR for the same deal. previousSessions tracks history; iteration count displayed in header. PDF readout supports both new 5-step and legacy 9-step structures.' },
+  { term: 'Value Continuum', definition: 'Framework in the AI & ML Opportunity Assessment step. Helps SEs articulate where an AI/ML opportunity sits on a value spectrum (e.g., cost reduction → efficiency → strategic differentiation).' },
 ];
 
 /* ── FAQ data ──────────────────────────────────────────────────────────────── */

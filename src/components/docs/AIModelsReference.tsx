@@ -233,7 +233,9 @@ export function AIModelsReference() {
             provider="Domo Platform — /domo/ai/v1/text/chat"
             costTier="low"
             usedFor={[
-              'TDR field enhancement — expands SE input with 8 context layers',
+              'AI Field Enhancement — expands SE input with 8 context layers',
+              'Word-level inline diff view — additions in emerald green, removals in red strikethrough (computeWordDiff)',
+              'Context-source tracking — color-coded badges show which layer contributed (SE input, sibling fields, cross-step, deal metadata, KB, enrichment)',
               'Tech extraction — parses Perplexity narrative signals into product names',
               'TDR candidate recommendations — 17-factor scoring prompt',
               'Temperature 0.1–0.3, JSON output parsing',

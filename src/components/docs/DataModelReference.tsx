@@ -2,6 +2,7 @@
  * DataModelReference — Documents the Snowflake data model.
  *
  * Sprint 25: Documentation Hub
+ * Sprint 31: 5-step framework, LEGACY_STEP_IDS, backward compatibility
  */
 
 import {
@@ -145,12 +146,12 @@ export function DataModelReference() {
         <TableCard
           icon={Database}
           name="TDR_STEP_INPUTS"
-          description="All SE inputs from the 9-step TDR workflow"
-          purpose="Stores every field value entered by the SE during the TDR. Each row is a single field within a step. Supports history via versioning — the latest input per (session, step, field) tuple is displayed."
+          description="All SE inputs from the 5-step TDR workflow"
+          purpose="Stores every field value entered by the SE during the TDR. Each row is a single field within a step. Supports history via versioning — the latest input per (session, step, field) tuple is displayed. LEGACY_STEP_IDS preserved for backward compatibility with old 9-step sessions."
           keyColumns={[
             ['INPUT_ID', 'VARCHAR', 'Primary key (UUID)'],
             ['SESSION_ID', 'VARCHAR', 'FK \u2192 TDR_SESSIONS'],
-            ['STEP_ID', 'VARCHAR', 'Step identifier (context, decision, etc.)'],
+            ['STEP_ID', 'VARCHAR', 'deal-context | tech-architecture | risk-verdict | ai-ml | adoption. Legacy IDs (context, decision, etc.) supported for old sessions.'],
             ['FIELD_ID', 'VARCHAR', 'Field within the step'],
             ['FIELD_VALUE', 'VARCHAR', 'The SE\'s input text'],
             ['VERSION', 'NUMBER', 'Auto-incrementing for history'],
