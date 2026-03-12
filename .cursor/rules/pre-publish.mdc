@@ -1,34 +1,64 @@
 ---
-description: Pre-publish checklist for Domo app deployment
-globs: dist/manifest.json
-alwaysApply: false
+description: Automatically prepare dist/ for Domo publish after completing sprint work
+globs: 
+alwaysApply: true
 ---
 
-# Pre-Publish Checklist
+# Pre-Publish — Automatic Build & Version Bump
 
-Before the user runs `domo publish` from `dist/`, ALWAYS verify and alert on:
+After completing any sprint, sub-sprint, or meaningful code change, **automatically** prepare the app for publishing. Don't wait for the user to ask.
 
-## 1. Version Bump
-- `dist/manifest.json` version must be incremented from the last published version
-- `public/manifest.json` version must match `dist/manifest.json`
-- Suggest semver: patch for bug fixes, minor for new features/fields, major for breaking changes
+## When to Trigger
 
-## 2. Build Freshness
-- Run `npm run build` (Vite) BEFORE publishing — `dist/assets/*.js` must reflect latest source changes
-- Check `dist/assets/` file timestamps vs latest source edits. If assets are older, the build is stale.
+Perform these steps after ANY of:
+- Sprint or sub-sprint completion
+- Frontend code changes (src/ files modified)
+- Manifest field additions or changes
+- Bug fixes that affect the app UI
 
-## 3. Manifest Consistency
-- `dist/manifest.json` and `public/manifest.json` must have identical `datasetsMapping` sections
-- All dataset IDs, field aliases, and column names must match between both files
+## Steps (execute in order)
 
-## 4. Alert the User
-When the user mentions publishing, deploying, or running `domo publish`:
-- Proactively check all items above
-- Report status: "Ready to publish" or "Not ready — [issues]"
-- Never let a stale build or un-bumped version reach production
+### 1. Version Bump
+- Read current version from `public/manifest.json`
+- Increment: patch (1.71.0 → 1.71.1) for bug fixes, minor (1.71.0 → 1.72.0) for features/sprints
+- Write the new version to BOTH `public/manifest.json` AND `dist/manifest.json`
 
-## 5. Regular Git Commits
-After completing any sprint or sub-sprint work:
-- Commit with a descriptive message covering what changed and why
-- Push to origin immediately after committing
-- Don't let uncommitted work accumulate across multiple sprints
+### 2. Build
+- Run `npm run build` to regenerate `dist/assets/`
+- Verify build succeeds (exit code 0)
+- Confirm `dist/assets/*.js` timestamps match the current time (not stale)
+
+### 3. Manifest Consistency
+- `dist/manifest.json` and `public/manifest.json` must have identical content
+- The build copies `public/manifest.json` → `dist/manifest.json`, so bumping public/ first and then building ensures consistency
+- If they diverge, re-copy or re-build
+
+### 4. Git
+- Commit the version bump (`public/manifest.json`) with a message like "Bump version to vX.Y.Z for Domo publish"
+- Push to origin
+
+### 5. Alert the User
+After completing steps 1–4, tell the user:
+
+```
+Ready to publish v{VERSION} from dist/.
+- Build: fresh ({timestamp})
+- Manifest: public/ and dist/ in sync
+- Git: committed and pushed
+Run `domo publish` from dist/ when ready.
+```
+
+## When the User Mentions Publishing
+
+If the user says "publish", "deploy", "domo publish", or similar:
+- Check if dist/ is already fresh (asset timestamps vs source timestamps)
+- If stale, run steps 1–4 automatically
+- If fresh, confirm readiness and report the version
+- NEVER let a stale build or un-bumped version reach production
+
+## Anti-Patterns
+
+- NEVER let the user publish without a fresh build
+- NEVER forget to bump the version — Domo uses it to track deployments
+- NEVER let public/manifest.json and dist/manifest.json have different versions
+- NEVER skip the git commit — the version bump must be tracked in source control
