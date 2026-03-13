@@ -180,12 +180,19 @@ const SEED_FIELD_MAP: Array<[string, string, string]> = [
   ['SeedAdoptionSuccess',           'adoption',           'adoption-success'],
 ];
 
+// Select fields store values as lowercase in the UI
+const SELECT_FIELD_IDS = new Set([
+  'strategic-value', 'timeline', 'cloud-platform', 'verdict',
+  'partner-posture', 'ai-level',
+]);
+
 function buildSeededInputs(get: (primary: string, ...fallbacks: string[]) => string): Record<string, string> | undefined {
   const map: Record<string, string> = {};
   let count = 0;
   for (const [alias, stepId, fieldId] of SEED_FIELD_MAP) {
-    const val = get(alias);
+    let val = get(alias);
     if (val) {
+      if (SELECT_FIELD_IDS.has(fieldId)) val = val.toLowerCase();
       map[`${stepId}::${fieldId}`] = val;
       count++;
     }
