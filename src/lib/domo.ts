@@ -208,6 +208,17 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
       'PropensityScoredAt', 'PropensityModelVersion',
       'AccountRevenueUsd', 'AccountEmployees', 'StrategicAccount',
       'Region', 'SalesSegment', 'SalesVertical',
+      // Cortex-seeded TDR responses (Sprint 32b)
+      'CallCount',
+      'SeedStrategicValue', 'SeedCustomerDecision', 'SeedWhyNow',
+      'SeedKeyTechnicalStakeholders', 'SeedTimeline',
+      'SeedCloudPlatform', 'SeedCurrentState', 'SeedTargetState',
+      'SeedDomoLayers', 'SeedOutOfScope', 'SeedWhyDomo',
+      'SeedTopRisks', 'SeedKeyAssumption', 'SeedVerdict',
+      'SeedPartnerName', 'SeedPartnerPosture',
+      'SeedAiLevel', 'SeedAiSignals', 'SeedAiProblem',
+      'SeedAiData', 'SeedAiValue',
+      'SeedExpectedUsers', 'SeedAdoptionSuccess',
     ];
 
     // Quarter window: current quarter through current + 4
