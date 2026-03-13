@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Check, CheckCircle2, History, Loader2, CloudOff, Save, Sparkles, X } from 'lucide-react';
+import { Check, CheckCircle2, History, Loader2, CloudOff, Save, Sparkles, X, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { snowflakeStore } from '@/lib/snowflakeStore';
 import type { StepInput } from '@/lib/snowflakeStore';
