@@ -29,6 +29,8 @@ export interface UseTDRSessionReturn {
   error: string | null;
   /** Map of `stepId::fieldId` → latest value */
   inputValues: Map<string, string>;
+  /** Prior iteration inputs (available after startNewIteration) */
+  priorInputValues: Map<string, string>;
   /** All loaded input records (for history, etc.) */
   inputs: StepInput[];
   /** Set of completed step IDs */
@@ -314,9 +316,15 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
       .catch(() => {});
   }, [deal?.id, session?.sessionId]);
 
+  // Prior iteration inputs (for referencing in new iterations)
+  const [priorInputValues, setPriorInputValues] = useState<Map<string, string>>(new Map());
+
   const startNewIteration = useCallback(async () => {
     if (!deal || !session) return;
     try {
+      // Capture current inputs as prior before clearing
+      setPriorInputValues(new Map(inputValues));
+
       if (session.status === 'in-progress') {
         await snowflakeStore.updateSession(session.sessionId, { status: 'completed' });
       }
@@ -339,16 +347,18 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
       setInputs([]);
       setCompletedSteps(new Set());
       setPreviousSessions(prev => [...prev, session]);
+      console.log(`[useTDRSession] New iteration started with ${inputValues.size} prior input(s) available`);
     } catch (err) {
       console.error('[useTDRSession] Failed to start new iteration:', err);
     }
-  }, [deal, session, previousSessions]);
+  }, [deal, session, previousSessions, inputValues]);
 
   return {
     session,
     isLoading,
     error,
     inputValues,
+    priorInputValues,
     inputs,
     completedSteps,
     saveInput,

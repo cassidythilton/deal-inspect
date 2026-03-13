@@ -106,6 +106,12 @@ interface TDRInputsProps {
     competitors?: string;
     partnerSignal?: string;
   };
+  /** Cortex-seeded TDR values keyed by `stepId::fieldId` (Sprint 32b) */
+  seededInputs?: Record<string, string>;
+  /** Number of Gong calls that produced seeded data */
+  callCount?: number;
+  /** Prior iteration inputs keyed by `stepId::fieldId` (for new iterations) */
+  priorInputValues?: Map<string, string>;
 }
 
 interface FieldConfig {
@@ -340,9 +346,14 @@ export function TDRInputs({
   isStepComplete,
   allSteps,
   dealContext,
+  seededInputs,
+  callCount,
+  priorInputValues,
 }: TDRInputsProps) {
   // Track local field values for controlled inputs
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
+  // Track dismissed seed fields (user chose to clear the Cortex proposal)
+  const [dismissedSeeds, setDismissedSeeds] = useState<Set<string>>(new Set());
   // Track which fields have been touched (for save indicators)
   const [savedFields, setSavedFields] = useState<Set<string>>(new Set());
   // Track last-saved timestamp per field (for persistent indicators)
@@ -632,15 +643,33 @@ export function TDRInputs({
   const config = stepInputConfigs[activeStep.id] || { fields: [] };
   const stepOrder = allSteps ? allSteps.findIndex(s => s.id === activeStep.id) : 0;
 
-  // Get the current value for a field: local draft > saved > empty
+  // Get the current value for a field: local draft > saved > prior iteration > seeded > empty
   const getFieldValue = (fieldId: string): string => {
-    const localKey = `${activeStep.id}::${fieldId}`;
-    if (localValues[localKey] !== undefined) return localValues[localKey];
+    const key = `${activeStep.id}::${fieldId}`;
+    if (localValues[key] !== undefined) return localValues[key];
     if (inputValues) {
-      const saved = inputValues.get(`${activeStep.id}::${fieldId}`);
+      const saved = inputValues.get(key);
       if (saved) return saved;
     }
+    if (priorInputValues) {
+      const prior = priorInputValues.get(key);
+      if (prior) return prior;
+    }
+    if (seededInputs && !dismissedSeeds.has(key)) {
+      const seeded = seededInputs[key];
+      if (seeded) return seeded;
+    }
     return '';
+  };
+
+  /** Whether a field is currently showing its seeded (unsaved) value */
+  const isShowingSeed = (fieldId: string): boolean => {
+    const key = `${activeStep.id}::${fieldId}`;
+    if (localValues[key] !== undefined) return false;
+    if (inputValues?.get(key)) return false;
+    if (priorInputValues?.get(key)) return false;
+    if (dismissedSeeds.has(key)) return false;
+    return !!(seededInputs && seededInputs[key]);
   };
 
   const GAP_CHAR_THRESHOLD = 15;
@@ -717,6 +746,31 @@ export function TDRInputs({
     if (sessionId && dirtyFieldsRef.current.size === 0) {
       clearDraftFromStorage(sessionId);
     }
+  };
+
+  // Accept a seeded value as-is — saves it to Snowflake
+  const acceptSeed = async (fieldId: string, fieldLabel: string) => {
+    if (!activeStep || !onSaveInput) return;
+    const key = `${activeStep.id}::${fieldId}`;
+    const value = seededInputs?.[key];
+    if (!value) return;
+
+    await onSaveInput({
+      stepId: activeStep.id,
+      stepLabel: activeStep.title,
+      fieldId,
+      fieldLabel,
+      fieldValue: value,
+      stepOrder,
+    });
+    setSavedFields(prev => new Set(prev).add(key));
+    setLastSavedAt(prev => ({ ...prev, [key]: Date.now() }));
+  };
+
+  // Dismiss a seeded value — clears it from the field
+  const dismissSeed = (fieldId: string) => {
+    const key = `${activeStep.id}::${fieldId}`;
+    setDismissedSeeds(prev => new Set(prev).add(key));
   };
 
   // Handle select change — persist immediately
@@ -830,18 +884,25 @@ export function TDRInputs({
             ? field.dynamicHints?.[getFieldValue(field.dynamicHintSource)] || field.hint
             : field.hint;
 
+          const fieldIsSeeded = isShowingSeed(field.id);
           return (
-            <div key={field.id} className="space-y-1.5">
+            <div key={field.id} className={cn('space-y-1.5', fieldIsSeeded && 'relative rounded-lg border border-cyan-500/30 bg-cyan-50/30 dark:bg-cyan-950/10 p-3 -mx-1')}>
               <div className="flex items-center gap-2">
                 <Label htmlFor={field.id} className="text-xs font-medium">
                   {field.label}
                 </Label>
-                {field.optional && (
+                {fieldIsSeeded && (
+                  <span className="flex items-center gap-1 rounded-full bg-cyan-500/15 border border-cyan-500/25 px-2 py-0.5 text-2xs font-medium text-cyan-700 dark:text-cyan-300">
+                    <Brain className="h-3 w-3" />
+                    Cortex AI Proposed
+                  </span>
+                )}
+                {field.optional && !fieldIsSeeded && (
                   <span className="rounded bg-secondary px-1.5 py-0.5 text-2xs text-muted-foreground">
                     optional
                   </span>
                 )}
-                {gapFields.has(field.id) && (
+                {gapFields.has(field.id) && !fieldIsSeeded && (
                   <span className="rounded bg-amber-100 px-1.5 py-0.5 text-2xs font-medium text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
                     gap
                   </span>
@@ -855,7 +916,7 @@ export function TDRInputs({
                 {dirtyFieldsRef.current.has(fieldKey) && !isSaved && (
                   <span className="text-2xs text-amber-500 animate-pulse">typing…</span>
                 )}
-                {sessionId && currentValue && (
+                {sessionId && currentValue && !fieldIsSeeded && (
                   <button
                     type="button"
                     className="ml-auto flex items-center gap-0.5 text-2xs text-muted-foreground hover:text-foreground transition-colors"
@@ -1044,8 +1105,33 @@ export function TDRInputs({
                   </div>
                 );
               })()}
-              {resolvedHint && (
+              {resolvedHint && !fieldIsSeeded && (
                 <p className="text-2xs text-muted-foreground italic">{resolvedHint}</p>
+              )}
+              {fieldIsSeeded && (
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="h-7 gap-1 bg-cyan-600 text-xs hover:bg-cyan-700"
+                    onClick={() => acceptSeed(field.id, field.label)}
+                  >
+                    <Check className="h-3 w-3" />
+                    Accept
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 text-xs text-muted-foreground"
+                    onClick={() => dismissSeed(field.id)}
+                  >
+                    <X className="h-3 w-3" />
+                    Dismiss
+                  </Button>
+                  <span className="ml-auto text-2xs text-cyan-600/70 dark:text-cyan-400/60 italic">
+                    Edit directly or Accept as-is{callCount ? ` — based on ${callCount} Gong call${callCount > 1 ? 's' : ''}` : ''}
+                  </span>
+                </div>
               )}
             </div>
           );

@@ -147,7 +147,50 @@ function transformOpportunityToDeal(opp: Record<string, unknown>): Deal {
     region: get('Region') || undefined,
     salesSegment: get('SalesSegment', 'Sales Segment') || undefined,
     salesVertical: get('SalesVertical', 'Sales Vertical') || undefined,
+    // Cortex-seeded TDR responses (Sprint 32b)
+    callCount: getNum('CallCount', 'call_count') || undefined,
+    seededInputs: buildSeededInputs(get),
   };
+}
+
+const SEED_FIELD_MAP: Array<[string, string, string]> = [
+  // [manifestAlias, stepId, fieldId]
+  ['SeedStrategicValue',            'deal-context',       'strategic-value'],
+  ['SeedCustomerDecision',          'deal-context',       'customer-goal'],
+  ['SeedWhyNow',                    'deal-context',       'why-now'],
+  ['SeedKeyTechnicalStakeholders',  'deal-context',       'key-technical-stakeholders'],
+  ['SeedTimeline',                  'deal-context',       'timeline'],
+  ['SeedCloudPlatform',             'tech-architecture',  'cloud-platform'],
+  ['SeedCurrentState',              'tech-architecture',  'current-state'],
+  ['SeedTargetState',               'tech-architecture',  'target-state'],
+  ['SeedDomoLayers',                'tech-architecture',  'domo-layers'],
+  ['SeedOutOfScope',                'tech-architecture',  'out-of-scope'],
+  ['SeedWhyDomo',                   'tech-architecture',  'why-domo'],
+  ['SeedTopRisks',                  'risk-verdict',       'top-risks'],
+  ['SeedKeyAssumption',             'risk-verdict',       'key-assumption'],
+  ['SeedVerdict',                   'risk-verdict',       'verdict'],
+  ['SeedPartnerName',               'risk-verdict',       'partner-name'],
+  ['SeedPartnerPosture',            'risk-verdict',       'partner-posture'],
+  ['SeedAiLevel',                   'ai-ml',              'ai-level'],
+  ['SeedAiSignals',                 'ai-ml',              'ai-signals'],
+  ['SeedAiProblem',                 'ai-ml',              'ai-problem'],
+  ['SeedAiData',                    'ai-ml',              'ai-data'],
+  ['SeedAiValue',                   'ai-ml',              'ai-value'],
+  ['SeedExpectedUsers',             'adoption',           'expected-users'],
+  ['SeedAdoptionSuccess',           'adoption',           'adoption-success'],
+];
+
+function buildSeededInputs(get: (primary: string, ...fallbacks: string[]) => string): Record<string, string> | undefined {
+  const map: Record<string, string> = {};
+  let count = 0;
+  for (const [alias, stepId, fieldId] of SEED_FIELD_MAP) {
+    const val = get(alias);
+    if (val) {
+      map[`${stepId}::${fieldId}`] = val;
+      count++;
+    }
+  }
+  return count > 0 ? map : undefined;
 }
 
 function buildPropensityFactors(opp: Record<string, unknown>): Deal['propensityFactors'] {

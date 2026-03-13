@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { TDRStep } from '@/types/tdr';
 import { cn } from '@/lib/utils';
-import { Check, ChevronDown, ChevronRight, Plus } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Plus, Brain } from 'lucide-react';
 
 interface TDRStepsProps {
   steps: TDRStep[];
   onStepClick: (stepId: string) => void;
+  /** Cortex-seeded inputs keyed by `stepId::fieldId` */
+  seededInputs?: Record<string, string>;
 }
 
-export function TDRSteps({ steps, onStepClick }: TDRStepsProps) {
+export function TDRSteps({ steps, onStepClick, seededInputs }: TDRStepsProps) {
   const [optionalExpanded, setOptionalExpanded] = useState(false);
 
   const requiredSteps = steps.filter((s) => s.required !== false);
@@ -20,6 +22,16 @@ export function TDRSteps({ steps, onStepClick }: TDRStepsProps) {
 
   // Progress is based on required steps only
   const progress = Math.round((requiredCompleted / totalRequired) * 100);
+
+  const seedCountByStep = useMemo(() => {
+    if (!seededInputs) return new Map<string, number>();
+    const map = new Map<string, number>();
+    for (const key of Object.keys(seededInputs)) {
+      const stepId = key.split('::')[0];
+      map.set(stepId, (map.get(stepId) || 0) + 1);
+    }
+    return map;
+  }, [seededInputs]);
 
   return (
     <div className="flex h-full flex-col">
@@ -70,14 +82,22 @@ export function TDRSteps({ steps, onStepClick }: TDRStepsProps) {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p
-                    className={cn(
-                      'text-sm font-medium leading-tight',
-                      step.isComplete && 'text-muted-foreground'
+                  <div className="flex items-center gap-1.5">
+                    <p
+                      className={cn(
+                        'text-sm font-medium leading-tight',
+                        step.isComplete && 'text-muted-foreground'
+                      )}
+                    >
+                      {step.title}
+                    </p>
+                    {seedCountByStep.has(step.id) && (
+                      <span className="flex items-center gap-0.5 rounded-full bg-cyan-500/15 px-1.5 py-0.5 text-[9px] font-medium text-cyan-600 dark:text-cyan-400" title={`${seedCountByStep.get(step.id)} Cortex AI proposed field(s)`}>
+                        <Brain className="h-2.5 w-2.5" />
+                        {seedCountByStep.get(step.id)}
+                      </span>
                     )}
-                  >
-                    {step.title}
-                  </p>
+                  </div>
                   <p className="mt-0.5 text-2xs text-muted-foreground line-clamp-1">
                     {step.description}
                   </p>

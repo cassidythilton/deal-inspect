@@ -954,17 +954,17 @@ export function TDRIntelligence({
   // Merge all technologies from all sources
   const allTechnologies = (() => {
     const map = new Map<string, Set<string>>(); // tech → sources
-    (sumbleData?.technologies ?? []).forEach(t => {
+    (sumbleData?.technologies ?? []).filter(t => typeof t === 'string' && t).forEach(t => {
       const s = map.get(t) ?? new Set();
       s.add('sumble');
       map.set(t, s);
     });
-    perplexityTechNames.forEach(t => {
+    perplexityTechNames.filter(t => typeof t === 'string' && t).forEach(t => {
       const s = map.get(t) ?? new Set();
       s.add('perplexity');
       map.set(t, s);
     });
-    (extractedEntities?.technologies ?? []).forEach(t => {
+    (extractedEntities?.technologies ?? []).filter(t => typeof t === 'string' && t).forEach(t => {
       const s = map.get(t) ?? new Set();
       s.add('cortex');
       map.set(t, s);
@@ -1001,14 +1001,17 @@ export function TDRIntelligence({
     (sumblePeopleData?.peopleSummary ?? []).forEach(p => items.push({ name: p.name, title: p.title, linkedinUrl: p.linkedinUrl, technologies: p.technologies, source: 'sumble' }));
     // Add extracted entities executives (names only)
     (extractedEntities?.executives ?? []).forEach(e => {
+      if (typeof e !== 'string' || !e) return;
       if (!items.some(i => i.name.toLowerCase().includes(e.toLowerCase()) || e.toLowerCase().includes(i.name.toLowerCase()))) {
         items.push({ name: e, technologies: [], source: 'cortex' });
       }
     });
     // Add structured extract stakeholders
     (extractionResult?.structured?.NAMED_STAKEHOLDERS ?? []).forEach(s => {
-      if (!items.some(i => i.name.toLowerCase().includes(s.name.toLowerCase()) || s.name.toLowerCase().includes(i.name.toLowerCase()))) {
-        items.push({ name: s.name, title: s.role, technologies: [], source: 'cortex' });
+      const sName = String(s?.name ?? '');
+      if (!sName) return;
+      if (!items.some(i => i.name.toLowerCase().includes(sName.toLowerCase()) || sName.toLowerCase().includes(i.name.toLowerCase()))) {
+        items.push({ name: sName, title: s.role, technologies: [], source: 'cortex' });
       }
     });
     return items;
@@ -1759,6 +1762,7 @@ export function TDRIntelligence({
             const DEVOPS_KW = ['kubernetes', 'docker', 'terraform', 'jenkins', 'github', 'gitlab', 'datadog', 'splunk', 'new relic'];
             const cats: Record<string, string[]> = { CRM: [], BI: [], Cloud: [], DW: [], DevOps: [], ERP: [], ETL: [], ML: [], Other: [] };
             for (const tech of sumbleData.technologies) {
+              if (typeof tech !== 'string' || !tech) continue;
               const l = tech.toLowerCase();
               if (CRM_KW.some(k => l.includes(k))) cats.CRM.push(tech);
               else if (BI_KW.some(k => l.includes(k))) cats.BI.push(tech);
@@ -1803,7 +1807,7 @@ export function TDRIntelligence({
               {perplexityTechNames.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="text-2xs text-slate-500 w-16 shrink-0">Perplexity</span>
-                  {perplexityTechNames.map(tech => {
+                  {perplexityTechNames.filter(t => typeof t === 'string' && t).map(tech => {
                     const style = TECH_CATEGORY_STYLES[(() => {
                       const l = tech.toLowerCase();
                       if (['salesforce', 'hubspot', 'dynamics'].some(k => l.includes(k))) return 'CRM';
@@ -1848,8 +1852,8 @@ export function TDRIntelligence({
           {/* Named competitors */}
           {allCompetitors.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2.5">
-              {allCompetitors.map((comp, i) => {
-                const isDangerous = (getAppSettings().dangerousCompetitors ?? []).some(dc => comp.toLowerCase().includes(dc.toLowerCase()));
+              {allCompetitors.filter(c => typeof c === 'string' && c).map((comp, i) => {
+                const isDangerous = (getAppSettings().dangerousCompetitors ?? []).some(dc => String(comp).toLowerCase().includes(String(dc).toLowerCase()));
                 return (
                   <span key={i} className={cn(
                     'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-2xs font-medium border',

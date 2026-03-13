@@ -300,11 +300,11 @@ export const STAGE_TIMING = {
  * Handles: "2: Determine Needs", "Closed Won", etc.
  */
 function parseStageNumber(stage: string): number {
-  // Try "N: ..." format first
-  const numMatch = stage.match(/^(\d+):/);
+  const s = String(stage ?? '');
+  const numMatch = s.match(/^(\d+):/);
   if (numMatch) return parseInt(numMatch[1]);
 
-  const lower = stage.toLowerCase();
+  const lower = s.toLowerCase();
   if (lower.includes('closed')) return 6;
   if (lower.includes('engage') || lower.includes('qualify')) return 1;
   if (lower.includes('determine') || lower.includes('discovery')) return 2;
@@ -336,7 +336,7 @@ export function calculateTDRScore(deal: Deal): number {
 
   // Skip closed deals entirely
   if (forecastCat.includes('closed')) return 0;
-  if (deal.stage.toLowerCase().includes('closed')) return 0;
+  if ((deal.stage || '').toLowerCase().includes('closed')) return 0;
 
   // ── 1. ACV Significance (0-20) ──────────────────────────────────────────
   //    TDR Framework: "Material ARR" is an eligibility trigger

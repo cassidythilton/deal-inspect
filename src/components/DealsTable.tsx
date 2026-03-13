@@ -37,7 +37,7 @@ import {
   Pin, Users, Zap, Swords, Clock, Cloud, DollarSign, Building2,
   TrendingUp, Sparkles, AlertTriangle, Layers, GitMerge, Server,
   Briefcase, ArrowUpRight, AlertOctagon, RefreshCcw,
-  Search,
+  Search, Brain,
   LucideIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -136,9 +136,10 @@ const getStageBadgeStyle = (stageNum: number): string => {
   };
 
 const getStageNumber = (stage: string): number => {
-  const match = stage.match(/^(\d+):/);
+  const s = String(stage ?? '');
+  const match = s.match(/^(\d+):/);
   if (match) return parseInt(match[1]);
-  const lower = stage.toLowerCase();
+  const lower = s.toLowerCase();
   if (lower.includes('discovery') || lower.includes('determine')) return 2;
   if (lower.includes('validation') || lower.includes('demonstrate')) return 3;
   if (lower.includes('proposal') || lower.includes('negotiate')) return 4;
@@ -147,13 +148,14 @@ const getStageNumber = (stage: string): number => {
 };
 
 const getShortStageName = (stage: string): string => {
-  const lower = stage.toLowerCase();
+  const s = String(stage ?? '');
+  const lower = s.toLowerCase();
   if (lower.includes('discovery') || lower.includes('determine')) return 'Discovery';
   if (lower.includes('validation') || lower.includes('demonstrate')) return 'Validation';
   if (lower.includes('proposal')) return 'Proposal';
   if (lower.includes('negotiat')) return 'Negotiating';
   if (lower.includes('closing') || lower.includes('close')) return 'Closing';
-  return stage.replace(/^\d+:\s*/, '').substring(0, 12);
+  return s.replace(/^\d+:\s*/, '').substring(0, 12);
   };
 
 function getPartnerIcon(deal: Deal): { Icon: LucideIcon; colorClass: string } {
@@ -318,6 +320,16 @@ function DealAccountCell({ data }: ICellRendererParams<Deal>) {
             </TooltipTrigger>
             <TooltipContent side="top" className="text-xs">
               Account intelligence available
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {data.seededInputs && Object.keys(data.seededInputs).length > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Brain className="h-3 w-3 shrink-0 text-cyan-500" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-xs">
+              Cortex AI proposed responses ({Object.keys(data.seededInputs).length} fields{data.callCount ? ` from ${data.callCount} call${data.callCount > 1 ? 's' : ''}` : ''})
             </TooltipContent>
           </Tooltip>
         )}

@@ -79,6 +79,9 @@ export interface Deal {
   // Composite priority (Sprint 30b)
   dealPriority?: number;
   dealQuadrant?: 'PRIORITIZE' | 'FAST_TRACK' | 'INVESTIGATE' | 'DEPRIORITIZE';
+  // Cortex-seeded TDR responses (Sprint 32b)
+  seededInputs?: Record<string, string>;
+  callCount?: number;
 }
 
 export interface TDRStep {

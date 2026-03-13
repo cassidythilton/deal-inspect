@@ -93,7 +93,7 @@ export function getMLFactorExplanation(
   value?: string,
   direction?: 'helps' | 'hurts' | 'neutral'
 ): string {
-  const v = value ?? '';
+  const v = String(value ?? '');
   const dir = direction ?? 'neutral';
 
   switch (rawName) {

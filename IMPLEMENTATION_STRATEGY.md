@@ -2,13 +2,13 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 8.1 · **Date:** March 12, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a (44 sprints) · **Pillars 1–17 Complete · Pillar 18 (MLOps + Model Calibration) In Progress — Sprint 32a Complete, Sprint 32b Next**
+**Status:** Active · **Version:** Draft 8.2 · **Date:** March 12, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a (44 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress — Sprint 32a Complete · Sprint 32b (Seeded TDR Responses) Next**
 
 ---
 
 ### Current State & What's Next
 
-**Where we are:** Pillars 1–17 are complete (43 sprints, Feb 9 – Mar 11, 2026). Sprint 32a (Model Calibration & Retrain) completed Mar 12 — model retrained on 3-year recency-filtered data with `DAYS_IN_PIPELINE` capped at 730, F1 improved from 0.923 to 0.956, score capping [3%,97%] deployed, 6,408 prediction snapshots captured for ground truth tracking. Sprint 32b (Code Engine MLOps Functions) is next.
+**Where we are:** Pillars 1–17 are complete (43 sprints, Feb 9 – Mar 11, 2026). Sprint 32a (Model Calibration & Retrain) completed Mar 12 — model retrained on 3-year recency-filtered data with `DAYS_IN_PIPELINE` capped at 730, F1 improved from 0.923 to 0.956, score capping [3%,97%] deployed, 6,408 prediction snapshots captured for ground truth tracking. Sprint 32b (Seeded TDR Responses) is next — pre-populating TDR fields with Gong-extracted data from the `opportunitiesmagic` dataset. Sprint 32c–e continue the MLOps monitoring track.
 
 **What's done (recently):**
 
@@ -22,14 +22,15 @@
 | **28b+** | Pre-Training Data Validation | ✅ DONE | Mar 5 | 7 critical checks passed, 38 safe features, warnings on high-cardinality fields |
 | **28c** | ML Infrastructure & Model Training | ✅ DONE | Mar 6 | Model trained (AUC 0.997, F1 97.7%), 6,569 deals scored, tasks created |
 
-**What's next (Sprint 32 series — MLOps + Model Calibration):**
+**What's next (Sprint 32 series):**
 
 | Sprint | Name | Effort | Prerequisite | Status | Key Deliverable |
 |--------|------|--------|-------------|--------|-----------------|
 | **32a** | Model Calibration & Retrain | 1–2 days | — | ✅ Complete | Score capping [3%,97%], DAYS_IN_PIPELINE cap at 730, training recency filter, prediction snapshots, retrain + re-score. F1 0.923→0.956 |
-| **32b** | Code Engine Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data (metadata, eval metrics, feature importance, pipeline history, prediction accuracy, score distribution, factor aggregation) |
-| **32c** | Frontend MLOps Page | 2–3 days | 32b | 🔲 Not Started | `/mlops` page: pipeline status, model registry, fit metrics, feature importance chart, score distribution, prediction accuracy, factor patterns, alert badges |
-| **32d** | Polish + Documentation | 1 day | 32c | 🔲 Not Started | Alert threshold logic, distribution health checks, nav badge, Documentation Hub update, Pillar 18 finalization |
+| **32b** | Seeded TDR Responses | 3–5 days | — | 🔲 Not Started | Pre-populate TDR fields from Gong-extracted data (24 new dataset columns). Propose/accept/dismiss UX with multi-source reference (seeded + prior iteration). Enhance button composes with seeded data. |
+| **32c** | Code Engine MLOps Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data (metadata, eval metrics, feature importance, pipeline history, prediction accuracy, score distribution, factor aggregation) |
+| **32d** | Frontend MLOps Page | 2–3 days | 32c | 🔲 Not Started | `/mlops` page: pipeline status, model registry, fit metrics, feature importance chart, score distribution, prediction accuracy, factor patterns, alert badges |
+| **32e** | Polish + Documentation | 1 day | 32d | 🔲 Not Started | Alert threshold logic, distribution health checks, nav badge, Documentation Hub update, Pillar 18 finalization |
 
 **Previously completed:**
 
@@ -40,7 +41,7 @@
 | **30** | UX Polish & Iteration | ✅ Complete |
 | **31** | TDR Framework Redesign | ✅ Complete |
 
-**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration)
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses)
 
 **Start point:** All major sprints complete through Sprint 31. On Mar 12, a model health issue was diagnosed and fixed (feature schema mismatch + probability key mismatch caused all-Lost predictions). The fix revealed a bimodal score distribution (35% at <5%, 15% at >95%) caused by covariate shift on DAYS_IN_PIPELINE. Sprint 32 addresses model calibration, MLOps monitoring, and ground truth tracking.
 
@@ -3493,7 +3494,7 @@ This sprint ran FIRST — fixed model quality before building the monitoring UI.
 - [x] Update `SCORE_PIPELINE_DEALS()` to append snapshots before overwriting predictions — 6,408 snapshots captured on first run (Mar 12)
 - [x] Retrain model on recency-filtered, normalized data — `v20260312_234848`, F1 0.956 (Won), F1 0.979 (Lost), Precision 0.951, Recall 0.960 (Mar 12)
 - [x] Re-score all pipeline deals — 6,403 deals scored with `v3_calibrated` model version (Mar 12)
-- [x] Verify score distribution — score capping works (bounds enforced), bimodal shape persists (41.4% in 0–10% bucket; GBT architecture inherently produces sharp probabilities; true calibration via Platt/isotonic scaling not available in `SNOWFLAKE.ML.CLASSIFICATION` — defer to Sprint 32d) (Mar 12)
+- [x] Verify score distribution — score capping works (bounds enforced), bimodal shape persists (41.4% in 0–10% bucket; GBT architecture inherently produces sharp probabilities; true calibration via Platt/isotonic scaling not available in `SNOWFLAKE.ML.CLASSIFICATION` — defer to Sprint 32e) (Mar 12)
 - [x] Update `RETRAIN_PROPENSITY_MODEL()` — trains against `ML_TRAINING_DATA_CLEAN`, persists `SHOW_EVALUATION_METRICS()` and `SHOW_FEATURE_IMPORTANCE()` to `ML_MODEL_METADATA` via temp tables (Mar 12)
 - [x] Backfill current model metrics into `ML_MODEL_METADATA` — v2 model (`v20260308_083005`) now has 8 eval metrics + 32 feature importance scores (Mar 12)
 
@@ -3510,9 +3511,32 @@ This sprint ran FIRST — fixed model quality before building the monitoring UI.
 | Feature importance persisted | No | Yes |
 | Prediction snapshots | No | Yes (6,408 captured) |
 
-**Known Limitation:** Distribution remains bimodal (41.4% in 0–10%, 26.1% in 90–100%). `SNOWFLAKE.ML.CLASSIFICATION` uses gradient boosted trees which produce sharp probabilities. True probability calibration (Platt scaling, isotonic regression) requires post-processing not available in the native ML API. Score capping eliminates false certainty but doesn't reshape the distribution. Further calibration deferred to Sprint 32d.
+**Known Limitation:** Distribution remains bimodal (41.4% in 0–10%, 26.1% in 90–100%). `SNOWFLAKE.ML.CLASSIFICATION` uses gradient boosted trees which produce sharp probabilities. True probability calibration (Platt scaling, isotonic regression) requires post-processing not available in the native ML API. Score capping eliminates false certainty but doesn't reshape the distribution. Further calibration deferred to Sprint 32e.
 
-**Sprint 32b — Code Engine MLOps Functions (1 day)** *[Cursor for Code Engine JS]* 🔲 NOT STARTED
+**Sprint 32b — Seeded TDR Responses (3–5 days)** *[Cursor]* 🔲 NOT STARTED
+
+> **Shaping document:** `shaping/sprint-32b-seeded-tdr-responses.md`
+
+Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gong call transcripts. A Cortex pipeline analyzes aggregated Gong transcripts per opportunity and infers likely values for each TDR field. The `opportunitiesmagic` dataset now includes 24 new columns (23 TDR field values + `call_count`) refreshed daily. This sprint surfaces them as "proposed" responses that SEs review, edit, and accept before saving.
+
+- [ ] Add 24 field aliases to all 3 manifests (`manifest.json`, `public/manifest.json`, `dist/manifest.json`)
+- [ ] Extend `Deal` interface with `seededInputs?: Record<string, string>` and `callCount?: number`
+- [ ] Map 24 dataset columns to `seededInputs` in `useDomo.ts:transformOpportunityToDeal`
+- [ ] Thread `seededInputs` and `callCount` from TDRWorkspace → TDRInputs
+- [ ] Update `getFieldValue()` to fall back to seeded values (after local draft and saved inputs)
+- [ ] Add "AI Proposed" visual indicator on fields displaying seeded data (dashed violet border)
+- [ ] Add Accept / Dismiss controls for seeded values (seeded data does not auto-save)
+- [ ] Add "Cortex · N calls" badge on step headers and deal table rows
+- [ ] Handle select fields (exact option match) and multi-select fields (JSON array passthrough)
+- [ ] Load prior iteration inputs when starting new TDR version (`priorInputValues`)
+- [ ] Add tri-source resolution: local draft → saved → prior iteration → seeded → empty
+- [ ] Add "View alternatives" panel for fields with multiple source values
+- [ ] Add step-level seed coverage indicator ("4/5 seeded")
+- [ ] Verify Enhance button works with seeded data (reads from `getFieldValue` — should work without changes)
+
+**Definition of Done:** Deals with Cortex-modeled Gong data show pre-populated TDR fields. SEs can accept, edit, dismiss, or enhance seeded values. New iterations reference both fresh seeded data and prior manual inputs. Deals without call data behave identically to today.
+
+**Sprint 32c — Code Engine MLOps Functions (1 day)** *[Cursor for Code Engine JS]* 🔲 NOT STARTED
 
 - [ ] Create `getMLModelMetadata` — returns all model versions with evaluation metrics from `ML_MODEL_METADATA`
 - [ ] Create `getMLEvaluationMetrics` — calls `SHOW_EVALUATION_METRICS()` for per-class precision/recall/F1/support
@@ -3525,7 +3549,7 @@ This sprint ran FIRST — fixed model quality before building the monitoring UI.
 
 **Definition of Done:** All 7 Code Engine functions deployed, manifest mappings added, each function returns valid data from Snowflake.
 
-**Sprint 32c — Frontend MLOps Page (2–3 days)** *[Cursor]* 🔲 NOT STARTED
+**Sprint 32d — Frontend MLOps Page (2–3 days)** *[Cursor]* 🔲 NOT STARTED
 
 - [ ] Create `src/pages/MLOps.tsx` page component at `/mlops` route
 - [ ] Pipeline Status: two status cards (Scoring + Retraining) with last-run time, status badge, next scheduled
@@ -3540,7 +3564,7 @@ This sprint ran FIRST — fixed model quality before building the monitoring UI.
 
 **Definition of Done:** `/mlops` page renders with all 8 sections populated from Code Engine data. Navigation includes MLOps link. Alert badges reflect model health state.
 
-**Sprint 32d — Polish + Documentation (1 day)** *[Cursor]* 🔲 NOT STARTED
+**Sprint 32e — Polish + Documentation (1 day)** *[Cursor]* 🔲 NOT STARTED
 
 - [ ] Alert threshold logic: model stale >14 days → warning; scoring task failed → critical; >90% in one score bucket → critical; accuracy below threshold → warning
 - [ ] Distribution health check: automated after each scoring run (>30% in single 10% bucket → warning, >50% in top/bottom 10% → critical)
@@ -3659,15 +3683,17 @@ Sprint 31 — TDR Framework Redesign ✅
     │  ~3–5 days
     │
     ▼
-Sprint 32 — MLOps Monitoring & Model Calibration 🔶
-    │  32a: Model calibration & retrain (score capping, recency filter) 🔶
-    │  32b: Code Engine MLOps functions (7 new CE functions) 🔲
-    │  32c: Frontend MLOps page (/mlops) 🔲
+Sprint 32 — MLOps + Seeded TDR Responses 🔶
+    │  32a: Model calibration & retrain (score capping, recency filter) ✅
+    │  32b: Seeded TDR Responses (Gong-extracted pre-population) 🔲
+    │  32c: Code Engine MLOps functions (7 new CE functions) 🔲
+    │  32d: Frontend MLOps page (/mlops) 🔲
+    │  32e: Polish + Documentation 🔲
     │  32d: Polish + documentation 🔲
     │  ~5–7 days
 ```
 
-**Total estimated effort (original):** ~22–29 days · **Completed:** ~37 days (Sprints 14–31, OSS-1, PERF-1, 32a) · **Remaining:** ~4–6 days (Sprint 32b–d)
+**Total estimated effort (original):** ~22–29 days · **Completed:** ~37 days (Sprints 14–31, OSS-1, PERF-1, 32a) · **Remaining:** ~8–11 days (Sprint 32b–e)
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -3693,7 +3719,7 @@ Sprint 32 — MLOps Monitoring & Model Calibration 🔶
 | **PERF-1: Performance Optimization** | — | S28a | 1 day | ✅ Complete |
 | **S30: UX Polish & Iteration** | — | S28 + S29 | 1–2 days | ✅ Complete |
 | **S31: TDR Framework Redesign** | — | S29 + S30 | 3–5 days (3 sub-sprints) | ✅ Complete |
-| **S32: MLOps + Model Calibration** | — | S28c + S28d + S28e | 5–7 days (4 sub-sprints) | 🔶 In Progress |
+| **S32: MLOps + Seeded TDR + Model Calibration** | — | S28c + S28d + S28e | 8–12 days (5 sub-sprints) | 🔶 In Progress |
 
 ---
 

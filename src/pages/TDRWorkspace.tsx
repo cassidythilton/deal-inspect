@@ -40,6 +40,7 @@ export default function TDRWorkspace() {
     session,
     isLoading: sessionLoading,
     inputValues,
+    priorInputValues,
     completedSteps,
     saveInput,
     markStepComplete,
@@ -350,6 +351,7 @@ export default function TDRWorkspace() {
           <TDRSteps
             steps={stepsWithCompletion}
             onStepClick={handleStepClick}
+            seededInputs={deal.seededInputs}
           />
         </aside>
 
@@ -373,6 +375,9 @@ export default function TDRWorkspace() {
               competitors: deal.competitors,
               partnerSignal: deal.partnerSignal,
             } : undefined}
+            seededInputs={deal.seededInputs}
+            callCount={deal.callCount}
+            priorInputValues={priorInputValues}
           />
         </main>
 

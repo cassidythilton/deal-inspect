@@ -313,7 +313,7 @@ function evaluateMatchSignal(
 ): 'strong' | 'partial' | 'none' {
   if (matches.length === 0) return 'none';
 
-  const competitorLower = competitors.map((c) => c.toLowerCase());
+  const competitorLower = competitors.filter(c => typeof c === 'string' && c).map((c) => c.toLowerCase());
   const matchTexts = matches.map(
     (m) => `${m.content.text} ${m.metadata.fileName || ''}`.toLowerCase()
   );
