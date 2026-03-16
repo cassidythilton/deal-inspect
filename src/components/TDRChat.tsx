@@ -191,12 +191,21 @@ function renderInline(text: string): React.ReactNode {
   return parts.length > 0 ? <>{parts}</> : text;
 }
 
+function parseTableRow(line: string): string[] {
+  return line.split('|').map(c => c.trim()).filter((_, i, arr) => i > 0 && i < arr.length);
+}
+
+function isTableSeparator(line: string): boolean {
+  return /^\|?[\s:]*-{2,}[\s:]*(\|[\s:]*-{2,}[\s:]*)*\|?$/.test(line.trim());
+}
+
 function renderMarkdown(text: string, keyPrefix = 'md'): React.ReactNode {
   if (!text) return null;
   const lines = text.split('\n');
   const elements: React.ReactNode[] = [];
   let listBuffer: string[] = [];
   let paraBuffer: string[] = [];
+  let i = 0;
 
   const flushPara = () => {
     if (paraBuffer.length === 0) return;
@@ -224,8 +233,48 @@ function renderMarkdown(text: string, keyPrefix = 'md'): React.ReactNode {
     listBuffer = [];
   };
 
-  for (const line of lines) {
-    const trimmed = line.trim();
+  while (i < lines.length) {
+    const trimmed = lines[i].trim();
+
+    // Table: header row followed by separator row
+    if (trimmed.includes('|') && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+      flushList();
+      flushPara();
+      const headers = parseTableRow(trimmed);
+      i += 2; // skip header + separator
+      const bodyRows: string[][] = [];
+      while (i < lines.length && lines[i].trim().includes('|') && !isTableSeparator(lines[i])) {
+        bodyRows.push(parseTableRow(lines[i].trim()));
+        i++;
+      }
+      elements.push(
+        <div key={`${keyPrefix}-tbl${elements.length}`} className="mb-2 overflow-x-auto rounded border border-[#2a2540]">
+          <table className="w-full text-[10px] border-collapse">
+            <thead>
+              <tr className="bg-[#221D38]">
+                {headers.map((h, hi) => (
+                  <th key={hi} className="px-2 py-1.5 text-left font-semibold text-slate-300 border-b border-[#2a2540]">
+                    {renderInline(h)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bodyRows.map((row, ri) => (
+                <tr key={ri} className={ri % 2 === 0 ? 'bg-[#1B1630]' : 'bg-[#1e1a33]'}>
+                  {headers.map((_, ci) => (
+                    <td key={ci} className="px-2 py-1.5 text-slate-400 border-b border-[#2a2540]/50">
+                      {renderInline(row[ci] || '')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
+      );
+      continue;
+    }
 
     // Heading: ### or **Section Title** at start of line alone
     const headingMatch = trimmed.match(/^#{1,4}\s+(.+)$/);
@@ -240,6 +289,7 @@ function renderMarkdown(text: string, keyPrefix = 'md'): React.ReactNode {
           {renderInline(headingMatch[1].replace(/\*+/g, '').trim())}
         </h4>,
       );
+      i++;
       continue;
     }
 
@@ -248,6 +298,7 @@ function renderMarkdown(text: string, keyPrefix = 'md'): React.ReactNode {
     if (numMatch) {
       flushPara();
       listBuffer.push(numMatch[2]);
+      i++;
       continue;
     }
 
@@ -256,17 +307,20 @@ function renderMarkdown(text: string, keyPrefix = 'md'): React.ReactNode {
     if (bulletMatch) {
       flushPara();
       listBuffer.push(bulletMatch[1]);
+      i++;
       continue;
     }
 
     if (trimmed === '') {
       flushList();
       flushPara();
+      i++;
       continue;
     }
 
     flushList();
     paraBuffer.push(trimmed);
+    i++;
   }
 
   flushList();
