@@ -519,6 +519,33 @@ function parseJsonArray(value: string): string[] | null {
 /** Field IDs that store JSON arrays and should render as pills */
 const PILL_FIELD_IDS = new Set(['domo-layers', 'ai-signals', 'ai-data']);
 
+/** Select field IDs whose stored values are lowercase but should display title-cased */
+const SELECT_DISPLAY_MAP: Record<string, Record<string, string>> = {
+  'strategic-value': { high: 'High', medium: 'Medium', low: 'Low' },
+  'timeline': { 'this quarter': 'This Quarter', 'next quarter': 'Next Quarter', '6+ months': '6+ Months' },
+  'cloud-platform': {
+    snowflake: 'Snowflake', databricks: 'Databricks', bigquery: 'BigQuery',
+    'azure synapse': 'Azure Synapse', 'aws redshift': 'AWS Redshift',
+    'on-prem / other': 'On-Prem / Other', multiple: 'Multiple',
+  },
+  'verdict': { proceed: 'Proceed', 'proceed with corrections': 'Proceed with Corrections', 'rework before advancing': 'Rework Before Advancing' },
+  'partner-posture': { amplifying: 'Amplifying', neutral: 'Neutral', conflicting: 'Conflicting', none: 'None' },
+  'ai-level': {
+    'rules & automation': 'Rules & Automation', 'predictive ai': 'Predictive AI',
+    'generative ai': 'Generative AI', 'autonomous ai (agentic)': 'Autonomous AI (Agentic)',
+    'no ai opportunity identified': 'No AI Opportunity Identified',
+  },
+};
+
+function humanizeSelectValue(fieldId: string, rawValue: string): string {
+  const map = SELECT_DISPLAY_MAP[fieldId];
+  if (map) {
+    const lower = rawValue.toLowerCase().trim();
+    return map[lower] || rawValue;
+  }
+  return rawValue;
+}
+
 // ─── Helper: Normalize AI-generated content ────────────────────────────────
 // Cortex and other LLMs often return content with literal \n escapes,
 // wrapping quotes, and markdown artifacts. Clean it all up.
@@ -938,25 +965,46 @@ function ActionPlanQuickActions({ content, styles }: { content: string; styles: 
 // ─── Step Field Rendering (handles pills for JSON array fields) ───────────────
 
 function StepFieldView({ field, styles }: { field: { fieldId: string; value: string }; styles: ReturnType<typeof createStyles> }) {
-  const arr = PILL_FIELD_IDS.has(field.fieldId) ? parseJsonArray(field.value) : null;
   const label = humanizeFieldId(field.fieldId);
-  if (arr && arr.length > 0) {
-    return (
-      <View style={{ marginBottom: 8 }}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <View style={styles.tagRow}>
-          {arr.map((item, i) => (
-            <Text key={i} style={styles.tag}>{s(item)}</Text>
-          ))}
+
+  if (PILL_FIELD_IDS.has(field.fieldId)) {
+    const arr = parseJsonArray(field.value);
+    if (arr && arr.length > 0) {
+      return (
+        <View style={{ marginBottom: 8 }}>
+          <Text style={styles.fieldLabel}>{label}</Text>
+          <View style={styles.tagRow}>
+            {arr.map((item, i) => (
+              <Text key={i} style={styles.tag}>{s(item)}</Text>
+            ))}
+          </View>
         </View>
-      </View>
-    );
+      );
+    }
+    if (field.value?.trim()) {
+      const items = field.value.split(',').map(v => v.trim()).filter(Boolean);
+      if (items.length > 1) {
+        return (
+          <View style={{ marginBottom: 8 }}>
+            <Text style={styles.fieldLabel}>{label}</Text>
+            <View style={styles.tagRow}>
+              {items.map((item, i) => (
+                <Text key={i} style={styles.tag}>{s(item)}</Text>
+              ))}
+            </View>
+          </View>
+        );
+      }
+    }
   }
-  const text = field.value ? s(normalizeContent(field.value)) : '--';
+
+  const displayValue = field.value
+    ? s(normalizeContent(SELECT_DISPLAY_MAP[field.fieldId] ? humanizeSelectValue(field.fieldId, field.value) : field.value))
+    : '--';
   return (
     <View style={{ marginBottom: 6 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <Text style={styles.fieldValue}>{text}</Text>
+      <Text style={styles.fieldValue}>{displayValue}</Text>
     </View>
   );
 }
@@ -994,7 +1042,7 @@ function AIMLStepCard({
           <Text style={styles.fieldLabel}>AI Opportunity Level</Text>
           <View style={[styles.scoreBox, { marginVertical: 4 }]}>
             <Text style={[styles.scoreBadge, { fontSize: 12, paddingHorizontal: 10, paddingVertical: 4 }]}>
-              {s(aiLevel)}
+              {s(humanizeSelectValue('ai-level', aiLevel))}
             </Text>
           </View>
         </View>
@@ -1193,16 +1241,18 @@ export function TDRReadoutDocument({ payload, theme = DEFAULT_THEME }: TDRReadou
         <Text style={styles.sectionTitle}>{nextSection()}. Deal Context & Stakes</Text>
         {inputsByStep.size > 0 ? (
           <>
-            {Array.from(inputsByStep.entries()).map(([stepId, fields]) => {
+            {Array.from(inputsByStep.entries()).map(([stepId, fields], idx) => {
               const isAIStep = stepId === 'ai-ml' || stepId === 'ai-strategy';
               if (isAIStep) {
                 return (
                   <AIMLStepCard key={stepId} stepId={stepId} fields={fields} styles={styles} />
                 );
               }
+              const stepLabel = humanizeStepId(stepId);
+              const suppressHeader = idx === 0 && stepLabel === 'Deal Context & Stakes';
               return (
                 <View key={stepId} style={styles.card} wrap={false}>
-                  <Text style={styles.stepHeader}>{humanizeStepId(stepId)}</Text>
+                  {!suppressHeader && <Text style={styles.stepHeader}>{stepLabel}</Text>}
                   {fields.map((f, j) => (
                     <StepFieldView key={j} field={f} styles={styles} />
                   ))}

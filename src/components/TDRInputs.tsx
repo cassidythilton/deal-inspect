@@ -18,7 +18,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Check, CheckCircle2, History, Loader2, CloudOff, Save, Sparkles, X, Brain } from 'lucide-react';
+import { Check, CheckCircle2, History, Loader2, CloudOff, Save, Sparkles, X, Lightbulb } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { snowflakeStore } from '@/lib/snowflakeStore';
 import type { StepInput } from '@/lib/snowflakeStore';
@@ -886,16 +887,31 @@ export function TDRInputs({
 
           const fieldIsSeeded = isShowingSeed(field.id);
           return (
-            <div key={field.id} className={cn('space-y-1.5', fieldIsSeeded && 'relative rounded-lg border border-cyan-500/30 bg-cyan-50/30 dark:bg-cyan-950/10 p-3 -mx-1')}>
+            <div key={field.id} className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <Label htmlFor={field.id} className="text-xs font-medium">
                   {field.label}
                 </Label>
                 {fieldIsSeeded && (
-                  <span className="flex items-center gap-1 rounded-full bg-cyan-500/15 border border-cyan-500/25 px-2 py-0.5 text-2xs font-medium text-cyan-700 dark:text-cyan-300">
-                    <Brain className="h-3 w-3" />
-                    Cortex AI Proposed
-                  </span>
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Lightbulb className="h-3 w-3 text-cyan-500/60 dark:text-cyan-400/50 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-64 p-0 overflow-hidden">
+                        <div className="bg-cyan-600 px-3 py-1.5">
+                          <span className="text-xs font-medium text-white">Gong + Cortex AI</span>
+                        </div>
+                        <div className="px-3 py-2 space-y-1">
+                          <p className="text-xs text-foreground">Pre-seeded from call transcript analysis.</p>
+                          {callCount && (
+                            <p className="text-2xs text-muted-foreground">{callCount} Gong call{callCount > 1 ? 's' : ''} analyzed</p>
+                          )}
+                          <p className="text-2xs text-muted-foreground italic">Edit, accept, or dismiss below.</p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
                 {field.optional && !fieldIsSeeded && (
                   <span className="rounded bg-secondary px-1.5 py-0.5 text-2xs text-muted-foreground">
@@ -932,7 +948,7 @@ export function TDRInputs({
                 <Input
                   id={field.id}
                   placeholder={field.placeholder}
-                  className="h-9 text-sm"
+                  className={cn('h-9 text-sm', fieldIsSeeded && 'ring-1 ring-cyan-400/40 border-cyan-300/50 dark:ring-cyan-500/30 dark:border-cyan-600/30')}
                   value={currentValue}
                   onChange={(e) => handleChange(field.id, e.target.value)}
                   onBlur={() => handleBlur(field.id, field.label)}
@@ -943,7 +959,7 @@ export function TDRInputs({
                   <Textarea
                     id={field.id}
                     placeholder={field.placeholder}
-                    className="min-h-20 resize-y text-sm"
+                    className={cn('min-h-20 resize-y text-sm', fieldIsSeeded && 'ring-1 ring-cyan-400/40 border-cyan-300/50 dark:ring-cyan-500/30 dark:border-cyan-600/30')}
                     value={currentValue}
                     onChange={(e) => handleChange(field.id, e.target.value)}
                     onBlur={() => handleBlur(field.id, field.label)}
@@ -1046,7 +1062,7 @@ export function TDRInputs({
                   value={currentValue || ''}
                   onValueChange={(v) => handleSelectChange(field.id, field.label, v)}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger className={cn('h-9 text-sm', fieldIsSeeded && 'ring-1 ring-cyan-400/40 border-cyan-300/50 dark:ring-cyan-500/30 dark:border-cyan-600/30')}>
                     <SelectValue placeholder="Select..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -1083,7 +1099,7 @@ export function TDRInputs({
                   }
                 };
                 return (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className={cn('flex flex-wrap gap-1.5', fieldIsSeeded && 'rounded-md ring-1 ring-cyan-400/40 p-2 -mx-0.5')}>
                     {field.options?.map(option => {
                       const isSelected = selectedValues.includes(option);
                       return (
@@ -1109,28 +1125,22 @@ export function TDRInputs({
                 <p className="text-2xs text-muted-foreground italic">{resolvedHint}</p>
               )}
               {fieldIsSeeded && (
-                <div className="flex items-center gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    variant="default"
-                    className="h-7 gap-1 bg-cyan-600 text-xs hover:bg-cyan-700"
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    className="text-2xs text-cyan-600/80 hover:text-cyan-700 dark:text-cyan-400/70 dark:hover:text-cyan-300 transition-colors"
                     onClick={() => acceptSeed(field.id, field.label)}
                   >
-                    <Check className="h-3 w-3" />
-                    Accept
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 gap-1 text-xs text-muted-foreground"
+                    accept
+                  </button>
+                  <span className="text-muted-foreground/20">|</span>
+                  <button
+                    type="button"
+                    className="text-2xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
                     onClick={() => dismissSeed(field.id)}
                   >
-                    <X className="h-3 w-3" />
-                    Dismiss
-                  </Button>
-                  <span className="ml-auto text-2xs text-cyan-600/70 dark:text-cyan-400/60 italic">
-                    Edit directly or Accept as-is{callCount ? ` — based on ${callCount} Gong call${callCount > 1 ? 's' : ''}` : ''}
-                  </span>
+                    dismiss
+                  </button>
                 </div>
               )}
             </div>

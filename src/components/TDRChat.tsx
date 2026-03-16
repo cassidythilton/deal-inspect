@@ -50,6 +50,17 @@ import { getAppSettings } from '@/lib/appSettings';
 import { SnowflakeLogo, CortexLogo } from '@/components/CortexBranding';
 import { Phone } from 'lucide-react';
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function extractUserQuestion(content: string): string {
+  const marker = '\n---\nUser Question: ';
+  const idx = content.lastIndexOf(marker);
+  if (idx !== -1) return content.substring(idx + marker.length);
+  const markerAlt = '---\nUser Question: ';
+  if (content.startsWith(markerAlt)) return content.substring(markerAlt.length);
+  return content;
+}
+
 // ─── Props ───────────────────────────────────────────────────────────────────
 
 interface TDRChatProps {
@@ -720,7 +731,7 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
               >
                 {msg.role === 'assistant'
                   ? renderMarkdown(msg.content, msg.messageId)
-                  : msg.content}
+                  : extractUserQuestion(msg.content)}
               </div>
               {/* Citations */}
               {msg.citedSources &&
