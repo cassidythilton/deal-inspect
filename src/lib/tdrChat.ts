@@ -259,6 +259,23 @@ export const tdrChat = {
       return [];
     }
   },
+
+  async clearHistory(sessionId: string): Promise<{ success: boolean; deletedCount?: number }> {
+    if (!isDomoEnvironment()) {
+      console.log('[TDRChat] Dev mode: simulating clear history');
+      return { success: true, deletedCount: 0 };
+    }
+
+    try {
+      console.log(`[TDRChat] Clearing chat history for session: ${sessionId}`);
+      const raw = await callCodeEngine<unknown>('clearChatHistory', { sessionId });
+      const result = extractResult(raw) as { success?: boolean; deletedCount?: number };
+      return { success: result.success ?? true, deletedCount: result.deletedCount };
+    } catch (err) {
+      console.error('[TDRChat] Failed to clear chat history:', err);
+      return { success: false };
+    }
+  },
 };
 
 

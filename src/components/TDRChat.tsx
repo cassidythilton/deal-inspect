@@ -23,6 +23,7 @@ import {
   Search,
   Cpu,
   BookOpen,
+  Trash2,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -480,6 +481,21 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
     [inputValue, sessionId, deal, provider, modelId, activeStep, includeKB, kbContext, includeGong, gongDigest],
   );
 
+  // ── Clear chat ──
+  const handleClearChat = useCallback(async () => {
+    if (!sessionId || messages.length === 0) return;
+    setMessages([]);
+    setTotalTokens({ in: 0, out: 0 });
+    setGongContext('');
+    setKbContext('');
+    setError(null);
+    try {
+      await tdrChat.clearHistory(sessionId);
+    } catch (err) {
+      console.warn('[TDRChat] Clear history backend call failed:', err);
+    }
+  }, [sessionId, messages.length]);
+
   // ── Keyboard handler ──
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -602,12 +618,31 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
           </div>
         )}
 
-        {/* Token counter */}
-        <div className="ml-auto flex items-center gap-1 text-[10px] text-slate-600">
-          <Sparkles className="h-2.5 w-2.5" />
-          <span>
-            {(totalTokens.in + totalTokens.out).toLocaleString()} tokens
-          </span>
+        {/* Token counter + Clear */}
+        <div className="ml-auto flex items-center gap-2 text-[10px] text-slate-600">
+          <div className="flex items-center gap-1">
+            <Sparkles className="h-2.5 w-2.5" />
+            <span>
+              {(totalTokens.in + totalTokens.out).toLocaleString()} tokens
+            </span>
+          </div>
+          {messages.length > 0 && (
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleClearChat}
+                    className="p-0.5 rounded hover:bg-red-500/10 hover:text-red-400 transition-colors text-slate-600"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-[#1a1730] border border-[#2a2540] text-slate-300 text-[10px]">
+                  Clear chat history
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
 
