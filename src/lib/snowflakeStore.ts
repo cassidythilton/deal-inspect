@@ -72,6 +72,39 @@ export interface SaveStepInputArgs {
   savedBy: string;
 }
 
+/** Sprint 35: Admin activity log session with aggregated counts */
+export interface AdminSession extends SnowflakeSession {
+  inputCount: number;
+  msgCount: number;
+  stepCount: number;
+}
+
+/** Sprint 35: Aggregated usage metrics */
+export interface UsageMetrics {
+  success: boolean;
+  summary: {
+    totalSessions: number;
+    completedSessions: number;
+    activeSessions: number;
+    totalUsers: number;
+    avgAcv: number;
+    totalInputs: number;
+    totalMessages: number;
+  };
+  users: {
+    userName: string;
+    sessions: number;
+    completed: number;
+    inputs: number;
+    messages: number;
+    lastActive: string;
+  }[];
+  weekly: {
+    week: string;
+    sessions: number;
+  }[];
+}
+
 // ─── Code Engine Calling ─────────────────────────────────────────────────────
 
 interface DomoSDK {
@@ -505,6 +538,28 @@ export const snowflakeStore = {
   _devGetInputs(): StepInput[] {
     const raw = localStorage.getItem(LS_INPUTS_KEY);
     return raw ? JSON.parse(raw) : [];
+  },
+
+  // ─── Sprint 35: Admin Observability ───────────────────────────────────────
+
+  async getAdminActivityLog(filters?: {
+    createdBy?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<AdminSession[]> {
+    if (!isDomoEnvironment()) return [];
+    const raw = await callCodeEngine<unknown>('getAdminActivityLog', filters || {});
+    const result = extractResult<{ sessions?: AdminSession[] }>(raw);
+    return result?.sessions || [];
+  },
+
+  async getUsageMetrics(): Promise<UsageMetrics | null> {
+    if (!isDomoEnvironment()) return null;
+    const raw = await callCodeEngine<unknown>('getUsageMetrics');
+    const result = extractResult<UsageMetrics & { success?: boolean }>(raw);
+    if (!result?.success) return null;
+    return result;
   },
 };
 

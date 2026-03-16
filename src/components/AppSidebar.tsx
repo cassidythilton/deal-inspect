@@ -3,8 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileSearch,
-  History,
-  BarChart3,
+  Activity,
   BookOpen,
   Settings,
   ChevronLeft,
@@ -18,8 +17,7 @@ import { PoweredByCortexBadge } from '@/components/CortexBranding';
 const navItems = [
   { id: 'command', label: 'Command Center', icon: LayoutDashboard, path: '/' },
   { id: 'workspace', label: 'TDR Workspace', icon: FileSearch, path: '/workspace' },
-  { id: 'history', label: 'History', icon: History, path: '/history' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/analytics' },
+  { id: 'admin', label: 'Admin', icon: Activity, path: '/admin' },
   { id: 'docs', label: 'Documentation', icon: BookOpen, path: '/docs' },
   { id: 'settings', label: 'Settings', icon: Settings, path: '/settings' },
 ];

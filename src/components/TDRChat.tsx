@@ -49,6 +49,7 @@ import { gongTranscripts } from '@/lib/gongTranscripts';
 import { getAppSettings } from '@/lib/appSettings';
 import { SnowflakeLogo, CortexLogo } from '@/components/CortexBranding';
 import { Phone } from 'lucide-react';
+import { useDomoUser } from '@/hooks/useDomoUser';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -331,6 +332,7 @@ function renderMarkdown(text: string, keyPrefix = 'md'): React.ReactNode {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
+  const { user } = useDomoUser();
   // ── State ──
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -507,7 +509,7 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
           provider,
           model: modelId,
           contextStep: activeStep?.id,
-          createdBy: 'current-user',
+          createdBy: user.displayName,
           includeKnowledgeBase: includeKB,
         });
 

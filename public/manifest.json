@@ -1,7 +1,7 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.77.0",
+  "version": "1.78.0",
   "datasetsMapping": [
     {
       "dataSetId": "6ae5896e-e13d-48ac-a9fb-c6e9116b4bb4",
@@ -468,6 +468,21 @@
       "parameters": [
         { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getAdminActivityLog",
+      "parameters": [
+        { "alias": "createdBy", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "status", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "startDate", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "endDate", "type": "string", "nullable": true, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getUsageMetrics",
+      "parameters": [],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],

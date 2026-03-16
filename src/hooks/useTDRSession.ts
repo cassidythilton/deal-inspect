@@ -18,6 +18,7 @@ import { snowflakeStore, parseCompletedSteps } from '@/lib/snowflakeStore';
 import type { SnowflakeSession, StepInput, SaveStepInputArgs } from '@/lib/snowflakeStore';
 import { getAppSettings } from '@/lib/appSettings';
 import { cortexAi } from '@/lib/cortexAi';
+import { useDomoUser } from '@/hooks/useDomoUser';
 
 export interface UseTDRSessionReturn {
   /** The active session (null while loading or if creation failed) */
@@ -62,6 +63,9 @@ export interface UseTDRSessionReturn {
 }
 
 export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
+  const { user } = useDomoUser();
+  const userName = user.displayName;
+
   const [session, setSession] = useState<SnowflakeSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +121,7 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
           stage: deal.stage,
           status: 'in-progress',
           owner: deal.owner,
-          createdBy: 'current-user',
+          createdBy: userName,
           iteration: 1,
           stepSchemaVersion: 'v1',
           createdAt: new Date().toISOString(),
@@ -149,7 +153,7 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
             stage: deal.stage,
             status: 'in-progress',
             owner: deal.owner,
-            createdBy: 'current-user',
+            createdBy: userName,
           });
           console.log(`[useTDRSession] Created session: ${newSession.sessionId} (iteration ${newSession.iteration})`);
           setSession(newSession);
@@ -168,7 +172,7 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
           stage: deal.stage,
           status: 'in-progress',
           owner: deal.owner,
-          createdBy: 'current-user',
+          createdBy: userName,
           iteration: 0,
           stepSchemaVersion: 'v1',
           createdAt: new Date().toISOString(),
@@ -212,7 +216,7 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
           fieldLabel: args.fieldLabel,
           fieldValue: args.fieldValue,
           stepOrder: args.stepOrder,
-          savedBy: 'current-user',
+          savedBy: userName,
         };
 
         const savedInput = await snowflakeStore.saveStepInput(saveArgs);
@@ -372,7 +376,7 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
         stage: deal.stage,
         status: 'in-progress',
         owner: deal.owner,
-        createdBy: 'current-user',
+        createdBy: userName,
       });
 
       if (newSession) {
