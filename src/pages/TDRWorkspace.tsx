@@ -8,7 +8,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { tdrSteps, mockDeals } from '@/data/mockData';
 import { TDRStep } from '@/types/tdr';
-import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Sparkles, Check } from 'lucide-react';
+import { ChevronLeft, Users, User, Loader2, Save, Brain, MessageSquare, Briefcase, Tag, FileDown, Sparkles, Check, Lock, Plus, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
@@ -48,7 +48,24 @@ export default function TDRWorkspace() {
     isSaving,
     previousSessions,
     startNewIteration,
+    switchToSession,
+    isReadOnly,
   } = useTDRSession(deal);
+
+  // Sprint 34: Version selector state
+  const [showVersionMenu, setShowVersionMenu] = useState(false);
+  const versionMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close version menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (versionMenuRef.current && !versionMenuRef.current.contains(e.target as Node)) {
+        setShowVersionMenu(false);
+      }
+    };
+    if (showVersionMenu) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showVersionMenu]);
 
   // ── Step management ──
   const [steps, setSteps] = useState<TDRStep[]>(
@@ -188,14 +205,14 @@ export default function TDRWorkspace() {
     setExportLoading(false);
   }, [session?.sessionId, deal.account]);
 
-  // Session status pill
-  const sessionStatusLabel = session
-    ? session.sessionId.startsWith('fallback-') || session.sessionId.startsWith('local-')
-      ? 'local'
-      : session.status === 'in-progress'
-      ? `TDR #${session.iteration || 1}`
-      : 'completed'
-    : 'loading';
+  // All sessions sorted by iteration (for version selector)
+  const allSessions = useMemo(() => {
+    const sessions = [...previousSessions];
+    if (session && !sessions.find(s => s.sessionId === session.sessionId)) {
+      sessions.push(session);
+    }
+    return sessions.sort((a, b) => (b.iteration ?? 1) - (a.iteration ?? 1));
+  }, [previousSessions, session]);
 
   return (
     <div className="flex h-screen flex-col">
@@ -214,9 +231,50 @@ export default function TDRWorkspace() {
         <div className="h-4 w-px bg-border" />
           <div className="flex items-center gap-2">
           <span className="text-sm font-medium">{deal.account}</span>
-            <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
-              {sessionStatusLabel}
-            </span>
+            {/* Sprint 34: Version selector */}
+            <div className="relative" ref={versionMenuRef}>
+              <button
+                onClick={() => allSessions.length > 1 && setShowVersionMenu(!showVersionMenu)}
+                className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium transition-colors ${
+                  isReadOnly
+                    ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400 border border-amber-500/20'
+                    : 'bg-secondary text-muted-foreground'
+                } ${allSessions.length > 1 ? 'cursor-pointer hover:bg-secondary/80' : ''}`}
+              >
+                {isReadOnly && <Lock className="h-2.5 w-2.5" />}
+                v{session?.iteration || 1}
+                {isReadOnly && <span className="text-2xs opacity-70">read-only</span>}
+                {allSessions.length > 1 && <ChevronDown className="h-2.5 w-2.5 opacity-50" />}
+              </button>
+              {showVersionMenu && allSessions.length > 1 && (
+                <div className="absolute top-full left-0 mt-1 z-50 min-w-[180px] rounded-lg border border-border bg-card shadow-lg py-1">
+                  {allSessions.map(s => (
+                    <button
+                      key={s.sessionId}
+                      onClick={() => {
+                        switchToSession(s.sessionId);
+                        setShowVersionMenu(false);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-secondary/50 ${
+                        s.sessionId === session?.sessionId ? 'bg-secondary/30 font-medium' : ''
+                      }`}
+                    >
+                      <span className="font-medium">v{s.iteration || 1}</span>
+                      <span className={`rounded px-1 py-0.5 text-2xs ${
+                        s.status === 'completed'
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                      }`}>
+                        {s.status === 'completed' ? 'completed' : 'in progress'}
+                      </span>
+                      {s.sessionId === session?.sessionId && (
+                        <Check className="h-3 w-3 ml-auto text-violet-500" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             {deal.dealType && (
               <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${
                 deal.dealType.toLowerCase().includes('new logo')
@@ -251,21 +309,17 @@ export default function TDRWorkspace() {
             >
               <svg className="h-3.5 w-3.5 transition-transform duration-200" viewBox="0 0 24 24" fill="currentColor"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zm1.271 0a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zm0 1.271a2.527 2.527 0 0 1 2.521 2.521 2.527 2.527 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zm-1.27 0a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.163 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.163 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.163 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zm0-1.27a2.527 2.527 0 0 1-2.52-2.523 2.527 2.527 0 0 1 2.52-2.52h6.315A2.528 2.528 0 0 1 24 15.163a2.528 2.528 0 0 1-2.522 2.523h-6.315z"/></svg>
             </button>
-            {previousSessions.length > 0 && (
-              <span className="text-2xs text-muted-foreground ml-1">
-                {previousSessions.length} prior
-              </span>
-            )}
-            {session?.status === 'completed' || (previousSessions.length > 0 && session?.status === 'in-progress') ? (
+            {session && !session.sessionId.startsWith('local-') && !session.sessionId.startsWith('fallback-') && (
               <button
-                className="h-6 flex items-center gap-1 px-2 rounded text-2xs font-medium text-violet-500 hover:text-violet-400 hover:bg-violet-500/10 transition-colors"
+                className="h-6 flex items-center gap-1 px-2 rounded text-2xs font-medium text-violet-500 hover:text-violet-400 hover:bg-violet-500/10 transition-colors disabled:opacity-30 disabled:pointer-events-none"
                 onClick={startNewIteration}
-                title="Start a new TDR iteration for this deal"
+                disabled={completedSteps.size === 0 && allSessions.length > 0 && !isReadOnly}
+                title={completedSteps.size === 0 && !isReadOnly ? 'Complete at least one step before starting a new version' : 'Start a new TDR version for this deal'}
               >
-                <Sparkles className="h-3 w-3" />
-                New Iteration
+                <Plus className="h-3 w-3" />
+                New TDR
               </button>
-            ) : null}
+            )}
             {exportError && (
               <span className="text-2xs text-destructive ml-1" title={exportError}>Export failed</span>
             )}
@@ -378,6 +432,7 @@ export default function TDRWorkspace() {
             seededInputs={deal.seededInputs}
             callCount={deal.callCount}
             priorInputValues={priorInputValues}
+            isReadOnly={isReadOnly}
           />
         </main>
 

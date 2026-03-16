@@ -113,6 +113,8 @@ interface TDRInputsProps {
   callCount?: number;
   /** Prior iteration inputs keyed by `stepId::fieldId` (for new iterations) */
   priorInputValues?: Map<string, string>;
+  /** Whether inputs are read-only (viewing a completed version) */
+  isReadOnly?: boolean;
 }
 
 interface FieldConfig {
@@ -350,6 +352,7 @@ export function TDRInputs({
   seededInputs,
   callCount,
   priorInputValues,
+  isReadOnly,
 }: TDRInputsProps) {
   // Track local field values for controlled inputs
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
@@ -823,7 +826,7 @@ export function TDRInputs({
               all saved
             </span>
           )}
-          {onToggleStepComplete && (
+          {onToggleStepComplete && !isReadOnly && (
             <Button
               variant={isStepComplete ? 'default' : 'outline'}
               size="sm"
@@ -952,6 +955,7 @@ export function TDRInputs({
                   value={currentValue}
                   onChange={(e) => handleChange(field.id, e.target.value)}
                   onBlur={() => handleBlur(field.id, field.label)}
+                  disabled={isReadOnly}
                 />
               )}
               {field.type === 'textarea' && (
@@ -963,6 +967,7 @@ export function TDRInputs({
                     value={currentValue}
                     onChange={(e) => handleChange(field.id, e.target.value)}
                     onBlur={() => handleBlur(field.id, field.label)}
+                    disabled={isReadOnly}
                   />
                   {/* AI Enhancement affordance */}
                   {isDomoEnvironment() && isAIEnabled() && (
@@ -1061,6 +1066,7 @@ export function TDRInputs({
                 <Select
                   value={currentValue || ''}
                   onValueChange={(v) => handleSelectChange(field.id, field.label, v)}
+                  disabled={isReadOnly}
                 >
                   <SelectTrigger className={cn('h-9 text-sm', fieldIsSeeded && 'ring-1 ring-cyan-400/40 border-cyan-300/50 dark:ring-cyan-500/30 dark:border-cyan-600/30')}>
                     <SelectValue placeholder="Select..." />
@@ -1124,7 +1130,7 @@ export function TDRInputs({
               {resolvedHint && !fieldIsSeeded && (
                 <p className="text-2xs text-muted-foreground italic">{resolvedHint}</p>
               )}
-              {fieldIsSeeded && (
+              {fieldIsSeeded && !isReadOnly && (
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"

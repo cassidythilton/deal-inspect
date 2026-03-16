@@ -5,6 +5,7 @@ export type ReadinessLevel = 'green' | 'yellow' | 'red';
 export interface TDRSessionSummary {
   id: string;
   status: 'in-progress' | 'completed';
+  iteration?: number;
   completedAt?: string;
   createdAt: string;
 }
