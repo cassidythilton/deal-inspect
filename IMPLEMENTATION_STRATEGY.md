@@ -2,13 +2,13 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 8.2 · **Date:** March 12, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a (44 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress — Sprint 32a Complete · Sprint 32b (Seeded TDR Responses) Next**
+**Status:** Active · **Version:** Draft 9.0 · **Date:** March 16, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a (44 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress · Pillar 19 (Gong Transcript Q&A) In Progress — Sprint 33**
 
 ---
 
 ### Current State & What's Next
 
-**Where we are:** Pillars 1–17 are complete (43 sprints, Feb 9 – Mar 11, 2026). Sprint 32a (Model Calibration & Retrain) completed Mar 12 — model retrained on 3-year recency-filtered data with `DAYS_IN_PIPELINE` capped at 730, F1 improved from 0.923 to 0.956, score capping [3%,97%] deployed, 6,408 prediction snapshots captured for ground truth tracking. Sprint 32b (Seeded TDR Responses) is next — pre-populating TDR fields with Gong-extracted data from the `opportunitiesmagic` dataset. Sprint 32c–e continue the MLOps monitoring track.
+**Where we are:** Pillars 1–17 are complete (43 sprints, Feb 9 – Mar 11, 2026). Sprint 32a (Model Calibration & Retrain) completed Mar 12. Sprint 33 (Gong Transcript Q&A in TDR Chat) is in progress — enabling TDR Chat to answer deal questions using actual Gong call transcripts via Cortex Search. Cortex Search service active and indexing 1,973 opportunities. Sprint 32b (Seeded TDR Responses) and Sprint 32c–e (MLOps monitoring) remain queued.
 
 **What's done (recently):**
 
@@ -22,15 +22,15 @@
 | **28b+** | Pre-Training Data Validation | ✅ DONE | Mar 5 | 7 critical checks passed, 38 safe features, warnings on high-cardinality fields |
 | **28c** | ML Infrastructure & Model Training | ✅ DONE | Mar 6 | Model trained (AUC 0.997, F1 97.7%), 6,569 deals scored, tasks created |
 
-**What's next (Sprint 32 series):**
+**What's next:**
 
 | Sprint | Name | Effort | Prerequisite | Status | Key Deliverable |
 |--------|------|--------|-------------|--------|-----------------|
-| **32a** | Model Calibration & Retrain | 1–2 days | — | ✅ Complete | Score capping [3%,97%], DAYS_IN_PIPELINE cap at 730, training recency filter, prediction snapshots, retrain + re-score. F1 0.923→0.956 |
-| **32b** | Seeded TDR Responses | 3–5 days | — | 🔲 Not Started | Pre-populate TDR fields from Gong-extracted data (24 new dataset columns). Propose/accept/dismiss UX with multi-source reference (seeded + prior iteration). Enhance button composes with seeded data. |
-| **32c** | Code Engine MLOps Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data (metadata, eval metrics, feature importance, pipeline history, prediction accuracy, score distribution, factor aggregation) |
-| **32d** | Frontend MLOps Page | 2–3 days | 32c | 🔲 Not Started | `/mlops` page: pipeline status, model registry, fit metrics, feature importance chart, score distribution, prediction accuracy, factor patterns, alert badges |
-| **32e** | Polish + Documentation | 1 day | 32d | 🔲 Not Started | Alert threshold logic, distribution health checks, nav badge, Documentation Hub update, Pillar 18 finalization |
+| **33** | Gong Transcript Q&A in TDR Chat | 2–3 days | — | 🔶 In Progress | Cortex Search over Gong transcripts. "Gong Calls" toggle in TDR Chat. Deal-scoped transcript Q&A. Code Engine proxy function. |
+| **32b** | Seeded TDR Responses | 3–5 days | — | 🔲 Not Started | Pre-populate TDR fields from Gong-extracted data (24 new dataset columns). Propose/accept/dismiss UX. |
+| **32c** | Code Engine MLOps Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data |
+| **32d** | Frontend MLOps Page | 2–3 days | 32c | 🔲 Not Started | `/mlops` page with model health visibility |
+| **32e** | Polish + Documentation | 1 day | 32d | 🔲 Not Started | Alert threshold logic, distribution health checks, Pillar 18 finalization |
 
 **Previously completed:**
 
@@ -41,7 +41,7 @@
 | **30** | UX Polish & Iteration | ✅ Complete |
 | **31** | TDR Framework Redesign | ✅ Complete |
 
-**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses)
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike)
 
 **Start point:** All major sprints complete through Sprint 31. On Mar 12, a model health issue was diagnosed and fixed (feature schema mismatch + probability key mismatch caused all-Lost predictions). The fix revealed a bimodal score distribution (35% at <5%, 15% at >95%) caused by covariate shift on DAYS_IN_PIPELINE. Sprint 32 addresses model calibration, MLOps monitoring, and ground truth tracking.
 
@@ -3072,6 +3072,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 | **30** | **UX Polish & Iteration** | ✅ Complete | — | S28e + S29b | **UX** |
 | **31** | **TDR Framework Redesign** | ✅ Complete | — | S30 | **UX / Architecture** |
 | **32a** | **Model Calibration & Retrain** | ✅ Complete | — | — | **ML / Calibration** |
+| **33** | **Gong Transcript Q&A in TDR Chat** | 🔶 In Progress | — | — | **AI / Chat / Gong** |
 | **32b** | **Code Engine MLOps Functions** | 🔲 Not Started | — | S32a | **ML / Code Engine** |
 | **32c** | **Frontend MLOps Page** | 🔲 Not Started | — | S32b | **ML / UX** |
 | **32d** | **MLOps Polish + Documentation** | 🔲 Not Started | — | S32c | **Documentation / UX** |
@@ -3576,6 +3577,52 @@ Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gon
 
 ---
 
+### Sprint 33 — Gong Transcript Q&A in TDR Chat 🔶 IN PROGRESS
+
+> **Goal:** Enable TDR Chat to answer deal questions using actual Gong call transcript content. Gong transcripts (aggregated by opportunity, 1,973 rows) are indexed by Cortex Search and queried via a new Code Engine function. A "Gong Calls" toggle in TDR Chat injects relevant transcript segments into the AI context alongside existing deal data and KB content.
+> **Risk to app:** Low — additive feature. New toggle, new Code Engine function. No changes to existing chat or KB flows.
+> **Effort:** ~2–3 days
+> **Dependencies:** None (Cortex Search spike confirmed viability; Gong transcript data in Snowflake)
+> **Shaping document:** `shaping/gong-transcripts-in-chat.md`
+> **Spike:** `shaping/spike-cortex-search-gong.md` — confirmed Cortex Search is available (Enterprise, AWS US East 1), ~200–400ms latency, OPPORTUNITY_ID filter columns work
+
+**Snowflake Infrastructure:**
+- Table: `TDR_APP.PUBLIC.GONG_CALL_TRANSCRIPTS` (1,973 rows, Domo writeback)
+- View: `TDR_APP.PUBLIC.GONG_TRANSCRIPTS_FOR_SEARCH` (uppercase column names for Cortex Search compatibility)
+- Cortex Search Service: `TDR_APP.PUBLIC.GONG_TRANSCRIPT_SEARCH`
+  - Search column: `COMBINED_TRANSCRIPT`
+  - Filter/attribute columns: `OPPORTUNITY_ID`, `ACCOUNT_NAME`, `OPPORTUNITY_NAME`, `CALL_COUNT`
+  - Embedding model: `snowflake-arctic-embed-m-v1.5`
+  - Target lag: 5 minutes (incremental refresh)
+  - Query syntax: `SNOWFLAKE.CORTEX.SEARCH_PREVIEW('TDR_APP.PUBLIC.GONG_TRANSCRIPT_SEARCH', '{"query":"...", "columns":[...], "filter":{"@eq":{"OPPORTUNITY_ID":"..."}}, "limit":5}')`
+
+**Sprint 33a — Snowflake Setup** *[Cortex CLI]* ✅ COMPLETE (Mar 16, 2026)
+
+- [x] ALTER `combined_transcript` column from VARCHAR(6188) to VARCHAR(16777216) — Domo writeback truncated at 6K chars (Mar 16)
+- [x] Enable change tracking on `GONG_CALL_TRANSCRIPTS` (Mar 16)
+- [x] Create `GONG_TRANSCRIPTS_FOR_SEARCH` view with uppercase column names (Cortex Search requirement) (Mar 16)
+- [x] Create `GONG_TRANSCRIPT_SEARCH` Cortex Search service — 1,973 rows indexed, ACTIVE state (Mar 16)
+
+**Known Issue:** Transcripts currently truncated at 6,188 chars due to Domo writeback VARCHAR default. Column widened in Snowflake; data re-sync needed from Domo (or direct Snowflake write from `tdrSeed.ipynb`) to populate full-length transcripts.
+
+**Sprint 33b — Code Engine Function** *[Cursor]* 🔶 IN PROGRESS
+
+- [ ] Create `searchGongTranscripts` Code Engine function — accepts `opportunityId` + `query`, calls Cortex Search, returns ranked transcript segments with metadata
+- [ ] Add `searchGongTranscripts` to `manifest.json` packageMapping
+
+**Sprint 33c — Frontend Integration** *[Cursor]* 🔲 NOT STARTED
+
+- [ ] Add "Gong Calls" toggle to `TDRChat.tsx` (alongside existing KB toggle)
+- [ ] Wire toggle to call `searchGongTranscripts` via Code Engine on message send
+- [ ] Build Gong transcript context string and inject into chat prompt
+- [ ] Add transcript-specific suggestion chips ("Summarize all calls", "Key objections?", "Timeline discussed?", "Technical requirements?")
+- [ ] Show call count badge on toggle when Gong data available
+- [ ] Handle deals with no Gong calls gracefully (hide toggle)
+
+**Definition of Done:** Users can toggle "Gong Calls" in TDR Chat, ask natural-language questions, and receive answers grounded in actual call transcript content scoped to the current deal. Deals without Gong data behave identically to today.
+
+---
+
 ### Sprint Execution Order & Dependencies
 
 ```
@@ -4055,6 +4102,11 @@ This is the "elevator pitch" view. The final solution is built on eighteen disti
 **Why it matters independently:** When the model broke (feature schema mismatch → all predictions "Lost"), the only diagnostic path was raw SQL via Cortex CLI. An SE Manager seeing "Win Propensity: 0%" had no way to distinguish a model failure from reality. This pillar makes model health visible, score quality trustworthy, and provides the infrastructure to continuously validate and improve predictions. The calibration fixes ensure scores represent credible probabilities — no deal should be 99.8% or 0.02% certain.
 **Key outcome:** The model is monitored, calibrated, and self-diagnosing — no silent failures, credible score distributions, and ground truth tracking for continuous accuracy measurement.
 
+### Pillar 19: Gong Transcript Q&A in TDR Chat (Sprint 33)
+**What:** Gong call transcripts (aggregated by opportunity, ~2K deals) are synced to Snowflake and indexed by a Cortex Search service. A new "Gong Calls" toggle in TDR Chat enables deal-scoped semantic search over actual call content. When an SE asks "What did the customer say about their timeline?" or "Were security concerns raised?", the AI draws from verbatim transcript text — not just structured deal metadata or generic playbooks. The Cortex Search service uses `snowflake-arctic-embed-m-v1.5` embeddings with `OPPORTUNITY_ID` filter columns to ensure transcript context never leaks across deals. Query latency is ~200–400ms, enabling interactive Q&A.
+**Why it matters independently:** Sprint 32b (seeded responses) extracts *structured* field values from Gong transcripts. This pillar provides access to the *raw conversational context* — the actual words spoken on calls. These are complementary: seeded fields give quick answers ("Strategic Value: High"), while transcript Q&A gives evidence ("The VP of Data said they need to consolidate before Q3 because of the Teradata migration deadline"). Together, the SE has both the summary and the source material.
+**Key outcome:** The app answers questions using what was actually said on calls.
+
 ### The Flywheel
 
 ```
@@ -4114,7 +4166,9 @@ This is the "elevator pitch" view. The final solution is built on eighteen disti
 | All 17 Pillars (+ TDR Redesign) | ✅ | **The streamlined platform:** the TDR itself — the core instrument — is rebuilt. 9 steps become 5. Redundant fields are consolidated. AI & ML is a rigorous core step, not an afterthought. Textareas resize, steps auto-complete, Domo layers are pills for analytics, and TDRs version over time. SEs complete reviews faster with sharper inputs. Every downstream artifact gets better because the inputs got better. The flywheel is complete. |
 | All 18 Pillars (+ MLOps Monitoring) | 🔶 | **The self-monitoring platform:** the ML model that predicts deal outcomes is now observable, calibrated, and continuously validated. Score distributions are credible — no false certainty. Ground truth tracking measures real-world prediction accuracy as deals close. Pipeline health is visible at a glance: stale models, failed tasks, and degenerate distributions surface as alerts, not silent failures. The flywheel becomes trustworthy. |
 
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. **Pillars 1–17 are complete.** Pillar 18 (MLOps Monitoring & Model Calibration) is in progress. Pillar 10 is the capstone: it converts everything the other pillars generate into a single actionable artifact. Pillar 14 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes. Pillar 15 closes the input quality gap: the system helps SEs write better inputs, which makes everything downstream better. Pillar 16 ensures the new ML and AI surfaces are production-polished. Pillar 17 rebuilds the core TDR instrument — fewer steps, sharper fields, AI & ML as a first-class concern. Pillar 18 closes the observability gap: the ML predictions are monitored, calibrated, and self-diagnosing.
+| All 19 Pillars (+ Gong Transcript Q&A) | 🔶 | **The conversation-aware platform:** the app doesn't just know deal metadata and playbooks — it knows what was actually said on calls. SEs ask questions in TDR Chat and get answers grounded in verbatim Gong transcripts, scoped to the current deal via Cortex Search. Seeded fields (Sprint 32b) provide structured summaries; transcript Q&A provides the evidence. The flywheel deepens: every call feeds the system, every question draws from conversational reality. |
+
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. **Pillars 1–17 are complete.** Pillar 18 (MLOps Monitoring & Model Calibration) is in progress. Pillar 19 (Gong Transcript Q&A) is in progress. Pillar 10 is the capstone: it converts everything the other pillars generate into a single actionable artifact. Pillar 14 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes. Pillar 15 closes the input quality gap: the system helps SEs write better inputs, which makes everything downstream better. Pillar 16 ensures the new ML and AI surfaces are production-polished. Pillar 17 rebuilds the core TDR instrument — fewer steps, sharper fields, AI & ML as a first-class concern. Pillar 18 closes the observability gap: the ML predictions are monitored, calibrated, and self-diagnosing. Pillar 19 bridges the gap between structured deal data and raw conversational context from Gong calls.
 
 ---
 

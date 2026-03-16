@@ -44,8 +44,10 @@ import {
 } from '@/config/llmProviders';
 import type { Deal, TDRStep } from '@/types/tdr';
 import { filesetIntel } from '@/lib/filesetIntel';
+import { gongTranscripts } from '@/lib/gongTranscripts';
 import { getAppSettings } from '@/lib/appSettings';
 import { SnowflakeLogo, CortexLogo } from '@/components/CortexBranding';
+import { Phone } from 'lucide-react';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -95,6 +97,25 @@ const SUGGESTION_CHIPS = [
     label: 'Next steps',
     prompt:
       'What should be our recommended next steps for this TDR?',
+  },
+];
+
+const GONG_SUGGESTION_CHIPS = [
+  {
+    label: 'Summarize all calls',
+    prompt: 'Summarize the key themes and takeaways from all Gong calls for this deal.',
+  },
+  {
+    label: 'Key objections?',
+    prompt: 'What objections or concerns did the customer raise across all calls?',
+  },
+  {
+    label: 'Timeline discussed?',
+    prompt: 'What timeline, deadlines, or urgency signals were discussed on calls?',
+  },
+  {
+    label: 'Technical requirements?',
+    prompt: 'What specific technical requirements or constraints did the customer mention on calls?',
   },
 ];
 
@@ -256,6 +277,8 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
   const [totalTokens, setTotalTokens] = useState({ in: 0, out: 0 });
   const [includeKB, setIncludeKB] = useState(true);
   const [kbContext, setKbContext] = useState('');
+  const [includeGong, setIncludeGong] = useState(true);
+  const [gongContext, setGongContext] = useState('');
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -340,20 +363,39 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
       try {
         // Sprint 19: If KB toggle is on, prepend fileset context to message
         let enrichedMessage = text;
+        const contextParts: string[] = [];
+
         if (includeKB && kbContext) {
-          enrichedMessage = `${kbContext}\n\n---\nUser Question: ${text}`;
+          contextParts.push(kbContext);
         } else if (includeKB && (getAppSettings().filesetIds ?? []).length > 0) {
-          // Try to fetch KB context on the fly for this question
           try {
             const kbResults = await filesetIntel.search(text);
             if (kbResults.matches.length > 0) {
               const ctx = filesetIntel.buildChatContext(kbResults.matches);
               setKbContext(ctx);
-              enrichedMessage = `${ctx}\n\n---\nUser Question: ${text}`;
+              contextParts.push(ctx);
             }
           } catch (kbErr) {
             console.warn('[TDRChat] KB search failed, sending without context:', kbErr);
           }
+        }
+
+        // Sprint 33: If Gong toggle is on, search transcripts via Cortex Search
+        if (includeGong && deal.callCount && deal.callCount > 0) {
+          try {
+            const gongResults = await gongTranscripts.search(deal.id, text);
+            if (gongResults.success && gongResults.results.length > 0) {
+              const ctx = gongTranscripts.buildChatContext(gongResults.results);
+              setGongContext(ctx);
+              contextParts.push(ctx);
+            }
+          } catch (gongErr) {
+            console.warn('[TDRChat] Gong transcript search failed:', gongErr);
+          }
+        }
+
+        if (contextParts.length > 0) {
+          enrichedMessage = `${contextParts.join('\n\n---\n\n')}\n\n---\nUser Question: ${text}`;
         }
 
         const result: SendMessageResult = await tdrChat.sendMessage({
@@ -400,7 +442,7 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
         inputRef.current?.focus();
       }
     },
-    [inputValue, sessionId, deal, provider, modelId, activeStep],
+    [inputValue, sessionId, deal, provider, modelId, activeStep, includeKB, kbContext, includeGong],
   );
 
   // ── Keyboard handler ──
@@ -552,7 +594,10 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
               </p>
             </div>
             <div className="flex flex-wrap gap-1.5 max-w-sm justify-center mt-1">
-              {SUGGESTION_CHIPS.map((chip) => (
+              {(deal.callCount && deal.callCount > 0
+                ? [...SUGGESTION_CHIPS, ...GONG_SUGGESTION_CHIPS]
+                : SUGGESTION_CHIPS
+              ).map((chip) => (
                 <button
                   key={chip.label}
                   onClick={() => handleSend(chip.prompt)}
@@ -777,6 +822,46 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
                 </TooltipProvider>
               );
             })()}
+            {/* Sprint 33: Gong Calls toggle */}
+            {deal.callCount != null && deal.callCount > 0 && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setIncludeGong(!includeGong)}
+                      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] transition-colors ${
+                        includeGong
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                          : 'bg-[#221D38] text-slate-600 border border-[#2a2540]'
+                      }`}
+                    >
+                      <Phone className="h-2.5 w-2.5" />
+                      Gong ({deal.callCount})
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="max-w-[240px] bg-[#1a1730] border border-[#2a2540] text-slate-300 p-0 rounded-lg shadow-xl"
+                  >
+                    <div className="px-3 py-2">
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <Phone className="h-3 w-3 text-emerald-400" />
+                        <span className="text-[10px] font-semibold text-emerald-400">
+                          Gong Calls {includeGong ? '· Active' : '· Off'}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 leading-tight">
+                        {deal.callCount} call transcript{deal.callCount !== 1 ? 's' : ''} available via Cortex Search.
+                        Questions will be answered using actual call content.
+                      </div>
+                      <div className="mt-2 pt-1.5 border-t border-[#2a2540] text-[9px] text-slate-500">
+                        Click to {includeGong ? 'exclude' : 'include'} Gong transcripts in chat
+                      </div>
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
           {activeStep && (
             <span className="text-[9px] text-slate-600">
