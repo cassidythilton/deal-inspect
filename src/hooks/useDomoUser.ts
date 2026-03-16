@@ -1,8 +1,9 @@
 /**
  * useDomoUser — fetches the current Domo user's identity on app init.
  *
- * In a Domo environment, calls `/domo/users/v1/me` to get the real user.
- * Outside Domo (local dev), returns a fallback identity.
+ * Strategy: read domo.env.userId for the ID, then call
+ * /domo/environment/v1/ to get authenticated user details.
+ * Falls back gracefully in local dev or if the API is unavailable.
  *
  * Sprint 35: User Identity Capture
  */
@@ -38,6 +39,18 @@ export function useDomoUser(): DomoUserContext {
 
 export { DomoUserCtx, FALLBACK_USER };
 
+interface DomoSDKEnv {
+  userId?: string | number;
+  customer?: string;
+  userName?: string;
+  [key: string]: unknown;
+}
+
+interface DomoSDK {
+  env?: DomoSDKEnv;
+  get: (url: string) => Promise<unknown>;
+}
+
 export function useDomoUserInit(): DomoUserContext {
   const [user, setUser] = useState<DomoUser>(FALLBACK_USER);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,18 +62,48 @@ export function useDomoUserInit(): DomoUserContext {
     }
 
     const fetchUser = async () => {
+      const domo = (window as unknown as { domo: DomoSDK }).domo;
+
+      // Strategy 1: domo.env properties (fastest, no network call)
+      if (domo.env?.userId) {
+        const envUser: DomoUser = {
+          id: String(domo.env.userId),
+          displayName: String(domo.env.userName || domo.env.userId),
+        };
+        console.log(`[DomoUser] From env: ${envUser.displayName} (${envUser.id})`);
+        setUser(envUser);
+
+        // Strategy 2: enrich from /domo/environment/v1/ (authenticated, non-blocking)
+        try {
+          const envResult = await domo.get('/domo/environment/v1/') as Record<string, unknown>;
+          if (envResult) {
+            const enriched: DomoUser = {
+              id: String(envResult.userId || envUser.id),
+              displayName: String(envResult.userName || envResult.displayName || envUser.displayName),
+              emailAddress: envResult.emailAddress ? String(envResult.emailAddress) : undefined,
+            };
+            setUser(enriched);
+            console.log(`[DomoUser] Enriched: ${enriched.displayName} (${enriched.id})`);
+          }
+        } catch {
+          // env properties already captured — enrichment failure is non-fatal
+        }
+
+        setIsLoading(false);
+        return;
+      }
+
+      // Strategy 3: direct API call (fallback if domo.env is empty)
       try {
-        const domo = (window as unknown as { domo: { get: (url: string) => Promise<unknown> } }).domo;
-        const result = await domo.get('/domo/users/v1/me') as Record<string, unknown>;
+        const result = await domo.get('/domo/environment/v1/') as Record<string, unknown>;
         setUser({
-          id: String(result.id || 'unknown'),
-          displayName: String(result.displayName || result.name || 'Unknown User'),
+          id: String(result.userId || 'unknown'),
+          displayName: String(result.userName || result.displayName || 'Unknown User'),
           emailAddress: result.emailAddress ? String(result.emailAddress) : undefined,
-          avatarKey: result.avatarKey ? String(result.avatarKey) : undefined,
         });
-        console.log(`[DomoUser] Identified: ${result.displayName} (${result.id})`);
+        console.log(`[DomoUser] From API: ${result.userName || result.displayName}`);
       } catch (err) {
-        console.warn('[DomoUser] Failed to fetch user identity, using fallback:', err);
+        console.warn('[DomoUser] All identity strategies failed, using fallback:', err);
       }
       setIsLoading(false);
     };
