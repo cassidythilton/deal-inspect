@@ -33,6 +33,43 @@ export interface GongSearchResponse {
   error?: string;
 }
 
+export interface GongDigestResponse {
+  success: boolean;
+  digest: string | null;
+  accountName?: string;
+  opportunityName?: string;
+  callCount?: number;
+  transcriptLength?: number;
+  error?: string;
+  reason?: string;
+}
+
+const MOCK_DIGEST = `## Gong Call Transcript Digest
+
+### Key Topics & Themes
+- Enterprise analytics platform evaluation — customer consolidating BI tools
+- Data integration from Snowflake and multiple cloud sources
+- Embedded analytics requirements for customer-facing dashboards
+
+### Customer Requirements
+- SOC 2 Type II compliance, data residency in US-EAST-1
+- Single sign-on with Active Directory integration
+- Real-time data refresh (not just nightly batch)
+
+### AI & Advanced Analytics Opportunities
+- **Incentive intelligence**: Customer VP mentioned "we need to optimize our reward programs using predictive models"
+- Personalization engines for marketing campaigns
+- Churn prediction for loyalty program members
+
+### Objections & Concerns
+- Pricing sensitivity — comparing against Power BI and Tableau
+- Concerns about migration timeline from existing tools
+
+### Key Stakeholders
+- VP of Data (technical champion, pushing for consolidation)
+- CFO (budget authority, needs ROI justification)
+- Director of Engineering (evaluating technical fit)`;
+
 const MOCK_RESULTS: GongTranscriptResult[] = [
   {
     accountName: 'Acme Technologies',
@@ -78,6 +115,42 @@ export const gongTranscripts = {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[GongTranscripts] Search failed:', msg);
       return { success: false, results: [], resultCount: 0, error: msg };
+    }
+  },
+
+  async getDigest(opportunityId: string): Promise<GongDigestResponse> {
+    if (!isDomoEnvironment()) {
+      console.log('[GongTranscripts] Dev mode: returning mock digest');
+      await new Promise((r) => setTimeout(r, 800));
+      return { success: true, digest: MOCK_DIGEST, callCount: 4, transcriptLength: 24000 };
+    }
+
+    const domo = getDomo();
+    if (!domo) {
+      return { success: false, digest: null, error: 'No Domo SDK' };
+    }
+
+    try {
+      console.log(`[GongTranscripts] Fetching digest for opp: ${opportunityId}`);
+      const raw = (await domo.post('/domo/codeengine/v2/packages/getGongTranscriptDigest', {
+        opportunityId,
+      })) as Record<string, unknown>;
+
+      const inner = (raw?.result as GongDigestResponse) || (raw as GongDigestResponse);
+      return {
+        success: inner.success ?? false,
+        digest: inner.digest || null,
+        accountName: inner.accountName as string | undefined,
+        opportunityName: inner.opportunityName as string | undefined,
+        callCount: inner.callCount as number | undefined,
+        transcriptLength: inner.transcriptLength as number | undefined,
+        error: inner.error,
+        reason: inner.reason,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[GongTranscripts] Digest fetch failed:', msg);
+      return { success: false, digest: null, error: msg };
     }
   },
 

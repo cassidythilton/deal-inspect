@@ -279,6 +279,8 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
   const [kbContext, setKbContext] = useState('');
   const [includeGong, setIncludeGong] = useState(true);
   const [gongContext, setGongContext] = useState('');
+  const [gongDigest, setGongDigest] = useState<string | null>(null);
+  const [digestLoading, setDigestLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -301,6 +303,33 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
       }
     });
   }, [sessionId]);
+
+  // ── Pre-load Gong transcript digest ──
+  useEffect(() => {
+    if (!deal.id || !deal.callCount || deal.callCount <= 0) return;
+    if (gongDigest !== null) return; // already loaded
+
+    let cancelled = false;
+    setDigestLoading(true);
+
+    gongTranscripts.getDigest(deal.id).then((res) => {
+      if (cancelled) return;
+      setDigestLoading(false);
+      if (res.success && res.digest) {
+        setGongDigest(res.digest);
+        console.log(`[TDRChat] Gong digest loaded: ${res.digest.length} chars from ${res.transcriptLength} char transcript`);
+      } else {
+        console.warn('[TDRChat] Gong digest unavailable:', res.reason || res.error);
+      }
+    }).catch((err) => {
+      if (!cancelled) {
+        setDigestLoading(false);
+        console.warn('[TDRChat] Gong digest fetch failed:', err);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [deal.id, deal.callCount, gongDigest]);
 
   // ── Auto-scroll ──
   useEffect(() => {
@@ -380,8 +409,14 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
           }
         }
 
-        // Sprint 33: If Gong toggle is on, search transcripts via Cortex Search
+        // Sprint 33: Gong context — digest (proactive) + reactive search
         if (includeGong && deal.callCount && deal.callCount > 0) {
+          // Always inject the pre-computed digest so the AI knows what was discussed
+          if (gongDigest) {
+            contextParts.push(`### Gong Call Transcript Digest\nThe following is a comprehensive summary of ALL Gong calls for this deal. Use this to ground your answers in what was actually discussed:\n\n${gongDigest}`);
+          }
+
+          // Also run reactive Cortex Search for specific transcript excerpts
           try {
             const gongResults = await gongTranscripts.search(deal.id, text);
             if (gongResults.success && gongResults.results.length > 0) {
@@ -442,7 +477,7 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
         inputRef.current?.focus();
       }
     },
-    [inputValue, sessionId, deal, provider, modelId, activeStep, includeKB, kbContext, includeGong],
+    [inputValue, sessionId, deal, provider, modelId, activeStep, includeKB, kbContext, includeGong, gongDigest],
   );
 
   // ── Keyboard handler ──
@@ -835,8 +870,8 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
                           : 'bg-[#221D38] text-slate-600 border border-[#2a2540]'
                       }`}
                     >
-                      <Phone className="h-2.5 w-2.5" />
-                      Gong ({deal.callCount})
+                      <Phone className={`h-2.5 w-2.5 ${digestLoading ? 'animate-pulse' : ''}`} />
+                      Gong ({deal.callCount}){gongDigest ? ' ✦' : ''}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent
@@ -851,8 +886,12 @@ export function TDRChat({ deal, sessionId, activeStep }: TDRChatProps) {
                         </span>
                       </div>
                       <div className="text-[10px] text-slate-400 leading-tight">
-                        {deal.callCount} call transcript{deal.callCount !== 1 ? 's' : ''} available via Cortex Search.
-                        Questions will be answered using actual call content.
+                        {deal.callCount} call transcript{deal.callCount !== 1 ? 's' : ''} available.
+                        {digestLoading
+                          ? ' Generating deal digest...'
+                          : gongDigest
+                            ? ` Digest loaded (${Math.round(gongDigest.length / 1000)}K chars). Every question is grounded in call content.`
+                            : ' Reactive search active — answers grounded in relevant transcript excerpts.'}
                       </div>
                       <div className="mt-2 pt-1.5 border-t border-[#2a2540] text-[9px] text-slate-500">
                         Click to {includeGong ? 'exclude' : 'include'} Gong transcripts in chat
