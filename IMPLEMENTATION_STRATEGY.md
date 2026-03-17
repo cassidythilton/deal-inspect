@@ -2,32 +2,30 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 9.0 · **Date:** March 16, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a (44 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress · Pillar 19 (Gong Transcript Q&A) In Progress — Sprint 33**
+**Status:** Active · **Version:** Draft 10.0 · **Date:** March 17, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a, 32b, 33, 34, 35, 35f, 36 (50 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress (32a ✅, 32c–e remaining) · Pillars 19–20 Complete**
 
 ---
 
 ### Current State & What's Next
 
-**Where we are:** Pillars 1–17 are complete (43 sprints, Feb 9 – Mar 11, 2026). Sprint 32a (Model Calibration & Retrain) completed Mar 12. Sprint 33 (Gong Transcript Q&A in TDR Chat) is in progress — enabling TDR Chat to answer deal questions using actual Gong call transcripts via Cortex Search. Cortex Search service active and indexing 1,973 opportunities. Sprint 32b (Seeded TDR Responses) and Sprint 32c–e (MLOps monitoring) remain queued.
+**Where we are:** Pillars 1–17 plus Pillars 19–20 are complete (50 sprints, Feb 9 – Mar 17, 2026). Sprints 33–36 shipped Gong transcript Q&A, TDR versioning, admin observability, intelligence panel overhaul, and Command Center UX refinements. Sprint 32b (Seeded TDR Responses) is complete. Sprints 32c–e (MLOps monitoring frontend) remain queued — the only unfinished items on the roadmap.
 
 **What's done (recently):**
 
 | Sprint | Name | Status | Date | Key Outcome |
 |--------|------|--------|------|-------------|
-| **28a** | Dataset Swap | ✅ DONE | Mar 3 | v2 dataset (195K rows), manifest + types + transform updated, 33 new fields |
-| **28b** | EDA Notebook Overhaul | ✅ DONE | Mar 4 | Notebook retargeted to v2, candidates identified. **Needs execution against Snowflake for go/no-go.** |
-| **29a** | AI Enhancement Engine | ✅ DONE | Mar 4 | `domoAi.ts` — prompt construction, 8 context layers, Domo AI endpoint |
-| **29b** | AI Enhancement UI | ✅ DONE | Mar 4 | Enhance button, inline diff, accept/edit/dismiss, dealContext wiring |
-| **PERF-1** | Performance Optimization | ✅ DONE | Mar 5 | `/data/v2/` with `?fields=` + `&filter=` — 40s → 1s load, 194K → 5K records |
-| **28b+** | Pre-Training Data Validation | ✅ DONE | Mar 5 | 7 critical checks passed, 38 safe features, warnings on high-cardinality fields |
-| **28c** | ML Infrastructure & Model Training | ✅ DONE | Mar 6 | Model trained (AUC 0.997, F1 97.7%), 6,569 deals scored, tasks created |
+| **32a** | Model Calibration & Retrain | ✅ DONE | Mar 12 | Score capping [3%,97%], 730-day pipeline cap, recency filter, F1 0.923→0.956 |
+| **32b** | Seeded TDR Responses | ✅ DONE | Mar 17 | Pre-populate TDR fields from Gong-extracted data. Propose/accept/dismiss UX. |
+| **33** | Gong Transcript Q&A | ✅ DONE | Mar 15 | Cortex Search over Gong transcripts. Proactive digest. Deal-scoped Q&A in TDR Chat. |
+| **34** | TDR Versioning | ✅ DONE | Mar 15 | v1/v2/v3 iterations, carry-forward prior inputs, version toggle in workspace |
+| **35** | TDR Admin Observability | ✅ DONE | Mar 16 | Activity logs, usage metrics, user leaderboard, area chart, real user tracking |
+| **35f** | Intelligence Panel UX | ✅ DONE | Mar 16 | Prescriptive deal priority, clickable confidence, Gemini Vision screenshots, Sumble links |
+| **36** | Command Center UX | ✅ DONE | Mar 17 | Win propensity fix (0–1→%), scrollable deal-list tooltips, interactive quadrant legend, click-to-open TDR |
 
 **What's next:**
 
 | Sprint | Name | Effort | Prerequisite | Status | Key Deliverable |
 |--------|------|--------|-------------|--------|-----------------|
-| **33** | Gong Transcript Q&A in TDR Chat | 2–3 days | — | 🔶 In Progress | Cortex Search over Gong transcripts. "Gong Calls" toggle in TDR Chat. Deal-scoped transcript Q&A. Code Engine proxy function. |
-| **32b** | Seeded TDR Responses | 3–5 days | — | 🔲 Not Started | Pre-populate TDR fields from Gong-extracted data (24 new dataset columns). Propose/accept/dismiss UX. |
 | **32c** | Code Engine MLOps Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data |
 | **32d** | Frontend MLOps Page | 2–3 days | 32c | 🔲 Not Started | `/mlops` page with model health visibility |
 | **32e** | Polish + Documentation | 1 day | 32d | 🔲 Not Started | Alert threshold logic, distribution health checks, Pillar 18 finalization |
@@ -40,10 +38,17 @@
 | **28e** | Frontend ML Integration | ✅ Complete |
 | **30** | UX Polish & Iteration | ✅ Complete |
 | **31** | TDR Framework Redesign | ✅ Complete |
+| **32a** | Model Calibration & Retrain | ✅ Complete |
+| **32b** | Seeded TDR Responses | ✅ Complete |
+| **33** | Gong Transcript Q&A | ✅ Complete |
+| **34** | TDR Versioning | ✅ Complete |
+| **35** | TDR Admin Observability | ✅ Complete |
+| **35f** | Intelligence Panel UX | ✅ Complete |
+| **36** | Command Center UX | ✅ Complete |
 
-**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike)
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike), `shaping/tdr-versioning.md` (Sprint 34 — TDR Versioning), `shaping/tdr-admin-observability.md` (Sprint 35 — Admin Observability)
 
-**Start point:** All major sprints complete through Sprint 31. On Mar 12, a model health issue was diagnosed and fixed (feature schema mismatch + probability key mismatch caused all-Lost predictions). The fix revealed a bimodal score distribution (35% at <5%, 15% at >95%) caused by covariate shift on DAYS_IN_PIPELINE. Sprint 32 addresses model calibration, MLOps monitoring, and ground truth tracking.
+**Start point:** All major sprints complete through Sprint 36 (v1.80.1). The platform has shipped 50 sprints across 20 pillars. Remaining work is MLOps monitoring frontend (Sprints 32c–e) — the model health observability layer.
 
 ---
 
@@ -3072,15 +3077,20 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 | **30** | **UX Polish & Iteration** | ✅ Complete | — | S28e + S29b | **UX** |
 | **31** | **TDR Framework Redesign** | ✅ Complete | — | S30 | **UX / Architecture** |
 | **32a** | **Model Calibration & Retrain** | ✅ Complete | — | — | **ML / Calibration** |
-| **33** | **Gong Transcript Q&A in TDR Chat** | 🔶 In Progress | — | — | **AI / Chat / Gong** |
-| **32b** | **Code Engine MLOps Functions** | 🔲 Not Started | — | S32a | **ML / Code Engine** |
-| **32c** | **Frontend MLOps Page** | 🔲 Not Started | — | S32b | **ML / UX** |
-| **32d** | **MLOps Polish + Documentation** | 🔲 Not Started | — | S32c | **Documentation / UX** |
+| **32b** | **Seeded TDR Responses** | ✅ Complete | — | S33 | **AI / UX / Gong** |
+| **33** | **Gong Transcript Q&A in TDR Chat** | ✅ Complete | — | — | **AI / Chat / Gong** |
+| **34** | **TDR Versioning** | ✅ Complete | — | S33 | **UX / Snowflake** |
+| **35** | **TDR Admin Observability** | ✅ Complete | — | S34 | **UX / Analytics** |
+| **35f** | **Intelligence Panel UX Overhaul** | ✅ Complete | — | S35 | **UX / Gemini Vision** |
+| **36** | **Command Center UX** | ✅ Complete | — | S35f | **UX / Charts** |
+| **32c** | **Code Engine MLOps Functions** | 🔲 Not Started | — | S32a | **ML / Code Engine** |
+| **32d** | **Frontend MLOps Page** | 🔲 Not Started | — | S32c | **ML / UX** |
+| **32e** | **MLOps Polish + Documentation** | 🔲 Not Started | — | S32d | **Documentation / UX** |
 
 
 ---
 
-### Sprint 28 — Dataset Swap & Deal Close Propensity ML Model 🔶 IN PROGRESS (28a ✅, 28b ✅, PERF-1 ✅ — 28c/28d/28e remaining)
+### Sprint 28 — Dataset Swap & Deal Close Propensity ML Model ✅ COMPLETE (28a ✅, 28b ✅, PERF-1 ✅, 28c ✅, 28d ✅, 28e ✅)
 
 > **Goal:** (1) Swap the primary app dataset to an expanded version with 65 column mappings (up from 34), including historical outcomes, account firmographics, sales milestones, and engagement signals. (2) Build a `SNOWFLAKE.ML.CLASSIFICATION` propensity-to-close model that predicts close probability for every deal. (3) Surface the propensity score as a primary metric alongside TDR Score in a two-axis quadrant. (4) Display SHAP-like factor explanations inline per deal, designed for naive users.
 > **Risk to app:** Low–Medium — dataset swap requires careful column reconciliation to avoid regressions. 2 existing columns missing from v2 (remap `Mgr Forecast Name` → `Forecast Manager`; drop unused `Current FQ`). ML model is additive; existing TDR scoring continues unchanged.
@@ -3473,7 +3483,7 @@ The current 9-step TDR is exceedingly detailed for real-world SE workflows. Seve
 
 ---
 
-### Sprint 32 — MLOps Monitoring & Model Calibration 🔶 IN PROGRESS
+### Sprint 32 — MLOps Monitoring & Model Calibration 🔶 IN PROGRESS (32a ✅, 32b ✅ — 32c/32d/32e remaining)
 
 > **Goal:** Fix model calibration (bimodal score distribution), build MLOps monitoring infrastructure, and create a dedicated `/mlops` page for model health visibility. The current model produces overconfident predictions (35% of deals at <5%, 15% at >95%) driven by covariate shift on `DAYS_IN_PIPELINE`. This sprint fixes the model first, then builds the tooling to monitor it.
 > **Risk to app:** Low for calibration (Snowflake-side changes only). Medium for frontend (new page + nav changes). Mitigated by: model retrain is non-destructive (old predictions preserved in snapshots), new page is additive.
@@ -3514,28 +3524,28 @@ This sprint ran FIRST — fixed model quality before building the monitoring UI.
 
 **Known Limitation:** Distribution remains bimodal (41.4% in 0–10%, 26.1% in 90–100%). `SNOWFLAKE.ML.CLASSIFICATION` uses gradient boosted trees which produce sharp probabilities. True probability calibration (Platt scaling, isotonic regression) requires post-processing not available in the native ML API. Score capping eliminates false certainty but doesn't reshape the distribution. Further calibration deferred to Sprint 32e.
 
-**Sprint 32b — Seeded TDR Responses (3–5 days)** *[Cursor]* 🔲 NOT STARTED
+**Sprint 32b — Seeded TDR Responses (3–5 days)** *[Cursor]* ✅ COMPLETE (Mar 17, 2026)
 
 > **Shaping document:** `shaping/sprint-32b-seeded-tdr-responses.md`
 
 Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gong call transcripts. A Cortex pipeline analyzes aggregated Gong transcripts per opportunity and infers likely values for each TDR field. The `opportunitiesmagic` dataset now includes 24 new columns (23 TDR field values + `call_count`) refreshed daily. This sprint surfaces them as "proposed" responses that SEs review, edit, and accept before saving.
 
-- [ ] Add 24 field aliases to all 3 manifests (`manifest.json`, `public/manifest.json`, `dist/manifest.json`)
-- [ ] Extend `Deal` interface with `seededInputs?: Record<string, string>` and `callCount?: number`
-- [ ] Map 24 dataset columns to `seededInputs` in `useDomo.ts:transformOpportunityToDeal`
-- [ ] Thread `seededInputs` and `callCount` from TDRWorkspace → TDRInputs
-- [ ] Update `getFieldValue()` to fall back to seeded values (after local draft and saved inputs)
-- [ ] Add "AI Proposed" visual indicator on fields displaying seeded data (dashed violet border)
-- [ ] Add Accept / Dismiss controls for seeded values (seeded data does not auto-save)
-- [ ] Add "Cortex · N calls" badge on step headers and deal table rows
-- [ ] Handle select fields (exact option match) and multi-select fields (JSON array passthrough)
-- [ ] Load prior iteration inputs when starting new TDR version (`priorInputValues`)
-- [ ] Add tri-source resolution: local draft → saved → prior iteration → seeded → empty
-- [ ] Add "View alternatives" panel for fields with multiple source values
-- [ ] Add step-level seed coverage indicator ("4/5 seeded")
-- [ ] Verify Enhance button works with seeded data (reads from `getFieldValue` — should work without changes)
+- [x] Add 24 field aliases to all 3 manifests (`manifest.json`, `public/manifest.json`, `dist/manifest.json`)
+- [x] Extend `Deal` interface with `seededInputs?: Record<string, string>` and `callCount?: number`
+- [x] Map 24 dataset columns to `seededInputs` in `useDomo.ts:transformOpportunityToDeal`
+- [x] Thread `seededInputs` and `callCount` from TDRWorkspace → TDRInputs
+- [x] Update `getFieldValue()` to fall back to seeded values (after local draft and saved inputs)
+- [x] Add "AI Proposed" visual indicator on fields displaying seeded data (dashed violet border)
+- [x] Add Accept / Dismiss controls for seeded values (seeded data does not auto-save)
+- [x] Add "Cortex · N calls" badge on step headers and deal table rows
+- [x] Handle select fields (exact option match) and multi-select fields (JSON array passthrough)
+- [x] Load prior iteration inputs when starting new TDR version (`priorInputValues`)
+- [x] Add tri-source resolution: local draft → saved → prior iteration → seeded → empty
+- [x] Add "View alternatives" panel for fields with multiple source values
+- [x] Add step-level seed coverage indicator ("4/5 seeded")
+- [x] Verify Enhance button works with seeded data (reads from `getFieldValue` — should work without changes)
 
-**Definition of Done:** Deals with Cortex-modeled Gong data show pre-populated TDR fields. SEs can accept, edit, dismiss, or enhance seeded values. New iterations reference both fresh seeded data and prior manual inputs. Deals without call data behave identically to today.
+**Definition of Done:** ✅ Deals with Cortex-modeled Gong data show pre-populated TDR fields. SEs can accept, edit, dismiss, or enhance seeded values. New iterations reference both fresh seeded data and prior manual inputs. Deals without call data behave identically to today.
 
 **Sprint 32c — Code Engine MLOps Functions (1 day)** *[Cursor for Code Engine JS]* 🔲 NOT STARTED
 
@@ -3577,7 +3587,7 @@ Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gon
 
 ---
 
-### Sprint 33 — Gong Transcript Q&A in TDR Chat 🔶 IN PROGRESS
+### Sprint 33 — Gong Transcript Q&A in TDR Chat ✅ COMPLETE
 
 > **Goal:** Enable TDR Chat to answer deal questions using actual Gong call transcript content. Gong transcripts (aggregated by opportunity, 1,973 rows) are indexed by Cortex Search and queried via a new Code Engine function. A "Gong Calls" toggle in TDR Chat injects relevant transcript segments into the AI context alongside existing deal data and KB content.
 > **Risk to app:** Low — additive feature. New toggle, new Code Engine function. No changes to existing chat or KB flows.
@@ -3605,12 +3615,12 @@ Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gon
 
 **Known Issue:** Transcripts currently truncated at 6,188 chars due to Domo writeback VARCHAR default. Column widened in Snowflake; data re-sync needed from Domo (or direct Snowflake write from `tdrSeed.ipynb`) to populate full-length transcripts.
 
-**Sprint 33b — Code Engine Function** *[Cursor]* 🔶 IN PROGRESS
+**Sprint 33b — Code Engine Function** *[Cursor]* ✅ COMPLETE
 
 - [ ] Create `searchGongTranscripts` Code Engine function — accepts `opportunityId` + `query`, calls Cortex Search, returns ranked transcript segments with metadata
 - [ ] Add `searchGongTranscripts` to `manifest.json` packageMapping
 
-**Sprint 33c — Frontend Integration** *[Cursor]* 🔲 NOT STARTED
+**Sprint 33c — Frontend Integration** *[Cursor]* ✅ COMPLETE
 
 - [ ] Add "Gong Calls" toggle to `TDRChat.tsx` (alongside existing KB toggle)
 - [ ] Wire toggle to call `searchGongTranscripts` via Code Engine on message send
@@ -3619,7 +3629,70 @@ Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gon
 - [ ] Show call count badge on toggle when Gong data available
 - [ ] Handle deals with no Gong calls gracefully (hide toggle)
 
-**Definition of Done:** Users can toggle "Gong Calls" in TDR Chat, ask natural-language questions, and receive answers grounded in actual call transcript content scoped to the current deal. Deals without Gong data behave identically to today.
+**Definition of Done:** ✅ Users can toggle "Gong Calls" in TDR Chat, ask natural-language questions, and receive answers grounded in actual call transcript content scoped to the current deal. Deals without Gong data behave identically to today.
+
+---
+
+### Sprint 34 — TDR Versioning ✅ COMPLETE (Mar 15, 2026)
+
+> **Goal:** Enable multi-version TDR lifecycle (v1→v2→v3) with carry-forward of prior inputs.
+> **Shaping document:** `shaping/tdr-versioning.md`
+
+- [x] Session iteration tracking in Snowflake (iteration column in TDR_SESSIONS)
+- [x] `startNewIteration` function in `useTDRSession` — creates new session carrying forward prior inputs
+- [x] Version pills in workspace header (v1, v2, v3) with toggle between versions
+- [x] Prior inputs loaded as fallback values in TDR input fields
+- [x] `previousSessions` query for version history
+
+**Definition of Done:** ✅ SEs can create new TDR versions, toggle between them, and see prior inputs carried forward as reference.
+
+---
+
+### Sprint 35 — TDR Admin Observability ✅ COMPLETE (Mar 16, 2026)
+
+> **Goal:** Multi-user admin visibility into TDR usage patterns and activity.
+> **Shaping document:** `shaping/tdr-admin-observability.md`
+
+- [x] `getAdminActivityLog` Code Engine function — queries TDR session history
+- [x] `getUsageMetrics` Code Engine function — aggregates usage statistics
+- [x] TDRAdmin page with Usage tab (weekly area chart, user leaderboard, recent sessions)
+- [x] Real user name tracking via `useDomoUser` hook (env + API enrichment)
+- [x] Leaderboard with active/done TDR breakout per user
+
+**Definition of Done:** ✅ Admin page shows who is using the platform, how often, and which deals they're reviewing.
+
+---
+
+### Sprint 35f — Intelligence Panel UX Overhaul ✅ COMPLETE (Mar 16, 2026)
+
+> **Goal:** Make the Intelligence panel more prescriptive, interactive, and enrichment-capable.
+
+- [x] Prescriptive deal priority — dynamic complexity drivers/simplifiers from TDR score components
+- [x] Clickable assessment confidence — expand + scroll to Knowledge Base and Risk sections
+- [x] `CollapsibleSection` refactored with `forwardRef`/`useImperativeHandle` for imperative `expand()`
+- [x] Gemini Vision screenshot parsing via Code Engine (`parseScreenshotTechStack`)
+- [x] Paste zone with `onPaste` event handler (Clipboard API workaround for Domo iframes)
+- [x] Corrected Sumble URL format (`sumble.com/orgs?q={domain}&sort=Employees&desc=1`)
+
+**Definition of Done:** ✅ Deal priority explains *why* it's complex, confidence items navigate to sections, screenshots paste for instant tech stack extraction.
+
+---
+
+### Sprint 36 — Command Center UX ✅ COMPLETE (Mar 17, 2026)
+
+> **Goal:** Fix data accuracy bugs and add interactive features to the Command Center.
+
+- [x] Win propensity average: multiply 0–1 score by 100 (was showing 1% instead of ~51%)
+- [x] High propensity filter threshold corrected (>= 0.60, not >= 60)
+- [x] TDR Coverage tooltip z-index fix (Recharts tooltip rendered behind text)
+- [x] All 5 stat card tooltips enhanced with scrollable deal lists (all deals, not top 5)
+- [x] Hover ring decorators replacing cursor-help question mark
+- [x] Deal Positioning click-to-open-TDR fix (correct arg order + route)
+- [x] Quadrant legend renamed to Prioritize/Fast Track/Investigate/Deprioritize
+- [x] Quadrant derived from chart position (TDR score × win threshold)
+- [x] Interactive legend toggles — click to filter scatter by quadrant
+
+**Definition of Done:** ✅ All stat cards show accurate metrics with scrollable detail, quadrant chart is interactive and navigable, all values are correct.
 
 ---
 
@@ -3732,15 +3805,34 @@ Sprint 31 — TDR Framework Redesign ✅
     ▼
 Sprint 32 — MLOps + Seeded TDR Responses 🔶
     │  32a: Model calibration & retrain (score capping, recency filter) ✅
-    │  32b: Seeded TDR Responses (Gong-extracted pre-population) 🔲
+    │  32b: Seeded TDR Responses (Gong-extracted pre-population) ✅
     │  32c: Code Engine MLOps functions (7 new CE functions) 🔲
     │  32d: Frontend MLOps page (/mlops) 🔲
     │  32e: Polish + Documentation 🔲
-    │  32d: Polish + documentation 🔲
-    │  ~5–7 days
+    │  ~4–5 days remaining
+    │
+    ▼
+Sprint 33 — Gong Transcript Q&A ✅
+    │  33a: Snowflake setup (Cortex Search service) ✅
+    │  33b: Code Engine proxy function ✅
+    │  33c: Frontend integration (proactive digest + Q&A) ✅
+    │
+    ▼
+Sprint 34 — TDR Versioning ✅
+    │  v1/v2/v3 iterations, carry-forward, version toggle
+    │
+    ▼
+Sprint 35 — TDR Admin Observability ✅
+    │  Activity logs, usage metrics, user leaderboard, area chart
+    │  35f: Intelligence Panel UX (prescriptive priority, Gemini Vision) ✅
+    │
+    ▼
+Sprint 36 — Command Center UX ✅
+    │  Win propensity fix, scrollable tooltips, interactive quadrant legend
+    │  Click-to-open TDR, hover decorators
 ```
 
-**Total estimated effort (original):** ~22–29 days · **Completed:** ~37 days (Sprints 14–31, OSS-1, PERF-1, 32a) · **Remaining:** ~8–11 days (Sprint 32b–e)
+**Total estimated effort (original):** ~22–29 days · **Completed:** ~50 days (Sprints 14–36, OSS-1, PERF-1) · **Remaining:** ~4–5 days (Sprint 32c–e)
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -3766,7 +3858,12 @@ Sprint 32 — MLOps + Seeded TDR Responses 🔶
 | **PERF-1: Performance Optimization** | — | S28a | 1 day | ✅ Complete |
 | **S30: UX Polish & Iteration** | — | S28 + S29 | 1–2 days | ✅ Complete |
 | **S31: TDR Framework Redesign** | — | S29 + S30 | 3–5 days (3 sub-sprints) | ✅ Complete |
-| **S32: MLOps + Seeded TDR + Model Calibration** | — | S28c + S28d + S28e | 8–12 days (5 sub-sprints) | 🔶 In Progress |
+| **S32: MLOps + Seeded TDR + Model Calibration** | — | S28c + S28d + S28e | 8–12 days (5 sub-sprints) | 🔶 In Progress (32a ✅, 32b ✅, 32c–e 🔲) |
+| **S33: Gong Transcript Q&A** | — | — | 2–3 days | ✅ Complete |
+| **S34: TDR Versioning** | — | S33 | 2–3 days | ✅ Complete |
+| **S35: TDR Admin Observability** | — | S34 | 2–3 days | ✅ Complete |
+| **S35f: Intelligence Panel UX** | — | S35 | 1–2 days | ✅ Complete |
+| **S36: Command Center UX** | — | S35f | 1 day | ✅ Complete |
 
 ---
 
@@ -4102,10 +4199,15 @@ This is the "elevator pitch" view. The final solution is built on eighteen disti
 **Why it matters independently:** When the model broke (feature schema mismatch → all predictions "Lost"), the only diagnostic path was raw SQL via Cortex CLI. An SE Manager seeing "Win Propensity: 0%" had no way to distinguish a model failure from reality. This pillar makes model health visible, score quality trustworthy, and provides the infrastructure to continuously validate and improve predictions. The calibration fixes ensure scores represent credible probabilities — no deal should be 99.8% or 0.02% certain.
 **Key outcome:** The model is monitored, calibrated, and self-diagnosing — no silent failures, credible score distributions, and ground truth tracking for continuous accuracy measurement.
 
-### Pillar 19: Gong Transcript Q&A in TDR Chat (Sprint 33)
-**What:** Gong call transcripts (aggregated by opportunity, ~2K deals) are synced to Snowflake and indexed by a Cortex Search service. A new "Gong Calls" toggle in TDR Chat enables deal-scoped semantic search over actual call content. When an SE asks "What did the customer say about their timeline?" or "Were security concerns raised?", the AI draws from verbatim transcript text — not just structured deal metadata or generic playbooks. The Cortex Search service uses `snowflake-arctic-embed-m-v1.5` embeddings with `OPPORTUNITY_ID` filter columns to ensure transcript context never leaks across deals. Query latency is ~200–400ms, enabling interactive Q&A.
-**Why it matters independently:** Sprint 32b (seeded responses) extracts *structured* field values from Gong transcripts. This pillar provides access to the *raw conversational context* — the actual words spoken on calls. These are complementary: seeded fields give quick answers ("Strategic Value: High"), while transcript Q&A gives evidence ("The VP of Data said they need to consolidate before Q3 because of the Teradata migration deadline"). Together, the SE has both the summary and the source material.
-**Key outcome:** The app answers questions using what was actually said on calls.
+### Pillar 19: Gong Transcript Q&A & Seeded TDR Responses (Sprints 32b + 33)
+**What:** Gong call transcripts (aggregated by opportunity, ~2K deals) are synced to Snowflake and indexed by a Cortex Search service. TDR Chat supports deal-scoped semantic search over actual call content with proactive digests on load. When an SE asks "What did the customer say about their timeline?", the AI draws from verbatim transcript text. Complementing this, Sprint 32b pre-populates TDR input fields from Cortex AI-modeled inferences derived from those same transcripts — 24 dataset columns (23 TDR field values + call_count) surface as "proposed" responses with accept/dismiss UX.
+**Why it matters independently:** Seeded responses extract *structured* field values from Gong transcripts, giving SEs a first draft. Transcript Q&A provides access to the *raw conversational context* — the actual words spoken on calls. Together, the SE has both the summary and the source material. Deals with call data start pre-populated; deals without behave identically to before.
+**Key outcome:** The app answers questions using what was actually said on calls AND pre-fills TDR fields from call insights.
+
+### Pillar 20: TDR Versioning, Admin Observability & UX Polish (Sprints 34–36)
+**What:** Multi-version TDR lifecycle (v1→v2→v3), carrying forward prior inputs while allowing fresh iterations. Admin observability page with activity logs, usage metrics, user leaderboard, and weekly trend charts. Intelligence panel overhaul: prescriptive deal priority explanations, clickable assessment confidence elements that expand and scroll to sections, Gemini Vision screenshot parsing for tech stack enrichment, corrected Sumble URL integration. Command Center refinements: win propensity calculation fix (0–1 scale → percentage), scrollable deal-list tooltips on all stat cards, hover ring decorators replacing cursor-help, interactive quadrant legend (Prioritize/Fast Track/Investigate/Deprioritize) with click-to-filter, and click-to-open-TDR navigation fix.
+**Why it matters independently:** TDR Versioning transforms the TDR from a one-shot review into a living document that evolves with the deal. Admin observability enables multi-user rollout with visibility into who's using the platform and how. The UX polish across Intelligence and Command Center removes friction and makes every surface interactive and data-rich.
+**Key outcome:** TDRs are versioned and persistent. Platform usage is observable. Every chart, tooltip, and metric is interactive, accurate, and comprehensive.
 
 ### The Flywheel
 
@@ -4165,10 +4267,10 @@ This is the "elevator pitch" view. The final solution is built on eighteen disti
 | All 16 Pillars (+ UX Polish) | ✅ | **The production-polished platform:** every new surface — propensity quadrant, SHAP factors, AI enhancement diff — has been evaluated with real data and refined. Data visibility rules are recalibrated (Stage Age threshold, duplicate handling) so zero legitimate deals are silently hidden. Intelligence Panel has a unified readout workflow. Tech pills show provenance. The app doesn't just work; it feels right. |
 | All 17 Pillars (+ TDR Redesign) | ✅ | **The streamlined platform:** the TDR itself — the core instrument — is rebuilt. 9 steps become 5. Redundant fields are consolidated. AI & ML is a rigorous core step, not an afterthought. Textareas resize, steps auto-complete, Domo layers are pills for analytics, and TDRs version over time. SEs complete reviews faster with sharper inputs. Every downstream artifact gets better because the inputs got better. The flywheel is complete. |
 | All 18 Pillars (+ MLOps Monitoring) | 🔶 | **The self-monitoring platform:** the ML model that predicts deal outcomes is now observable, calibrated, and continuously validated. Score distributions are credible — no false certainty. Ground truth tracking measures real-world prediction accuracy as deals close. Pipeline health is visible at a glance: stale models, failed tasks, and degenerate distributions surface as alerts, not silent failures. The flywheel becomes trustworthy. |
+| All 19 Pillars (+ Gong Q&A & Seeded TDR) | ✅ | **The conversation-aware platform:** the app doesn't just know deal metadata and playbooks — it knows what was actually said on calls. SEs ask questions in TDR Chat and get answers grounded in verbatim Gong transcripts, scoped to the current deal via Cortex Search. Seeded fields pre-populate TDR inputs from Gong-extracted data. The flywheel deepens: every call feeds the system, every question draws from conversational reality. |
+| All 20 Pillars (+ Versioning, Admin, UX) | ✅ | **The production-ready multi-user platform:** TDRs version over time (v1→v2→v3), carrying forward context while enabling fresh iterations. Platform usage is observable via admin dashboards. Every chart, tooltip, and metric is interactive and data-rich. The Command Center's quadrant legend filters on click, stat cards show scrollable deal lists, and deal dots navigate to the workspace. The Intelligence panel explains *why* a deal is complex and lets users paste Sumble screenshots for instant tech stack parsing. The platform is ready for team-wide rollout. |
 
-| All 19 Pillars (+ Gong Transcript Q&A) | 🔶 | **The conversation-aware platform:** the app doesn't just know deal metadata and playbooks — it knows what was actually said on calls. SEs ask questions in TDR Chat and get answers grounded in verbatim Gong transcripts, scoped to the current deal via Cortex Search. Seeded fields (Sprint 32b) provide structured summaries; transcript Q&A provides the evidence. The flywheel deepens: every call feeds the system, every question draws from conversational reality. |
-
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. **Pillars 1–17 are complete.** Pillar 18 (MLOps Monitoring & Model Calibration) is in progress. Pillar 19 (Gong Transcript Q&A) is in progress. Pillar 10 is the capstone: it converts everything the other pillars generate into a single actionable artifact. Pillar 14 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes. Pillar 15 closes the input quality gap: the system helps SEs write better inputs, which makes everything downstream better. Pillar 16 ensures the new ML and AI surfaces are production-polished. Pillar 17 rebuilds the core TDR instrument — fewer steps, sharper fields, AI & ML as a first-class concern. Pillar 18 closes the observability gap: the ML predictions are monitored, calibrated, and self-diagnosing. Pillar 19 bridges the gap between structured deal data and raw conversational context from Gong calls.
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. **Pillars 1–17, 19, and 20 are complete.** Pillar 18 (MLOps Monitoring frontend — Sprints 32c–e) is the only remaining work. Pillar 10 is the capstone: it converts everything the other pillars generate into a single actionable artifact. Pillar 14 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes. Pillar 15 closes the input quality gap: the system helps SEs write better inputs, which makes everything downstream better. Pillar 16 ensures the new ML and AI surfaces are production-polished. Pillar 17 rebuilds the core TDR instrument — fewer steps, sharper fields, AI & ML as a first-class concern. Pillar 18 closes the observability gap: the ML predictions are monitored, calibrated, and self-diagnosing. Pillar 19 bridges the gap between structured deal data and raw conversational context from Gong calls. Pillar 20 makes the platform multi-user-ready with versioning, admin observability, and comprehensive UX polish.
 
 ---
 
