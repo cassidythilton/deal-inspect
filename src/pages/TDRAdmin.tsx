@@ -426,121 +426,75 @@ export default function TDRAdmin() {
                     </TooltipProvider>
                   </section>
 
-                  {/* User Leaderboard */}
-                  <section className="grid grid-cols-2 gap-4">
-                    <div className="rounded-lg border bg-card p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Trophy className="h-4 w-4 text-amber-500" />
-                        <h3 className="text-sm font-semibold">User Leaderboard</h3>
-                      </div>
-                      {users.length > 0 ? (
-                        <div className="space-y-0 divide-y divide-border/50">
-                          {users.slice(0, 10).map((u, i) => (
-                            <div key={u.userName} className="flex items-center gap-3 py-2">
-                              <span className={cn(
-                                'text-xs font-bold w-5 text-center',
-                                i === 0 ? 'text-amber-500' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-amber-700' : 'text-muted-foreground'
-                              )}>
-                                {i + 1}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <span className="text-sm font-medium truncate block">{humanizeName(u.userName)}</span>
-                              </div>
-                              <div className="flex items-center gap-4 text-right">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-xs font-medium tabular-nums">{Number(u.sessions) - Number(u.completed)}</span>
-                                  <span className="text-2xs text-blue-500">active</span>
-                                  <span className="text-2xs text-muted-foreground/30">·</span>
-                                  <span className="text-xs font-medium tabular-nums">{u.completed}</span>
-                                  <span className="text-2xs text-emerald-500">done</span>
-                                </div>
-                                <div>
-                                  <span className="text-xs font-medium tabular-nums">{u.inputs}</span>
-                                  <span className="text-2xs text-muted-foreground ml-1">inputs</span>
-                                </div>
-                                <div>
-                                  <span className="text-xs font-medium tabular-nums">{u.messages}</span>
-                                  <span className="text-2xs text-muted-foreground ml-1">chats</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-                          <Users className="h-4 w-4 mr-2" />
-                          No user data available yet
-                        </div>
-                      )}
+                  {/* Weekly Activity — Full-Width Area Chart */}
+                  <section className="rounded-lg border bg-card p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingUp className="h-4 w-4 text-violet-500" />
+                      <h3 className="text-sm font-semibold">Weekly TDR Activity</h3>
+                      <span className="text-2xs text-muted-foreground">Last 12 weeks</span>
                     </div>
-
-                    {/* Weekly Activity — Area Chart */}
-                    <div className="rounded-lg border bg-card p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <TrendingUp className="h-4 w-4 text-violet-500" />
-                        <h3 className="text-sm font-semibold">Weekly TDR Activity</h3>
-                        <span className="text-2xs text-muted-foreground">Last 12 weeks</span>
+                    {weekly.length > 0 ? (
+                      <div className="h-52">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={weekly.map(w => ({ name: formatWeek(w.week), sessions: Number(w.sessions), fullDate: w.week }))}
+                            margin={{ top: 10, right: 20, bottom: 5, left: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="hsl(263, 84%, 58%)" stopOpacity={0.35} />
+                                <stop offset="95%" stopColor="hsl(263, 84%, 58%)" stopOpacity={0.02} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(260, 10%, 90%)" vertical={false} />
+                            <XAxis
+                              dataKey="name"
+                              tick={{ fontSize: 10, fill: 'hsl(260, 12%, 50%)' }}
+                              axisLine={false}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tick={{ fontSize: 10, fill: 'hsl(260, 12%, 50%)' }}
+                              axisLine={false}
+                              tickLine={false}
+                              allowDecimals={false}
+                            />
+                            <RechartsTooltip
+                              contentStyle={{ backgroundColor: '#1B1630', border: '1px solid #2a2540', borderRadius: 10, fontSize: 11, padding: '8px 12px' }}
+                              labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: 2 }}
+                              formatter={(value: number) => [`${value} TDRs`, 'Sessions']}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="sessions"
+                              stroke="hsl(263, 84%, 58%)"
+                              strokeWidth={2.5}
+                              fill="url(#areaGradient)"
+                              dot={{ r: 4, fill: '#fff', stroke: 'hsl(263, 84%, 58%)', strokeWidth: 2 }}
+                              activeDot={{ r: 6, fill: 'hsl(263, 84%, 58%)', stroke: '#fff', strokeWidth: 2 }}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
                       </div>
-                      {weekly.length > 0 ? (
-                        <div className="h-52">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart
-                              data={weekly.map(w => ({ name: formatWeek(w.week), sessions: Number(w.sessions), fullDate: w.week }))}
-                              margin={{ top: 10, right: 16, bottom: 5, left: 0 }}
-                            >
-                              <defs>
-                                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor="hsl(263, 84%, 58%)" stopOpacity={0.35} />
-                                  <stop offset="95%" stopColor="hsl(263, 84%, 58%)" stopOpacity={0.02} />
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(260, 10%, 90%)" vertical={false} />
-                              <XAxis
-                                dataKey="name"
-                                tick={{ fontSize: 10, fill: 'hsl(260, 12%, 50%)' }}
-                                axisLine={false}
-                                tickLine={false}
-                              />
-                              <YAxis
-                                tick={{ fontSize: 10, fill: 'hsl(260, 12%, 50%)' }}
-                                axisLine={false}
-                                tickLine={false}
-                                allowDecimals={false}
-                              />
-                              <RechartsTooltip
-                                contentStyle={{ backgroundColor: '#1B1630', border: '1px solid #2a2540', borderRadius: 10, fontSize: 11, padding: '8px 12px' }}
-                                labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: 2 }}
-                                formatter={(value: number) => [`${value} TDRs`, 'Sessions']}
-                              />
-                              <Area
-                                type="monotone"
-                                dataKey="sessions"
-                                stroke="hsl(263, 84%, 58%)"
-                                strokeWidth={2.5}
-                                fill="url(#areaGradient)"
-                                dot={{ r: 4, fill: '#fff', stroke: 'hsl(263, 84%, 58%)', strokeWidth: 2 }}
-                                activeDot={{ r: 6, fill: 'hsl(263, 84%, 58%)', stroke: '#fff', strokeWidth: 2 }}
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          No weekly data available
-                        </div>
-                      )}
-                    </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
+                        <TrendingUp className="h-4 w-4 mr-2" />
+                        No weekly data available
+                      </div>
+                    )}
+                  </section>
 
+                  {/* Recent Sessions + User Leaderboard — Side by Side */}
+                  <section className="grid grid-cols-2 gap-4 items-stretch">
                     {/* Recent TDR Sessions */}
-                    <div className="rounded-lg border bg-card p-4">
+                    <div className="rounded-lg border bg-card p-4 flex flex-col">
                       <div className="flex items-center gap-2 mb-3">
                         <Clock className="h-4 w-4 text-violet-500" />
                         <h3 className="text-sm font-semibold">Recent Sessions</h3>
                         <span className="text-2xs text-muted-foreground">Latest TDRs created</span>
                       </div>
                       {recentSessions.length > 0 ? (
-                        <div className="space-y-0 divide-y divide-border/50">
+                        <div className="flex-1 space-y-0 divide-y divide-border/50">
                           {recentSessions.map(s => (
                             <div key={s.sessionId} className="flex items-center gap-3 py-2">
                               <div className={cn(
@@ -576,9 +530,56 @@ export default function TDRAdmin() {
                           ))}
                         </div>
                       ) : (
-                        <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
+                        <div className="flex-1 flex items-center justify-center py-8 text-xs text-muted-foreground">
                           <Clock className="h-4 w-4 mr-2" />
                           {logLoading ? 'Loading...' : 'No session data available'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* User Leaderboard */}
+                    <div className="rounded-lg border bg-card p-4 flex flex-col">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Trophy className="h-4 w-4 text-amber-500" />
+                        <h3 className="text-sm font-semibold">User Leaderboard</h3>
+                      </div>
+                      {users.length > 0 ? (
+                        <div className="flex-1 space-y-0 divide-y divide-border/50">
+                          {users.slice(0, 10).map((u, i) => (
+                            <div key={u.userName} className="flex items-center gap-3 py-2">
+                              <span className={cn(
+                                'text-xs font-bold w-5 text-center',
+                                i === 0 ? 'text-amber-500' : i === 1 ? 'text-slate-400' : i === 2 ? 'text-amber-700' : 'text-muted-foreground'
+                              )}>
+                                {i + 1}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm font-medium truncate block">{humanizeName(u.userName)}</span>
+                              </div>
+                              <div className="flex items-center gap-4 text-right">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium tabular-nums">{Number(u.sessions) - Number(u.completed)}</span>
+                                  <span className="text-2xs text-blue-500">active</span>
+                                  <span className="text-2xs text-muted-foreground/30">·</span>
+                                  <span className="text-xs font-medium tabular-nums">{u.completed}</span>
+                                  <span className="text-2xs text-emerald-500">done</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs font-medium tabular-nums">{u.inputs}</span>
+                                  <span className="text-2xs text-muted-foreground ml-1">inputs</span>
+                                </div>
+                                <div>
+                                  <span className="text-xs font-medium tabular-nums">{u.messages}</span>
+                                  <span className="text-2xs text-muted-foreground ml-1">chats</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center py-8 text-xs text-muted-foreground">
+                          <Users className="h-4 w-4 mr-2" />
+                          No user data available yet
                         </div>
                       )}
                     </div>
