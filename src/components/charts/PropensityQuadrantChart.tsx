@@ -1,11 +1,12 @@
 /**
- * Propensity Quadrant Scatter — Sprint 28e
+ * Propensity Quadrant Scatter — Sprint 28e / Sprint 36
  * TDR Score (X) × Win Propensity (Y) scatter plot.
  * Clean 2×2 quadrant grid, axes scale to data.
  * Click a dot to navigate to TDR Workspace.
+ * Click a legend cohort to filter the chart.
  */
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import {
   ScatterChart,
   Scatter,
@@ -34,18 +35,30 @@ interface PropensityQuadrantChartProps {
   deals: Deal[];
 }
 
-const QUADRANT_COLORS = {
-  HIGH: 'hsl(263, 84%, 55%)',
-  MONITOR: 'hsl(280, 60%, 65%)',
-  AT_RISK: 'hsl(300, 45%, 55%)',
-  NONE: 'hsl(260, 10%, 45%)',
-} as const;
+type Quadrant = 'PRIORITIZE' | 'FAST_TRACK' | 'INVESTIGATE' | 'DEPRIORITIZE';
 
-const QUADRANT_LABELS: Record<string, string> = {
-  HIGH: 'High Win',
-  MONITOR: 'Monitor',
-  AT_RISK: 'At Risk',
+const QUADRANT_COLORS: Record<Quadrant, string> = {
+  PRIORITIZE:   'hsl(263, 84%, 55%)',
+  FAST_TRACK:   'hsl(152, 60%, 45%)',
+  INVESTIGATE:  'hsl(38, 65%, 50%)',
+  DEPRIORITIZE: 'hsl(260, 10%, 45%)',
 };
+
+const QUADRANT_LABELS: Record<Quadrant, string> = {
+  PRIORITIZE:   'Prioritize',
+  FAST_TRACK:   'Fast Track',
+  INVESTIGATE:  'Investigate',
+  DEPRIORITIZE: 'Deprioritize',
+};
+
+const QUADRANT_PILL_STYLES: Record<Quadrant, string> = {
+  PRIORITIZE:   'bg-purple-600 text-white',
+  FAST_TRACK:   'bg-emerald-600 text-white',
+  INVESTIGATE:  'bg-amber-500 text-amber-950',
+  DEPRIORITIZE: 'bg-slate-600 text-slate-200',
+};
+
+const ALL_QUADRANTS: Quadrant[] = ['PRIORITIZE', 'FAST_TRACK', 'INVESTIGATE', 'DEPRIORITIZE'];
 
 const formatCurrency = (val: number) => {
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
@@ -60,12 +73,19 @@ interface ScatterPoint {
   tdrScore: number;
   propensity: number;
   acv: number;
-  quadrant: string;
+  quadrant: Quadrant;
   color: string;
 }
 
 const WIN_THRESHOLD = 40;
 const COMPLEXITY_THRESHOLD = 50;
+
+function deriveQuadrant(tdrScore: number, propensity: number): Quadrant {
+  if (tdrScore >= COMPLEXITY_THRESHOLD && propensity >= WIN_THRESHOLD) return 'PRIORITIZE';
+  if (tdrScore < COMPLEXITY_THRESHOLD && propensity >= WIN_THRESHOLD) return 'FAST_TRACK';
+  if (tdrScore >= COMPLEXITY_THRESHOLD && propensity < WIN_THRESHOLD) return 'INVESTIGATE';
+  return 'DEPRIORITIZE';
+}
 
 function snap(val: number, step: number, dir: 'up' | 'down') {
   return dir === 'up' ? Math.ceil(val / step) * step : Math.floor(val / step) * step;
@@ -79,9 +99,9 @@ const CustomDot = (props: Record<string, unknown>) => {
   return (
     <circle
       cx={cx} cy={cy} r={r}
-      fill={payload?.color || QUADRANT_COLORS.NONE}
+      fill={payload?.color || QUADRANT_COLORS.DEPRIORITIZE}
       fillOpacity={0.55}
-      stroke={payload?.color || QUADRANT_COLORS.NONE}
+      stroke={payload?.color || QUADRANT_COLORS.DEPRIORITIZE}
       strokeWidth={1} strokeOpacity={0.8}
       className="cursor-pointer hover:fill-opacity-90"
     />
@@ -112,22 +132,34 @@ const CustomTooltipContent = ({ active, payload }: {
 
 export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps) {
   const navigate = useNavigate();
+  const [activeQuadrant, setActiveQuadrant] = useState<Quadrant | null>(null);
 
-  const points: ScatterPoint[] = useMemo(() => {
+  const allPoints: ScatterPoint[] = useMemo(() => {
     return deals
       .filter(d => d.propensityScore != null)
       .map(d => {
         const tdr = d.tdrScore ?? calculateTDRScore(d);
         const pct = Math.round((d.propensityScore ?? 0) * 100);
-        const q = d.propensityQuadrant || 'NONE';
+        const q = deriveQuadrant(tdr, pct);
         return {
           id: d.id, name: d.name, account: d.account,
           tdrScore: tdr, propensity: pct, acv: d.acv,
           quadrant: q,
-          color: QUADRANT_COLORS[q as keyof typeof QUADRANT_COLORS] || QUADRANT_COLORS.NONE,
+          color: QUADRANT_COLORS[q],
         };
       });
   }, [deals]);
+
+  const quadrantCounts = useMemo(() => {
+    const counts = { PRIORITIZE: 0, FAST_TRACK: 0, INVESTIGATE: 0, DEPRIORITIZE: 0 };
+    for (const p of allPoints) counts[p.quadrant]++;
+    return counts;
+  }, [allPoints]);
+
+  const points = useMemo(() => {
+    if (!activeQuadrant) return allPoints;
+    return allPoints.filter(p => p.quadrant === activeQuadrant);
+  }, [allPoints, activeQuadrant]);
 
   const { xDomain, yDomain } = useMemo(() => {
     if (points.length === 0) return { xDomain: [0, 100] as [number, number], yDomain: [0, 100] as [number, number] };
@@ -156,7 +188,11 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
     if (entry?.payload?.id) navigate(`/workspace?deal=${entry.payload.id}`);
   }, [navigate]);
 
-  const scoredCount = points.length;
+  const toggleQuadrant = useCallback((q: Quadrant) => {
+    setActiveQuadrant(prev => prev === q ? null : q);
+  }, []);
+
+  const scoredCount = allPoints.length;
 
   return (
     <TooltipProvider delayDuration={100}>
@@ -168,7 +204,7 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
               <Info className="h-3 w-3 text-muted-foreground/40 cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-sm p-3">
-              <p className="text-xs mb-2">TDR complexity (X) vs ML win probability (Y). Dot size = ACV. {scoredCount}/{deals.length} scored. Click to open.</p>
+              <p className="text-xs mb-2">TDR complexity (X) vs ML win probability (Y). Dot size = ACV. {scoredCount}/{deals.length} scored. Click dots to open, click legend to filter.</p>
               <div className="grid grid-cols-2 gap-2 text-[10px]">
                 <div className="flex items-start gap-1.5"><span className="rounded px-1 py-0.5 text-[9px] font-bold bg-purple-600 text-white shrink-0 mt-px">Prioritize</span> <span className="text-muted-foreground">complex & likely to close, TDR maximizes value</span></div>
                 <div className="flex items-start gap-1.5"><span className="rounded px-1 py-0.5 text-[9px] font-bold bg-emerald-600 text-white shrink-0 mt-px">Fast Track</span> <span className="text-muted-foreground">likely to close, low complexity, light-touch TDR</span></div>
@@ -177,13 +213,33 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
               </div>
             </TooltipContent>
           </Tooltip>
-          <div className="flex items-center gap-3 ml-auto">
-            {(['HIGH', 'MONITOR', 'AT_RISK'] as const).map(q => (
-              <span key={q} className="flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full" style={{ background: QUADRANT_COLORS[q] }} />
-                <span className="text-[9px] text-muted-foreground">{QUADRANT_LABELS[q]}</span>
-              </span>
-            ))}
+          <div className="flex items-center gap-1.5 ml-auto">
+            {ALL_QUADRANTS.map(q => {
+              const isActive = activeQuadrant === q;
+              const isDimmed = activeQuadrant != null && !isActive;
+              return (
+                <button
+                  key={q}
+                  onClick={() => toggleQuadrant(q)}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] transition-all cursor-pointer select-none border ${
+                    isActive
+                      ? `${QUADRANT_PILL_STYLES[q]} border-transparent shadow-sm`
+                      : isDimmed
+                        ? 'bg-transparent border-border/30 text-muted-foreground/40'
+                        : 'bg-transparent border-transparent text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <span
+                    className="inline-block w-2 h-2 rounded-full shrink-0 transition-opacity"
+                    style={{ background: QUADRANT_COLORS[q], opacity: isDimmed ? 0.25 : 1 }}
+                  />
+                  <span className="tabular-nums">{QUADRANT_LABELS[q]}</span>
+                  <span className={`tabular-nums ${isDimmed ? 'text-muted-foreground/30' : 'text-muted-foreground/60'}`}>
+                    {quadrantCounts[q]}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -226,7 +282,7 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
                 <ReferenceLine y={WIN_THRESHOLD} stroke="hsl(260, 20%, 50%)" strokeDasharray="4 3" strokeOpacity={0.35} />
                 <ReferenceLine x={COMPLEXITY_THRESHOLD} stroke="hsl(260, 15%, 45%)" strokeDasharray="4 3" strokeOpacity={0.25} />
 
-                {/* Quadrant labels — pinned to far edges of each quadrant */}
+                {/* Quadrant labels */}
                 <ReferenceArea
                   x1={COMPLEXITY_THRESHOLD + (xDomain[1] - COMPLEXITY_THRESHOLD) * 0.3}
                   x2={xDomain[1]}

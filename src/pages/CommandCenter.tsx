@@ -215,11 +215,11 @@ export default function CommandCenter() {
     const highPropensityACV = highPropensity.reduce((s, d) => s + d.acv, 0);
 
     return {
-      queue: { count: tdrQueue.length, acv: queueACV, deals: tdrQueue.slice(0, 5) },
-      competitive: { count: competitiveDeals.length, acv: competitiveACV, deals: competitiveDeals.slice(0, 5) },
-      partner: { count: partnerDeals.length, acv: partnerACV, deals: partnerDeals.slice(0, 5) },
-      stale: { count: staleDeals.length, acv: staleACV, deals: staleDeals.sort((a, b) => (b.stageAge ?? 0) - (a.stageAge ?? 0)).slice(0, 5) },
-      propensity: { avgScore: avgPropensity, highCount: highPropensity.length, highACV: highPropensityACV, scoredCount: scoredDeals.length, deals: highPropensity.sort((a, b) => (b.propensityScore ?? 0) - (a.propensityScore ?? 0)).slice(0, 5) },
+      queue: { count: tdrQueue.length, acv: queueACV, deals: tdrQueue },
+      competitive: { count: competitiveDeals.length, acv: competitiveACV, deals: competitiveDeals },
+      partner: { count: partnerDeals.length, acv: partnerACV, deals: partnerDeals },
+      stale: { count: staleDeals.length, acv: staleACV, deals: staleDeals.sort((a, b) => (b.stageAge ?? 0) - (a.stageAge ?? 0)) },
+      propensity: { avgScore: avgPropensity, highCount: highPropensity.length, highACV: highPropensityACV, scoredCount: scoredDeals.length, deals: highPropensity.sort((a, b) => (b.propensityScore ?? 0) - (a.propensityScore ?? 0)) },
     };
   }, [displayedDeals]);
 
@@ -255,7 +255,7 @@ export default function CommandCenter() {
               {/* TDR Queue */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="stat-card cursor-help group">
+                  <div className="stat-card group hover:ring-1 hover:ring-purple-500/20 transition-shadow">
                     <div className="flex items-center gap-1.5">
                       <ShieldAlert className="h-3.5 w-3.5 text-purple-500/70" />
                       <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">TDR Queue</span>
@@ -264,17 +264,18 @@ export default function CommandCenter() {
                     <div className="mt-0.5 text-xs text-muted-foreground">{formatValue(metrics.queue.acv)} pipeline</div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-sm">
-                  <p className="text-xs mb-1.5">High/Critical-scored deals with <strong>no completed TDR</strong>.</p>
+                <TooltipContent side="bottom" className="max-w-sm p-0">
+                  <div className="px-3 pt-2.5 pb-1.5">
+                    <p className="text-xs">High/Critical-scored deals with <strong>no completed TDR</strong>.</p>
+                  </div>
                   {metrics.queue.deals.length > 0 && (
-                    <div className="border-t pt-1.5 space-y-1">
+                    <div className="border-t max-h-52 overflow-y-auto px-3 py-1.5 space-y-1">
                       {metrics.queue.deals.map(d => (
                         <div key={d.id} className="flex justify-between gap-3 text-[10px]">
                           <span className="truncate text-foreground">{d.account}</span>
                           <span className="shrink-0 text-muted-foreground tabular-nums">{formatValue(d.acv)}</span>
                         </div>
                       ))}
-                      {metrics.queue.count > 5 && <p className="text-[9px] text-muted-foreground">+{metrics.queue.count - 5} more</p>}
                     </div>
                   )}
                 </TooltipContent>
@@ -283,7 +284,7 @@ export default function CommandCenter() {
               {/* Competitive Battles */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="stat-card cursor-help group">
+                  <div className="stat-card group hover:ring-1 hover:ring-rose-400/20 transition-shadow">
                     <div className="flex items-center gap-1.5">
                       <Swords className="h-3.5 w-3.5 text-rose-400/70" />
                       <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">Competitive</span>
@@ -292,17 +293,18 @@ export default function CommandCenter() {
                     <div className="mt-0.5 text-xs text-muted-foreground">{formatValue(metrics.competitive.acv)} at stake</div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-sm">
-                  <p className="text-xs mb-1.5">Deals with <strong>named competitors</strong>.</p>
+                <TooltipContent side="bottom" className="max-w-sm p-0">
+                  <div className="px-3 pt-2.5 pb-1.5">
+                    <p className="text-xs">Deals with <strong>named competitors</strong>.</p>
+                  </div>
                   {metrics.competitive.deals.length > 0 && (
-                    <div className="border-t pt-1.5 space-y-1">
+                    <div className="border-t max-h-52 overflow-y-auto px-3 py-1.5 space-y-1">
                       {metrics.competitive.deals.map(d => (
                         <div key={d.id} className="flex justify-between gap-3 text-[10px]">
                           <span className="truncate text-foreground">{d.account}</span>
                           <span className="shrink-0 text-muted-foreground">{d.competitors || `${d.numCompetitors} comp.`}</span>
                         </div>
                       ))}
-                      {metrics.competitive.count > 5 && <p className="text-[9px] text-muted-foreground">+{metrics.competitive.count - 5} more</p>}
                     </div>
                   )}
                 </TooltipContent>
@@ -311,7 +313,7 @@ export default function CommandCenter() {
               {/* Partner Pipeline */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="stat-card cursor-help group">
+                  <div className="stat-card group hover:ring-1 hover:ring-blue-400/20 transition-shadow">
                     <div className="flex items-center gap-1.5">
                       <Handshake className="h-3.5 w-3.5 text-blue-400/70" />
                       <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">Partner Pipeline</span>
@@ -320,17 +322,18 @@ export default function CommandCenter() {
                     <div className="mt-0.5 text-xs text-muted-foreground">{formatValue(metrics.partner.acv)} co-sell</div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-sm">
-                  <p className="text-xs mb-1.5"><strong>Snowflake team</strong>, partner influence, or named partners.</p>
+                <TooltipContent side="bottom" className="max-w-sm p-0">
+                  <div className="px-3 pt-2.5 pb-1.5">
+                    <p className="text-xs"><strong>Snowflake team</strong>, partner influence, or named partners.</p>
+                  </div>
                   {metrics.partner.deals.length > 0 && (
-                    <div className="border-t pt-1.5 space-y-1">
+                    <div className="border-t max-h-52 overflow-y-auto px-3 py-1.5 space-y-1">
                       {metrics.partner.deals.map(d => (
                         <div key={d.id} className="flex justify-between gap-3 text-[10px]">
                           <span className="truncate text-foreground">{d.account}</span>
                           <span className="shrink-0 text-muted-foreground tabular-nums">{formatValue(d.acv)}</span>
                         </div>
                       ))}
-                      {metrics.partner.count > 5 && <p className="text-[9px] text-muted-foreground">+{metrics.partner.count - 5} more</p>}
                     </div>
                   )}
                 </TooltipContent>
@@ -339,7 +342,7 @@ export default function CommandCenter() {
               {/* Stale Deals */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="stat-card cursor-help group">
+                  <div className="stat-card group hover:ring-1 hover:ring-amber-500/20 transition-shadow">
                     <div className="flex items-center gap-1.5">
                       <Clock className="h-3.5 w-3.5 text-amber-500/70" />
                       <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">Stale Deals</span>
@@ -348,17 +351,18 @@ export default function CommandCenter() {
                     <div className="mt-0.5 text-xs text-muted-foreground">{formatValue(metrics.stale.acv)} · &gt;{STALE_THRESHOLD_DAYS}d in stage</div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-sm">
-                  <p className="text-xs mb-1.5">Stuck in the <strong>same stage for {STALE_THRESHOLD_DAYS}+ days</strong>.</p>
+                <TooltipContent side="bottom" className="max-w-sm p-0">
+                  <div className="px-3 pt-2.5 pb-1.5">
+                    <p className="text-xs">Stuck in the <strong>same stage for {STALE_THRESHOLD_DAYS}+ days</strong>.</p>
+                  </div>
                   {metrics.stale.deals.length > 0 && (
-                    <div className="border-t pt-1.5 space-y-1">
+                    <div className="border-t max-h-52 overflow-y-auto px-3 py-1.5 space-y-1">
                       {metrics.stale.deals.map(d => (
                         <div key={d.id} className="flex justify-between gap-3 text-[10px]">
                           <span className="truncate text-foreground">{d.account}</span>
                           <span className="shrink-0 text-amber-500 tabular-nums">{d.stageAge}d</span>
                         </div>
                       ))}
-                      {metrics.stale.count > 5 && <p className="text-[9px] text-muted-foreground">+{metrics.stale.count - 5} more</p>}
                     </div>
                   )}
                 </TooltipContent>
@@ -367,7 +371,7 @@ export default function CommandCenter() {
               {/* Win Propensity */}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="stat-card cursor-help group">
+                  <div className="stat-card group hover:ring-1 hover:ring-emerald-500/20 transition-shadow">
                     <div className="flex items-center gap-1.5">
                       <TrendingUp className="h-3.5 w-3.5 text-emerald-500/70" />
                       <span className="text-2xs font-medium uppercase tracking-wide text-muted-foreground">Win Propensity</span>
@@ -376,18 +380,19 @@ export default function CommandCenter() {
                     <div className="mt-0.5 text-xs text-muted-foreground">{metrics.propensity.highCount} high · {formatValue(metrics.propensity.highACV)}</div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-sm">
-                  <p className="text-xs mb-1.5">Avg <strong>{metrics.propensity.avgScore}%</strong> win probability across {metrics.propensity.scoredCount} scored deals.</p>
+                <TooltipContent side="bottom" className="max-w-sm p-0">
+                  <div className="px-3 pt-2.5 pb-1.5">
+                    <p className="text-xs">Avg <strong>{metrics.propensity.avgScore}%</strong> win probability across {metrics.propensity.scoredCount} scored deals.</p>
+                  </div>
                   {metrics.propensity.deals.length > 0 && (
-                    <div className="border-t pt-1.5 space-y-1">
-                      <p className="text-[9px] text-muted-foreground font-medium">Top 60%+ propensity deals</p>
+                    <div className="border-t max-h-52 overflow-y-auto px-3 py-1.5 space-y-1">
+                      <p className="text-[9px] text-muted-foreground font-medium sticky top-0 bg-popover pb-0.5">60%+ propensity deals</p>
                       {metrics.propensity.deals.map(d => (
                         <div key={d.id} className="flex justify-between gap-3 text-[10px]">
                           <span className="truncate text-foreground">{d.account}</span>
                           <span className="shrink-0 text-emerald-500 tabular-nums">{Math.round((d.propensityScore ?? 0) * 100)}%</span>
                         </div>
                       ))}
-                      {metrics.propensity.highCount > 5 && <p className="text-[9px] text-muted-foreground">+{metrics.propensity.highCount - 5} more</p>}
                     </div>
                   )}
                 </TooltipContent>
