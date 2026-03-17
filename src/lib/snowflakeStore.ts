@@ -550,10 +550,10 @@ export const snowflakeStore = {
   }): Promise<AdminSession[]> {
     if (!isDomoEnvironment()) return [];
     const raw = await callCodeEngine<unknown>('getAdminActivityLog', {
-      createdBy: filters?.createdBy || null,
-      status: filters?.status || null,
-      startDate: filters?.startDate || null,
-      endDate: filters?.endDate || null,
+      createdBy: filters?.createdBy || '',
+      status: filters?.status || '',
+      startDate: filters?.startDate || '',
+      endDate: filters?.endDate || '',
     });
     const result = extractResult<{ sessions?: AdminSession[] }>(raw);
     return result?.sessions || [];
