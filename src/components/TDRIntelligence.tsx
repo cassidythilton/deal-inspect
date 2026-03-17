@@ -60,7 +60,6 @@ import {
   HelpCircle,
   ChevronRight,
   ImageIcon,
-  ClipboardPaste,
 } from 'lucide-react';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
 import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
@@ -561,6 +560,7 @@ export function TDRIntelligence({
   const kbSectionRef = useRef<HTMLDivElement>(null);
   const enrichBarRef = useRef<HTMLDivElement>(null);
   const riskSectionRef = useRef<HTMLDivElement>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
 
   // ── Account Intelligence State ──
   const [domain, setDomain] = useState('');
@@ -853,31 +853,16 @@ export function TDRIntelligence({
     setPerplexityLoading(false);
   }, [deal]);
 
-  const handleScreenshotPaste = useCallback(async () => {
+  const handleScreenshotFile = useCallback(async (file: File) => {
     setScreenshotError(null);
     setScreenshotParsing(true);
     try {
-      const items = await navigator.clipboard.read();
-      let imageBlob: Blob | null = null;
-      let mimeType = 'image/png';
-      for (const item of items) {
-        for (const type of item.types) {
-          if (type.startsWith('image/')) {
-            imageBlob = await item.getType(type);
-            mimeType = type;
-            break;
-          }
-        }
-        if (imageBlob) break;
-      }
-      if (!imageBlob) {
-        setScreenshotError('No image found in clipboard. Copy a screenshot first.');
-        setScreenshotParsing(false);
-        return;
-      }
-      const buffer = await imageBlob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-      const result = await parseTechStackScreenshot(base64, mimeType);
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+      const base64 = btoa(binary);
+      const result = await parseTechStackScreenshot(base64, file.type || 'image/png');
       if (result.success) {
         setScreenshotTechs(result.technologies);
         if (sumbleData) {
@@ -890,9 +875,10 @@ export function TDRIntelligence({
         setScreenshotError(result.error || 'Failed to parse screenshot');
       }
     } catch (err) {
-      setScreenshotError(err instanceof Error ? err.message : 'Clipboard access failed');
+      setScreenshotError(err instanceof Error ? err.message : 'Failed to process image');
     }
     setScreenshotParsing(false);
+    if (screenshotInputRef.current) screenshotInputRef.current.value = '';
   }, [deal, sumbleData]);
 
   const handleGenerateBrief = useCallback(async () => {
@@ -1794,21 +1780,31 @@ export function TDRIntelligence({
               {enrichAllLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <SumbleIcon className="h-2.5 w-2.5" />}
               {enrichAllLoading ? enrichAllProgress : 'Enrich'}
             </Button>
+            <input
+              ref={screenshotInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleScreenshotFile(file);
+              }}
+            />
             <TooltipProvider delayDuration={200}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline" size="sm"
                     className="gap-1 text-[10px] h-7 px-2.5 border-[#362f50] bg-[#1e1a30]/60 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
-                    onClick={handleScreenshotPaste}
+                    onClick={() => screenshotInputRef.current?.click()}
                     disabled={screenshotParsing}
                   >
-                    {screenshotParsing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <ClipboardPaste className="h-2.5 w-2.5" />}
-                    Paste
+                    {screenshotParsing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <ImageIcon className="h-2.5 w-2.5" />}
+                    Screenshot
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs text-[10px] bg-[#1e1a30] border-[#362f50] text-slate-300 p-2">
-                  Copy a Sumble tech stack screenshot, then click Paste to extract technologies via Gemini Vision
+                  Upload a Sumble tech stack screenshot to extract technologies via Gemini Vision
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
