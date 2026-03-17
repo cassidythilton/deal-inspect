@@ -30,6 +30,7 @@ import type { AdminSession, UsageMetrics } from '@/lib/snowflakeStore';
 import { cortexAi, AnalystResult } from '@/lib/cortexAi';
 import { parseCompletedSteps } from '@/lib/snowflakeStore';
 import { useNavigate } from 'react-router-dom';
+import { useDomoUser } from '@/hooks/useDomoUser';
 
 const BAR_COLOR = 'hsl(263, 84%, 58%)';
 
@@ -147,6 +148,12 @@ function AutoChart({ columns, rows }: { columns: string[]; rows: Record<string, 
 
 export default function TDRAdmin() {
   const navigate = useNavigate();
+  const { user } = useDomoUser();
+
+  const humanizeName = useCallback((raw: string | undefined | null): string => {
+    if (!raw || raw === 'current-user') return user.displayName;
+    return raw;
+  }, [user.displayName]);
 
   // ── Activity Log state ──
   const [sessions, setSessions] = useState<AdminSession[]>([]);
@@ -334,10 +341,10 @@ export default function TDRAdmin() {
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="text-2xs text-muted-foreground">{s.accountName}</span>
-                            {s.createdBy && s.createdBy !== 'current-user' && (
+                            {s.createdBy && (
                               <>
                                 <span className="text-2xs text-muted-foreground/30">·</span>
-                                <span className="text-2xs text-violet-500">{s.createdBy}</span>
+                                <span className="text-2xs text-violet-500">{humanizeName(s.createdBy)}</span>
                               </>
                             )}
                           </div>
@@ -426,12 +433,15 @@ export default function TDRAdmin() {
                                 {i + 1}
                               </span>
                               <div className="flex-1 min-w-0">
-                                <span className="text-sm font-medium truncate block">{u.userName}</span>
+                                <span className="text-sm font-medium truncate block">{humanizeName(u.userName)}</span>
                               </div>
                               <div className="flex items-center gap-4 text-right">
-                                <div>
-                                  <span className="text-xs font-medium tabular-nums">{u.sessions}</span>
-                                  <span className="text-2xs text-muted-foreground ml-1">TDRs</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-medium tabular-nums">{Number(u.sessions) - Number(u.completed)}</span>
+                                  <span className="text-2xs text-blue-500">active</span>
+                                  <span className="text-2xs text-muted-foreground/30">·</span>
+                                  <span className="text-xs font-medium tabular-nums">{u.completed}</span>
+                                  <span className="text-2xs text-emerald-500">done</span>
                                 </div>
                                 <div>
                                   <span className="text-xs font-medium tabular-nums">{u.inputs}</span>
