@@ -10,13 +10,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip,
-  LabelList,
+  AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip as RechartsTooltip,
+  CartesianGrid,
 } from 'recharts';
 import {
   Search, Loader2, BarChart3, ArrowRight, Sparkles, Table2,
   MessageSquareText, Users, Clock, FileText, ChevronRight,
-  RefreshCw, Activity, Trophy, Filter,
+  RefreshCw, Activity, Trophy, Filter, TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -210,6 +210,19 @@ export default function TDRAdmin() {
     });
   }, [sessions, logSearch, logStatusFilter]);
 
+  const weekly = useMemo(() => metrics?.weekly || [], [metrics]);
+  const users = useMemo(() => metrics?.users || [], [metrics]);
+
+  const recentSessions = useMemo(() => {
+    return [...sessions]
+      .sort((a, b) => {
+        const ta = parseFloat(a.createdAt || '0');
+        const tb = parseFloat(b.createdAt || '0');
+        return tb - ta;
+      })
+      .slice(0, 8);
+  }, [sessions]);
+
   // ── NLQ ──
   const handleAsk = useCallback(async (q?: string) => {
     const query = q || question.trim();
@@ -226,8 +239,6 @@ export default function TDRAdmin() {
   }, [question]);
 
   const summary = metrics?.summary;
-  const users = metrics?.users || [];
-  const weekly = metrics?.weekly || [];
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -463,33 +474,111 @@ export default function TDRAdmin() {
                       )}
                     </div>
 
-                    {/* Weekly Activity */}
+                    {/* Weekly Activity — Area Chart */}
                     <div className="rounded-lg border bg-card p-4">
                       <div className="flex items-center gap-2 mb-3">
-                        <BarChart3 className="h-4 w-4 text-violet-500" />
+                        <TrendingUp className="h-4 w-4 text-violet-500" />
                         <h3 className="text-sm font-semibold">Weekly TDR Activity</h3>
                         <span className="text-2xs text-muted-foreground">Last 12 weeks</span>
                       </div>
                       {weekly.length > 0 ? (
-                        <div className="h-48">
+                        <div className="h-52">
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={weekly.map(w => ({ name: formatWeek(w.week), sessions: w.sessions }))} margin={{ top: 5, right: 10, bottom: 5, left: 0 }}>
-                              <XAxis dataKey="name" tick={{ fontSize: 9, fill: 'hsl(260, 12%, 50%)' }} axisLine={false} tickLine={false} />
-                              <YAxis tick={{ fontSize: 9, fill: 'hsl(260, 12%, 50%)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                              <RechartsTooltip
-                                contentStyle={{ backgroundColor: '#1B1630', border: '1px solid #2a2540', borderRadius: 8, fontSize: 11 }}
-                                labelStyle={{ color: '#fff' }}
+                            <AreaChart
+                              data={weekly.map(w => ({ name: formatWeek(w.week), sessions: Number(w.sessions), fullDate: w.week }))}
+                              margin={{ top: 10, right: 16, bottom: 5, left: 0 }}
+                            >
+                              <defs>
+                                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="hsl(263, 84%, 58%)" stopOpacity={0.35} />
+                                  <stop offset="95%" stopColor="hsl(263, 84%, 58%)" stopOpacity={0.02} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(260, 10%, 90%)" vertical={false} />
+                              <XAxis
+                                dataKey="name"
+                                tick={{ fontSize: 10, fill: 'hsl(260, 12%, 50%)' }}
+                                axisLine={false}
+                                tickLine={false}
                               />
-                              <Bar dataKey="sessions" fill={BAR_COLOR} radius={[4, 4, 0, 0]}>
-                                <LabelList dataKey="sessions" position="top" style={{ fontSize: 9, fill: 'hsl(260, 10%, 50%)' }} />
-                              </Bar>
-                            </BarChart>
+                              <YAxis
+                                tick={{ fontSize: 10, fill: 'hsl(260, 12%, 50%)' }}
+                                axisLine={false}
+                                tickLine={false}
+                                allowDecimals={false}
+                              />
+                              <RechartsTooltip
+                                contentStyle={{ backgroundColor: '#1B1630', border: '1px solid #2a2540', borderRadius: 10, fontSize: 11, padding: '8px 12px' }}
+                                labelStyle={{ color: '#fff', fontWeight: 600, marginBottom: 2 }}
+                                formatter={(value: number) => [`${value} TDRs`, 'Sessions']}
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="sessions"
+                                stroke="hsl(263, 84%, 58%)"
+                                strokeWidth={2.5}
+                                fill="url(#areaGradient)"
+                                dot={{ r: 4, fill: '#fff', stroke: 'hsl(263, 84%, 58%)', strokeWidth: 2 }}
+                                activeDot={{ r: 6, fill: 'hsl(263, 84%, 58%)', stroke: '#fff', strokeWidth: 2 }}
+                              />
+                            </AreaChart>
                           </ResponsiveContainer>
                         </div>
                       ) : (
                         <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-                          <BarChart3 className="h-4 w-4 mr-2" />
+                          <TrendingUp className="h-4 w-4 mr-2" />
                           No weekly data available
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Recent TDR Sessions */}
+                    <div className="rounded-lg border bg-card p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="h-4 w-4 text-violet-500" />
+                        <h3 className="text-sm font-semibold">Recent Sessions</h3>
+                        <span className="text-2xs text-muted-foreground">Latest TDRs created</span>
+                      </div>
+                      {recentSessions.length > 0 ? (
+                        <div className="space-y-0 divide-y divide-border/50">
+                          {recentSessions.map(s => (
+                            <div key={s.sessionId} className="flex items-center gap-3 py-2">
+                              <div className={cn(
+                                'h-2 w-2 rounded-full shrink-0',
+                                s.status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'
+                              )} />
+                              <div className="flex-1 min-w-0">
+                                <span className="text-xs font-medium truncate block">
+                                  {s.opportunityName || s.accountName || 'Untitled'}
+                                </span>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-2xs text-muted-foreground">{s.accountName}</span>
+                                  <span className="text-2xs text-muted-foreground/30">·</span>
+                                  <span className="text-2xs text-violet-500">{humanizeName(s.createdBy)}</span>
+                                  <span className="text-2xs text-muted-foreground/30">·</span>
+                                  <span className="text-2xs text-muted-foreground">v{s.iteration || 1}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0">
+                                <span className={cn(
+                                  'rounded px-1.5 py-0.5 text-2xs font-medium',
+                                  s.status === 'completed'
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                )}>
+                                  {s.status === 'completed' ? 'done' : 'active'}
+                                </span>
+                                <span className="text-2xs text-muted-foreground tabular-nums">
+                                  {formatDate(s.createdAt)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
+                          <Clock className="h-4 w-4 mr-2" />
+                          {logLoading ? 'Loading...' : 'No session data available'}
                         </div>
                       )}
                     </div>
