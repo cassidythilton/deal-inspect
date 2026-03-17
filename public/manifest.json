@@ -1,7 +1,7 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.79.0",
+  "version": "1.79.1",
   "datasetsMapping": [
     {
       "dataSetId": "6ae5896e-e13d-48ac-a9fb-c6e9116b4bb4",
@@ -483,6 +483,14 @@
     {
       "alias": "getUsageMetrics",
       "parameters": [],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "parseScreenshotTechStack",
+      "parameters": [
+        { "alias": "imageBase64", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "mimeType", "type": "string", "nullable": true, "isList": false, "children": null }
+      ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],

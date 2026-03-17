@@ -15,6 +15,7 @@
  */
 
 import { isDomoEnvironment } from './domo';
+export { isDomoEnvironment };
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -133,7 +134,7 @@ const CE_BASE = '/domo/codeengine/v2/packages';
  * @param args   - Named arguments matching the packageMapping parameters
  * @returns      - The function's return value
  */
-async function callCodeEngine<T>(fnName: string, args: Record<string, unknown> = {}): Promise<T> {
+export async function callCodeEngine<T>(fnName: string, args: Record<string, unknown> = {}): Promise<T> {
   const domo = getDomo();
   if (!domo) {
     throw new Error(`[SnowflakeStore] Code Engine not available — no Domo SDK. Function: ${fnName}`);
@@ -251,7 +252,7 @@ function extractSessionsArray(raw: unknown): SnowflakeSession[] {
  * We unwrap one level if the top-level object has a single key that
  * maps to another object (the SDK wrapper pattern).
  */
-function extractResult<T>(raw: unknown): T {
+export function extractResult<T>(raw: unknown): T {
   if (!raw || typeof raw !== 'object') return { success: false } as T;
 
   const obj = raw as Record<string, unknown>;

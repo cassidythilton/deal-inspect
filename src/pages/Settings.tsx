@@ -34,9 +34,6 @@ import {
   CheckCircle,
   XCircle,
   ExternalLink,
-  Eye,
-  EyeOff,
-  Cpu,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,7 +75,6 @@ export default function Settings() {
   const [filesetMeta, setFilesetMeta] = useState<FilesetMetadata[]>([]);
   const [filesetLoading, setFilesetLoading] = useState(false);
   const [discoverLoading, setDiscoverLoading] = useState(false);
-  const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [availableFilesets, setAvailableFilesets] = useState<FilesetMetadata[]>([]);
   const [filesetSearchQuery, setFilesetSearchQuery] = useState('');
 
@@ -776,48 +772,6 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* ── 8. Gemini Vision (Screenshot Enrich) ─────────────────── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Cpu className="h-5 w-5 text-blue-500" />
-                Gemini Vision
-              </CardTitle>
-              <CardDescription>
-                Paste Sumble screenshots to extract tech stacks without API credits.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Gemini API Key</Label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      type={showGeminiKey ? 'text' : 'password'}
-                      value={settings.geminiApiKey || ''}
-                      onChange={(e) => updateSetting('geminiApiKey', e.target.value)}
-                      placeholder="AIza..."
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowGeminiKey(!showGeminiKey)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showGeminiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Get a free key from{' '}
-                  <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 underline underline-offset-2 inline-flex items-center gap-0.5">
-                    Google AI Studio <ExternalLink className="h-2.5 w-2.5" />
-                  </a>.
-                  Used to parse pasted Sumble screenshots into tech stack pills via Gemini 2.0 Flash vision.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
