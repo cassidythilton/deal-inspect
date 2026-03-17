@@ -36,7 +36,7 @@ const CustomTooltip = ({ active, payload }: {
   if (!active || !payload || !payload.length) return null;
   const d = payload[0].payload;
   return (
-    <div className="rounded-md bg-popover px-3 py-2 text-xs shadow-md border min-w-[160px]">
+    <div className="rounded-md bg-popover px-3 py-2 text-xs shadow-md border min-w-[160px]" style={{ position: 'relative', zIndex: 50 }}>
       <div className="flex items-center gap-2 mb-1">
         <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: d.color }} />
         <span className="font-semibold">{d.name}</span>
@@ -81,10 +81,10 @@ export function TDRCoverageChart({ deals }: TDRCoverageChartProps) {
         </div>
 
         <div className="flex items-start gap-5">
-          <div className="w-28 h-28 relative">
+          <div className="w-28 h-28 relative" style={{ zIndex: 10 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <RechartsTooltip content={<CustomTooltip />} />
+                <RechartsTooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 50 }} />
                 <Pie data={data} innerRadius={30} outerRadius={50} paddingAngle={3} dataKey="value" strokeWidth={0}>
                   {data.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />

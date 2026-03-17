@@ -152,8 +152,8 @@ export function PropensityQuadrantChart({ deals }: PropensityQuadrantChartProps)
     return { xDomain: [x0, x1] as [number, number], yDomain: [y0, y1] as [number, number] };
   }, [points]);
 
-  const handleClick = useCallback((_: unknown, entry: { payload?: ScatterPoint } | undefined) => {
-    if (entry?.payload?.id) navigate(`/tdr/${entry.payload.id}`);
+  const handleClick = useCallback((entry: { payload?: ScatterPoint } | undefined) => {
+    if (entry?.payload?.id) navigate(`/workspace?deal=${entry.payload.id}`);
   }, [navigate]);
 
   const scoredCount = points.length;
