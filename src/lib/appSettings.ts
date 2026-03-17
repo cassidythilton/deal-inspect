@@ -24,6 +24,8 @@ export interface AppSettings {
   filesetNameMap: Record<string, string>;
   /** Sprint 14: Default Slack channel for readout distribution */
   slackDefaultChannel?: string;
+  /** Gemini API key for vision-based tech stack parsing */
+  geminiApiKey?: string;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {

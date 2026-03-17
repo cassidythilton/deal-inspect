@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Deal, ReadinessLevel } from '@/types/tdr';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -59,6 +59,8 @@ import {
   Shield,
   HelpCircle,
   ChevronRight,
+  ImageIcon,
+  ClipboardPaste,
 } from 'lucide-react';
 import { SumbleIcon } from '@/components/icons/SumbleIcon';
 import { PerplexityIcon } from '@/components/icons/PerplexityIcon';
@@ -74,6 +76,7 @@ import { extractTechFromSignals } from '@/lib/domoAi';
 import { filesetIntel } from '@/lib/filesetIntel';
 import type { FilesetSearchResult, FilesetSummary } from '@/lib/filesetIntel';
 import { CortexLogo, SnowflakeLogo } from '@/components/CortexBranding';
+import { parseTechStackScreenshot, buildSumbleUrl } from '@/lib/geminiVision';
 
 interface TDRIntelligenceProps {
   deal?: Deal;
@@ -554,6 +557,11 @@ export function TDRIntelligence({
   totalStepCount = 5,
 }: TDRIntelligenceProps) {
 
+  // ── Section refs for scroll navigation ──
+  const kbSectionRef = useRef<HTMLDivElement>(null);
+  const enrichBarRef = useRef<HTMLDivElement>(null);
+  const riskSectionRef = useRef<HTMLDivElement>(null);
+
   // ── Account Intelligence State ──
   const [domain, setDomain] = useState('');
   const [sumbleData, setSumbleData] = useState<SumbleEnrichment | null>(null);
@@ -565,6 +573,9 @@ export function TDRIntelligence({
   const [perplexityError, setPerplexityError] = useState<string | null>(null);
   const [enrichAllLoading, setEnrichAllLoading] = useState(false);
   const [enrichAllProgress, setEnrichAllProgress] = useState('');
+  const [screenshotParsing, setScreenshotParsing] = useState(false);
+  const [screenshotTechs, setScreenshotTechs] = useState<string[]>([]);
+  const [screenshotError, setScreenshotError] = useState<string | null>(null);
 
   // ── Intel History State ──
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -841,6 +852,48 @@ export function TDRIntelligence({
     } catch (err) { setPerplexityError(err instanceof Error ? err.message : 'Unexpected error'); }
     setPerplexityLoading(false);
   }, [deal]);
+
+  const handleScreenshotPaste = useCallback(async () => {
+    setScreenshotError(null);
+    setScreenshotParsing(true);
+    try {
+      const items = await navigator.clipboard.read();
+      let imageBlob: Blob | null = null;
+      let mimeType = 'image/png';
+      for (const item of items) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            imageBlob = await item.getType(type);
+            mimeType = type;
+            break;
+          }
+        }
+        if (imageBlob) break;
+      }
+      if (!imageBlob) {
+        setScreenshotError('No image found in clipboard. Copy a screenshot first.');
+        setScreenshotParsing(false);
+        return;
+      }
+      const buffer = await imageBlob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      const result = await parseTechStackScreenshot(base64, mimeType);
+      if (result.success) {
+        setScreenshotTechs(result.technologies);
+        if (sumbleData) {
+          const merged = new Set([...(sumbleData.technologies || []), ...result.technologies]);
+          setSumbleData({ ...sumbleData, technologies: Array.from(merged) });
+        } else {
+          setSumbleData({ success: true, technologies: result.technologies, orgName: deal?.account || '', industryTags: [] });
+        }
+      } else {
+        setScreenshotError(result.error || 'Failed to parse screenshot');
+      }
+    } catch (err) {
+      setScreenshotError(err instanceof Error ? err.message : 'Clipboard access failed');
+    }
+    setScreenshotParsing(false);
+  }, [deal, sumbleData]);
 
   const handleGenerateBrief = useCallback(async () => {
     if (!sessionId) return;
@@ -1123,16 +1176,60 @@ export function TDRIntelligence({
 
             {/* Deal Priority — hero metric */}
             {deal.dealPriority != null && deal.dealQuadrant && (() => {
-              const qStyles: Record<string, { bg: string; text: string; bar: string; guidance: string }> = {
-                PRIORITIZE:   { bg: 'bg-purple-600',  text: 'text-white',     bar: 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))', guidance: 'High-complexity deal with strong win signals. Prioritize TDR to protect the technical narrative and accelerate close.' },
-                FAST_TRACK:   { bg: 'bg-emerald-600', text: 'text-white',     bar: 'linear-gradient(90deg, hsl(152, 60%, 45%), hsl(160, 55%, 40%))', guidance: 'High win probability with lower technical complexity. Streamline — light TDR to confirm, then close.' },
-                INVESTIGATE:  { bg: 'bg-amber-500',   text: 'text-amber-950', bar: 'linear-gradient(90deg, hsl(38, 65%, 50%), hsl(45, 60%, 55%))',   guidance: 'Complex deal with uncertain win probability. Deep-dive TDR needed to uncover blockers and build a credible case.' },
-                DEPRIORITIZE: { bg: 'bg-slate-600',   text: 'text-slate-200', bar: 'hsl(260, 10%, 40%)',                                             guidance: 'Low complexity and low win probability. Standard process — invest SE time elsewhere unless new signals emerge.' },
+              const qStyles: Record<string, { bg: string; text: string; bar: string }> = {
+                PRIORITIZE:   { bg: 'bg-purple-600',  text: 'text-white',     bar: 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))' },
+                FAST_TRACK:   { bg: 'bg-emerald-600', text: 'text-white',     bar: 'linear-gradient(90deg, hsl(152, 60%, 45%), hsl(160, 55%, 40%))' },
+                INVESTIGATE:  { bg: 'bg-amber-500',   text: 'text-amber-950', bar: 'linear-gradient(90deg, hsl(38, 65%, 50%), hsl(45, 60%, 55%))' },
+                DEPRIORITIZE: { bg: 'bg-slate-600',   text: 'text-slate-200', bar: 'hsl(260, 10%, 40%)' },
               };
               const q = qStyles[deal.dealQuadrant] || qStyles.DEPRIORITIZE;
               const tdrPart = Math.round((displayScore) * 0.4);
               const winPct = Math.round((deal.propensityScore ?? 0) * 100);
               const winPart = Math.round(winPct * 0.6);
+
+              const complexityDrivers: string[] = [];
+              const simplifiers: string[] = [];
+              const acv = deal.acv ?? 0;
+              const stageNum = deal.stageNumber ?? 0;
+              const numComp = deal.numCompetitors ?? 0;
+              const dealType = (deal.dealType ?? '').toLowerCase();
+              const partnersInvolved = (deal.partnersInvolved ?? '').toLowerCase();
+              const snowflake = (deal.snowflakeTeam ?? '').toLowerCase();
+              const dealCode = (deal.dealCode ?? '').toUpperCase();
+              const stageAge = deal.stageAge ?? 0;
+
+              if (acv >= 100000) complexityDrivers.push(`$${(acv / 1000).toFixed(0)}K ACV — material deal size requires architectural rigor`);
+              else if (acv < 25000) simplifiers.push(`$${(acv / 1000).toFixed(0)}K ACV — smaller deal, lighter technical lift`);
+
+              if (numComp >= 2) complexityDrivers.push(`${numComp} competitors — multi-vendor bake-off demands differentiation`);
+              else if (numComp === 1) complexityDrivers.push('1 competitor — head-to-head requires clear technical positioning');
+              else simplifiers.push('No named competitors — reduced displacement pressure');
+
+              if (dealType.includes('new logo') || dealType.includes('new business'))
+                complexityDrivers.push('New Logo — greenfield architecture, no existing relationship');
+              else if (dealType.includes('upsell') || dealType.includes('expansion'))
+                simplifiers.push('Expansion — existing footprint reduces discovery burden');
+
+              if (snowflake || /snowflake|databricks|bigquery|gcp|aws|azure/i.test(partnersInvolved))
+                complexityDrivers.push('Cloud partner involved — co-sell architecture alignment needed');
+
+              if (dealCode.startsWith('PA') || (dealCode.includes('-') && !dealCode.endsWith('-A')))
+                complexityDrivers.push(`Deal code ${dealCode} — partner/multi-component deal structure`);
+              else if (/E0[2-9]|E[1-9]\d/.test(dealCode))
+                complexityDrivers.push(`Deal code ${dealCode} — complex enterprise engagement`);
+
+              if (stageAge > 90) complexityDrivers.push(`${stageAge}d in stage — stalled deals often have unresolved blockers`);
+              else if (stageAge <= 14) simplifiers.push('Fresh stage entry — deal is moving');
+
+              if (stageNum >= 2 && stageNum <= 3) complexityDrivers.push(`Stage ${stageNum} — prime window where SE shapes the architecture narrative`);
+              else if (stageNum >= 4) simplifiers.push(`Stage ${stageNum} — past architecture shaping, confirming/closing`);
+
+              const highComplexity = displayScore >= 50;
+              const drivers = highComplexity ? complexityDrivers : simplifiers;
+              const guidance = highComplexity
+                ? `TDR Score of ${displayScore} signals elevated technical complexity driven by:`
+                : `TDR Score of ${displayScore} signals lower technical complexity because:`;
+
               return (
                 <div className="px-5 py-3 border-b border-[#322b4d]">
                   <div className="flex items-center gap-3 mb-2">
@@ -1152,7 +1249,17 @@ export function TDRIntelligence({
                       </div>
                     </div>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed mb-2">{q.guidance}</p>
+                  <p className="text-[11px] text-slate-400 leading-relaxed mb-1.5">{guidance}</p>
+                  {drivers.length > 0 && (
+                    <ul className="space-y-0.5 mb-2">
+                      {drivers.slice(0, 4).map((d, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-500">
+                          <span className={cn('mt-1 h-1 w-1 rounded-full shrink-0', highComplexity ? 'bg-violet-500' : 'bg-emerald-500')} />
+                          {d}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <div className="flex gap-4 text-[10px] text-slate-500">
                     <span className="tabular-nums">TDR {displayScore} × 40% = <span className="text-slate-300 font-medium">{tdrPart}</span></span>
                     <span className="tabular-nums">Win {winPct}% × 60% = <span className="text-slate-300 font-medium">{winPart}</span></span>
@@ -1488,18 +1595,25 @@ export function TDRIntelligence({
                       </p>
                       <div className="space-y-1">
                         {[
-                          { label: 'Required Steps', value: confidence.requiredSteps, max: 40, desc: `${completedStepCount}/${requiredStepCount} required steps completed — these form the backbone of the TDR assessment` },
-                          { label: 'Optional Depth', value: confidence.optionalSteps, max: 10, desc: `${optionalCompletedCount}/${optionalTotalCount} optional steps completed — additional depth on partner, AI, architecture, and adoption` },
-                          { label: 'External Intel', value: confidence.externalIntel, max: 15, desc: 'Sumble and Perplexity enrichment adds competitive, technology, and market context' },
-                          { label: 'AI Analysis', value: confidence.aiOutputs, max: 15, desc: 'Action plan and TDR brief generated by Cortex AI — synthesizes all inputs into strategy' },
-                          { label: 'Knowledge Base', value: confidence.kbMatch, max: 10, desc: 'Battle cards, playbooks, or reference docs matched to this deal' },
-                          { label: 'Risk Identified', value: confidence.riskAwareness, max: 10, desc: 'Risk categories surfaced through structured extraction — shows the SE is eyes-open on risks' },
+                          { label: 'Required Steps', value: confidence.requiredSteps, max: 40, desc: `${completedStepCount}/${requiredStepCount} required steps completed — these form the backbone of the TDR assessment`, scrollRef: null as React.RefObject<HTMLDivElement> | null },
+                          { label: 'Optional Depth', value: confidence.optionalSteps, max: 10, desc: `${optionalCompletedCount}/${optionalTotalCount} optional steps completed — additional depth on partner, AI, architecture, and adoption`, scrollRef: null },
+                          { label: 'External Intel', value: confidence.externalIntel, max: 15, desc: 'Sumble and Perplexity enrichment adds competitive, technology, and market context — click to go there', scrollRef: enrichBarRef },
+                          { label: 'AI Analysis', value: confidence.aiOutputs, max: 15, desc: 'Action plan and TDR brief generated by Cortex AI — synthesizes all inputs into strategy', scrollRef: null },
+                          { label: 'Knowledge Base', value: confidence.kbMatch, max: 10, desc: 'Battle cards, playbooks, or reference docs matched to this deal — click to go there', scrollRef: kbSectionRef },
+                          { label: 'Risk Identified', value: confidence.riskAwareness, max: 10, desc: 'Risk categories surfaced through structured extraction — click to go there', scrollRef: riskSectionRef },
                         ].map((item) => (
                           <TooltipProvider key={item.label} delayDuration={200}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center gap-2 text-2xs cursor-help">
-                                  <span className="text-slate-500 w-28 shrink-0">{item.label}</span>
+                                <div
+                                  className={cn('flex items-center gap-2 text-2xs', item.scrollRef ? 'cursor-pointer hover:bg-[#221d38] rounded px-1 -mx-1 transition-colors' : 'cursor-help')}
+                                  onClick={() => {
+                                    if (item.scrollRef?.current) {
+                                      item.scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    }
+                                  }}
+                                >
+                                  <span className={cn('w-28 shrink-0', item.scrollRef ? 'text-slate-400 underline underline-offset-2 decoration-dotted decoration-slate-600' : 'text-slate-500')}>{item.label}</span>
                                   <div className="flex-1 h-[3px] rounded-full bg-[#2a2540] overflow-hidden">
                                     <div className="h-full rounded-full transition-all duration-500" style={{
                                       width: `${item.max > 0 ? (item.value / item.max) * 100 : 0}%`,
@@ -1511,6 +1625,7 @@ export function TDRIntelligence({
                                   <span className={cn('tabular-nums w-8 text-right text-2xs font-medium', item.value > 0 ? 'text-emerald-400' : 'text-slate-600')}>
                                     +{item.value}
                                   </span>
+                                  {item.scrollRef && <ChevronRight className="h-2.5 w-2.5 text-slate-600 shrink-0" />}
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="left" className="max-w-xs text-[10px] bg-[#1e1a30] border-[#362f50] text-slate-400 p-2">
@@ -1661,37 +1776,77 @@ export function TDRIntelligence({
 
       {/* Enrichment action bar */}
       {deal && (
-        <div className="border-b border-[#2a2540] px-5 py-2.5 flex items-center gap-2">
-          <Globe className="h-3 w-3 text-slate-500 shrink-0" />
-          <Input
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-            placeholder="domain.com"
-            className="h-7 flex-1 text-xs bg-transparent border-[#362f50] text-white placeholder:text-slate-600 focus-visible:ring-[#4a3f6b]"
-          />
-          <Button
-            variant="outline" size="sm"
-            className="gap-1 text-[10px] h-7 px-2.5 border-[#362f50] bg-[#1e1a30]/60 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
-            onClick={handleEnrichAll}
-            disabled={enrichAllLoading || !domain.trim()}
-          >
-            {enrichAllLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <SumbleIcon className="h-2.5 w-2.5" />}
-            {enrichAllLoading ? enrichAllProgress : 'Enrich'}
-          </Button>
-          <Button
-            variant="outline" size="sm"
-            className="gap-1 text-[10px] h-7 px-2.5 border-[#362f50] bg-[#1e1a30]/60 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
-            onClick={handleResearchPerplexity}
-            disabled={perplexityLoading}
-          >
-            {perplexityLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <PerplexityIcon className="h-2.5 w-2.5" />}
-            Research
-          </Button>
+        <div ref={enrichBarRef} className="border-b border-[#2a2540] px-5 py-2.5 space-y-2">
+          <div className="flex items-center gap-2">
+            <Globe className="h-3 w-3 text-slate-500 shrink-0" />
+            <Input
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              placeholder="domain.com"
+              className="h-7 flex-1 text-xs bg-transparent border-[#362f50] text-white placeholder:text-slate-600 focus-visible:ring-[#4a3f6b]"
+            />
+            <Button
+              variant="outline" size="sm"
+              className="gap-1 text-[10px] h-7 px-2.5 border-[#362f50] bg-[#1e1a30]/60 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
+              onClick={handleEnrichAll}
+              disabled={enrichAllLoading || !domain.trim()}
+            >
+              {enrichAllLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <SumbleIcon className="h-2.5 w-2.5" />}
+              {enrichAllLoading ? enrichAllProgress : 'Enrich'}
+            </Button>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline" size="sm"
+                    className="gap-1 text-[10px] h-7 px-2.5 border-[#362f50] bg-[#1e1a30]/60 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
+                    onClick={handleScreenshotPaste}
+                    disabled={screenshotParsing}
+                  >
+                    {screenshotParsing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <ClipboardPaste className="h-2.5 w-2.5" />}
+                    Paste
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-[10px] bg-[#1e1a30] border-[#362f50] text-slate-300 p-2">
+                  Copy a Sumble tech stack screenshot, then click Paste to extract technologies via Gemini Vision
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button
+              variant="outline" size="sm"
+              className="gap-1 text-[10px] h-7 px-2.5 border-[#362f50] bg-[#1e1a30]/60 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
+              onClick={handleResearchPerplexity}
+              disabled={perplexityLoading}
+            >
+              {perplexityLoading ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <PerplexityIcon className="h-2.5 w-2.5" />}
+              Research
+            </Button>
+          </div>
+          {domain.trim() && deal?.account && (
+            <div className="flex items-center gap-2">
+              <a
+                href={buildSumbleUrl(deal.account, domain.trim())}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                <SumbleIcon className="h-2.5 w-2.5" />
+                View on Sumble
+                <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+              {screenshotTechs.length > 0 && (
+                <span className="text-[10px] text-emerald-400/70">
+                  <ImageIcon className="h-2.5 w-2.5 inline mr-0.5" />
+                  {screenshotTechs.length} techs from screenshot
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {/* Processing / error indicators */}
-      {(cortexProcessing || sumbleError || perplexityError) && (
+      {(cortexProcessing || sumbleError || perplexityError || screenshotError) && (
         <div className="px-5 py-1.5 space-y-1">
           {cortexProcessing && (
             <div className="flex items-center gap-1.5 text-2xs text-cyan-400">
@@ -1706,6 +1861,11 @@ export function TDRIntelligence({
           {perplexityError && !perplexityLoading && (
             <div className="flex items-start gap-1.5 text-2xs text-amber-400/80 bg-amber-500/5 rounded px-2 py-1">
               <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />Perplexity: {perplexityError.length > 100 ? perplexityError.substring(0, 100) + '…' : perplexityError}
+            </div>
+          )}
+          {screenshotError && !screenshotParsing && (
+            <div className="flex items-start gap-1.5 text-2xs text-amber-400/80 bg-amber-500/5 rounded px-2 py-1">
+              <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />Screenshot: {screenshotError.length > 120 ? screenshotError.substring(0, 120) + '…' : screenshotError}
             </div>
           )}
         </div>
@@ -2101,6 +2261,7 @@ export function TDRIntelligence({
       </Dialog>
 
       {/* Knowledge Base Summary */}
+      <div ref={kbSectionRef} />
       {(filesetSummary || filesetLoading) && (
         <CollapsibleSection title="Knowledge Base" icon={BookOpen} iconColor="text-cyan-400" defaultExpanded={false}
           trailing={<button className="text-slate-600 hover:text-slate-300 transition-colors p-0.5" onClick={(e) => { e.stopPropagation(); handleFilesetSearch(); }} disabled={filesetLoading}>
@@ -2185,6 +2346,7 @@ export function TDRIntelligence({
           ══════════════════════════════════════════════════════════════ */}
 
       {/* Risk & Missing */}
+      <div ref={riskSectionRef} />
       <CollapsibleSection title="Risk & Readiness" icon={Shield} iconColor="text-amber-400" defaultExpanded={false}
         badge={(riskFlags.length > 0 || missingInfo.length > 0) ? <span className="text-[9px] text-amber-400 font-medium">{riskFlags.length + missingInfo.length}</span> : undefined}
       >
