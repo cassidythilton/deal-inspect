@@ -853,16 +853,16 @@ export function TDRIntelligence({
     setPerplexityLoading(false);
   }, [deal]);
 
-  const handleScreenshotFile = useCallback(async (file: File) => {
+  const processScreenshotBlob = useCallback(async (blob: Blob, mimeType: string) => {
     setScreenshotError(null);
     setScreenshotParsing(true);
     try {
-      const buffer = await file.arrayBuffer();
+      const buffer = await blob.arrayBuffer();
       const bytes = new Uint8Array(buffer);
       let binary = '';
       for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
       const base64 = btoa(binary);
-      const result = await parseTechStackScreenshot(base64, file.type || 'image/png');
+      const result = await parseTechStackScreenshot(base64, mimeType);
       if (result.success) {
         setScreenshotTechs(result.technologies);
         if (sumbleData) {
@@ -880,6 +880,23 @@ export function TDRIntelligence({
     setScreenshotParsing(false);
     if (screenshotInputRef.current) screenshotInputRef.current.value = '';
   }, [deal, sumbleData]);
+
+  const handleScreenshotFile = useCallback((file: File) => {
+    processScreenshotBlob(file, file.type || 'image/png');
+  }, [processScreenshotBlob]);
+
+  const handlePasteEvent = useCallback((e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        e.preventDefault();
+        const blob = items[i].getAsFile();
+        if (blob) processScreenshotBlob(blob, items[i].type);
+        return;
+      }
+    }
+  }, [processScreenshotBlob]);
 
   const handleGenerateBrief = useCallback(async () => {
     if (!sessionId) return;
@@ -1790,24 +1807,6 @@ export function TDRIntelligence({
                 if (file) handleScreenshotFile(file);
               }}
             />
-            <TooltipProvider delayDuration={200}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline" size="sm"
-                    className="gap-1 text-[10px] h-7 px-2.5 border-[#362f50] bg-[#1e1a30]/60 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
-                    onClick={() => screenshotInputRef.current?.click()}
-                    disabled={screenshotParsing}
-                  >
-                    {screenshotParsing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <ImageIcon className="h-2.5 w-2.5" />}
-                    Screenshot
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs text-[10px] bg-[#1e1a30] border-[#362f50] text-slate-300 p-2">
-                  Upload a Sumble tech stack screenshot to extract technologies via Gemini Vision
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
             <Button
               variant="outline" size="sm"
               className="gap-1 text-[10px] h-7 px-2.5 border-[#362f50] bg-[#1e1a30]/60 text-slate-300 hover:bg-[#2d2744] hover:text-white disabled:opacity-40"
@@ -1818,25 +1817,52 @@ export function TDRIntelligence({
               Research
             </Button>
           </div>
-          {domain.trim() && deal?.account && (
-            <div className="flex items-center gap-2">
-              <a
-                href={buildSumbleUrl(deal.account, domain.trim())}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
-              >
-                <SumbleIcon className="h-2.5 w-2.5" />
-                View on Sumble
-                <ExternalLink className="h-2.5 w-2.5" />
-              </a>
-              {screenshotTechs.length > 0 && (
-                <span className="text-[10px] text-emerald-400/70">
-                  <ImageIcon className="h-2.5 w-2.5 inline mr-0.5" />
-                  {screenshotTechs.length} techs from screenshot
-                </span>
+          {/* Paste zone + Sumble link */}
+          <div className="flex items-center gap-2">
+            <div
+              className={cn(
+                'flex-1 flex items-center gap-2 rounded border border-dashed px-3 py-1.5 transition-colors cursor-text',
+                screenshotParsing
+                  ? 'border-violet-500/40 bg-violet-500/5'
+                  : 'border-[#362f50] hover:border-[#4a3f6b] bg-transparent',
+              )}
+              tabIndex={0}
+              onPaste={handlePasteEvent}
+            >
+              {screenshotParsing ? (
+                <Loader2 className="h-3 w-3 animate-spin text-violet-400 shrink-0" />
+              ) : (
+                <ImageIcon className="h-3 w-3 text-slate-600 shrink-0" />
+              )}
+              <span className="text-[10px] text-slate-600 select-none">
+                {screenshotParsing ? 'Parsing screenshot with Gemini...' : 'Click here and ⌘V to paste a Sumble screenshot'}
+              </span>
+              {!screenshotParsing && (
+                <button
+                  className="ml-auto text-[9px] text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2"
+                  onClick={(e) => { e.stopPropagation(); screenshotInputRef.current?.click(); }}
+                >
+                  or browse
+                </button>
               )}
             </div>
+            {screenshotTechs.length > 0 && (
+              <span className="text-[10px] text-emerald-400/70 shrink-0">
+                {screenshotTechs.length} techs
+              </span>
+            )}
+          </div>
+          {domain.trim() && deal?.account && (
+            <a
+              href={buildSumbleUrl(deal.account, domain.trim())}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              <SumbleIcon className="h-2.5 w-2.5" />
+              View on Sumble
+              <ExternalLink className="h-2.5 w-2.5" />
+            </a>
           )}
         </div>
       )}

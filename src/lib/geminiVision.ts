@@ -26,12 +26,6 @@ export async function parseTechStackScreenshot(imageBase64: string, mimeType: st
   }
 }
 
-export function buildSumbleUrl(accountName: string, domain: string): string {
-  const slug = accountName
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-  return `https://sumble.com/orgs/${slug}/techs?sort=Employees&desc=1&q=${encodeURIComponent(domain)}`;
+export function buildSumbleUrl(_accountName: string, domain: string): string {
+  return `https://sumble.com/orgs?q=${encodeURIComponent(domain)}&sort=Employees&desc=1`;
 }
