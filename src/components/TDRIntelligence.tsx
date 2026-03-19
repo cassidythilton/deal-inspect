@@ -607,6 +607,10 @@ export function TDRIntelligence({
   const [actionPlanOpen, setActionPlanOpen] = useState(false);
   const [actionPlanCacheLoaded, setActionPlanCacheLoaded] = useState(false);
 
+  // ── Action Brief (Sprint 37 — prescriptive "so what") ──
+  const [actionBriefExpanded, setActionBriefExpanded] = useState(true);
+  const [scoreDetailExpanded, setScoreDetailExpanded] = useState(false);
+
   // ── KB Summary Cache ──
   const [kbSummaryCacheLoaded, setKbSummaryCacheLoaded] = useState(false);
   const [kbSummaryDate, setKbSummaryDate] = useState<string>('');
@@ -1179,124 +1183,214 @@ export function TDRIntelligence({
               </div>
             </div>
 
-            {/* Deal Priority — hero metric */}
-            {deal.dealPriority != null && deal.dealQuadrant && (() => {
-              const qStyles: Record<string, { bg: string; text: string; bar: string }> = {
-                PRIORITIZE:   { bg: 'bg-purple-600',  text: 'text-white',     bar: 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))' },
-                FAST_TRACK:   { bg: 'bg-emerald-600', text: 'text-white',     bar: 'linear-gradient(90deg, hsl(152, 60%, 45%), hsl(160, 55%, 40%))' },
-                INVESTIGATE:  { bg: 'bg-amber-500',   text: 'text-amber-950', bar: 'linear-gradient(90deg, hsl(38, 65%, 50%), hsl(45, 60%, 55%))' },
-                DEPRIORITIZE: { bg: 'bg-slate-600',   text: 'text-slate-200', bar: 'hsl(260, 10%, 40%)' },
+            {/* ── ACTION BRIEF — the prescriptive "so what" (Sprint 37) ── */}
+            {deal.dealQuadrant && (() => {
+              const qStyles: Record<string, { bg: string; text: string; bar: string; border: string }> = {
+                PRIORITIZE:   { bg: 'bg-purple-600',  text: 'text-white',     bar: 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))', border: 'border-l-purple-500' },
+                FAST_TRACK:   { bg: 'bg-emerald-600', text: 'text-white',     bar: 'linear-gradient(90deg, hsl(152, 60%, 45%), hsl(160, 55%, 40%))', border: 'border-l-emerald-500' },
+                INVESTIGATE:  { bg: 'bg-amber-500',   text: 'text-amber-950', bar: 'linear-gradient(90deg, hsl(38, 65%, 50%), hsl(45, 60%, 55%))', border: 'border-l-amber-500' },
+                DEPRIORITIZE: { bg: 'bg-slate-600',   text: 'text-slate-200', bar: 'hsl(260, 10%, 40%)', border: 'border-l-slate-500' },
               };
               const q = qStyles[deal.dealQuadrant] || qStyles.DEPRIORITIZE;
-              const tdrPart = Math.round((displayScore) * 0.4);
               const winPct = Math.round((deal.propensityScore ?? 0) * 100);
+              const tdrPart = Math.round((displayScore) * 0.4);
               const winPart = Math.round(winPct * 0.6);
 
-              const complexityDrivers: string[] = [];
-              const simplifiers: string[] = [];
-              const acv = deal.acv ?? 0;
+              const acvVal = deal.acv ?? 0;
               const stageNum = deal.stageNumber ?? 0;
               const numComp = deal.numCompetitors ?? 0;
               const dealType = (deal.dealType ?? '').toLowerCase();
               const partnersInvolved = (deal.partnersInvolved ?? '').toLowerCase();
-              const snowflake = (deal.snowflakeTeam ?? '').toLowerCase();
+              const snowflakeTeam = (deal.snowflakeTeam ?? '').toLowerCase();
               const dealCode = (deal.dealCode ?? '').toUpperCase();
               const stageAge = deal.stageAge ?? 0;
 
-              if (acv >= 100000) complexityDrivers.push(`$${(acv / 1000).toFixed(0)}K ACV — material deal size requires architectural rigor`);
-              else if (acv < 25000) simplifiers.push(`$${(acv / 1000).toFixed(0)}K ACV — smaller deal, lighter technical lift`);
+              const quadrantGuidance: Record<string, { directive: string; seActions: string[]; aeActions: string[] }> = {
+                PRIORITIZE: {
+                  directive: `This is a Prioritize deal — technically complex and likely to close. Full TDR investment is warranted. Focus your best architectural work here.`,
+                  seActions: [
+                    'Build a comprehensive architectural strategy covering data platform, governance, and integration layers',
+                    'Prepare a competitive differentiation narrative tailored to the technical evaluation criteria',
+                    numComp >= 1 ? `Address ${numComp} competitor(s) with specific technical positioning and battle card evidence` : 'Proactively position against likely alternatives even if unnamed',
+                    'Schedule a deep-dive technical workshop with the customer\'s data and engineering teams',
+                  ],
+                  aeActions: [
+                    'Protect this deal — it\'s high value and winnable. Prioritize executive alignment meetings',
+                    'Coordinate with SE on technical workshop timing to maintain deal momentum',
+                    stageAge > 60 ? `Address the ${stageAge}-day stage age — escalate any blockers to leadership` : 'Keep the deal moving through procurement and legal in parallel',
+                  ],
+                },
+                FAST_TRACK: {
+                  directive: `This is a Fast Track deal — likely to close with lower technical complexity. A lightweight technical pass is sufficient. Don't over-invest TDR time here.`,
+                  seActions: [
+                    'Conduct a focused technical validation — confirm fit without over-architecting',
+                    'Prepare a standard deployment guide and success criteria document',
+                    'Be available for technical questions but avoid deep custom architecture work',
+                  ],
+                  aeActions: [
+                    'Drive toward close — the technical risk is low and the probability is strong',
+                    'Focus on commercial terms and timeline rather than additional technical deep-dives',
+                    'Engage procurement and legal early to avoid last-minute delays',
+                  ],
+                },
+                INVESTIGATE: {
+                  directive: `This is an Investigate deal — technically complex but facing headwinds on win probability. Diagnose the blockers before investing full TDR time.`,
+                  seActions: [
+                    'Identify the specific technical or business blockers preventing this deal from progressing',
+                    'Conduct a discovery call focused on understanding why momentum has stalled',
+                    numComp >= 1 ? `Assess competitive positioning — are we losing on technical merit or commercial terms?` : 'Determine if the low win probability is driven by budget, timing, or fit concerns',
+                    'Propose a targeted proof-of-concept if the blocker is technical credibility',
+                  ],
+                  aeActions: [
+                    'Assess whether this deal is worth continued investment given the low win probability',
+                    'Engage leadership for a deal review if the opportunity is strategically important',
+                    stageAge > 90 ? `This deal has been in stage for ${stageAge} days — consider pipeline hygiene review` : 'Set a clear go/no-go decision point within the next 2 weeks',
+                  ],
+                },
+                DEPRIORITIZE: {
+                  directive: `This is a Deprioritize deal — low complexity and low win probability. Monitor only. Redirect your effort to higher-priority deals.`,
+                  seActions: [
+                    'Minimal investment — respond to technical questions but don\'t proactively prepare materials',
+                    'If asked for a demo, use standard content rather than custom preparation',
+                  ],
+                  aeActions: [
+                    'Move this deal to a monitor cadence — check in bi-weekly rather than weekly',
+                    'Focus pipeline effort on Prioritize and Fast Track deals instead',
+                    'If the deal is genuinely dead, consider removing from the forecast',
+                  ],
+                },
+              };
 
+              const brief = quadrantGuidance[deal.dealQuadrant] || quadrantGuidance.DEPRIORITIZE;
+
+              const complexityDrivers: string[] = [];
+              const simplifiers: string[] = [];
+
+              if (acvVal >= 100000) complexityDrivers.push(`$${(acvVal / 1000).toFixed(0)}K ACV — material deal size requires architectural rigor`);
+              else if (acvVal < 25000) simplifiers.push(`$${(acvVal / 1000).toFixed(0)}K ACV — smaller deal, lighter technical lift`);
               if (numComp >= 2) complexityDrivers.push(`${numComp} competitors — multi-vendor bake-off demands differentiation`);
               else if (numComp === 1) complexityDrivers.push('1 competitor — head-to-head requires clear technical positioning');
               else simplifiers.push('No named competitors — reduced displacement pressure');
-
               if (dealType.includes('new logo') || dealType.includes('new business'))
                 complexityDrivers.push('New Logo — greenfield architecture, no existing relationship');
               else if (dealType.includes('upsell') || dealType.includes('expansion'))
                 simplifiers.push('Expansion — existing footprint reduces discovery burden');
-
-              if (snowflake || /snowflake|databricks|bigquery|gcp|aws|azure/i.test(partnersInvolved))
+              if (snowflakeTeam || /snowflake|databricks|bigquery|gcp|aws|azure/i.test(partnersInvolved))
                 complexityDrivers.push('Cloud partner involved — co-sell architecture alignment needed');
-
               if (dealCode.startsWith('PA') || (dealCode.includes('-') && !dealCode.endsWith('-A')))
                 complexityDrivers.push(`Deal code ${dealCode} — partner/multi-component deal structure`);
               else if (/E0[2-9]|E[1-9]\d/.test(dealCode))
                 complexityDrivers.push(`Deal code ${dealCode} — complex enterprise engagement`);
-
               if (stageAge > 90) complexityDrivers.push(`${stageAge}d in stage — stalled deals often have unresolved blockers`);
               else if (stageAge <= 14) simplifiers.push('Fresh stage entry — deal is moving');
-
               if (stageNum >= 2 && stageNum <= 3) complexityDrivers.push(`Stage ${stageNum} — prime window where SE shapes the architecture narrative`);
               else if (stageNum >= 4) simplifiers.push(`Stage ${stageNum} — past architecture shaping, confirming/closing`);
 
-              const highComplexity = displayScore >= 50;
-              const drivers = highComplexity ? complexityDrivers : simplifiers;
-              const guidance = highComplexity
-                ? `TDR Score of ${displayScore} signals elevated technical complexity driven by:`
-                : `TDR Score of ${displayScore} signals lower technical complexity because:`;
-
               return (
-                <div className="px-5 py-3 border-b border-[#322b4d]">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span className="text-3xl font-bold tabular-nums text-white">{deal.dealPriority}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] uppercase tracking-wider text-slate-500">Deal Priority</span>
-                        <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-bold', q.bg, q.text)}>
-                          {deal.dealQuadrant.replace('_', ' ')}
-                        </span>
+                <>
+                {/* Action Brief */}
+                <div className={cn('px-5 py-3 border-b border-[#322b4d] border-l-2', q.border)}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="text-[9px] uppercase tracking-wider text-slate-500 font-medium">What to Do</span>
+                    <span className={cn('rounded px-1.5 py-0.5 text-[9px] font-bold', q.bg, q.text)}>
+                      {deal.dealQuadrant.replace('_', ' ')}
+                    </span>
+                    <button onClick={() => setActionBriefExpanded(!actionBriefExpanded)} className="ml-auto text-slate-600 hover:text-slate-300 transition-colors">
+                      <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', !actionBriefExpanded && '-rotate-90')} />
+                    </button>
+                  </div>
+
+                  <p className="text-[12px] text-slate-300 leading-relaxed font-medium mb-2">{brief.directive}</p>
+
+                  {actionBriefExpanded && (
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      <div className="rounded-md border border-violet-500/15 bg-violet-500/5 px-3 py-2">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <User className="h-3 w-3 text-violet-400" />
+                          <span className="text-[9px] uppercase tracking-wider text-violet-400 font-semibold">SE Next Steps</span>
+                        </div>
+                        <ul className="space-y-1">
+                          {brief.seActions.map((a, i) => (
+                            <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-400 leading-relaxed">
+                              <span className="mt-1.5 h-1 w-1 rounded-full bg-violet-500 shrink-0" />
+                              {a}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <div className="flex-1 h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700 ease-out"
-                          style={{ width: `${deal.dealPriority}%`, background: q.bar }}
-                        />
+                      <div className="rounded-md border border-blue-500/15 bg-blue-500/5 px-3 py-2">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Briefcase className="h-3 w-3 text-blue-400" />
+                          <span className="text-[9px] uppercase tracking-wider text-blue-400 font-semibold">AE Next Steps</span>
+                        </div>
+                        <ul className="space-y-1">
+                          {brief.aeActions.map((a, i) => (
+                            <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-400 leading-relaxed">
+                              <span className="mt-1.5 h-1 w-1 rounded-full bg-blue-500 shrink-0" />
+                              {a}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
                     </div>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed mb-1.5">{guidance}</p>
-                  {drivers.length > 0 && (
-                    <ul className="space-y-0.5 mb-2">
-                      {drivers.slice(0, 4).map((d, i) => (
-                        <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-500">
-                          <span className={cn('mt-1 h-1 w-1 rounded-full shrink-0', highComplexity ? 'bg-violet-500' : 'bg-emerald-500')} />
-                          {d}
-                        </li>
-                      ))}
-                    </ul>
                   )}
-                  <div className="flex gap-4 text-[10px] text-slate-500">
-                    <span className="tabular-nums">TDR {displayScore} × 40% = <span className="text-slate-300 font-medium">{tdrPart}</span></span>
-                    <span className="tabular-nums">Win {winPct}% × 60% = <span className="text-slate-300 font-medium">{winPart}</span></span>
-                  </div>
-                </div>
-              );
-            })()}
 
-            {/* Contributing Scores */}
-            <div className="px-5 py-3">
-              <p className="text-[9px] uppercase tracking-wider text-slate-600 mb-2">Score Components</p>
-              <div className="flex items-center gap-3 mb-2">
-                <span className={cn(
-                  'text-lg font-bold tabular-nums',
-                  priority === 'CRITICAL' ? 'text-violet-300' :
-                  priority === 'HIGH' ? 'text-violet-400' :
-                  priority === 'MEDIUM' ? 'text-amber-400' : 'text-slate-400'
-                )}>
-                  {displayScore}
-                </span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
+                  {actionPlanResult?.success && (
+                    <button
+                      onClick={() => setActionPlanOpen(true)}
+                      className="mt-2 flex items-center gap-1.5 text-[10px] text-violet-400/70 hover:text-violet-300 transition-colors"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      View full AI-generated Action Plan
+                      <ChevronRight className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* ── DEAL POSITION CLUSTER — unified score row ── */}
+                <div className="px-5 py-3 border-b border-[#322b4d]">
+                  <div className="flex items-center gap-4">
+                    {/* Deal Priority — hero */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold tabular-nums text-white">{deal.dealPriority ?? displayScore}</span>
+                      <div>
+                        <span className="text-[8px] uppercase tracking-wider text-slate-600 block">Priority</span>
+                        <div className="w-16 h-1 rounded-full bg-[#2a2540] overflow-hidden mt-0.5">
+                          <div className="h-full rounded-full" style={{ width: `${deal.dealPriority ?? displayScore}%`, background: q.bar }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className="text-slate-700">=</span>
+
+                    {/* TDR Score — subordinate */}
+                    <div className="flex items-center gap-1.5">
+                      <span className={cn('text-sm font-bold tabular-nums',
+                        priority === 'CRITICAL' ? 'text-violet-300' : priority === 'HIGH' ? 'text-violet-400' : priority === 'MEDIUM' ? 'text-amber-400' : 'text-slate-400'
+                      )}>{displayScore}</span>
+                      <div>
+                        <span className="text-[8px] uppercase tracking-wider text-slate-600 block">TDR</span>
+                        <span className="text-[8px] text-slate-600">× 40%</span>
+                      </div>
+                    </div>
+
+                    <span className="text-slate-700">+</span>
+
+                    {/* Win Propensity — subordinate */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold tabular-nums text-slate-200">
+                        {deal.propensityScore != null ? `${winPct}%` : '—'}
+                      </span>
+                      <div>
+                        <span className="text-[8px] uppercase tracking-wider text-slate-600 block">Win</span>
+                        <span className="text-[8px] text-slate-600">× 60%</span>
+                      </div>
+                    </div>
+
+                    {/* Lifecycle badge */}
                     <span className={cn(
-                      'rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
-                      priority === 'CRITICAL' ? 'bg-violet-500/15 text-violet-300' :
-                      priority === 'HIGH' ? 'bg-violet-500/10 text-violet-400' :
-                      priority === 'MEDIUM' ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-500/10 text-slate-500'
-                    )}>
-                      {priority}
-                    </span>
-                    <span className={cn(
-                      'rounded-full px-1.5 py-0.5 text-2xs font-medium',
+                      'ml-auto rounded-full px-1.5 py-0.5 text-2xs font-medium',
                       lifecyclePhase === 'ENRICHED' ? 'bg-emerald-500/10 text-emerald-300/70 border border-emerald-500/15' :
                       lifecyclePhase === 'COMPLETE' ? 'bg-violet-500/10 text-violet-300/70 border border-violet-500/15' :
                       lifecyclePhase === 'NOT_STARTED' ? 'bg-slate-500/5 text-slate-500 border border-slate-500/15' :
@@ -1304,93 +1398,115 @@ export function TDRIntelligence({
                     )}>
                       {lifecyclePhase === 'ENRICHED' ? 'Fully Informed' :
                        lifecyclePhase === 'COMPLETE' ? 'TDR Complete' :
-                       lifecyclePhase === 'NEAR_COMPLETE' ? `${completedStepCount}/${requiredStepCount} Required` :
-                       lifecyclePhase === 'IN_PROGRESS' ? `${completedStepCount}/${requiredStepCount} Required` :
-                       lifecyclePhase === 'EARLY' ? 'TDR Started' :
-                       'Pre-TDR'}
+                       lifecyclePhase === 'IN_PROGRESS' || lifecyclePhase === 'NEAR_COMPLETE' ? `${completedStepCount}/${requiredStepCount} Steps` :
+                       lifecyclePhase === 'EARLY' ? 'TDR Started' : 'Pre-TDR'}
                     </span>
-                    {/* Note optional steps completed if any */}
-                    {optionalCompletedCount > 0 && lifecyclePhase !== 'NOT_STARTED' && (
-                      <span className="rounded-full px-1.5 py-0.5 text-2xs font-medium bg-slate-500/5 text-slate-500 border border-slate-500/10">
-                        +{optionalCompletedCount} optional
+                  </div>
+
+                  {/* Expandable score detail */}
+                  <button
+                    onClick={() => setScoreDetailExpanded(!scoreDetailExpanded)}
+                    className="flex items-center gap-1.5 mt-2 text-[9px] uppercase tracking-wider text-slate-600 hover:text-slate-400 transition-colors w-full"
+                  >
+                    <ChevronRight className={cn('h-3 w-3 transition-transform', scoreDetailExpanded && 'rotate-90')} />
+                    Score Detail
+                    {lifecyclePhase !== 'NOT_STARTED' && (
+                      <span className={cn('ml-1 tabular-nums text-[9px] font-medium',
+                        confidence.total >= 80 ? 'text-emerald-400' : confidence.total >= 60 ? 'text-blue-400' :
+                        confidence.total >= 40 ? 'text-amber-400' : 'text-slate-500'
+                      )}>
+                        {confidence.total}% confidence
                       </span>
                     )}
-                    <button
-                      onClick={() => setScoreContextOpen(!scoreContextOpen)}
-                      className="ml-auto text-slate-600 hover:text-slate-300 transition-colors"
-                      title="What does this score mean?"
-                    >
-                      <HelpCircle className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <div className="flex-1 h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{
-                        width: `${displayScore}%`,
-                        background: priority === 'CRITICAL'
-                          ? 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))'
-                          : priority === 'HIGH'
-                          ? 'linear-gradient(90deg, hsl(263, 60%, 50%), hsl(280, 50%, 45%))'
-                          : priority === 'MEDIUM'
-                          ? 'linear-gradient(90deg, hsl(38, 65%, 50%), hsl(45, 60%, 55%))'
-                          : 'hsl(260, 10%, 40%)',
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Win Propensity — ML prediction */}
-              <div className="mt-3 pt-3 border-t border-[#322b4d]">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold tabular-nums text-slate-200">
-                    {deal.propensityScore != null ? `${Math.round(deal.propensityScore * 100)}%` : '—'}
-                  </span>
-                  <span className="text-[9px] uppercase tracking-wider text-slate-600">Win Propensity</span>
-                  {deal.propensityQuadrant && (
-                    <span className={cn(
-                      'rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider ml-auto',
-                      deal.propensityQuadrant === 'HIGH' ? 'bg-violet-500/15 text-violet-300' :
-                      deal.propensityQuadrant === 'MONITOR' ? 'bg-purple-400/15 text-purple-300' :
-                      'bg-fuchsia-400/15 text-fuchsia-300'
-                    )}>
-                      {deal.propensityQuadrant}
-                    </span>
-                  )}
+                  </button>
                 </div>
 
-                {deal.propensityScore != null && (
-                  <div className="flex-1 h-1.5 rounded-full bg-[#2a2540] overflow-hidden mt-2">
-                    <div
-                      className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{
-                        width: `${Math.round(deal.propensityScore * 100)}%`,
-                        background: deal.propensityScore >= 0.7
-                          ? 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))'
-                          : deal.propensityScore >= 0.4
-                          ? 'linear-gradient(90deg, hsl(280, 50%, 50%), hsl(290, 45%, 45%))'
-                          : 'hsl(300, 30%, 40%)',
-                      }}
-                    />
-                  </div>
-                )}
+                {/* Score Detail accordion — all existing detail collapsed */}
+                {scoreDetailExpanded && (
+                <div className="px-5 py-3 border-b border-[#322b4d] space-y-3">
+                  {/* Complexity drivers */}
+                  {(() => {
+                    const highComplexity = displayScore >= 50;
+                    const drivers = highComplexity ? complexityDrivers : simplifiers;
+                    const driverGuidance = highComplexity
+                      ? `TDR Score of ${displayScore} signals elevated technical complexity:`
+                      : `TDR Score of ${displayScore} signals lower technical complexity:`;
+                    return drivers.length > 0 ? (
+                      <div>
+                        <p className="text-[10px] text-slate-400 mb-1">{driverGuidance}</p>
+                        <ul className="space-y-0.5">
+                          {drivers.slice(0, 4).map((d, i) => (
+                            <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-500">
+                              <span className={cn('mt-1 h-1 w-1 rounded-full shrink-0', highComplexity ? 'bg-violet-500' : 'bg-emerald-500')} />
+                              {d}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null;
+                  })()}
 
-                {deal.propensityFactors && deal.propensityFactors.length > 0 && (
-                  <div className="mt-2.5">
-                    <button
-                      onClick={() => setShapExpanded(!shapExpanded)}
-                      className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors w-full"
-                    >
-                      <ChevronRight className={cn('h-3 w-3 transition-transform', shapExpanded && 'rotate-90')} />
-                      Why this score?
-                    </button>
-                    {shapExpanded && (
-                      <div className="mt-2 space-y-2 pl-1">
-                        {deal.propensityFactors.slice(0, 5).map((f, i) => {
-                          const displayName = getMLFactorDisplayName(f.name);
-                          const explanation = getMLFactorExplanation(f.name, f.value, f.direction);
-                          const dirLabel = f.direction === 'helps' ? 'Helps' : f.direction === 'hurts' ? 'Hurts' : 'Neutral';
+                  {/* TDR Score bar */}
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-slate-600 mb-1">TDR Score</p>
+                    <div className="flex items-center gap-2">
+                      <span className={cn('text-sm font-bold tabular-nums',
+                        priority === 'CRITICAL' ? 'text-violet-300' : priority === 'HIGH' ? 'text-violet-400' : priority === 'MEDIUM' ? 'text-amber-400' : 'text-slate-400'
+                      )}>{displayScore}</span>
+                      <span className={cn('rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase',
+                        priority === 'CRITICAL' ? 'bg-violet-500/15 text-violet-300' : priority === 'HIGH' ? 'bg-violet-500/10 text-violet-400' :
+                        priority === 'MEDIUM' ? 'bg-amber-500/10 text-amber-400' : 'bg-slate-500/10 text-slate-500'
+                      )}>{priority}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700 ease-out" style={{
+                          width: `${displayScore}%`,
+                          background: priority === 'CRITICAL' ? 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))'
+                            : priority === 'HIGH' ? 'linear-gradient(90deg, hsl(263, 60%, 50%), hsl(280, 50%, 45%))'
+                            : priority === 'MEDIUM' ? 'linear-gradient(90deg, hsl(38, 65%, 50%), hsl(45, 60%, 55%))' : 'hsl(260, 10%, 40%)',
+                        }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Win Propensity bar */}
+                  <div>
+                    <p className="text-[9px] uppercase tracking-wider text-slate-600 mb-1">Win Propensity</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold tabular-nums text-slate-200">{deal.propensityScore != null ? `${winPct}%` : '—'}</span>
+                      {deal.propensityQuadrant && (
+                        <span className={cn('rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase',
+                          deal.propensityQuadrant === 'HIGH' ? 'bg-violet-500/15 text-violet-300' :
+                          deal.propensityQuadrant === 'MONITOR' ? 'bg-purple-400/15 text-purple-300' : 'bg-fuchsia-400/15 text-fuchsia-300'
+                        )}>{deal.propensityQuadrant}</span>
+                      )}
+                      {deal.propensityScore != null && (
+                        <div className="flex-1 h-1.5 rounded-full bg-[#2a2540] overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700 ease-out" style={{
+                            width: `${winPct}%`,
+                            background: deal.propensityScore >= 0.7 ? 'linear-gradient(90deg, hsl(263, 84%, 55%), hsl(280, 70%, 55%))'
+                              : deal.propensityScore >= 0.4 ? 'linear-gradient(90deg, hsl(280, 50%, 50%), hsl(290, 45%, 45%))' : 'hsl(300, 30%, 40%)',
+                          }} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SHAP factors */}
+                  {deal.propensityFactors && deal.propensityFactors.length > 0 && (
+                    <div>
+                      <button
+                        onClick={() => setShapExpanded(!shapExpanded)}
+                        className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors w-full"
+                      >
+                        <ChevronRight className={cn('h-3 w-3 transition-transform', shapExpanded && 'rotate-90')} />
+                        Why this score?
+                      </button>
+                      {shapExpanded && (
+                        <div className="mt-2 space-y-2 pl-1">
+                          {deal.propensityFactors.slice(0, 5).map((f, i) => {
+                            const displayName = getMLFactorDisplayName(f.name);
+                            const explanation = getMLFactorExplanation(f.name, f.value, f.direction);
+                            const dirLabel = f.direction === 'helps' ? 'Helps' : f.direction === 'hurts' ? 'Hurts' : 'Neutral';
                           return (
                             <div key={i} className="space-y-0.5">
                               <div className="flex items-center gap-2">
@@ -1430,106 +1546,62 @@ export function TDRIntelligence({
                   </div>
                 )}
 
-                {deal.propensityScoredAt && (
-                  <p className="text-[9px] text-slate-600 mt-2">
-                    Scored {(() => {
-                      const d = new Date(deal.propensityScoredAt!);
-                      if (isNaN(d.getTime())) return deal.propensityScoredAt;
-                      const hours = Math.floor((Date.now() - d.getTime()) / 3600000);
-                      if (hours < 1) return 'just now';
-                      if (hours < 24) return `${hours}h ago`;
-                      const days = Math.floor(hours / 24);
-                      return days === 1 ? 'yesterday' : `${days}d ago`;
-                    })()} · {deal.propensityModelVersion || 'v2'}
+                  {deal.propensityScoredAt && (
+                    <p className="text-[9px] text-slate-600 mt-2">
+                      Scored {(() => {
+                        const d = new Date(deal.propensityScoredAt!);
+                        if (isNaN(d.getTime())) return deal.propensityScoredAt;
+                        const hours = Math.floor((Date.now() - d.getTime()) / 3600000);
+                        if (hours < 1) return 'just now';
+                        if (hours < 24) return `${hours}h ago`;
+                        const days = Math.floor(hours / 24);
+                        return days === 1 ? 'yesterday' : `${days}d ago`;
+                      })()} · {deal.propensityModelVersion || 'v2'}
+                    </p>
+                  )}
+
+                  {/* Context */}
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    <span className={cn('font-semibold',
+                      priority === 'CRITICAL' ? 'text-violet-300' : priority === 'HIGH' ? 'text-violet-400' :
+                      priority === 'MEDIUM' ? 'text-amber-400' : 'text-slate-400'
+                    )}>{context.headline}.</span>{' '}
+                    <span className="text-slate-500">{context.description}</span>
                   </p>
-                )}
 
-                {deal.propensityScore == null && (
-                  <p className="text-[9px] text-slate-600 mt-1">No ML score available. Scores update nightly.</p>
-                )}
-              </div>
+                  {/* Top TDR triggers */}
+                  {topFactors.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {topFactors.map(factor => (
+                        <TooltipProvider key={factor.id} delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className={cn(
+                                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium border',
+                                INTEL_FACTOR_PILL_COLORS[factor.color] || 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                              )}>
+                                {factor.shortLabel}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs text-[10px] bg-[#1e1a30] border-[#362f50] text-slate-300 p-2.5">
+                              <p className="font-semibold text-slate-200 mb-1">{factor.label}</p>
+                              <p className="text-slate-400">{factor.description}</p>
+                              {lifecyclePhase === 'COMPLETE' || lifecyclePhase === 'ENRICHED'
+                                ? <p className="text-emerald-400/70 mt-1 text-[9px]">Assessed: {factor.strategy.substring(0, 120)}...</p>
+                                : <p className="text-violet-400/70 mt-1 text-[9px]">Strategy: {factor.strategy.substring(0, 120)}...</p>
+                              }
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ))}
+                    </div>
+                  )}
 
-              {/* Confidence meter — how well-informed is this assessment? */}
-              {lifecyclePhase !== 'NOT_STARTED' && (
-                <div className="flex items-center gap-2 mt-2 mb-1.5">
-                  <span className="text-[9px] uppercase tracking-wider text-slate-600">Confidence</span>
-                  <div className="flex-1 h-1 rounded-full bg-[#2a2540] overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700 ease-out"
-                      style={{
-                        width: `${confidence.total}%`,
-                        background: confidence.total >= 80
-                          ? 'linear-gradient(90deg, hsl(152, 60%, 45%), hsl(160, 55%, 40%))'
-                          : confidence.total >= 60
-                          ? 'linear-gradient(90deg, hsl(217, 55%, 50%), hsl(230, 50%, 45%))'
-                          : confidence.total >= 40
-                          ? 'linear-gradient(90deg, hsl(38, 55%, 50%), hsl(45, 50%, 45%))'
-                          : 'hsl(260, 10%, 35%)',
-                      }}
-                    />
-                  </div>
-                  <span className={cn(
-                    'text-[9px] font-medium tabular-nums',
-                    confidence.total >= 80 ? 'text-emerald-400' :
-                    confidence.total >= 60 ? 'text-blue-400' :
-                    confidence.total >= 40 ? 'text-amber-400' : 'text-slate-500'
-                  )}>
-                    {confidence.total}% — {confidence.band}
-                  </span>
-                </div>
-              )}
-
-              {/* Context: what the score means */}
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                <span className={cn(
-                  'font-semibold',
-                  priority === 'CRITICAL' ? 'text-violet-300' :
-                  priority === 'HIGH' ? 'text-violet-400' :
-                  priority === 'MEDIUM' ? 'text-amber-400' : 'text-slate-400'
-                )}>{context.headline}.</span>{' '}
-                <span className="text-slate-500">{context.description}</span>
-              </p>
-
-              {/* Top TDR triggers — colors match portfolio page */}
-              {topFactors.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {topFactors.map(factor => (
-                    <TooltipProvider key={factor.id} delayDuration={200}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className={cn(
-                            'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium border',
-                            INTEL_FACTOR_PILL_COLORS[factor.color] || 'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                          )}>
-                            {factor.shortLabel}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-xs text-[10px] bg-[#1e1a30] border-[#362f50] text-slate-300 p-2.5">
-                          <p className="font-semibold text-slate-200 mb-1">{factor.label}</p>
-                          <p className="text-slate-400">{factor.description}</p>
-                          {lifecyclePhase === 'COMPLETE' || lifecyclePhase === 'ENRICHED'
-                            ? <p className="text-emerald-400/70 mt-1 text-[9px]">Assessed: {factor.strategy.substring(0, 120)}...</p>
-                            : <p className="text-violet-400/70 mt-1 text-[9px]">Strategy: {factor.strategy.substring(0, 120)}...</p>
-                          }
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ))}
-                </div>
-              )}
-
-              {/* Expandable score breakdown */}
-              {scoreContextOpen && (
-                <div className="mt-3 pt-3 border-t border-[#2a2540]/60 space-y-3">
                   {/* Score factor breakdown */}
-                  <div>
+                  <div className="pt-3 border-t border-[#2a2540]/40">
                     <p className="text-[9px] uppercase tracking-wider text-slate-600 mb-2">
                       {isPostTDR ? 'Score Breakdown' : 'Pre-TDR Scoring Components'}
                     </p>
-                    <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
-                      The TDR Score quantifies how much a deal benefits from a Technical Deal Review. It's built from 9 independent components aligned to the TDR Framework — each assessing a dimension of deal complexity, strategic importance, or risk.
-                    </p>
-
                     {postBreakdown ? (
                       <div className="space-y-1">
                         {[
@@ -1580,32 +1652,22 @@ export function TDRIntelligence({
                             </Tooltip>
                           </TooltipProvider>
                         ))}
-                        <p className="text-[9px] text-slate-600 mt-2 italic">
-                          {lifecyclePhase === 'NOT_STARTED'
-                            ? 'Start the TDR and enrich the deal to unlock the Post-TDR score with intelligence-based components.'
-                            : lifecyclePhase === 'EARLY'
-                            ? 'Continue completing TDR steps and pull external intelligence to build the Post-TDR score.'
-                            : 'Complete remaining steps and enrich to finalize the Post-TDR assessment.'}
-                        </p>
                       </div>
                     )}
                   </div>
 
-                  {/* Confidence breakdown (only shown when TDR has started) */}
+                  {/* Confidence breakdown */}
                   {lifecyclePhase !== 'NOT_STARTED' && (
                     <div className="pt-2 border-t border-[#2a2540]/40">
                       <p className="text-[9px] uppercase tracking-wider text-slate-600 mb-1">Assessment Confidence</p>
-                      <p className="text-[10px] text-slate-500 mb-2 leading-relaxed">
-                        Confidence measures how thorough the assessment is — not the deal's risk level. A high-risk deal with high confidence means "we understand the complexity and have a plan."
-                      </p>
                       <div className="space-y-1">
                         {[
-                          { label: 'Required Steps', value: confidence.requiredSteps, max: 40, desc: `${completedStepCount}/${requiredStepCount} required steps completed — these form the backbone of the TDR assessment`, scrollRef: null as React.RefObject<HTMLDivElement> | null, collapseRef: null as React.RefObject<CollapsibleSectionHandle> | null },
-                          { label: 'Optional Depth', value: confidence.optionalSteps, max: 10, desc: `${optionalCompletedCount}/${optionalTotalCount} optional steps completed — additional depth on partner, AI, architecture, and adoption`, scrollRef: null, collapseRef: null },
-                          { label: 'External Intel', value: confidence.externalIntel, max: 15, desc: 'Sumble and Perplexity enrichment — click to jump there', scrollRef: enrichBarRef, collapseRef: null },
-                          { label: 'AI Analysis', value: confidence.aiOutputs, max: 15, desc: 'Action plan and TDR brief generated by Cortex AI — synthesizes all inputs into strategy', scrollRef: null, collapseRef: null },
-                          { label: 'Knowledge Base', value: confidence.kbMatch, max: 10, desc: 'Battle cards, playbooks, or reference docs — click to open & jump there', scrollRef: kbSectionRef, collapseRef: kbCollapseRef },
-                          { label: 'Risk Identified', value: confidence.riskAwareness, max: 10, desc: 'Risk categories surfaced through structured extraction — click to open & jump there', scrollRef: riskSectionRef, collapseRef: riskCollapseRef },
+                          { label: 'Required Steps', value: confidence.requiredSteps, max: 40, desc: `${completedStepCount}/${requiredStepCount} required steps completed`, scrollRef: null as React.RefObject<HTMLDivElement> | null, collapseRef: null as React.RefObject<CollapsibleSectionHandle> | null },
+                          { label: 'Optional Depth', value: confidence.optionalSteps, max: 10, desc: `${optionalCompletedCount}/${optionalTotalCount} optional steps completed`, scrollRef: null, collapseRef: null },
+                          { label: 'External Intel', value: confidence.externalIntel, max: 15, desc: 'Sumble and Perplexity enrichment — click to jump', scrollRef: enrichBarRef, collapseRef: null },
+                          { label: 'AI Analysis', value: confidence.aiOutputs, max: 15, desc: 'Action plan and TDR brief generated by Cortex AI', scrollRef: null, collapseRef: null },
+                          { label: 'Knowledge Base', value: confidence.kbMatch, max: 10, desc: 'Battle cards, playbooks, or reference docs — click to jump', scrollRef: kbSectionRef, collapseRef: kbCollapseRef },
+                          { label: 'Risk Identified', value: confidence.riskAwareness, max: 10, desc: 'Risk categories surfaced through structured extraction', scrollRef: riskSectionRef, collapseRef: riskCollapseRef },
                         ].map((item) => (
                           <TooltipProvider key={item.label} delayDuration={200}>
                             <Tooltip>
@@ -1623,9 +1685,7 @@ export function TDRIntelligence({
                                   <div className="flex-1 h-[3px] rounded-full bg-[#2a2540] overflow-hidden">
                                     <div className="h-full rounded-full transition-all duration-500" style={{
                                       width: `${item.max > 0 ? (item.value / item.max) * 100 : 0}%`,
-                                      background: item.value > 0
-                                        ? 'linear-gradient(90deg, hsl(152, 55%, 45%), hsl(160, 50%, 42%))'
-                                        : 'hsl(260, 10%, 30%)',
+                                      background: item.value > 0 ? 'linear-gradient(90deg, hsl(152, 55%, 45%), hsl(160, 50%, 42%))' : 'hsl(260, 10%, 30%)',
                                     }} />
                                   </div>
                                   <span className={cn('tabular-nums w-8 text-right text-2xs font-medium', item.value > 0 ? 'text-emerald-400' : 'text-slate-600')}>
@@ -1666,8 +1726,10 @@ export function TDRIntelligence({
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
+                )}
+                </>
+              );
+            })()}
 
             {/* Signal strip */}
             <div className="px-5 pb-3 flex gap-2">

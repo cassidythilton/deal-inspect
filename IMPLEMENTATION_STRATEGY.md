@@ -2,13 +2,13 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 10.0 · **Date:** March 17, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a, 32b, 33, 34, 35, 35f, 36 (50 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress (32a ✅, 32c–e remaining) · Pillars 19–20 Complete**
+**Status:** Active · **Version:** Draft 10.1 · **Date:** March 16, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a, 32b, 33, 34, 35, 35f, 36, 37 (51 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress (32a ✅, 32c–e remaining) · Pillars 19–21 Complete**
 
 ---
 
 ### Current State & What's Next
 
-**Where we are:** Pillars 1–17 plus Pillars 19–20 are complete (50 sprints, Feb 9 – Mar 17, 2026). Sprints 33–36 shipped Gong transcript Q&A, TDR versioning, admin observability, intelligence panel overhaul, and Command Center UX refinements. Sprint 32b (Seeded TDR Responses) is complete. Sprints 32c–e (MLOps monitoring frontend) remain queued — the only unfinished items on the roadmap.
+**Where we are:** Pillars 1–17 plus Pillars 19–20 are complete (50 sprints, Feb 9 – Mar 17, 2026). Sprint 37 (Prescriptive TDR Actions) is in progress — the "So What?" sprint that redesigns the Intelligence panel to lead with action instead of metrics. Critical for broader user rollout. Sprints 32c–e (MLOps monitoring frontend) remain queued after Sprint 37.
 
 **What's done (recently):**
 
@@ -26,6 +26,7 @@
 
 | Sprint | Name | Effort | Prerequisite | Status | Key Deliverable |
 |--------|------|--------|-------------|--------|-----------------|
+| **37** | Prescriptive TDR Actions | 3–5 days | 36 | 🔶 In Progress | Action Brief hero section, unified Score Cluster, auto-generation pipeline, section reorder |
 | **32c** | Code Engine MLOps Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data |
 | **32d** | Frontend MLOps Page | 2–3 days | 32c | 🔲 Not Started | `/mlops` page with model health visibility |
 | **32e** | Polish + Documentation | 1 day | 32d | 🔲 Not Started | Alert threshold logic, distribution health checks, Pillar 18 finalization |
@@ -46,9 +47,9 @@
 | **35f** | Intelligence Panel UX | ✅ Complete |
 | **36** | Command Center UX | ✅ Complete |
 
-**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike), `shaping/tdr-versioning.md` (Sprint 34 — TDR Versioning), `shaping/tdr-admin-observability.md` (Sprint 35 — Admin Observability)
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike), `shaping/tdr-versioning.md` (Sprint 34 — TDR Versioning), `shaping/tdr-admin-observability.md` (Sprint 35 — Admin Observability), `shaping/prescriptive-tdr-actions.md` (Sprint 37 — Prescriptive TDR Actions)
 
-**Start point:** All major sprints complete through Sprint 36 (v1.80.1). The platform has shipped 50 sprints across 20 pillars. Remaining work is MLOps monitoring frontend (Sprints 32c–e) — the model health observability layer.
+**Start point:** All major sprints complete through Sprint 36 (v1.80.1). Sprint 37 (Prescriptive TDR Actions) is in progress — action-first Intelligence panel redesign for broader user rollout. MLOps monitoring (Sprints 32c–e) queued after Sprint 37.
 
 ---
 
@@ -3083,6 +3084,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 | **35** | **TDR Admin Observability** | ✅ Complete | — | S34 | **UX / Analytics** |
 | **35f** | **Intelligence Panel UX Overhaul** | ✅ Complete | — | S35 | **UX / Gemini Vision** |
 | **36** | **Command Center UX** | ✅ Complete | — | S35f | **UX / Charts** |
+| **37** | **Prescriptive TDR Actions** | 🔶 In Progress | — | S36 | **UX / AI / Code Engine** |
 | **32c** | **Code Engine MLOps Functions** | 🔲 Not Started | — | S32a | **ML / Code Engine** |
 | **32d** | **Frontend MLOps Page** | 🔲 Not Started | — | S32c | **ML / UX** |
 | **32e** | **MLOps Polish + Documentation** | 🔲 Not Started | — | S32d | **Documentation / UX** |
@@ -3830,9 +3832,17 @@ Sprint 35 — TDR Admin Observability ✅
 Sprint 36 — Command Center UX ✅
     │  Win propensity fix, scrollable tooltips, interactive quadrant legend
     │  Click-to-open TDR, hover decorators
+    │
+    ▼
+Sprint 37 — Prescriptive TDR Actions 🔶
+    │  37a: Action Brief hero section (auto-generated, role-specific)
+    │  37b: Unified Score Cluster (3 scores → 1 compact row)
+    │  37c: Auto-generation pipeline (Code Engine + trigger)
+    │  37d: Section reorder (action-first hierarchy)
+    │  ~3–5 days
 ```
 
-**Total estimated effort (original):** ~22–29 days · **Completed:** ~50 days (Sprints 14–36, OSS-1, PERF-1) · **Remaining:** ~4–5 days (Sprint 32c–e)
+**Total estimated effort (original):** ~22–29 days · **Completed:** ~50 days (Sprints 14–36, OSS-1, PERF-1) · **Remaining:** ~7–10 days (Sprint 37 + 32c–e)
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -3864,6 +3874,7 @@ Sprint 36 — Command Center UX ✅
 | **S35: TDR Admin Observability** | — | S34 | 2–3 days | ✅ Complete |
 | **S35f: Intelligence Panel UX** | — | S35 | 1–2 days | ✅ Complete |
 | **S36: Command Center UX** | — | S35f | 1 day | ✅ Complete |
+| **S37: Prescriptive TDR Actions** | — | S36 | 3–5 days | 🔶 In Progress |
 
 ---
 
