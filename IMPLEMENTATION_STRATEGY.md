@@ -8,7 +8,7 @@
 
 ### Current State & What's Next
 
-**Where we are:** Pillars 1–17 plus Pillars 19–20 are complete (50 sprints, Feb 9 – Mar 17, 2026). Sprint 37 (Prescriptive TDR Actions) is in progress — the "So What?" sprint that redesigns the Intelligence panel to lead with action instead of metrics. Critical for broader user rollout. Sprints 32c–e (MLOps monitoring frontend) remain queued after Sprint 37.
+**Where we are:** Pillars 1–17 plus Pillars 19–21 are complete (51 sprints, Feb 9 – Mar 20, 2026). Sprint 37 (Sales Asset Generation Recipe) is complete (v1) and the v2 expanded spec is shaped — compiling all deal intelligence (Gong, TDR, Perplexity, Sumble, Cortex) into a structured recipe for downstream asset generation, including proactive AI opportunity identification via the AI Value Continuum framework. Sprints 32c–e (MLOps monitoring frontend) remain queued.
 
 **What's done (recently):**
 
@@ -26,8 +26,9 @@
 
 | Sprint | Name | Effort | Prerequisite | Status | Key Deliverable |
 |--------|------|--------|-------------|--------|-----------------|
-| **37** | Prescriptive TDR Actions | 3–5 days | 36 | 🔶 In Progress | Action Brief hero section, unified Score Cluster, auto-generation pipeline, section reorder |
-| **38** | Activity Ticker | 3–5 days | 37 | 🔲 Not Started | Live team activity notifications in header bar |
+| **37** | Sales Asset Generation Recipe | 3–5 days | 36 | ✅ Complete (v1) | Recipe compiler, asset catalog, Wand2 UI, GitHub/Slack export, dynamic skill resolution |
+| **37b** | Recipe v2: AI Value Continuum + Full Catalog | 3–5 days | 37 | 🔲 Not Started | 19-asset catalog, proactive AI assessment via Cortex, automated skills repo reference, GitHub README |
+| **38** | Activity Ticker | 3–5 days | 37b | 🔲 Not Started | Live team activity notifications in header bar |
 | **32c** | Code Engine MLOps Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data |
 | **32d** | Frontend MLOps Page | 2–3 days | 32c | 🔲 Not Started | `/mlops` page with model health visibility |
 | **32e** | Polish + Documentation | 1 day | 32d | 🔲 Not Started | Alert threshold logic, distribution health checks, Pillar 18 finalization |
@@ -48,9 +49,9 @@
 | **35f** | Intelligence Panel UX | ✅ Complete |
 | **36** | Command Center UX | ✅ Complete |
 
-**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike), `shaping/tdr-versioning.md` (Sprint 34 — TDR Versioning), `shaping/tdr-admin-observability.md` (Sprint 35 — Admin Observability), `shaping/prescriptive-tdr-actions.md` (Sprint 37 — Prescriptive TDR Actions), `shaping/activity-ticker.md` (Sprint 38 — Activity Ticker)
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike), `shaping/tdr-versioning.md` (Sprint 34 — TDR Versioning), `shaping/tdr-admin-observability.md` (Sprint 35 — Admin Observability), `shaping/prescriptive-tdr-actions.md` (Sprint 37 — Prescriptive TDR Actions — deferred), `shaping/sales-asset-generation-recipe.md` (Sprint 37 — Sales Asset Generation Recipe), `shaping/activity-ticker.md` (Sprint 38 — Activity Ticker)
 
-**Start point:** All major sprints complete through Sprint 36 (v1.80.1). Sprint 37 (Prescriptive TDR Actions) is in progress — action-first Intelligence panel redesign for broader user rollout. MLOps monitoring (Sprints 32c–e) queued after Sprint 37.
+**Start point:** All major sprints complete through Sprint 37 (v1.80.1). Sprint 37 (Sales Asset Generation Recipe v1) is complete — recipe compiler, asset catalog, Wand2 UI, GitHub/Slack export. Sprint 37b (v2: AI Value Continuum + full 19-asset catalog + proactive AI identification + automated skills reference) is shaped and ready for implementation. MLOps monitoring (Sprints 32c–e) and Activity Ticker (Sprint 38) remain queued.
 
 ---
 
@@ -3700,19 +3701,33 @@ Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gon
 
 ### Sprint 37 — Sales Asset Generation Recipe ✅ COMPLETE (Mar 20, 2026)
 
-> **Goal:** Compile deal context (Gong, TDR inputs, Perplexity) into a structured Markdown recipe that a downstream agent can use to generate tailored sales assets.
+> **Goal:** Compile deal context (Gong, TDR inputs, Perplexity, Sumble, Cortex) into a structured Markdown recipe that a downstream agent can use to generate tailored sales assets.
 > **Shaping document:** `shaping/sales-asset-generation-recipe.md`
 
-- [x] **Asset Catalog Config `[Cursor]`**: Create mapping of Domo Layers to required assets (e.g., "Data Apps" -> "App Prototype Spec").
-- [x] **Recipe Compiler `[Cursor]`**: Create `src/utils/recipeGenerator.ts` to aggregate `TDR_SESSIONS`, `TDR_STEP_INPUTS`, and `ACCOUNT_INTEL_CACHE`.
-- [x] **Dynamic Skill Resolution `[Cursor]`**: Fetch latest skills from `https://github.com/stahura/domo-ai-vibe-rules/tree/main` to include in the recipe prompt.
-- [x] **Markdown Formatting `[Cursor]`**: Format the output as a structured mega-prompt for an SA agent.
-- [x] **Export UI `[Cursor]`**: Add an interface icon (magic wand/export) to the Deal Detail page.
-- [x] **GitHub Integration `[Cursor]`**: Implement action to push the `.md` recipe to a bespoke GitHub repository.
-- [x] **Slack Notification `[Cursor]`**: Send a notification with a link to the `#tdr-channel` upon successful GitHub push.
-- [x] **Hard Copy Download `[Cursor]`**: Implement action to download the `.md` file directly to the user's local machine.
+**Sprint 37 (v1) — Core Skeleton ✅**
 
-**Definition of Done:** Users can click an icon on a deal to either download a Markdown recipe or push it to GitHub (with a Slack alert), containing all deal context and dynamically resolved agent skills mapped to the deal's Domo Layers.
+- [x] **Asset Catalog Config `[Cursor]`**: Create `ASSET_CATALOG` mapping Domo Layers to required assets (6 entries: Data Apps, Data Integration, BI & Analytics, Governance, Default, Pitch).
+- [x] **Recipe Compiler `[Cursor]`**: Create `src/lib/recipeGenerator.ts` to aggregate deal info, TDR inputs, and partial enrichment (Perplexity/Sumble via `accountIntel.getLatestIntel()`).
+- [x] **Dynamic Skill Resolution `[Cursor]`**: `fetchAvailableSkills()` fetches latest skills from `https://api.github.com/repos/stahura/domo-ai-vibe-rules/contents/skills` with hardcoded fallback.
+- [x] **Markdown Formatting `[Cursor]`**: Format the output as a structured mega-prompt with system instructions, asset list, TDR inputs, and enrichment data.
+- [x] **Export UI `[Cursor]`**: Add Wand2 icon to TDR Workspace action bar with dropdown menu.
+- [x] **GitHub Integration `[Cursor]`**: Stubbed `pushRecipeToGitHub()` targeting [`cassidythilton/tdr-asset-recipes`](https://github.com/cassidythilton/tdr-asset-recipes).
+- [x] **Slack Notification `[Cursor]`**: Stubbed `sendSlackNotification()` for `#tdr-channel`.
+- [x] **Hard Copy Download `[Cursor]`**: Download `.md` file directly via blob URL with `recipeLoading` spinner.
+
+**Sprint 37b — v2 Expansion 🔲 NOT STARTED**
+
+- [ ] **Full Asset Catalog `[Cursor]`**: Expand `ASSET_CATALOG` from 6 entries to full 19-asset catalog: 4 Universal (Solution Brief, Pitch Deck, ROI Framework, Deal Strategy Playbook), 7 Layer-Conditional (Integration Architecture, Data Warehouse Brief, Dashboard Blueprint, Embedded Analytics, App Prototype, Automation Playbook, AI/ML Architecture), 8 Signal-Conditional (Competitive Positioning, Partner Enablement, POC Plan, Stakeholder Map, Re-Engagement, Discovery Bridge, Implementation Packet, Security Addendum).
+- [ ] **AI Value Continuum Assessment Engine `[Cursor]`**: Implement Cortex-powered proactive AI opportunity identification. Analyze Gong transcripts, Perplexity research, Sumble tech stack, and TDR inputs to assess AI opportunity across all 4 levels (Process Automation, Traditional AI/ML, Generative AI, Agentic AI). Override/supplement SE's `ai-level` when signals warrant. Embed assessment in recipe.
+- [ ] **Multi-Signal Trigger Engine `[Cursor]`**: Implement the full trigger evaluation: Domo Layers (primary), AI Value Continuum Assessment (proactive), competitive signals (`isCompetitive`, `NAMED_COMPETITORS`), partner involvement, deal stage, deal complexity/ACV thresholds.
+- [ ] **Full Context Aggregation `[Cursor]`**: Integrate all 6 context blocks: CRM (40+ fields), TDR inputs (all 5 steps with labels), Gong intelligence (digest + excerpts — replace current placeholder), Perplexity research, Sumble enrichment (org/hiring/people), Cortex AI outputs (brief, findings, entities, structured extract, action plan).
+- [ ] **Per-Asset Instructions `[Cursor]`**: Implement structured instruction blocks per asset: output format, context priority, skill references, audience profile, constraints, example structure.
+- [ ] **Automated Skills Repo Reference `[Cursor]`**: Extend `fetchAvailableSkills()` to fetch skill descriptions from SKILL.md frontmatter. Cache results. Include rules. Embed full `SkillReference[]` in recipe.
+- [ ] **Real GitHub Push `[Cursor]`**: Replace mock `pushRecipeToGitHub()` with real GitHub API integration (via Code Engine proxy) targeting `cassidythilton/tdr-asset-recipes` at `recipes/{dealId}-{timestamp}.md`.
+- [ ] **Real Slack Notification `[Cursor]`**: Replace mock `sendSlackNotification()` with real Slack integration (via Code Engine or Workflow).
+- [ ] **GitHub Repo README `[Cursor]`**: Update `cassidythilton/tdr-asset-recipes` README.md to comprehensively document recipe format, full asset catalog, AI Value Continuum, trigger logic, skills integration, and downstream workflow.
+
+**Definition of Done:** Users can click the Wand2 icon on a deal to generate a comprehensive Markdown recipe containing all deal context, a proactive AI Value Continuum assessment, a dynamically-determined 19-asset manifest mapped to the deal's layers/signals/stage, per-asset generation instructions with skill references, and push it to `cassidythilton/tdr-asset-recipes` with Slack alert. The recipe is a fully self-contained contract for downstream asset generation.
 
 ---
 
@@ -3852,11 +3867,16 @@ Sprint 36 — Command Center UX ✅
     │  Click-to-open TDR, hover decorators
     │
     ▼
-Sprint 37 — Prescriptive TDR Actions 🔶
-    │  37a: Action Brief hero section (auto-generated, role-specific)
-    │  37b: Unified Score Cluster (3 scores → 1 compact row)
-    │  37c: Auto-generation pipeline (Code Engine + trigger)
-    │  37d: Section reorder (action-first hierarchy)
+Sprint 37 — Sales Asset Generation Recipe ✅
+    │  v1: Recipe compiler, 6-asset catalog, Wand2 UI, GitHub/Slack stubs
+    │  Dynamic skill resolution from stahura/domo-ai-vibe-rules
+    │
+    ▼
+Sprint 37b — Recipe v2: AI Value Continuum + Full Catalog 🔲
+    │  19-asset catalog (U1–U4, L1–L7, S1–S8)
+    │  Proactive AI opportunity identification via Cortex
+    │  Full context aggregation (Gong, Perplexity, Sumble, Cortex)
+    │  Automated skills repo reference, real GitHub/Slack integration
     │  ~3–5 days
     │
     ▼
@@ -3868,7 +3888,7 @@ Sprint 38 — Activity Ticker 🔲
     │  ~3–5 days
 ```
 
-**Total estimated effort (original):** ~22–29 days · **Completed:** ~50 days (Sprints 14–36, OSS-1, PERF-1) · **Remaining:** ~10–15 days (Sprint 37 + 38 + 32c–e)
+**Total estimated effort (original):** ~22–29 days · **Completed:** ~51 days (Sprints 14–37, OSS-1, PERF-1) · **Remaining:** ~10–15 days (Sprint 37b + 38 + 32c–e)
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -3900,8 +3920,9 @@ Sprint 38 — Activity Ticker 🔲
 | **S35: TDR Admin Observability** | — | S34 | 2–3 days | ✅ Complete |
 | **S35f: Intelligence Panel UX** | — | S35 | 1–2 days | ✅ Complete |
 | **S36: Command Center UX** | — | S35f | 1 day | ✅ Complete |
-| **S37: Prescriptive TDR Actions** | — | S36 | 3–5 days | 🔶 In Progress |
-| **S38: Activity Ticker** | — | S37 | 3–5 days | 🔲 Not Started |
+| **S37: Sales Asset Generation Recipe** | — | S36 | 3–5 days | ✅ Complete (v1) |
+| **S37b: Recipe v2 — AI Continuum + Full Catalog** | — | S37 | 3–5 days | 🔲 Not Started |
+| **S38: Activity Ticker** | — | S37b | 3–5 days | 🔲 Not Started |
 
 ---
 
@@ -4247,6 +4268,11 @@ This is the "elevator pitch" view. The final solution is built on eighteen disti
 **Why it matters independently:** TDR Versioning transforms the TDR from a one-shot review into a living document that evolves with the deal. Admin observability enables multi-user rollout with visibility into who's using the platform and how. The UX polish across Intelligence and Command Center removes friction and makes every surface interactive and data-rich.
 **Key outcome:** TDRs are versioned and persistent. Platform usage is observable. Every chart, tooltip, and metric is interactive, accurate, and comprehensive.
 
+### Pillar 21: Sales Asset Generation (Sprint 37)
+**What:** A structured "Asset Generation Recipe" compiler that bundles all deal intelligence — Gong transcripts, TDR inputs, Perplexity research, Sumble enrichment, Cortex AI outputs — into a self-contained Markdown contract for downstream agentic asset generation. A 19-asset catalog spanning Universal assets (Solution Brief, Pitch Deck, ROI Framework, Deal Strategy Playbook), Layer-Conditional assets (Integration Architecture, Data Warehouse Brief, Dashboard Blueprint, Embedded Analytics Design, App Prototype Spec, Automation Playbook, AI/ML Solution Architecture), and Signal-Conditional assets (Competitive Positioning, Partner Enablement, POC Plan, Stakeholder Map, Re-Engagement Strategy, Discovery Bridge, Implementation Packet, Security Addendum). Dynamic asset selection driven by Domo Layers, deal signals, and a **proactive AI Value Continuum Assessment** that uses Cortex to identify AI opportunities across four levels (Process Automation → Traditional AI/ML → Generative AI → Agentic AI) — even when the SE didn't surface them. Recipes are pushed to [`cassidythilton/tdr-asset-recipes`](https://github.com/cassidythilton/tdr-asset-recipes) with Slack notification, triggering downstream generation. Skills from [`stahura/domo-ai-vibe-rules`](https://github.com/stahura/domo-ai-vibe-rules) are dynamically resolved and embedded in each recipe.
+**Why it matters independently:** Every other pillar generates intelligence *during* the TDR. This pillar converts that intelligence into *forward-looking deliverables* that directly accelerate the deal. Instead of an SE manually synthesizing TDR outputs, Gong excerpts, and enrichment data into a pitch deck or architecture diagram, the system produces a precise recipe that a downstream agent can execute. The AI Value Continuum assessment ensures no AI opportunity goes unidentified — the system knows AI better than most SEs and proactively surfaces recommendations even when the SE says "No AI Opportunity." This is the bridge from *knowing about the deal* to *closing the deal*.
+**Key outcome:** The app produces actionable recipes that generate deal-specific sales assets — automatically, comprehensively, with AI opportunities proactively identified.
+
 ### The Flywheel
 
 ```
@@ -4307,8 +4333,9 @@ This is the "elevator pitch" view. The final solution is built on eighteen disti
 | All 18 Pillars (+ MLOps Monitoring) | 🔶 | **The self-monitoring platform:** the ML model that predicts deal outcomes is now observable, calibrated, and continuously validated. Score distributions are credible — no false certainty. Ground truth tracking measures real-world prediction accuracy as deals close. Pipeline health is visible at a glance: stale models, failed tasks, and degenerate distributions surface as alerts, not silent failures. The flywheel becomes trustworthy. |
 | All 19 Pillars (+ Gong Q&A & Seeded TDR) | ✅ | **The conversation-aware platform:** the app doesn't just know deal metadata and playbooks — it knows what was actually said on calls. SEs ask questions in TDR Chat and get answers grounded in verbatim Gong transcripts, scoped to the current deal via Cortex Search. Seeded fields pre-populate TDR inputs from Gong-extracted data. The flywheel deepens: every call feeds the system, every question draws from conversational reality. |
 | All 20 Pillars (+ Versioning, Admin, UX) | ✅ | **The production-ready multi-user platform:** TDRs version over time (v1→v2→v3), carrying forward context while enabling fresh iterations. Platform usage is observable via admin dashboards. Every chart, tooltip, and metric is interactive and data-rich. The Command Center's quadrant legend filters on click, stat cards show scrollable deal lists, and deal dots navigate to the workspace. The Intelligence panel explains *why* a deal is complex and lets users paste Sumble screenshots for instant tech stack parsing. The platform is ready for team-wide rollout. |
+| All 21 Pillars (+ Sales Asset Generation) | ✅ (v1) | **The forward-looking platform:** the intelligence doesn't just describe or analyze deals — it produces a structured recipe that tells a downstream agent exactly what sales assets to generate, with what context, using which skills. The recipe compiler aggregates all deal intelligence (Gong, TDR, Perplexity, Sumble, Cortex) into a self-contained Markdown contract. Asset selection is driven by Domo Layers, deal signals, and a proactive AI Value Continuum assessment that identifies AI opportunities the SE may have missed. Push to GitHub triggers a downstream agentic workflow. The flywheel extends: intelligence → recipe → generated assets → closed deals → more intelligence. |
 
-Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. **Pillars 1–17, 19, and 20 are complete.** Pillar 18 (MLOps Monitoring frontend — Sprints 32c–e) is the only remaining work. Pillar 10 is the capstone: it converts everything the other pillars generate into a single actionable artifact. Pillar 14 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes. Pillar 15 closes the input quality gap: the system helps SEs write better inputs, which makes everything downstream better. Pillar 16 ensures the new ML and AI surfaces are production-polished. Pillar 17 rebuilds the core TDR instrument — fewer steps, sharper fields, AI & ML as a first-class concern. Pillar 18 closes the observability gap: the ML predictions are monitored, calibrated, and self-diagnosing. Pillar 19 bridges the gap between structured deal data and raw conversational context from Gong calls. Pillar 20 makes the platform multi-user-ready with versioning, admin observability, and comprehensive UX polish.
+Each row is a valid stopping point. The app works and delivers value at every increment. But each pillar makes the next one exponentially more powerful. **Pillars 1–17, 19–21 are complete.** Pillar 18 (MLOps Monitoring frontend — Sprints 32c–e) is the remaining infrastructure work. Pillar 10 is the capstone: it converts everything the other pillars generate into a single actionable artifact. Pillar 14 adds predictive intelligence: the app doesn't just describe deals, it forecasts their outcomes. Pillar 15 closes the input quality gap: the system helps SEs write better inputs, which makes everything downstream better. Pillar 16 ensures the new ML and AI surfaces are production-polished. Pillar 17 rebuilds the core TDR instrument — fewer steps, sharper fields, AI & ML as a first-class concern. Pillar 18 closes the observability gap: the ML predictions are monitored, calibrated, and self-diagnosing. Pillar 19 bridges the gap between structured deal data and raw conversational context from Gong calls. Pillar 20 makes the platform multi-user-ready with versioning, admin observability, and comprehensive UX polish.
 
 ---
 

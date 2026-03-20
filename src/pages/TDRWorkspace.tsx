@@ -16,6 +16,7 @@ import { useTDRSession } from '@/hooks/useTDRSession';
 import { tdrReadout } from '@/lib/tdrReadout';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Wand2, Github, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { generateRecipeMarkdown, pushRecipeToGitHub, sendSlackNotification } from '@/lib/recipeGenerator';
 import { TDRShareDialog } from '@/components/TDRShareDialog';
 import { CortexLogo, SnowflakeLogo } from '@/components/CortexBranding';
@@ -198,27 +199,31 @@ export default function TDRWorkspace() {
     setRecipeLoading(true);
     try {
       const mdContent = await generateRecipeMarkdown(deal, session, inputValues);
-      
+
       if (action === 'download') {
         const blob = new Blob([mdContent], { type: 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${deal.name.replace(/\s+/g, '_')}_Recipe.md`;
+        a.download = `${deal.dealName.replace(/\s+/g, '_')}_Recipe.md`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        toast.success('Recipe downloaded');
       } else if (action === 'github') {
-        const result = await pushRecipeToGitHub(deal.id, mdContent);
+        const result = await pushRecipeToGitHub(deal.id, deal.dealName, mdContent);
         if (result.success && result.url) {
-          await sendSlackNotification(deal.name, result.url);
-          alert('Recipe successfully pushed to GitHub and Slack notified!');
+          const assetLines = mdContent.match(/^\| [A-Z]\d/gm);
+          await sendSlackNotification(deal.dealName, deal.acv, assetLines?.length || 0, result.url);
+          toast.success('Recipe pushed to GitHub & Slack notified');
+        } else {
+          toast.error(result.error || 'GitHub push failed');
         }
       }
     } catch (err) {
       console.error('[TDRWorkspace] Recipe generation failed:', err);
-      alert('Failed to generate recipe. Check console for details.');
+      toast.error('Recipe generation failed — check console');
     } finally {
       setRecipeLoading(false);
     }
