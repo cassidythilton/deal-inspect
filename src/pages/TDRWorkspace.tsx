@@ -197,7 +197,7 @@ export default function TDRWorkspace() {
     if (!deal || !session) return;
     setRecipeLoading(true);
     try {
-      const mdContent = await generateRecipeMarkdown(deal, session, inputs);
+      const mdContent = await generateRecipeMarkdown(deal, session, inputValues);
       
       if (action === 'download') {
         const blob = new Blob([mdContent], { type: 'text/markdown' });
