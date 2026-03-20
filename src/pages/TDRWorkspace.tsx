@@ -198,7 +198,14 @@ export default function TDRWorkspace() {
     if (!deal || !session) return;
     setRecipeLoading(true);
     try {
-      const mdContent = await generateRecipeMarkdown(deal, session, inputValues);
+      // Convert Map<"stepId::fieldId", value> to nested Record<stepId, Record<fieldId, value>>
+      const nestedInputs: Record<string, Record<string, string>> = {};
+      inputValues.forEach((value, key) => {
+        const [stepId, fieldId] = key.split('::');
+        if (!nestedInputs[stepId]) nestedInputs[stepId] = {};
+        nestedInputs[stepId][fieldId] = value;
+      });
+      const mdContent = await generateRecipeMarkdown(deal, session, nestedInputs);
 
       if (action === 'download') {
         const blob = new Blob([mdContent], { type: 'text/markdown' });
