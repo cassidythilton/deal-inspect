@@ -128,7 +128,7 @@ export async function pushRecipeToGitHub(dealId: string, mdContent: string): Pro
   console.log(`[GitHub] Pushing recipe for deal ${dealId} to bespoke repository...`);
   await new Promise(resolve => setTimeout(resolve, 1500));
   console.log(`[GitHub] Successfully pushed recipe for deal ${dealId}.`);
-  return { success: true, url: `https://github.com/bespoke-org/deal-recipes/blob/main/${dealId}-recipe.md` };
+  return { success: true, url: `https://github.com/cassidythilton/tdr-asset-recipes/blob/main/recipes/${dealId}-recipe.md` };
 }
 
 export async function sendSlackNotification(dealName: string, githubUrl: string): Promise<boolean> {
