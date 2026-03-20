@@ -3698,6 +3698,22 @@ Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gon
 
 **Definition of Done:** ✅ All stat cards show accurate metrics with scrollable detail, quadrant chart is interactive and navigable, all values are correct.
 
+### Sprint 37 — Sales Asset Generation Recipe ✅ COMPLETE (Mar 20, 2026)
+
+> **Goal:** Compile deal context (Gong, TDR inputs, Perplexity) into a structured Markdown recipe that a downstream agent can use to generate tailored sales assets.
+> **Shaping document:** `shaping/sales-asset-generation-recipe.md`
+
+- [x] **Asset Catalog Config `[Cursor]`**: Create mapping of Domo Layers to required assets (e.g., "Data Apps" -> "App Prototype Spec").
+- [x] **Recipe Compiler `[Cursor]`**: Create `src/utils/recipeGenerator.ts` to aggregate `TDR_SESSIONS`, `TDR_STEP_INPUTS`, and `ACCOUNT_INTEL_CACHE`.
+- [x] **Dynamic Skill Resolution `[Cursor]`**: Fetch latest skills from `https://github.com/stahura/domo-ai-vibe-rules/tree/main` to include in the recipe prompt.
+- [x] **Markdown Formatting `[Cursor]`**: Format the output as a structured mega-prompt for an SA agent.
+- [x] **Export UI `[Cursor]`**: Add an interface icon (magic wand/export) to the Deal Detail page.
+- [x] **GitHub Integration `[Cursor]`**: Implement action to push the `.md` recipe to a bespoke GitHub repository.
+- [x] **Slack Notification `[Cursor]`**: Send a notification with a link to the `#tdr-channel` upon successful GitHub push.
+- [x] **Hard Copy Download `[Cursor]`**: Implement action to download the `.md` file directly to the user's local machine.
+
+**Definition of Done:** Users can click an icon on a deal to either download a Markdown recipe or push it to GitHub (with a Slack alert), containing all deal context and dynamically resolved agent skills mapped to the deal's Domo Layers.
+
 ---
 
 ### Sprint Execution Order & Dependencies

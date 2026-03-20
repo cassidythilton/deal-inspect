@@ -14,6 +14,9 @@ import { useNavigate } from 'react-router-dom';
 import { useDeals } from '@/hooks/useDomo';
 import { useTDRSession } from '@/hooks/useTDRSession';
 import { tdrReadout } from '@/lib/tdrReadout';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Wand2, Github, Download } from 'lucide-react';
+import { generateRecipeMarkdown, pushRecipeToGitHub, sendSlackNotification } from '@/lib/recipeGenerator';
 import { TDRShareDialog } from '@/components/TDRShareDialog';
 import { CortexLogo, SnowflakeLogo } from '@/components/CortexBranding';
 
@@ -187,6 +190,40 @@ export default function TDRWorkspace() {
 
   // Sprint 13: Export Readout
   const [exportLoading, setExportLoading] = useState(false);
+
+  const [recipeLoading, setRecipeLoading] = useState(false);
+
+  const handleGenerateRecipe = async (action: 'download' | 'github') => {
+    if (!deal || !session) return;
+    setRecipeLoading(true);
+    try {
+      const mdContent = await generateRecipeMarkdown(deal, session, inputs);
+      
+      if (action === 'download') {
+        const blob = new Blob([mdContent], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${deal.name.replace(/\s+/g, '_')}_Recipe.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else if (action === 'github') {
+        const result = await pushRecipeToGitHub(deal.id, mdContent);
+        if (result.success && result.url) {
+          await sendSlackNotification(deal.name, result.url);
+          alert('Recipe successfully pushed to GitHub and Slack notified!');
+        }
+      }
+    } catch (err) {
+      console.error('[TDRWorkspace] Recipe generation failed:', err);
+      alert('Failed to generate recipe. Check console for details.');
+    } finally {
+      setRecipeLoading(false);
+    }
+  };
+
   const [exportError, setExportError] = useState<string | null>(null);
 
   // Sprint 14: Slack Share
@@ -291,6 +328,30 @@ export default function TDRWorkspace() {
                 saving...
               </span>
             )}
+            
+            {/* Generate Recipe — icon-only dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="h-6 w-6 ml-2 flex items-center justify-center rounded text-slate-500 hover:text-amber-500 hover:scale-110 transition-all duration-200 ease-out disabled:opacity-30 disabled:pointer-events-none"
+                  disabled={recipeLoading || !session?.sessionId || session?.sessionId.startsWith('local-') || session?.sessionId.startsWith('fallback-')}
+                  title="Generate Asset Recipe"
+                >
+                  {recipeLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5 transition-transform duration-200" />}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => handleGenerateRecipe('github')} className="cursor-pointer gap-2">
+                  <Github className="h-4 w-4 text-slate-500" />
+                  <span>Push to GitHub & Slack</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleGenerateRecipe('download')} className="cursor-pointer gap-2">
+                  <Download className="h-4 w-4 text-slate-500" />
+                  <span>Download Markdown</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {/* Export PDF — icon-only */}
             <button
               className="h-6 w-6 ml-2 flex items-center justify-center rounded text-slate-500 hover:text-violet-400 hover:scale-110 transition-all duration-200 ease-out disabled:opacity-30 disabled:pointer-events-none"

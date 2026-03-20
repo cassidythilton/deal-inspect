@@ -1,490 +1,137 @@
 {
   "id": "d53cbb5d-0abd-4631-91ee-57d334cec257",
   "name": "TDR Deal Inspection",
-  "version": "1.81.0",
+  "version": "1.82.0",
   "datasetsMapping": [
     {
       "dataSetId": "6ae5896e-e13d-48ac-a9fb-c6e9116b4bb4",
       "alias": "opportunitiesmagic",
       "fields": [
-        {
-          "alias": "OpportunityId",
-          "columnName": "Opportunity Id"
-        },
-        {
-          "alias": "OpportunityName",
-          "columnName": "Opportunity Name"
-        },
-        {
-          "alias": "AccountName",
-          "columnName": "Account Name"
-        },
-        {
-          "alias": "MgrForecastName",
-          "columnName": "Forecast Manager"
-        },
-        {
-          "alias": "DomoForecastCategory",
-          "columnName": "Domo Forecast Category"
-        },
-        {
-          "alias": "Stage",
-          "columnName": "Stage"
-        },
-        {
-          "alias": "CloseDate",
-          "columnName": "Close Date"
-        },
-        {
-          "alias": "CloseDateFQ",
-          "columnName": "Close Date FQ"
-        },
-        {
-          "alias": "Likely",
-          "columnName": "Likely"
-        },
-        {
-          "alias": "High",
-          "columnName": "High"
-        },
-        {
-          "alias": "AcvUsd",
-          "columnName": "ACV (USD)"
-        },
-        {
-          "alias": "AcvRecurring",
-          "columnName": "ACV (USD) Recurring"
-        },
-        {
-          "alias": "AcvNonRecurring",
-          "columnName": "ACV (USD) Non-Recurring"
-        },
-        {
-          "alias": "TcvUsd",
-          "columnName": "TCV (USD)"
-        },
-        {
-          "alias": "IsWon",
-          "columnName": "Is Won"
-        },
-        {
-          "alias": "LastActivityDate",
-          "columnName": "Last Activity Date"
-        },
-        {
-          "alias": "StageAge",
-          "columnName": "Stage Age"
-        },
-        {
-          "alias": "NumberOfCompetitors",
-          "columnName": "Number of Competitors"
-        },
-        {
-          "alias": "DomoOpportunityOwner",
-          "columnName": "Domo Opportunity Owner"
-        },
-        {
-          "alias": "LastModifiedDate",
-          "columnName": "Last Modified Date"
-        },
-        {
-          "alias": "Type",
-          "columnName": "Type"
-        },
-        {
-          "alias": "LeadSource",
-          "columnName": "Lead Source"
-        },
-        {
-          "alias": "PartnerInfluence",
-          "columnName": "Partner Influence"
-        },
-        {
-          "alias": "PartnersInvolved",
-          "columnName": "Partners Involved"
-        },
-        {
-          "alias": "PartnerTier",
-          "columnName": "Partner Tier"
-        },
-        {
-          "alias": "PartnerType",
-          "columnName": "Partner Type"
-        },
-        {
-          "alias": "SnowflakeTeamPicklist",
-          "columnName": "Snowflake Team Picklist"
-        },
-        {
-          "alias": "SalesConsultant",
-          "columnName": "Sales Consultant"
-        },
-        {
-          "alias": "PocSalesConsultant",
-          "columnName": "PoC Sales Consultant"
-        },
-        {
-          "alias": "DealCode",
-          "columnName": "Deal Code"
-        },
-        {
-          "alias": "PrimaryPartnerRole",
-          "columnName": "Primary Partner Role"
-        },
-        {
-          "alias": "WebisteDomain",
-          "columnName": "Webiste Domain"
-        },
-        {
-          "alias": "Competitors",
-          "columnName": "competitors"
-        },
-        {
-          "alias": "AccountRevenueUsd",
-          "columnName": "Account Revenue USD"
-        },
-        {
-          "alias": "AccountEmployees",
-          "columnName": "Account Employees"
-        },
-        {
-          "alias": "StrategicAccount",
-          "columnName": "Strategic Account"
-        },
-        {
-          "alias": "Region",
-          "columnName": "Region"
-        },
-        {
-          "alias": "SalesSegment",
-          "columnName": "Sales Segment"
-        },
-        {
-          "alias": "SalesVertical",
-          "columnName": "Sales Vertical"
-        },
-        {
-          "alias": "PlatformPrice",
-          "columnName": "Platform Price"
-        },
-        {
-          "alias": "ProfessionalServicesPrice",
-          "columnName": "Professional Services Price"
-        },
-        {
-          "alias": "LineItems",
-          "columnName": "Line Items"
-        },
-        {
-          "alias": "ContractType",
-          "columnName": "Contract Type"
-        },
-        {
-          "alias": "PricingType",
-          "columnName": "Pricing Type"
-        },
-        {
-          "alias": "CPQ",
-          "columnName": "CPQ"
-        },
-        {
-          "alias": "IsPartner",
-          "columnName": "Is Partner"
-        },
-        {
-          "alias": "IsPipeline",
-          "columnName": "Is Pipeline"
-        },
-        {
-          "alias": "NonCompetitiveDeal",
-          "columnName": "Non-Competitive Deal"
-        },
-        {
-          "alias": "PeopleAiEngagement",
-          "columnName": "People AI Engagement Level"
-        },
-        {
-          "alias": "IsClosed",
-          "columnName": "Is Closed"
-        },
-        {
-          "alias": "TotalClosedWonCount",
-          "columnName": "Total Closed Won Count"
-        },
-        {
-          "alias": "TotalClosedLostCount",
-          "columnName": "Total Closed Lost Count"
-        },
-        {
-          "alias": "NewLogoWonCount",
-          "columnName": "New Logo Won Count"
-        },
-        {
-          "alias": "NewLogoLostCount",
-          "columnName": "New Logo Lost Count"
-        },
-        {
-          "alias": "UpsellWonCount",
-          "columnName": "Upsell Won Count"
-        },
-        {
-          "alias": "UpsellLostCount",
-          "columnName": "Upsell Lost Count"
-        },
-        {
-          "alias": "TotalOptyCount",
-          "columnName": "Total Opty Count"
-        },
-        {
-          "alias": "CreatedDate",
-          "columnName": "Created Date"
-        },
-        {
-          "alias": "DiscoveryCallCompleted",
-          "columnName": "Discovery Call Completed"
-        },
-        {
-          "alias": "DemoCompletedDate",
-          "columnName": "Demo Completed Date"
-        },
-        {
-          "alias": "PricingCallDate",
-          "columnName": "Pricing Call Date"
-        },
-        {
-          "alias": "GateCallCompleted",
-          "columnName": "Gate Call Completed"
-        },
-        {
-          "alias": "HasPreCallPlan",
-          "columnName": "Has Pre-Call Plan"
-        },
-        {
-          "alias": "HasAdmAeSyncAgenda",
-          "columnName": "Has ADM/AE Sync Agenda"
-        },
-        {
-          "alias": "ForecastComments",
-          "columnName": "Forecast Comments"
-        },
-        {
-          "alias": "NextStep",
-          "columnName": "Next Step"
-        },
-        {
-          "alias": "BusinessChallenge",
-          "columnName": "Business Challenge"
-        },
-        {
-          "alias": "PropensityScore",
-          "columnName": "PROPENSITY_SCORE"
-        },
-        {
-          "alias": "MlPrediction",
-          "columnName": "PREDICTION"
-        },
-        {
-          "alias": "PropensityQuadrant",
-          "columnName": "QUADRANT"
-        },
-        {
-          "alias": "Factor1Name",
-          "columnName": "FACTOR_1_NAME"
-        },
-        {
-          "alias": "Factor1Value",
-          "columnName": "FACTOR_1_VALUE"
-        },
-        {
-          "alias": "Factor1Direction",
-          "columnName": "FACTOR_1_DIRECTION"
-        },
-        {
-          "alias": "Factor1Magnitude",
-          "columnName": "FACTOR_1_MAGNITUDE"
-        },
-        {
-          "alias": "Factor2Name",
-          "columnName": "FACTOR_2_NAME"
-        },
-        {
-          "alias": "Factor2Value",
-          "columnName": "FACTOR_2_VALUE"
-        },
-        {
-          "alias": "Factor2Direction",
-          "columnName": "FACTOR_2_DIRECTION"
-        },
-        {
-          "alias": "Factor2Magnitude",
-          "columnName": "FACTOR_2_MAGNITUDE"
-        },
-        {
-          "alias": "Factor3Name",
-          "columnName": "FACTOR_3_NAME"
-        },
-        {
-          "alias": "Factor3Value",
-          "columnName": "FACTOR_3_VALUE"
-        },
-        {
-          "alias": "Factor3Direction",
-          "columnName": "FACTOR_3_DIRECTION"
-        },
-        {
-          "alias": "Factor3Magnitude",
-          "columnName": "FACTOR_3_MAGNITUDE"
-        },
-        {
-          "alias": "Factor4Name",
-          "columnName": "FACTOR_4_NAME"
-        },
-        {
-          "alias": "Factor4Value",
-          "columnName": "FACTOR_4_VALUE"
-        },
-        {
-          "alias": "Factor4Direction",
-          "columnName": "FACTOR_4_DIRECTION"
-        },
-        {
-          "alias": "Factor4Magnitude",
-          "columnName": "FACTOR_4_MAGNITUDE"
-        },
-        {
-          "alias": "Factor5Name",
-          "columnName": "FACTOR_5_NAME"
-        },
-        {
-          "alias": "Factor5Value",
-          "columnName": "FACTOR_5_VALUE"
-        },
-        {
-          "alias": "Factor5Direction",
-          "columnName": "FACTOR_5_DIRECTION"
-        },
-        {
-          "alias": "Factor5Magnitude",
-          "columnName": "FACTOR_5_MAGNITUDE"
-        },
-        {
-          "alias": "PropensityScoredAt",
-          "columnName": "SCORED_AT"
-        },
-        {
-          "alias": "PropensityModelVersion",
-          "columnName": "MODEL_VERSION"
-        },
-        {
-          "alias": "CallCount",
-          "columnName": "call_count"
-        },
-        {
-          "alias": "SeedStrategicValue",
-          "columnName": "strategic_value"
-        },
-        {
-          "alias": "SeedCustomerDecision",
-          "columnName": "customer_decision"
-        },
-        {
-          "alias": "SeedWhyNow",
-          "columnName": "why_now"
-        },
-        {
-          "alias": "SeedKeyTechnicalStakeholders",
-          "columnName": "key_technical_stakeholders"
-        },
-        {
-          "alias": "SeedTimeline",
-          "columnName": "timeline"
-        },
-        {
-          "alias": "SeedCloudPlatform",
-          "columnName": "cloud_platform"
-        },
-        {
-          "alias": "SeedCurrentState",
-          "columnName": "current_state"
-        },
-        {
-          "alias": "SeedTargetState",
-          "columnName": "target_state"
-        },
-        {
-          "alias": "SeedDomoLayers",
-          "columnName": "domo_layers"
-        },
-        {
-          "alias": "SeedOutOfScope",
-          "columnName": "out_of_scope"
-        },
-        {
-          "alias": "SeedWhyDomo",
-          "columnName": "why_domo"
-        },
-        {
-          "alias": "SeedTopRisks",
-          "columnName": "top_risks"
-        },
-        {
-          "alias": "SeedKeyAssumption",
-          "columnName": "key_assumption"
-        },
-        {
-          "alias": "SeedVerdict",
-          "columnName": "verdict"
-        },
-        {
-          "alias": "SeedPartnerName",
-          "columnName": "partner_name"
-        },
-        {
-          "alias": "SeedPartnerPosture",
-          "columnName": "partner_posture"
-        },
-        {
-          "alias": "SeedAiLevel",
-          "columnName": "ai_level"
-        },
-        {
-          "alias": "SeedAiSignals",
-          "columnName": "ai_signals"
-        },
-        {
-          "alias": "SeedAiProblem",
-          "columnName": "ai_problem"
-        },
-        {
-          "alias": "SeedAiData",
-          "columnName": "ai_data"
-        },
-        {
-          "alias": "SeedAiValue",
-          "columnName": "ai_value"
-        },
-        {
-          "alias": "SeedExpectedUsers",
-          "columnName": "expected_users"
-        },
-        {
-          "alias": "SeedAdoptionSuccess",
-          "columnName": "adoption_success"
-        }
+        { "alias": "OpportunityId", "columnName": "Opportunity Id" },
+        { "alias": "OpportunityName", "columnName": "Opportunity Name" },
+        { "alias": "AccountName", "columnName": "Account Name" },
+        { "alias": "MgrForecastName", "columnName": "Forecast Manager" },
+        { "alias": "DomoForecastCategory", "columnName": "Domo Forecast Category" },
+        { "alias": "Stage", "columnName": "Stage" },
+        { "alias": "CloseDate", "columnName": "Close Date" },
+
+        { "alias": "CloseDateFQ", "columnName": "Close Date FQ" },
+        { "alias": "Likely", "columnName": "Likely" },
+        { "alias": "High", "columnName": "High" },
+        { "alias": "AcvUsd", "columnName": "ACV (USD)" },
+        { "alias": "AcvRecurring", "columnName": "ACV (USD) Recurring" },
+        { "alias": "AcvNonRecurring", "columnName": "ACV (USD) Non-Recurring" },
+        { "alias": "TcvUsd", "columnName": "TCV (USD)" },
+        { "alias": "IsWon", "columnName": "Is Won" },
+        { "alias": "LastActivityDate", "columnName": "Last Activity Date" },
+        { "alias": "StageAge", "columnName": "Stage Age" },
+        { "alias": "NumberOfCompetitors", "columnName": "Number of Competitors" },
+        { "alias": "DomoOpportunityOwner", "columnName": "Domo Opportunity Owner" },
+        { "alias": "LastModifiedDate", "columnName": "Last Modified Date" },
+        { "alias": "Type", "columnName": "Type" },
+        { "alias": "LeadSource", "columnName": "Lead Source" },
+        { "alias": "PartnerInfluence", "columnName": "Partner Influence" },
+        { "alias": "PartnersInvolved", "columnName": "Partners Involved" },
+        { "alias": "PartnerTier", "columnName": "Partner Tier" },
+        { "alias": "PartnerType", "columnName": "Partner Type" },
+        { "alias": "SnowflakeTeamPicklist", "columnName": "Snowflake Team Picklist" },
+        { "alias": "SalesConsultant", "columnName": "Sales Consultant" },
+        { "alias": "PocSalesConsultant", "columnName": "PoC Sales Consultant" },
+        { "alias": "DealCode", "columnName": "Deal Code" },
+        { "alias": "PrimaryPartnerRole", "columnName": "Primary Partner Role" },
+        { "alias": "WebisteDomain", "columnName": "Webiste Domain" },
+        { "alias": "Competitors", "columnName": "competitors" },
+        { "alias": "AccountRevenueUsd", "columnName": "Account Revenue USD" },
+        { "alias": "AccountEmployees", "columnName": "Account Employees" },
+        { "alias": "StrategicAccount", "columnName": "Strategic Account" },
+        { "alias": "Region", "columnName": "Region" },
+        { "alias": "SalesSegment", "columnName": "Sales Segment" },
+        { "alias": "SalesVertical", "columnName": "Sales Vertical" },
+        { "alias": "PlatformPrice", "columnName": "Platform Price" },
+        { "alias": "ProfessionalServicesPrice", "columnName": "Professional Services Price" },
+        { "alias": "LineItems", "columnName": "Line Items" },
+        { "alias": "ContractType", "columnName": "Contract Type" },
+        { "alias": "PricingType", "columnName": "Pricing Type" },
+        { "alias": "CPQ", "columnName": "CPQ" },
+        { "alias": "IsPartner", "columnName": "Is Partner" },
+        { "alias": "IsPipeline", "columnName": "Is Pipeline" },
+        { "alias": "NonCompetitiveDeal", "columnName": "Non-Competitive Deal" },
+        { "alias": "PeopleAiEngagement", "columnName": "People AI Engagement Level" },
+        { "alias": "IsClosed", "columnName": "Is Closed" },
+        { "alias": "TotalClosedWonCount", "columnName": "Total Closed Won Count" },
+        { "alias": "TotalClosedLostCount", "columnName": "Total Closed Lost Count" },
+        { "alias": "NewLogoWonCount", "columnName": "New Logo Won Count" },
+        { "alias": "NewLogoLostCount", "columnName": "New Logo Lost Count" },
+        { "alias": "UpsellWonCount", "columnName": "Upsell Won Count" },
+        { "alias": "UpsellLostCount", "columnName": "Upsell Lost Count" },
+        { "alias": "TotalOptyCount", "columnName": "Total Opty Count" },
+        { "alias": "CreatedDate", "columnName": "Created Date" },
+        { "alias": "DiscoveryCallCompleted", "columnName": "Discovery Call Completed" },
+        { "alias": "DemoCompletedDate", "columnName": "Demo Completed Date" },
+        { "alias": "PricingCallDate", "columnName": "Pricing Call Date" },
+        { "alias": "GateCallCompleted", "columnName": "Gate Call Completed" },
+        { "alias": "HasPreCallPlan", "columnName": "Has Pre-Call Plan" },
+        { "alias": "HasAdmAeSyncAgenda", "columnName": "Has ADM/AE Sync Agenda" },
+        { "alias": "ForecastComments", "columnName": "Forecast Comments" },
+        { "alias": "NextStep", "columnName": "Next Step" },
+        { "alias": "BusinessChallenge", "columnName": "Business Challenge" },
+        { "alias": "PropensityScore", "columnName": "PROPENSITY_SCORE" },
+        { "alias": "MlPrediction", "columnName": "PREDICTION" },
+        { "alias": "PropensityQuadrant", "columnName": "QUADRANT" },
+        { "alias": "Factor1Name", "columnName": "FACTOR_1_NAME" },
+        { "alias": "Factor1Value", "columnName": "FACTOR_1_VALUE" },
+        { "alias": "Factor1Direction", "columnName": "FACTOR_1_DIRECTION" },
+        { "alias": "Factor1Magnitude", "columnName": "FACTOR_1_MAGNITUDE" },
+        { "alias": "Factor2Name", "columnName": "FACTOR_2_NAME" },
+        { "alias": "Factor2Value", "columnName": "FACTOR_2_VALUE" },
+        { "alias": "Factor2Direction", "columnName": "FACTOR_2_DIRECTION" },
+        { "alias": "Factor2Magnitude", "columnName": "FACTOR_2_MAGNITUDE" },
+        { "alias": "Factor3Name", "columnName": "FACTOR_3_NAME" },
+        { "alias": "Factor3Value", "columnName": "FACTOR_3_VALUE" },
+        { "alias": "Factor3Direction", "columnName": "FACTOR_3_DIRECTION" },
+        { "alias": "Factor3Magnitude", "columnName": "FACTOR_3_MAGNITUDE" },
+        { "alias": "Factor4Name", "columnName": "FACTOR_4_NAME" },
+        { "alias": "Factor4Value", "columnName": "FACTOR_4_VALUE" },
+        { "alias": "Factor4Direction", "columnName": "FACTOR_4_DIRECTION" },
+        { "alias": "Factor4Magnitude", "columnName": "FACTOR_4_MAGNITUDE" },
+        { "alias": "Factor5Name", "columnName": "FACTOR_5_NAME" },
+        { "alias": "Factor5Value", "columnName": "FACTOR_5_VALUE" },
+        { "alias": "Factor5Direction", "columnName": "FACTOR_5_DIRECTION" },
+        { "alias": "Factor5Magnitude", "columnName": "FACTOR_5_MAGNITUDE" },
+        { "alias": "PropensityScoredAt", "columnName": "SCORED_AT" },
+        { "alias": "PropensityModelVersion", "columnName": "MODEL_VERSION" },
+        { "alias": "CallCount", "columnName": "call_count" },
+        { "alias": "SeedStrategicValue", "columnName": "strategic_value" },
+        { "alias": "SeedCustomerDecision", "columnName": "customer_decision" },
+        { "alias": "SeedWhyNow", "columnName": "why_now" },
+        { "alias": "SeedKeyTechnicalStakeholders", "columnName": "key_technical_stakeholders" },
+        { "alias": "SeedTimeline", "columnName": "timeline" },
+        { "alias": "SeedCloudPlatform", "columnName": "cloud_platform" },
+        { "alias": "SeedCurrentState", "columnName": "current_state" },
+        { "alias": "SeedTargetState", "columnName": "target_state" },
+        { "alias": "SeedDomoLayers", "columnName": "domo_layers" },
+        { "alias": "SeedOutOfScope", "columnName": "out_of_scope" },
+        { "alias": "SeedWhyDomo", "columnName": "why_domo" },
+        { "alias": "SeedTopRisks", "columnName": "top_risks" },
+        { "alias": "SeedKeyAssumption", "columnName": "key_assumption" },
+        { "alias": "SeedVerdict", "columnName": "verdict" },
+        { "alias": "SeedPartnerName", "columnName": "partner_name" },
+        { "alias": "SeedPartnerPosture", "columnName": "partner_posture" },
+        { "alias": "SeedAiLevel", "columnName": "ai_level" },
+        { "alias": "SeedAiSignals", "columnName": "ai_signals" },
+        { "alias": "SeedAiProblem", "columnName": "ai_problem" },
+        { "alias": "SeedAiData", "columnName": "ai_data" },
+        { "alias": "SeedAiValue", "columnName": "ai_value" },
+        { "alias": "SeedExpectedUsers", "columnName": "expected_users" },
+        { "alias": "SeedAdoptionSuccess", "columnName": "adoption_success" }
       ]
     },
     {
       "dataSetId": "6c2d47a4-c793-4829-8436-d2a09a25c713",
       "alias": "semapping",
       "fields": [
-        {
-          "alias": "se",
-          "columnName": "se"
-        },
-        {
-          "alias": "seManager",
-          "columnName": "se_manager"
-        }
+        { "alias": "se", "columnName": "se" },
+        { "alias": "seManager", "columnName": "se_manager" }
       ]
     }
   ],
@@ -493,1135 +140,365 @@
     {
       "alias": "createSession",
       "parameters": [
-        {
-          "alias": "session",
-          "type": "object",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "session", "type": "object", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "updateSession",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "updates",
-          "type": "object",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "updates", "type": "object", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getSessionsByOpp",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "sessions",
-        "type": "object",
-        "isList": true,
-        "children": null
-      }
+      "output": { "alias": "sessions", "type": "object", "isList": true, "children": null }
     },
     {
       "alias": "getAllSessions",
       "parameters": [],
-      "output": {
-        "alias": "sessions",
-        "type": "object",
-        "isList": true,
-        "children": null
-      }
+      "output": { "alias": "sessions", "type": "object", "isList": true, "children": null }
     },
     {
       "alias": "saveStepInput",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "stepId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "stepLabel",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "fieldId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "fieldLabel",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "fieldValue",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "stepOrder",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "savedBy",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepLabel", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "fieldId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "fieldLabel", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "fieldValue", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepOrder", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "savedBy", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getLatestInputs",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "inputs",
-        "type": "object",
-        "isList": true,
-        "children": null
-      }
+      "output": { "alias": "inputs", "type": "object", "isList": true, "children": null }
     },
     {
       "alias": "getInputHistory",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "stepId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "fieldId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "stepId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "fieldId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "inputs",
-        "type": "object",
-        "isList": true,
-        "children": null
-      }
+      "output": { "alias": "inputs", "type": "object", "isList": true, "children": null }
     },
     {
       "alias": "deleteSession",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "enrichSumble",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "accountName",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "domain",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "calledBy",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "domain", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "researchPerplexity",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "accountName",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "dealContext",
-          "type": "object",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "calledBy",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "dealContext", "type": "object", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getLatestIntel",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "intel",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "intel", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getIntelHistory",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "history",
-        "type": "object",
-        "isList": true,
-        "children": null
-      }
+      "output": { "alias": "history", "type": "object", "isList": true, "children": null }
     },
     {
       "alias": "getUsageStats",
       "parameters": [
-        {
-          "alias": "month",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "month", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "stats",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "stats", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getDealsWithIntel",
       "parameters": [],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getLatestBrief",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "generateTDRBrief",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "classifyFindings",
       "parameters": [
-        {
-          "alias": "pullId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "pullId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "extractEntities",
       "parameters": [
-        {
-          "alias": "pullId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "pullId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "sendChatMessage",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "accountName",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "userMessage",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "provider",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "model",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "contextStep",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "createdBy",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "assistantContent",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "includeKnowledgeBase",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "userMessage", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "provider", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "model", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "contextStep", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "createdBy", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "assistantContent", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "includeKnowledgeBase", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getChatHistory",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "clearChatHistory",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getPortfolioInsights",
       "parameters": [
-        {
-          "alias": "manager",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "manager", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "summarizeIntelHistory",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getSentimentTrend",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "enrichSumbleOrg",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "accountName",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "domain",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "calledBy",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "domain", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "enrichSumbleJobs",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "accountName",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "domain",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "calledBy",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "domain", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "enrichSumblePeople",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "accountName",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "domain",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "calledBy",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "accountName", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "domain", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "calledBy", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "findSimilarDeals",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "askAnalyst",
       "parameters": [
-        {
-          "alias": "question",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "question", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "assembleTDRReadout",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "extractStructuredTDR",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "summarizeKBResults",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "documentTexts",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "documentTexts", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "generateActionPlan",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "regenerateActionPlan",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getLatestActionPlan",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getLatestExtraction",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getCachedKBSummary",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "generateReadoutSummary",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "dealTeamJson",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "forceRegenerate",
-          "type": "boolean",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "dealTeamJson", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "forceRegenerate", "type": "boolean", "nullable": true, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "distributeToSlack",
       "parameters": [
-        {
-          "alias": "sessionId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "channel",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "summary",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "pdfBase64",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "dealTeamJson",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "channel", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "summary", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "pdfBase64", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "dealTeamJson", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getSlackChannels",
       "parameters": [
-        {
-          "alias": "placeholder",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "placeholder", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "searchGongTranscripts",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "query",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "query", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getGongTranscriptDigest",
       "parameters": [
-        {
-          "alias": "opportunityId",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "opportunityId", "type": "string", "nullable": false, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getAdminActivityLog",
       "parameters": [
-        {
-          "alias": "createdBy",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "status",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "startDate",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "endDate",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "createdBy", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "status", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "startDate", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "endDate", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getUsageMetrics",
       "parameters": [],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "parseScreenshotTechStack",
       "parameters": [
-        {
-          "alias": "imageBase64",
-          "type": "string",
-          "nullable": false,
-          "isList": false,
-          "children": null
-        },
-        {
-          "alias": "mimeType",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "imageBase64", "type": "string", "nullable": false, "isList": false, "children": null },
+        { "alias": "mimeType", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },
     {
       "alias": "getRecentActivity",
       "parameters": [
-        {
-          "alias": "excludeUser",
-          "type": "string",
-          "nullable": true,
-          "isList": false,
-          "children": null
-        }
+        { "alias": "excludeUser", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
-      "output": {
-        "alias": "result",
-        "type": "object",
-        "isList": false,
-        "children": null
-      }
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],
   "size": {
