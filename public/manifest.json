@@ -492,6 +492,13 @@
         { "alias": "mimeType", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
+    },
+    {
+      "alias": "getRecentActivity",
+      "parameters": [
+        { "alias": "excludeUser", "type": "string", "nullable": true, "isList": false, "children": null }
+      ],
+      "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
   ],
   "size": {

@@ -27,6 +27,7 @@
 | Sprint | Name | Effort | Prerequisite | Status | Key Deliverable |
 |--------|------|--------|-------------|--------|-----------------|
 | **37** | Prescriptive TDR Actions | 3–5 days | 36 | 🔶 In Progress | Action Brief hero section, unified Score Cluster, auto-generation pipeline, section reorder |
+| **38** | Activity Ticker | 3–5 days | 37 | 🔲 Not Started | Live team activity notifications in header bar |
 | **32c** | Code Engine MLOps Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data |
 | **32d** | Frontend MLOps Page | 2–3 days | 32c | 🔲 Not Started | `/mlops` page with model health visibility |
 | **32e** | Polish + Documentation | 1 day | 32d | 🔲 Not Started | Alert threshold logic, distribution health checks, Pillar 18 finalization |
@@ -47,7 +48,7 @@
 | **35f** | Intelligence Panel UX | ✅ Complete |
 | **36** | Command Center UX | ✅ Complete |
 
-**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike), `shaping/tdr-versioning.md` (Sprint 34 — TDR Versioning), `shaping/tdr-admin-observability.md` (Sprint 35 — Admin Observability), `shaping/prescriptive-tdr-actions.md` (Sprint 37 — Prescriptive TDR Actions)
+**Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike), `shaping/tdr-versioning.md` (Sprint 34 — TDR Versioning), `shaping/tdr-admin-observability.md` (Sprint 35 — Admin Observability), `shaping/prescriptive-tdr-actions.md` (Sprint 37 — Prescriptive TDR Actions), `shaping/activity-ticker.md` (Sprint 38 — Activity Ticker)
 
 **Start point:** All major sprints complete through Sprint 36 (v1.80.1). Sprint 37 (Prescriptive TDR Actions) is in progress — action-first Intelligence panel redesign for broader user rollout. MLOps monitoring (Sprints 32c–e) queued after Sprint 37.
 
@@ -3085,6 +3086,7 @@ Each sprint is a focused work session (2–4 hours). The app remains fully funct
 | **35f** | **Intelligence Panel UX Overhaul** | ✅ Complete | — | S35 | **UX / Gemini Vision** |
 | **36** | **Command Center UX** | ✅ Complete | — | S35f | **UX / Charts** |
 | **37** | **Prescriptive TDR Actions** | 🔶 In Progress | — | S36 | **UX / AI / Code Engine** |
+| **38** | **Activity Ticker** | 🔲 Not Started | — | S37 | **UX / Code Engine** |
 | **32c** | **Code Engine MLOps Functions** | 🔲 Not Started | — | S32a | **ML / Code Engine** |
 | **32d** | **Frontend MLOps Page** | 🔲 Not Started | — | S32c | **ML / UX** |
 | **32e** | **MLOps Polish + Documentation** | 🔲 Not Started | — | S32d | **Documentation / UX** |
@@ -3840,9 +3842,17 @@ Sprint 37 — Prescriptive TDR Actions 🔶
     │  37c: Auto-generation pipeline (Code Engine + trigger)
     │  37d: Section reorder (action-first hierarchy)
     │  ~3–5 days
+    │
+    ▼
+Sprint 38 — Activity Ticker 🔲
+    │  38a: Code Engine getRecentActivity + manifest
+    │  38b: ActivityTicker component + header integration
+    │  38c: Last-seen tracking + "new" indicators
+    │  38d: Polish — animation, empty states, edge cases
+    │  ~3–5 days
 ```
 
-**Total estimated effort (original):** ~22–29 days · **Completed:** ~50 days (Sprints 14–36, OSS-1, PERF-1) · **Remaining:** ~7–10 days (Sprint 37 + 32c–e)
+**Total estimated effort (original):** ~22–29 days · **Completed:** ~50 days (Sprints 14–36, OSS-1, PERF-1) · **Remaining:** ~10–15 days (Sprint 37 + 38 + 32c–e)
 
 | Sprint | Can Parallel? | Depends On | Effort | Status |
 |--------|--------------|------------|--------|--------|
@@ -3875,6 +3885,7 @@ Sprint 37 — Prescriptive TDR Actions 🔶
 | **S35f: Intelligence Panel UX** | — | S35 | 1–2 days | ✅ Complete |
 | **S36: Command Center UX** | — | S35f | 1 day | ✅ Complete |
 | **S37: Prescriptive TDR Actions** | — | S36 | 3–5 days | 🔶 In Progress |
+| **S38: Activity Ticker** | — | S37 | 3–5 days | 🔲 Not Started |
 
 ---
 

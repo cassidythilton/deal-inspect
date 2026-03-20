@@ -106,6 +106,16 @@ export interface UsageMetrics {
   }[];
 }
 
+/** Sprint 38: Activity ticker event */
+export interface ActivityEvent {
+  userName: string;
+  accountName: string;
+  opportunityName: string;
+  timestamp: string;
+  type: 'started' | 'completed' | 'inputs';
+  count: number;
+}
+
 // ─── Code Engine Calling ─────────────────────────────────────────────────────
 
 interface DomoSDK {
@@ -566,6 +576,15 @@ export const snowflakeStore = {
     const result = extractResult<UsageMetrics & { success?: boolean }>(raw);
     if (!result?.success) return null;
     return result;
+  },
+
+  // ─── Sprint 38: Activity Ticker ─────────────────────────────────────────────
+
+  async getRecentActivity(excludeUser: string): Promise<ActivityEvent[]> {
+    if (!isDomoEnvironment()) return [];
+    const raw = await callCodeEngine<unknown>('getRecentActivity', { excludeUser });
+    const result = extractResult<{ success?: boolean; events?: ActivityEvent[] }>(raw);
+    return result?.events || [];
   },
 };
 

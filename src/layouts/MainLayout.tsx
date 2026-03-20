@@ -1,4 +1,5 @@
 import { AppSidebar } from '@/components/AppSidebar';
+import { ActivityTicker } from '@/components/ActivityTicker';
 import { Outlet, useLocation } from 'react-router-dom';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -24,6 +25,8 @@ export function MainLayout() {
             {pageTitle}
           </span>
           <div className="ml-auto flex items-center gap-3">
+            <ActivityTicker />
+            <div className="h-3 w-px bg-border/30" />
             <span className="text-[10px] text-muted-foreground/40 tracking-wider font-medium">
               DealInspect
             </span>

@@ -211,7 +211,29 @@ export default function TDRAdmin() {
   }, [sessions, logSearch, logStatusFilter]);
 
   const weekly = useMemo(() => metrics?.weekly || [], [metrics]);
-  const users = useMemo(() => metrics?.users || [], [metrics]);
+  const users = useMemo(() => {
+    const raw = metrics?.users || [];
+    const merged = new Map<string, typeof raw[0]>();
+    for (const u of raw) {
+      const name = humanizeName(u.userName);
+      const existing = merged.get(name);
+      if (existing) {
+        merged.set(name, {
+          userName: name,
+          sessions: Number(existing.sessions) + Number(u.sessions),
+          completed: Number(existing.completed) + Number(u.completed),
+          inputs: Number(existing.inputs) + Number(u.inputs),
+          messages: Number(existing.messages) + Number(u.messages),
+          lastActive: existing.lastActive > u.lastActive ? existing.lastActive : u.lastActive,
+        });
+      } else {
+        merged.set(name, { ...u, userName: name });
+      }
+    }
+    return Array.from(merged.values()).sort(
+      (a, b) => (Number(b.sessions) + Number(b.inputs) + Number(b.messages)) - (Number(a.sessions) + Number(a.inputs) + Number(a.messages))
+    );
+  }, [metrics, humanizeName]);
 
   const recentSessions = useMemo(() => {
     return [...sessions]
