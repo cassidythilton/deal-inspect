@@ -812,8 +812,9 @@ export async function pushRecipeToGitHub(
     if (!domo) throw new Error('Domo SDK not available');
 
     const safeName = dealName.replace(/[^a-zA-Z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const filename = `${safeName}_${dateStr}.md`;
+    const now = new Date();
+    const dateTime = `${now.toISOString().slice(0, 10)}_${now.toISOString().slice(11, 16).replace(':', '')}`;
+    const filename = `${safeName}_${dateTime}.md`;
 
     console.log(`[Recipe] Pushing to GitHub: ${filename} (${(mdContent.length / 1024).toFixed(1)} KB)`);
     const raw = await domo.post('/domo/codeengine/v2/packages/pushRecipeToGitHub', {
