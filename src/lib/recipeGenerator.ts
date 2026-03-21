@@ -824,7 +824,7 @@ export async function pushRecipeToGitHub(
 
     console.log('[Recipe] GitHub CE response:', JSON.stringify(raw).substring(0, 500));
     const result = raw as Record<string, unknown>;
-    const inner = (result.pushRecipeToGitHub || result) as Record<string, unknown>;
+    const inner = (result.pushRecipeToGitHub || result.result || result) as Record<string, unknown>;
     if (!inner.success) {
       console.error('[Recipe] GitHub push returned error:', inner.error);
     }
@@ -864,7 +864,7 @@ export async function sendSlackNotification(
     });
 
     const result = raw as Record<string, unknown>;
-    const inner = (result.notifyRecipeToSlack || result) as Record<string, unknown>;
+    const inner = (result.notifyRecipeToSlack || result.result || result) as Record<string, unknown>;
     return {
       success: !!inner.success,
       error: inner.error as string | undefined,
