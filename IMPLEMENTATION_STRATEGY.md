@@ -2,13 +2,13 @@
 
 > Account Intelligence, Snowflake Persistence, Cortex AI, Inline TDR Chat, Deal Close Propensity ML, and AI-Enhanced TDR Responses
 
-**Status:** Active · **Version:** Draft 10.2 · **Date:** March 20, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a, 32b, 33, 34, 35, 35f, 36, 37, 37b, 38 (52 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress (32a ✅, 32c–e remaining) · Pillars 19–21 Complete**
+**Status:** Active · **Version:** Draft 10.3 · **Date:** March 21, 2026 · **Sprints Completed:** 1–29b, OSS-1, PERF-1, 28b+, 28c, 28d, 28e, 30, 31, 32a, 32b, 33, 34, 35, 35f, 36, 37, 37b, 38 (52 sprints) · **Pillars 1–17 Complete · Pillar 18 In Progress (32a ✅, 32c–e remaining) · Pillars 19–21 Complete**
 
 ---
 
 ### Current State & What's Next
 
-**Where we are:** Pillars 1–17 plus Pillars 19–21 are complete (52 sprints, Feb 9 – Mar 20, 2026). Sprint 37b (Sales Asset Generation Recipe v2) is complete — full 19-asset catalog, AI Value Continuum Assessment Engine, multi-signal trigger engine, full context aggregation (CRM + TDR + Gong + Perplexity + Sumble + Cortex), per-asset instructions with skill refs, real GitHub push to `cassidythilton/tdr-asset-recipes`, and Slack notification to `#tdr-channel`. Sprints 32c–e (MLOps monitoring frontend) remain queued.
+**Where we are:** Pillars 1–17 plus Pillars 19–21 are complete (52 sprints, Feb 9 – Mar 21, 2026). Sprint 37b (Sales Asset Generation Recipe v2) is fully deployed and verified end-to-end — 19-asset catalog, AI Value Continuum Assessment Engine, multi-signal trigger engine, full context aggregation (CRM + TDR + Gong + Perplexity + Sumble + Cortex), per-asset instructions with skill refs, real GitHub push to `cassidythilton/tdr-asset-recipes` with human-readable filenames, and Slack notification to `#tdr-channel`. Sprints 32c–e (MLOps monitoring frontend) remain queued.
 
 **What's done (recently):**
 
@@ -27,8 +27,8 @@
 | Sprint | Name | Effort | Prerequisite | Status | Key Deliverable |
 |--------|------|--------|-------------|--------|-----------------|
 | **37** | Sales Asset Generation Recipe | 3–5 days | 36 | ✅ Complete (v1) | Recipe compiler, asset catalog, Wand2 UI, GitHub/Slack export, dynamic skill resolution |
-| **37b** | Recipe v2: AI Value Continuum + Full Catalog | 3–5 days | 37 | 🔲 Not Started | 19-asset catalog, proactive AI assessment via Cortex, automated skills repo reference, GitHub README |
-| **38** | Activity Ticker | 3–5 days | 37b | 🔲 Not Started | Live team activity notifications in header bar |
+| **37b** | Recipe v2: AI Value Continuum + Full Catalog | 3–5 days | 37 | ✅ Complete | 19-asset catalog, AI Value Continuum engine, real GitHub push + Slack notification, human-readable filenames |
+| **38** | Activity Ticker | 3–5 days | 37b | ✅ Complete | Live team activity notifications in header bar |
 | **32c** | Code Engine MLOps Functions | 1 day | 32a | 🔲 Not Started | 7 new CE functions for MLOps data |
 | **32d** | Frontend MLOps Page | 2–3 days | 32c | 🔲 Not Started | `/mlops` page with model health visibility |
 | **32e** | Polish + Documentation | 1 day | 32d | 🔲 Not Started | Alert threshold logic, distribution health checks, Pillar 18 finalization |
@@ -51,7 +51,7 @@
 
 **Shaping documents:** `shaping/dataset-swap-and-propensity-model.md` (Sprint 28), `shaping/ai-enhanced-tdr-responses.md` (Sprint 29), `shaping/tdr-quality-of-life.md` (Sprints 30 + 31), `shaping/sprint-30-combined-score-and-docs.md` (Sprint 30b), `shaping/sprint-30b-table-polish.md` (Sprint 30b — table column polish), `shaping/sprint-30b-priority-in-workspace.md` (Sprint 30b — Deal Priority in TDR Workspace), `shaping/mlops-monitoring-tab.md` (Sprint 32 — MLOps monitoring + model calibration), `shaping/sprint-32b-seeded-tdr-responses.md` (Sprint 32b — Gong-seeded TDR responses), `shaping/gong-transcripts-in-chat.md` (Sprint 33 — Gong transcript Q&A), `shaping/spike-cortex-search-gong.md` (Sprint 33 — Cortex Search spike), `shaping/tdr-versioning.md` (Sprint 34 — TDR Versioning), `shaping/tdr-admin-observability.md` (Sprint 35 — Admin Observability), `shaping/prescriptive-tdr-actions.md` (Sprint 37 — Prescriptive TDR Actions — deferred), `shaping/sales-asset-generation-recipe.md` (Sprint 37 — Sales Asset Generation Recipe), `shaping/activity-ticker.md` (Sprint 38 — Activity Ticker)
 
-**Start point:** All major sprints complete through Sprint 37b (v1.83.0). Sprint 37b (Sales Asset Generation Recipe v2) is complete — 19-asset catalog, AI Value Continuum engine, multi-signal triggers, full context aggregation, real GitHub push + Slack notification, per-asset instructions with skill references. MLOps monitoring (Sprints 32c–e) remains queued.
+**Start point:** All major sprints complete through Sprint 38 (v1.90.0). Sprint 37b (Sales Asset Generation Recipe v2) is fully deployed and verified — 19-asset catalog, AI Value Continuum engine, multi-signal triggers, full context aggregation, real GitHub push with human-readable filenames + Slack notification to `#tdr-channel`, per-asset instructions with skill references. MLOps monitoring (Sprints 32c–e) remains queued.
 
 ---
 
@@ -3715,7 +3715,7 @@ Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gon
 - [x] **Slack Notification `[Cursor]`**: Stubbed `sendSlackNotification()` for `#tdr-channel`.
 - [x] **Hard Copy Download `[Cursor]`**: Download `.md` file directly via blob URL with `recipeLoading` spinner.
 
-**Sprint 37b — v2 Expansion ✅ COMPLETE (Mar 20, 2026)**
+**Sprint 37b — v2 Expansion ✅ COMPLETE (Mar 21, 2026)**
 
 - [x] **Full Asset Catalog `[Cursor]`**: Expanded `ASSET_CATALOG` to full 19-asset catalog: 4 Universal (Solution Brief, Pitch Deck, ROI Framework, Deal Strategy Playbook), 7 Layer-Conditional (Integration Architecture, Data Warehouse Brief, Dashboard Blueprint, Embedded Analytics, App Prototype, Automation Playbook, AI/ML Architecture), 8 Signal-Conditional (Competitive Positioning, Partner Enablement, POC Plan, Stakeholder Map, Re-Engagement, Discovery Bridge, Implementation Packet, Security Addendum).
 - [x] **AI Value Continuum Assessment Engine `[Cursor]`**: Keyword-based multi-signal analysis across all 4 levels (Process Automation, Traditional AI/ML, Generative AI, Agentic AI). Analyzes Gong transcripts, Perplexity research, Sumble tech stack, TDR inputs, and customer goals. Gap detection when SE underestimates AI opportunity. Embedded in every recipe.
@@ -3723,10 +3723,10 @@ Pre-populate TDR input fields with Cortex AI-modeled inferences derived from Gon
 - [x] **Full Context Aggregation `[Cursor]`**: All 6 context blocks integrated: CRM (20+ fields in table format), TDR inputs (all 5 steps with human-readable labels), Gong intelligence (digest via `getDigest()`), Perplexity research (summary, initiatives, tech signals, competitive landscape, insights, citations), Sumble enrichment (tech stack, org profile, hiring signals, key people), Cortex AI outputs (brief, structured extract with entities/competitors/stakeholders/risks, action plan).
 - [x] **Per-Asset Instructions `[Cursor]`**: Structured instruction blocks per asset with: output format, context priority ordering, skill references, audience profile (executive/technical/mixed/internal), constraints.
 - [x] **Automated Skills Repo Reference `[Cursor]`**: `fetchAvailableSkills()` returns `SkillReference[]` with descriptions, fetches from GitHub API, falls back to hardcoded list of 13 skills + 2 rules. Embedded as table in every recipe.
-- [x] **Real GitHub Push `[Code Engine]`**: `pushRecipeToGitHub()` CE function using GitHub API (axios) with `GITHUB_PAT` token, targeting `cassidythilton/tdr-asset-recipes` at `recipes/{dealId}-{timestamp}.md`. Front-end calls CE proxy via `domo.post()`.
-- [x] **Real Slack Notification `[Code Engine]`**: `notifyRecipeToSlack()` CE function using Slack Block Kit message with existing `SLACK_BOT_TOKEN`, posts deal name, ACV, asset count, and GitHub link to `#tdr-channel`.
+- [x] **Real GitHub Push `[Code Engine]`**: `pushRecipeToGitHub()` CE function using GitHub API (axios) with `GITHUB_PAT` token, targeting `cassidythilton/tdr-asset-recipes` at `recipes/{DealName}_{date}_{HHmm}.md`. Human-readable filenames. Front-end calls CE proxy via `domo.post()`.
+- [x] **Real Slack Notification `[Code Engine]`**: `notifyRecipeToSlack()` CE function using existing `SLACK_BOT_TOKEN`, posts simple summary (deal name, ACV, asset count, GitHub link) to `#tdr-channel`. Channel name passed directly to Slack API.
 - [x] **GitHub Repo README `[Cursor]`**: Created comprehensive `shaping/tdr-asset-recipes-README.md` documenting recipe format, full 19-asset catalog, AI Value Continuum, trigger logic, skills integration, directory structure, and downstream agent instructions.
-- [x] **Bug Fixes `[Cursor]`**: Fixed variable shadowing (`const accountIntel` → `intel`), `alert()` → `toast` (sonner), `deal.name` → `deal.dealName`, `deal.amount` → `deal.acv`, Map→Record input format conversion.
+- [x] **Bug Fixes `[Cursor]`**: Fixed variable shadowing (`const accountIntel` → `intel`), `alert()` → `toast` (sonner), `deal.name` → `deal.dealName`, `deal.amount` → `deal.acv`, Map→Record input format conversion, CE response parsing (`result.result` fallback), 422 sha conflict (unique HHmm filenames).
 
 **Definition of Done:** Users can click the Wand2 icon on a deal to generate a comprehensive Markdown recipe containing all deal context, a proactive AI Value Continuum assessment, a dynamically-determined 19-asset manifest mapped to the deal's layers/signals/stage, per-asset generation instructions with skill references, and push it to `cassidythilton/tdr-asset-recipes` with Slack alert. The recipe is a fully self-contained contract for downstream asset generation.
 
@@ -3922,8 +3922,8 @@ Sprint 38 — Activity Ticker 🔲
 | **S35f: Intelligence Panel UX** | — | S35 | 1–2 days | ✅ Complete |
 | **S36: Command Center UX** | — | S35f | 1 day | ✅ Complete |
 | **S37: Sales Asset Generation Recipe** | — | S36 | 3–5 days | ✅ Complete (v1) |
-| **S37b: Recipe v2 — AI Continuum + Full Catalog** | — | S37 | 3–5 days | 🔲 Not Started |
-| **S38: Activity Ticker** | — | S37b | 3–5 days | 🔲 Not Started |
+| **S37b: Recipe v2 — AI Continuum + Full Catalog** | — | S37 | 3–5 days | ✅ Complete |
+| **S38: Activity Ticker** | — | S37b | 3–5 days | ✅ Complete |
 
 ---
 
