@@ -814,6 +814,7 @@ export async function pushRecipeToGitHub(
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const filename = `${dealId}-${ts}.md`;
 
+    console.log(`[Recipe] Pushing to GitHub: ${filename} (${(mdContent.length / 1024).toFixed(1)} KB)`);
     const raw = await domo.post('/domo/codeengine/v2/packages/pushRecipeToGitHub', {
       dealId,
       dealName,
@@ -821,15 +822,19 @@ export async function pushRecipeToGitHub(
       content: mdContent,
     });
 
+    console.log('[Recipe] GitHub CE response:', JSON.stringify(raw).substring(0, 500));
     const result = raw as Record<string, unknown>;
     const inner = (result.pushRecipeToGitHub || result) as Record<string, unknown>;
+    if (!inner.success) {
+      console.error('[Recipe] GitHub push returned error:', inner.error);
+    }
     return {
       success: !!inner.success,
       url: inner.url as string | undefined,
       error: inner.error as string | undefined,
     };
   } catch (err) {
-    console.error('[Recipe] GitHub push failed:', err);
+    console.error('[Recipe] GitHub push exception:', err);
     return { success: false, error: String(err) };
   }
 }
@@ -839,9 +844,6 @@ export async function sendSlackNotification(
   acv: number,
   assetCount: number,
   githubUrl: string,
-  stage?: string,
-  domoLayers?: string[],
-  aiLevels?: string[],
 ): Promise<{ success: boolean; error?: string }> {
   if (!isDomoEnvironment()) {
     console.log('[Recipe] Dev mode: simulating Slack notification');
@@ -859,9 +861,6 @@ export async function sendSlackNotification(
       assetCount: String(assetCount),
       githubUrl,
       channel: '#tdr-channel',
-      stage: stage || '',
-      domoLayers: (domoLayers || []).join(', '),
-      aiLevels: (aiLevels || []).join(', '),
     });
 
     const result = raw as Record<string, unknown>;
