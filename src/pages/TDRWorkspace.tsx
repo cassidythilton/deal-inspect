@@ -222,7 +222,12 @@ export default function TDRWorkspace() {
         const result = await pushRecipeToGitHub(deal.id, deal.dealName, mdContent);
         if (result.success && result.url) {
           const assetLines = mdContent.match(/^\| [A-Z]\d/gm);
-          await sendSlackNotification(deal.dealName, deal.acv, assetLines?.length || 0, result.url);
+          const layersRaw = nestedInputs['tech-architecture']?.['domo-layers'] || '';
+          let layers: string[] = [];
+          try { const p = JSON.parse(layersRaw); if (Array.isArray(p)) layers = p; } catch { if (layersRaw) layers = layersRaw.split(',').map(s => s.trim()); }
+          const aiLevelMatch = mdContent.match(/### Level \d: ([^\n]+)/g);
+          const aiLevels = aiLevelMatch ? aiLevelMatch.map(l => l.replace('### ', '')) : [];
+          await sendSlackNotification(deal.dealName, deal.acv, assetLines?.length || 0, result.url, deal.stage, layers, aiLevels);
           toast.success('Recipe pushed to GitHub & Slack notified');
         } else {
           toast.error(result.error || 'GitHub push failed');

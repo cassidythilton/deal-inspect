@@ -839,6 +839,9 @@ export async function sendSlackNotification(
   acv: number,
   assetCount: number,
   githubUrl: string,
+  stage?: string,
+  domoLayers?: string[],
+  aiLevels?: string[],
 ): Promise<{ success: boolean; error?: string }> {
   if (!isDomoEnvironment()) {
     console.log('[Recipe] Dev mode: simulating Slack notification');
@@ -856,6 +859,9 @@ export async function sendSlackNotification(
       assetCount: String(assetCount),
       githubUrl,
       channel: '#tdr-channel',
+      stage: stage || '',
+      domoLayers: (domoLayers || []).join(', '),
+      aiLevels: (aiLevels || []).join(', '),
     });
 
     const result = raw as Record<string, unknown>;

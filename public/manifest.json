@@ -517,7 +517,10 @@
         { "alias": "acv", "type": "string", "nullable": false, "isList": false, "children": null },
         { "alias": "assetCount", "type": "string", "nullable": false, "isList": false, "children": null },
         { "alias": "githubUrl", "type": "string", "nullable": false, "isList": false, "children": null },
-        { "alias": "channel", "type": "string", "nullable": true, "isList": false, "children": null }
+        { "alias": "channel", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "stage", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "domoLayers", "type": "string", "nullable": true, "isList": false, "children": null },
+        { "alias": "aiLevels", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     }
