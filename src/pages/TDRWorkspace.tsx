@@ -28,6 +28,7 @@ export default function TDRWorkspace() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dealId = searchParams.get('deal') || '1';
+  const initialSessionId = searchParams.get('session') || undefined;
   
   // Try to get deal from Domo data first, fall back to mock
   const { deals: domoDeals, isDomoConnected } = useDeals();
@@ -54,7 +55,7 @@ export default function TDRWorkspace() {
     startNewIteration,
     switchToSession,
     isReadOnly,
-  } = useTDRSession(deal);
+  } = useTDRSession(deal, initialSessionId);
 
   // Sprint 34: Version selector state
   const [showVersionMenu, setShowVersionMenu] = useState(false);
@@ -222,8 +223,13 @@ export default function TDRWorkspace() {
         const result = await pushRecipeToGitHub(deal.id, deal.dealName, mdContent);
         if (result.success && result.url) {
           const assetLines = mdContent.match(/^\| [A-Z]\d/gm);
-          await sendSlackNotification(deal.dealName, deal.acv, assetLines?.length || 0, result.url);
-          toast.success('Recipe pushed to GitHub & Slack notified');
+          const slackResult = await sendSlackNotification(deal.dealName, deal.acv, assetLines?.length || 0, result.url);
+          console.log('[TDRWorkspace] Slack notification result:', slackResult);
+          if (slackResult.success) {
+            toast.success('Recipe pushed to GitHub & Slack notified');
+          } else {
+            toast.success(`Recipe pushed to GitHub (Slack: ${slackResult.error || 'failed'})`);
+          }
         } else {
           toast.error(result.error || 'GitHub push failed');
         }

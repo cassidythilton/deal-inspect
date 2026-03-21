@@ -856,14 +856,16 @@ export async function sendSlackNotification(
     const domo = (window as unknown as { domo?: { post: (url: string, body?: unknown) => Promise<unknown> } }).domo;
     if (!domo) throw new Error('Domo SDK not available');
 
+    console.log('[Recipe] Calling notifyRecipeToSlack CE function...');
     const raw = await domo.post('/domo/codeengine/v2/packages/notifyRecipeToSlack', {
       dealName,
       acv: String(acv),
       assetCount: String(assetCount),
       githubUrl,
-      channel: '#tdr-channel',
+      channel: 'tdr-channel',
     });
 
+    console.log('[Recipe] Slack CE response:', JSON.stringify(raw).substring(0, 500));
     const result = raw as Record<string, unknown>;
     const inner = (result.notifyRecipeToSlack || result.result || result) as Record<string, unknown>;
     return {
