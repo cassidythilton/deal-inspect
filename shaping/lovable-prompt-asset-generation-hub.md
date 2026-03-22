@@ -4,7 +4,11 @@
 
 ---
 
-Build a modern, professional web application called **"Asset Generation Hub"** — a multi-agent orchestration platform for managing AI-generated sales assets. The app ingests structured "recipe" specifications (Markdown files) from a GitHub repository, tracks which sales assets need to be generated for each deal, and manages the full lifecycle of those assets from draft through review to approval.
+Build a modern, professional web application called **"Asset Generation Hub"** — the home base for a team of Solutions Architects (SAs) who build deal-specific sales assets using AI agents. The app is organized around **deals/accounts** as the primary unit — recipes (structured Markdown spec sheets) arrive per deal from an upstream intelligence app, and SAs are assigned to deals to execute asset generation using a mix of automated agents and hands-on engineering.
+
+The end-to-end flow: **TDR Inspection App (upstream)** → captures deal intelligence → compiles a Recipe (spec sheet) → pushes to GitHub → **Asset Generation Hub (this app)** → SA team picks up recipes → agents + humans generate assets → deliverables to customer.
+
+Everything should be viewed, filtered, and aggregated by deal/account. SAs think in terms of "my deals" and "my accounts." Managers think in terms of "team workload" and "deal coverage."
 
 ## Tech Stack
 
@@ -28,6 +32,20 @@ Build a modern, professional web application called **"Asset Generation Hub"** �
 
 ## Database Schema (Supabase/Postgres)
 
+### `team_members` table
+```sql
+create table team_members (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null unique,
+  avatar_url text,
+  role text default 'sa' check (role in ('sa', 'lead', 'admin')),
+  expertise text[] default '{}',
+  status text default 'active' check (status in ('active', 'away', 'inactive')),
+  created_at timestamptz default now()
+);
+```
+
 ### `recipes` table
 ```sql
 create table recipes (
@@ -43,6 +61,7 @@ create table recipes (
   parsed_meta jsonb,
   parsed_manifest jsonb,
   parsed_context jsonb,
+  assigned_sa uuid references team_members(id),
   status text default 'active' check (status in ('active', 'archived')),
   ingested_at timestamptz default now(),
   created_at timestamptz default now()
@@ -62,7 +81,7 @@ create table asset_jobs (
   automation_level text default 'human_driven' check (automation_level in ('fully_automated', 'human_augmented', 'human_driven')),
   agent_id text,
   status text default 'queued' check (status in ('queued', 'generating', 'draft', 'in_review', 'revision_requested', 'approved', 'delivered', 'failed')),
-  assigned_reviewer text,
+  assigned_sa uuid references team_members(id),
   content text,
   version integer default 1,
   confidence numeric,
@@ -158,15 +177,30 @@ Seed the database with realistic demo data so the app feels alive on first load:
 ]
 ```
 
-### Seed Recipes (3 deals with varied asset manifests)
+### Seed Team Members (5 SAs + 1 lead)
 
-Create 3 realistic recipe records with different deal profiles:
+```json
+[
+  { "name": "Sarah Chen", "email": "sarah.chen@domo.com", "role": "lead", "expertise": ["ai-ml", "integrations", "architecture"], "status": "active" },
+  { "name": "Marcus Rivera", "email": "marcus.rivera@domo.com", "role": "sa", "expertise": ["app-development", "embedded-analytics", "visualization"], "status": "active" },
+  { "name": "Priya Sharma", "email": "priya.sharma@domo.com", "role": "sa", "expertise": ["ai-ml", "data-warehouse", "automation"], "status": "active" },
+  { "name": "Jake Thompson", "email": "jake.thompson@domo.com", "role": "sa", "expertise": ["integrations", "data-warehouse", "visualization"], "status": "active" },
+  { "name": "Lisa Park", "email": "lisa.park@domo.com", "role": "sa", "expertise": ["embedded-analytics", "app-development", "ai-ml"], "status": "active" },
+  { "name": "David Okafor", "email": "david.okafor@domo.com", "role": "sa", "expertise": ["automation", "integrations", "governance"], "status": "active" }
+]
+```
 
-1. **"Acme Corp Enterprise Expansion"** — ACV $2.4M, Stage 4, Domo Layers: Data Integration + Visualization/BI + AI/ML. 11 assets (U1–U4, L1, L3, L7, S1, S4, S7, S8). Mix of statuses across the pipeline.
+### Seed Recipes (4 deals with varied asset manifests, assigned to SAs)
 
-2. **"TechStart Inc New Business"** — ACV $180K, Stage 2, Domo Layers: App Development + Embedded Analytics. 7 assets (U1–U4, L4, L5, S6). Mostly in early stages (queued/generating).
+Create 4 realistic recipe records with different deal profiles and SA assignments:
 
-3. **"GlobalBank Risk Platform Renewal"** — ACV $890K, Stage 5, Domo Layers: Data Warehouse + Automation/Alerts + AI/ML. 9 assets (U1–U4, L2, L6, L7, S7, S8). Mostly approved/delivered (near completion).
+1. **"Acme Corp Enterprise Expansion"** — Account: Acme Corp. ACV $2.4M, Stage 4, Domo Layers: Data Integration + Visualization/BI + AI/ML. 11 assets (U1–U4, L1, L3, L7, S1, S4, S7, S8). Mix of statuses across the pipeline. Assigned to **Jake Thompson**.
+
+2. **"TechStart Inc New Business"** — Account: TechStart Inc. ACV $180K, Stage 2, Domo Layers: App Development + Embedded Analytics. 7 assets (U1–U4, L4, L5, S6). Mostly in early stages (queued/generating). Assigned to **Marcus Rivera**.
+
+3. **"GlobalBank Risk Platform Renewal"** — Account: GlobalBank. ACV $890K, Stage 5, Domo Layers: Data Warehouse + Automation/Alerts + AI/ML. 9 assets (U1–U4, L2, L6, L7, S7, S8). Mostly approved/delivered (near completion). Assigned to **Priya Sharma**.
+
+4. **"Meridian Health Systems Data Modernization"** — Account: Meridian Health. ACV $1.1M, Stage 3, Domo Layers: Data Integration + Data Warehouse + AI/ML + Automation/Alerts. 10 assets (U1–U4, L1, L2, L6, L7, S1, S8). Unassigned — no SA yet (used to demo the "Unassigned" state and claim flow).
 
 ### Seed Skills (17 skills)
 
@@ -194,116 +228,148 @@ Create 3 realistic recipe records with different deal profiles:
 
 ## Pages & Routes
 
-### 1. `/` — Mission Control Dashboard
+The app is organized deal/account-first. The SA's daily operating view is "My Work" (their deals). The manager's view is "Team" (workload distribution). Everything else supports these two primary surfaces.
 
-The landing page and primary "home base" view. Data-dense, scannable.
+### 1. `/` — Deal Dashboard (Mission Control)
+
+The landing page. Organized around **deals/accounts** as the top-level entity — not agents, not pipeline stages.
 
 **Layout:**
-- Top bar: App logo ("Asset Generation Hub" with a Sparkles icon), global search, notification bell with badge count, user avatar dropdown
-- Left sidebar: Navigation links (Dashboard, Recipes, Pipeline, Review Queue, Agents, Skills, Activity, Settings) with icons. Collapsible to icon-only mode. Active state uses amber-500 left border + text highlight.
+- Top bar: App logo ("Asset Generation Hub" with a Sparkles icon), global search (searches deals by name, account, or SA), notification bell with badge count, logged-in user avatar dropdown (name, role, "My Work" shortcut, sign out)
+- Left sidebar: Navigation links with icons, in this order: **Deals** (LayoutGrid), **My Work** (User), **Team** (Users), **Review Queue** (ClipboardCheck), **Recipes** (FileText), **Agents** (Bot), **Skills** (Wrench), **Activity** (Clock), **Settings** (Settings). Collapsible to icon-only mode. Active state uses amber-500 left border + text highlight. "My Work" has a badge showing the user's pending action count.
 
 **Dashboard Content:**
-- **Metric Cards Row (4 cards):** Total Recipes (count), Assets in Pipeline (count by stage as mini stacked bar), Agents Active (count with green dot), Avg Time to Approval (duration). Each card is a compact stat card with icon, value, and trend indicator (up/down arrow with percentage).
-- **Deal Pipeline Table:** Full-width table showing all deals with active recipes. Columns: Deal Name (bold, clickable → deal detail), Account, ACV (formatted currency), Stage, Assets (progress bar showing completed/total, e.g., "7/11"), Status (badge: "Complete" green, "In Progress" amber, "Stalled" red, "New" blue), Last Activity (relative time). Sortable columns. Search/filter bar above.
-- **Activity Feed (right sidebar or bottom section):** Last 20 events as a vertical timeline. Each event: icon (recipe = FileText, agent = Bot, review = Eye, approval = CheckCircle, error = AlertTriangle) + description + relative timestamp. Clicking an event navigates to the relevant detail page.
-- **Quick Stats Row:** Assets by automation level (3 donut charts: Fully Automated, Human-Augmented, Human-Driven showing completed vs. in-progress), and a small area chart showing recipes ingested over the last 30 days.
+- **Metric Cards Row (4 cards):** Active Deals (count of deals with recipes), Assets Pending (total across all deals in queued/generating/draft/in_review), Unassigned Deals (count with no SA — amber highlight if > 0), Avg Time to Delivery (days from recipe ingestion to all assets approved). Each card is a compact stat card with icon, value, and trend indicator.
+- **Deal Roster Table (primary surface — full width):** The main table showing all deals with active recipes, **grouped by account** when multiple deals exist for the same account. Columns: Deal Name (bold, clickable → deal detail), Account, Assigned SA (avatar + name; shows amber "Unassigned" badge if null — clicking opens assignment dropdown), ACV (formatted currency), Stage, Assets (segmented progress bar: green = approved, amber = in progress, slate = queued, with "7/11" text), Deal Status (badge: "Complete" green, "In Progress" amber, "Needs Attention" rose, "New" blue, "Unassigned" orange), Last Activity (relative time). Sortable by any column. **Filters above:** SA (multi-select with team member avatars), Account (text search), Stage (multi-select), Status (multi-select).
+- **Activity Sidebar (right, collapsible ~25% width):** Last 15 events as a compact vertical timeline. Each event: colored icon + one-line description + deal name + relative timestamp. Clicking navigates to relevant detail. Shows a "View All" link to `/activity`.
 
-### 2. `/recipes` — Recipe Browser
+### 2. `/my-work` — My Work (SA's Personal View)
 
-Browse and inspect all ingested recipes.
-
-**Layout:**
-- **Recipe List (left panel, ~40% width):** Cards showing each recipe. Card content: deal name (bold), account (muted), ACV, stage, ingested date (relative), asset count badge, status badge. Click to select.
-- **Recipe Detail (right panel, ~60% width):** When a recipe is selected, show: Meta table (deal ID, account, ACV, stage, timestamp, version, GitHub link), Asset Manifest table (same format as in the recipe — # | Asset | Priority | Trigger | Audience), and collapsible sections for each context block (CRM Context, TDR Inputs, Gong Intelligence, Perplexity Research, Sumble Enrichment, AI Intelligence, AI Value Continuum, Skills, Constraints). Each section renders the Markdown content.
-- **Top bar actions:** "Ingest New Recipe" button (opens modal with: GitHub URL input OR drag-and-drop file upload), "Refresh from GitHub" button.
-
-### 3. `/pipeline` — Asset Pipeline (Kanban)
-
-Kanban board showing all assets across their lifecycle stages.
+The SA's daily operating view. Shows only their assigned deals and what needs attention.
 
 **Layout:**
-- **Filter bar:** Filter by deal, asset type, priority, automation level, agent. Dropdown filters with multi-select.
-- **Kanban columns:** Queued | Generating | Draft | In Review | Approved | Delivered. Each column shows count in header.
-- **Asset cards:** Compact cards within each column. Content: Asset name (e.g., "Solution Brief"), deal name (smaller, muted), priority badge (critical = rose, recommended = amber, optional = slate), automation level icon (Bot for automated, UserCheck for human-augmented, User for human-driven), assigned agent name, time in current stage. Cards are draggable between columns (updates status).
-- **Card click:** Opens a slide-over panel with asset detail: full content (rendered Markdown), version history, generation metadata, review feedback, and action buttons appropriate to current status (e.g., "Start Review" for drafts, "Approve" / "Request Revision" for in-review).
+- **Header:** "My Work" title with the SA's name and avatar. Summary stat row: Active Deals (count), Assets To Review (count in `draft` or `in_review` for their deals), Assets In Progress (count in `generating`), Delivered This Week (count).
+- **Deal Cards (vertical stack, full width):** One card per assigned deal, ordered by urgency (deals with stale assets or approaching close dates first). Each deal card contains:
+  - **Card header:** Deal name (bold, clickable → deal detail), account (muted), ACV, stage badge
+  - **Asset progress bar:** Segmented bar (green/amber/slate) with "X of Y complete" text
+  - **Next Actions list:** 2-3 most urgent items for this deal, e.g., "Review Solution Brief draft (2h ago)", "Start POC Plan (manual)", "Integration Architecture generating...". Each action is clickable → opens the relevant asset/review workspace.
+  - **Quick action buttons:** "View Deal" (→ deal detail), "Open Review Queue" (→ review queue filtered to this deal)
+- **Unassigned Deals Section (bottom):** If there are unassigned deals, show them under a "Claim a Deal" heading. Each unassigned deal card shows deal name, account, ACV, asset count, and a "Claim" button that assigns the deal to the current SA.
+- **Empty state:** If no deals assigned, show "No deals assigned yet — check the dashboard for unassigned deals" with a link to `/`.
 
-### 4. `/review` — Review Queue
+### 3. `/team` — Team Workload (Manager View)
 
-Prioritized list of assets awaiting human review.
+Manager/lead view showing SA workload distribution and team capacity.
 
 **Layout:**
-- **Queue list:** Table format. Columns: Deal Name, Asset Type, Priority (sorted critical first), Agent, Confidence (percentage with color coding: >80% green, 50-80% amber, <50% rose), Time in Queue (with stale highlighting if >24h), Assigned Reviewer, Actions (Open Review button).
-- **Empty state:** "No assets awaiting review" with illustration.
-- **Clicking "Open Review":** Navigates to `/review/:assetJobId` — the review workspace.
+- **Header:** "Team" title with team summary: Total SAs (count), Total Active Deals (count), Deals per SA (average), Total Assets in Pipeline.
+- **SA Workload Cards (grid, 2-3 columns):** One card per SA. Each card:
+  - SA avatar, name, role badge, status indicator (green dot = active, gray = away)
+  - Expertise tags (small badges, e.g., "AI/ML", "Integrations")
+  - Stats grid: Active Deals (count), Assets Pending (count), Assets Approved (count), Completion Rate (%)
+  - Mini bar chart: deal load visualization (1 bar per deal showing asset completion)
+  - "View Work" button → navigates to that SA's My Work view (filtered)
+- **Workload Distribution Chart:** Horizontal bar chart comparing deal count and asset count per SA. Highlights imbalances (e.g., one SA has 5 deals while another has 1).
+- **Unassigned Deals Alert:** If any deals are unassigned, show a prominent amber alert bar at the top: "X deals need an SA assignment" with a "View & Assign" button that scrolls to the dashboard's unassigned filter.
+- **Team Activity Table (bottom):** Recent activity across all SAs. Columns: SA Name, Action (e.g., "Approved Solution Brief"), Deal, Timestamp.
 
-### 5. `/review/:id` — Review Workspace
+### 4. `/deal/:dealId` — Deal Detail
+
+The deep-dive into a single deal. This is where the SA works on a specific account's assets.
+
+**Layout:**
+- **Header:** Deal name (large), account (subtitle), ACV (formatted), stage badge, assigned SA (avatar + name, with "Reassign" option), recipe version, ingested date. Link to GitHub recipe. "Export All" button (ZIP of approved assets).
+- **Progress overview:** Horizontal segmented progress bar showing asset completion (approved / total). Text: "7 of 11 assets complete". Below: count by status (e.g., "3 approved, 2 in review, 4 queued, 2 generating").
+- **Asset Board (primary surface, tabs: "Board" | "List"):**
+  - **Board view (default):** Kanban with columns = lifecycle stages (Queued | Generating | Draft | In Review | Approved | Delivered). Each column shows count. Asset cards within columns show: asset name (e.g., "Solution Brief"), asset type badge (U1, L3, etc.), priority badge, automation level icon, assigned agent name. Cards are draggable between columns. Clicking a card opens a slide-over with asset detail + review workspace.
+  - **List view (toggle):** Table format with columns: Asset Name, Type, Priority, Agent, Status, Automation Level, Last Updated. Sortable. More scannable for deals with many assets.
+- **AI Value Continuum section (collapsible card):** If the recipe includes an AI Value Continuum Assessment, render as 4 horizontal bars representing the 4 levels (Process Automation, Traditional AI/ML, Generative AI, Agentic AI), with assessed level(s) highlighted in amber + confidence %. Evidence bullets listed below each assessed level.
+- **Recipe Context (collapsible accordion, below the asset board):** CRM Context, TDR Discovery Inputs, Gong Call Intelligence, Account Research (Perplexity), Account Enrichment (Sumble), AI-Synthesized Intelligence. Each section renders Markdown content from the parsed recipe.
+
+### 5. `/review` — Review Queue
+
+Prioritized list of assets awaiting the current SA's review (or all reviews for leads/admins).
+
+**Layout:**
+- **Toggle:** "My Reviews" (default — filtered to current SA's deals) | "All Reviews" (for leads/admins)
+- **Queue table:** Columns: Deal Name (clickable → deal detail), Account, Asset Type, Priority (sorted critical first), Agent, Confidence (percentage with color coding: >80% green, 50-80% amber, <50% rose), Time in Queue (with stale highlighting if >24h amber, >48h rose), Status (draft / in_review / revision_requested), Actions ("Open Review" button).
+- **Empty state:** "All caught up — no assets awaiting review" with check illustration.
+- **Clicking "Open Review":** Navigates to `/review/:assetJobId`.
+
+### 6. `/review/:id` — Review Workspace
 
 Split-pane review interface for a single asset.
 
 **Layout:**
+- **Breadcrumb:** Deals > {Deal Name} > {Asset Name}
 - **Left pane (60%):** Asset content rendered as Markdown. Editable — clicking "Edit" toggles to a Markdown editor with toolbar (bold, italic, headers, lists, code blocks, links). "Diff" toggle shows changes from the original agent draft (green = additions, red = deletions). Version selector dropdown to compare any two versions.
-- **Right pane (40%):** Recipe context, organized as collapsible accordion sections. The sections highlighted match the asset's `contextPriority` from the recipe (shown with amber left border). Sections: CRM Context, TDR Discovery Inputs, Gong Call Intelligence, Account Research, Account Enrichment, AI-Synthesized Intelligence, AI Value Continuum.
-- **Bottom action bar:** Sticky bottom bar with: "Approve" (emerald button), "Request Revision" (amber button — opens text input for feedback), "Edit & Approve" (slate button — saves human edits as approved version), "Reject" (rose button — opens reason input). Also shows: agent name, generation time, confidence score, version number.
+- **Right pane (40%):** Recipe context for this deal, organized as collapsible accordion sections. The sections highlighted match the asset's `contextPriority` from the recipe (shown with amber left border). Sections: CRM Context, TDR Discovery Inputs, Gong Call Intelligence, Account Research, Account Enrichment, AI-Synthesized Intelligence, AI Value Continuum.
+- **Bottom action bar:** Sticky bottom bar with: "Approve" (emerald button), "Request Revision" (amber button — opens text input for feedback), "Edit & Approve" (slate button — saves human edits as approved version), "Reject" (rose button — opens reason input). Also shows: deal name, agent name, generation time, confidence score, version number.
 - **Comment thread (toggleable right drawer):** Comment thread for the asset. Input field at bottom. Comments show author avatar, name, timestamp, and content. Supports Markdown in comments.
 
-### 6. `/deal/:dealId` — Deal Detail
+### 7. `/recipes` — Recipe Browser
 
-Deep-dive into a single deal's asset generation.
+Browse and inspect all ingested recipes, organized by deal.
 
 **Layout:**
-- **Header:** Deal name (large), account, ACV (formatted), stage badge, recipe version, ingested date. Link to GitHub recipe.
-- **Progress overview:** Horizontal progress bar showing asset completion (approved / total). Text: "7 of 11 assets complete".
-- **Asset grid:** Card grid (2-3 columns) showing each asset for this deal. Each card: asset name, status badge (color-coded), automation level icon, agent avatar/name, priority badge. Clicking opens the asset detail/review workspace.
-- **AI Value Continuum section:** If the recipe includes an AI Value Continuum Assessment, render it as a visual: 4 horizontal bars representing the 4 levels (Process Automation, Traditional AI/ML, Generative AI, Agentic AI), with the assessed level(s) highlighted in amber and showing confidence percentage. Evidence bullets listed below each assessed level.
-- **Recipe context (collapsible):** Same accordion sections as review workspace, showing all deal context from the recipe.
+- **Recipe List (left panel, ~40% width):** Cards showing each recipe, **grouped by account**. Card content: deal name (bold), account (muted), assigned SA (avatar), ACV, stage, ingested date (relative), asset count badge. Click to select.
+- **Recipe Detail (right panel, ~60% width):** When a recipe is selected, show: Meta table (deal ID, account, ACV, stage, assigned SA, timestamp, version, GitHub link), Asset Manifest table (# | Asset | Priority | Trigger | Audience), and collapsible sections for each context block rendered as Markdown.
+- **Top bar actions:** "Ingest New Recipe" button (opens modal with: GitHub URL input OR drag-and-drop file upload), "Refresh from GitHub" button.
 
-### 7. `/agents` — Agent Monitor
+### 8. `/agents` — Agent Monitor
 
-Overview of all registered agents and their status.
+Overview of all registered agents and their status. Secondary view — not the daily operating surface.
 
 **Layout:**
 - **Agent cards (grid, 3 columns):** Each agent as a card. Card content: Agent name (bold), description (muted, 2 lines truncated), automation level badge (color-coded: green = fully automated, amber = human-augmented, blue = human-driven), status indicator (green dot = active, red dot = error, gray dot = inactive), supported asset types as small badges (e.g., "U1", "U3"), required skills as small tags. Bottom of card: stats row — Assets Generated (count), Avg Confidence (%), Approval Rate (%).
-- **Card click:** Opens agent detail view — full description, all supported assets, all required skills (linked to skills registry), performance chart (assets over time), and recent jobs table.
+- **Card click:** Opens agent detail view — full description, all supported assets, all required skills (linked to skills registry), performance chart (assets over time), and recent jobs table (showing which deals the agent worked on).
 
-### 8. `/skills` — Skills Registry
+### 9. `/skills` — Skills Registry
 
 Browsable catalog of Domo platform skills from stahura/domo-ai-vibe-rules.
 
 **Layout:**
 - **Header:** "Skills Registry" title, subtitle "Agent skills from stahura/domo-ai-vibe-rules", "Refresh All" button, last-fetched timestamp.
 - **Skills grid (2 columns):** Each skill as a card. Card content: Skill ID (monospace, e.g., `domo-js`), display name, description (2-3 lines), applicable asset types as small badges, last-fetched timestamp. Expand button to show full SKILL.md content rendered as Markdown.
-- **Rules section:** Separate section at bottom for `core-platform-rule.md` and `domo-gotchas.md` — these are always-on guardrails. Displayed as expandable cards with the rule content.
+- **Rules section:** Separate section at bottom for `core-platform-rule.md` and `domo-gotchas.md` — always-on guardrails. Displayed as expandable cards.
 - **Search:** Filter skills by name, description, or applicable asset type.
 
-### 9. `/activity` — Activity Feed
+### 10. `/activity` — Activity Feed
 
-Full activity log with filtering.
+Full activity log, filterable by deal and SA.
 
 **Layout:**
-- **Timeline view:** Vertical timeline of all system events. Each event: timestamp (absolute + relative), event type icon (color-coded), description, linked entities (deal name clickable, asset type clickable, agent name clickable). Event types: recipe_ingested, agent_started, agent_completed, asset_draft_ready, review_started, revision_requested, asset_approved, asset_delivered, generation_failed.
-- **Filters:** Event type multi-select, deal filter, agent filter, date range picker.
+- **Timeline view:** Vertical timeline of all system events. Each event: timestamp (absolute + relative), event type icon (color-coded), description, linked entities (deal name clickable, SA name clickable, asset type clickable, agent name clickable). Event types: recipe_ingested, deal_assigned, agent_started, agent_completed, asset_draft_ready, review_started, revision_requested, asset_approved, asset_delivered, generation_failed.
+- **Filters:** Deal (search), SA (multi-select), Event type (multi-select), Date range picker.
 - **Pagination:** Infinite scroll or "Load More" at bottom.
 
-### 10. `/settings` — Settings
+### 11. `/settings` — Settings
 
 Application configuration.
 
 **Layout:**
 - **Sections as tabs or accordion:**
-  - **GitHub Integration:** Repository URL for recipes (default: `cassidythilton/tdr-asset-recipes`), repository URL for skills (default: `stahura/domo-ai-vibe-rules`), polling interval (dropdown: 1 min, 5 min, 15 min, manual only).
+  - **GitHub Integration:** Repository URL for recipes (default: `cassidythilton/tdr-asset-recipes`), repository URL for skills (default: `stahura/domo-ai-vibe-rules`), polling interval.
+  - **Team Management:** Add/remove team members, edit roles and expertise tags. (Leads and admins only.)
   - **Notifications:** Slack webhook URL, notification rules (checkboxes for each event type × channel).
   - **Agent Defaults:** Default automation level for new asset types, auto-start toggle for automated agents.
   - **Display:** Theme toggle (dark/light — dark default), density toggle (compact/comfortable).
 
 ## Key Interactions
 
-1. **Recipe Ingestion Flow:** User clicks "Ingest New Recipe" → pastes GitHub URL or uploads .md file → system parses recipe → creates recipe record + asset_job records for each manifest entry → shows success toast with "X assets queued" → dashboard updates.
+1. **Recipe Ingestion Flow:** User clicks "Ingest New Recipe" → pastes GitHub URL or uploads .md file → system parses recipe → creates recipe record + asset_job records for each manifest entry → deal appears in dashboard as "New" + "Unassigned" → shows success toast with "X assets queued for {deal name}" → dashboard updates.
 
-2. **Asset Lifecycle Transitions:** Asset cards in the kanban are draggable between status columns. Drag triggers a confirmation dialog for critical transitions (e.g., "Approve this asset?"). Status changes log to activity feed and trigger notifications.
+2. **Deal Assignment Flow:** On the dashboard, unassigned deals show an amber "Unassigned" badge. Lead/admin clicks the SA column → dropdown of team members appears (sorted by workload, fewest deals first) → selects SA → deal is assigned → SA receives notification → deal appears in SA's My Work page. SAs can also self-assign from the "Claim a Deal" section on My Work.
 
-3. **Review Workflow:** Reviewer sees badge count on "Review Queue" nav item → clicks → sees prioritized list → opens review workspace → reads asset + references context → takes action (approve/revise/edit/reject) → asset moves to next lifecycle stage → notification sent.
+3. **SA Daily Workflow:** SA opens app → lands on My Work → sees their deals ordered by urgency → clicks the most urgent deal → opens deal detail → sees asset board (kanban) → reviews drafts, kicks off manual assets, monitors automated generation → uses review workspace for human-augmented assets → approves completed assets → exports deal package when all assets are approved.
 
-4. **Skill Resolution:** When viewing an agent's detail page, each required skill is a clickable link that navigates to that skill in the Skills Registry. When viewing an asset's generation metadata, the "Skills Used" field shows which skills were injected into the agent's prompt.
+4. **Asset Lifecycle Transitions:** On the deal detail page, asset cards in the kanban are draggable between status columns. Drag triggers a confirmation dialog for critical transitions (e.g., "Approve this asset?"). Status changes log to activity feed and trigger notifications.
+
+5. **Review Workflow:** SA sees badge count on "My Work" or "Review Queue" nav items → opens review queue (auto-filtered to their deals) → sees prioritized list → opens review workspace → reads asset content alongside recipe context → takes action (approve/revise/edit/reject) → asset moves to next stage → notification sent.
+
+6. **Skill Resolution:** When viewing an agent's detail page, each required skill is a clickable link to the Skills Registry. When viewing an asset's generation metadata, "Skills Used" shows which skills were injected into the agent's prompt.
+
+7. **Deal Package Export:** When all assets for a deal reach "approved" status, a "Download Deal Package" button appears on the deal detail page. Clicking generates a ZIP file containing all approved assets as Markdown files, plus a cover page with deal metadata.
 
 ## Component Patterns
 

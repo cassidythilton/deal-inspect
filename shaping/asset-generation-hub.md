@@ -18,13 +18,17 @@ appetite: large (1–2 weeks)
 
 > "We should do all the spec's in this app [deal-inspect], to be referenced downstream."
 
+> "The recipes will be by deal/account. That's how things should be viewed/aggregated/etc. We'll have a team of SAs working on executing and building solutions (via the agents in the downstream app) for customers/accounts. This app [deal-inspect / TDR Inspection] produces the 'spec sheets.'"
+
 ---
 
 ## Problem
 
-The `deal-inspect` app now produces a comprehensive, structured **Asset Generation Recipe** for every deal — a self-contained Markdown contract that specifies exactly which sales assets to generate, with what context, using which agent skills. The recipe lands in `cassidythilton/tdr-asset-recipes` and a Slack notification fires to `#tdr-channel`. This is the handoff point.
+The entire process flows from **deal-inspect (TDR Inspection)** — which produces the "spec sheets" — into a downstream execution layer. Deal-inspect captures all the intelligence about a deal/account (TDR inputs, Gong transcripts, Perplexity research, Sumble enrichment, Cortex AI outputs) and compiles it into a structured **Asset Generation Recipe** — a self-contained Markdown contract that specifies exactly which sales assets to generate, with what context, using which agent skills. The recipe lands in `cassidythilton/tdr-asset-recipes` and a Slack notification fires to `#tdr-channel`. This is the handoff point.
 
 **But there is nothing on the receiving end.** Today, when a recipe arrives, a human (SE, SA, or engineer) must manually pick it up, read through the entire spec, decide which assets to tackle first, open separate tools (Cursor, Claude Code, Google Slides, Lucidchart), paste context, reference the right skills, and generate each asset one at a time. There is no orchestration, no status tracking, no visibility into what's been generated vs. what's pending, and no way for a manager to see pipeline-wide asset generation progress.
+
+**The work is organized by deal/account, but there's no tool that reflects this.** Recipes arrive per deal. SAs think in terms of "my accounts" and "my deals." A team of SAs is responsible for executing and building solutions for customers — each SA owns a portfolio of deals and needs to see their workload, prioritize across accounts, and track progress for each. Today, this coordination happens over Slack threads and spreadsheets. **There is no "home base" where an SA can see all their assigned deals, what assets are pending, what needs review, and what's been delivered.**
 
 **The agent landscape is heterogeneous by design.** Some assets are pure LLM generation (solution briefs, ROI frameworks) that can be fully automated. Some require deep Domo platform expertise and human engineering (app prototypes, integration architectures) — these need human-in-the-loop oversight where an agent drafts and a human refines. Some are inherently collaborative (pitch decks, deal strategy playbooks) where the agent provides structure and the human provides judgment. **A one-size-fits-all automation approach will fail.** The system must support the full spectrum: fully automated agents, human-augmented agents (AI drafts → human reviews → AI refines), and human-driven workflows (human leads, AI assists).
 
@@ -32,7 +36,7 @@ The `deal-inspect` app now produces a comprehensive, structured **Asset Generati
 
 **There is no asset lifecycle management.** Once an asset is generated, there's no system of record: no versioning, no approval workflow, no way to trace an asset back to the recipe and deal that spawned it, no way to regenerate a single asset when deal context changes. Assets exist as loose files scattered across local machines and Slack threads.
 
-The opportunity is a **centralized orchestration platform** — the "home base" — that ingests recipes, dispatches work to specialized agents (automated or human-augmented), tracks generation progress, manages the asset lifecycle, and provides visibility across the entire pipeline.
+The opportunity is a **centralized, deal/account-organized orchestration platform** — the "home base" — where a team of SAs picks up recipes, works with specialized agents (automated or human-augmented) to generate deal-specific assets, tracks progress per deal, and delivers completed solution packages to close business.
 
 ---
 
@@ -84,6 +88,14 @@ Adding a new agent type or asset type must not require structural changes to the
 
 The hub must notify relevant stakeholders at key lifecycle transitions: recipe ingested (Slack → #tdr-channel), draft ready for review (Slack DM to assigned reviewer + in-app notification), asset approved (Slack → deal channel), generation failed (Slack → #tdr-channel + in-app alert). Must also support webhook-based triggers for downstream systems.
 
+### R10: Deal/Account-Centric Organization
+
+The deal/account is the primary organizing unit. All views, navigation, and aggregation must center on deals — not on agents, pipeline stages, or asset types. A recipe arrives *for a deal*. Assets are generated *for a deal*. An SA is assigned *to a deal*. The dashboard must show deals as the top-level entity, with assets, agents, and progress nested beneath. Users should be able to drill from deal → assets → individual asset detail. Cross-deal views (pipeline, review queue) are secondary lenses on the same deal-centric data.
+
+### R11: SA Team Management & Assignment
+
+The hub must support a team of SAs as the human operators who execute and build solutions. Each recipe/deal must be assignable to an SA. SAs must have a "My Work" view showing all their assigned deals and the status of assets within each. Managers must have a "Team" view showing SA workload distribution (deals per SA, assets pending per SA, completion rates). The system must support: SA profiles, deal assignment (manual or auto-suggested based on workload/expertise), workload balancing visibility, and per-SA performance tracking.
+
 ---
 
 ## Solution Shape [A: Hub-and-Spoke Orchestration]
@@ -133,7 +145,7 @@ The hub must notify relevant stakeholders at key lifecycle transitions: recipe i
 
 | Part | Mechanism |
 |------|-----------|
-| **A6.1** | **Mission Control Dashboard.** The landing page. Top-level metrics: recipes ingested (total + last 7 days), assets in pipeline (by stage), agents active, average time-to-approval. A deal-level table showing every deal with a recipe, its asset completion percentage, and a status indicator (all approved = green, in progress = amber, stalled = red). |
+| **A6.1** | **Mission Control Dashboard.** The landing page, organized deal/account-first. Top-level metrics: active deals (count), assets in pipeline (by stage), team utilization (SAs with active work), average time-to-delivery. The primary surface is a **deal roster table** — every deal with an active recipe — showing: deal name, account, assigned SA (avatar + name), ACV, stage, asset progress (completed/total as progress bar), deal status badge (Complete / In Progress / Stalled / Unassigned), last activity. Sortable and filterable by SA, account, stage, status. Clicking a deal opens the deal detail view (A6.2). |
 | **A6.2** | **Deal Detail View.** Drill-down from the dashboard into a single deal. Shows the recipe meta, the full asset manifest as a kanban board (columns = lifecycle stages), each card showing asset type + assigned agent + status. Clicking a card opens the asset (draft, review workspace, or approved version depending on status). |
 | **A6.3** | **Agent Performance Analytics.** Per-agent metrics: assets generated, average generation time, average confidence score, human approval rate (approved on first draft vs. required revision), error rate. Comparative view across agents to identify which need tuning. |
 | **A6.4** | **Activity Feed.** Real-time feed of system events: recipe ingested, agent started/completed, asset moved to review, asset approved, generation failed. Filterable by deal, agent, event type. Supports both in-app display and Slack relay. |
@@ -142,8 +154,18 @@ The hub must notify relevant stakeholders at key lifecycle transitions: recipe i
 
 | Part | Mechanism |
 |------|-----------|
-| **A7.1** | **Event-Driven Notifications.** Configurable notifications on lifecycle transitions. Channels: in-app toast/badge, Slack (via webhook), email (optional). Default rules: recipe ingested → Slack #tdr-channel, draft ready → Slack DM to assigned reviewer, asset approved → Slack deal channel, generation failed → Slack #tdr-channel + in-app alert. Rules are configurable per notification type. |
-| **A7.2** | **Stale Job Alerts.** Monitor for jobs that have been in `generating` state beyond a timeout threshold (configurable, default 10 minutes for automated, 48 hours for human-augmented). Alert the assigned agent owner or reviewer via Slack and in-app notification. |
+| **A7.1** | **Event-Driven Notifications.** Configurable notifications on lifecycle transitions. Channels: in-app toast/badge, Slack (via webhook), email (optional). Default rules: recipe ingested → Slack #tdr-channel, draft ready → Slack DM to assigned SA, asset approved → Slack deal channel, generation failed → Slack #tdr-channel + in-app alert. Rules are configurable per notification type. |
+| **A7.2** | **Stale Job Alerts.** Monitor for jobs that have been in `generating` state beyond a timeout threshold (configurable, default 10 minutes for automated, 48 hours for human-augmented). Alert the assigned SA via Slack and in-app notification. |
+
+### A8: Team Management & Deal Assignment
+
+| Part | Mechanism |
+|------|-----------|
+| **A8.1** | **SA Profiles.** Each SA has a profile record: `userId`, `name`, `email`, `avatarUrl`, `role` (`sa` | `lead` | `admin`), `expertise[]` (e.g., `['ai-ml', 'integrations', 'embedded']`), `status` (`active` | `away`). Profiles are seeded from Supabase Auth users and enrichable with expertise tags. |
+| **A8.2** | **Deal Assignment.** Every recipe/deal must have an `assignedSa` (foreign key to SA profile). Assignment can be: (1) manual — a lead/admin assigns via the deal detail page, (2) auto-suggested — system recommends an SA based on current workload (fewest active deals) and expertise match (SA expertise tags vs. deal's Domo Layers), (3) self-assigned — SA claims an unassigned deal from the dashboard. Unassigned deals are highlighted with an amber "Unassigned" badge on the dashboard. |
+| **A8.3** | **My Work View.** A personalized page (`/my-work`) showing the logged-in SA's assigned deals. Grouped by deal, each showing: deal name, account, ACV, asset progress (completed/total), next action needed (e.g., "Review Solution Brief draft", "Start POC Plan"), and urgency indicator based on stale assets or approaching close dates. This is the SA's daily operating view — their personal home base within the team home base. |
+| **A8.4** | **Team Workload View.** A manager-facing page (`/team`) showing all SAs and their workload distribution. Per-SA row: name, active deals (count), assets in progress, assets awaiting review, completion rate, average time-to-delivery. Bar chart comparing deal load across the team. Drill-down into any SA's My Work view. Used for workload balancing and identifying bottlenecks. |
+| **A8.5** | **Deal-Centric Dashboard.** The landing page (`/`) organizes around deals as the top-level entity. The primary table is a deal roster — every deal with an active recipe — grouped or sortable by account, assigned SA, ACV, stage, and asset completion. Clicking a deal opens the deal detail view. The dashboard does not lead with agents or pipeline stages — those are secondary lenses available via filters and dedicated pages. |
 
 ---
 
@@ -200,9 +222,11 @@ The initial set of agents, mapped from the recipe's 19-asset catalog:
 | R7 | Human review workflow with inline editing, diff view, and feedback loop. | Must-have | ✅ (A5.1, A5.2, A5.3) |
 | R8 | Extensible agent architecture via configuration-driven registry. | Must-have | ✅ (A2.1) |
 | R9 | Notification and handoff at lifecycle transitions via Slack and in-app. | Must-have | ✅ (A7.1, A7.2) |
+| R10 | Deal/account is the primary organizing unit for all views, navigation, and aggregation. | Must-have | ✅ (A8.5, A6.2) |
+| R11 | SA team management with assignment, My Work view, and team workload visibility. | Must-have | ✅ (A8.1, A8.2, A8.3, A8.4) |
 
 **Notes:**
-- All requirements satisfied by the single shape. The architecture cleanly separates: A1 (ingestion/parsing), A2 (agent orchestration), A3 (skills), A4 (asset lifecycle), A5 (human review), A6 (visibility), A7 (notifications).
+- All requirements satisfied by the single shape. The architecture cleanly separates: A1 (ingestion/parsing), A2 (agent orchestration), A3 (skills), A4 (asset lifecycle), A5 (human review), A6 (visibility), A7 (notifications), A8 (team & assignment). R10 (deal-centric organization) is a cross-cutting concern addressed by A8.5 (dashboard structure) and A6.2 (deal detail view) — every surface leads with the deal/account, not with agents or pipeline stages.
 
 ---
 
@@ -223,6 +247,12 @@ The initial set of agents, mapped from the recipe's 19-asset catalog:
 7. **Should agents run in parallel or sequentially?** → **Parallel by default, with dependency overrides.** Most assets are independent and can be generated concurrently. If a dependency is declared (e.g., "generate Solution Brief before Pitch Deck to reference it"), the dispatch engine respects ordering. Default: all same-priority assets dispatch in parallel.
 
 8. **What's the tech stack for the MVP?** → **React (Vite) + Tailwind + shadcn/ui for frontend (Lovable.dev generates this). Supabase for backend (auth, Postgres, realtime subscriptions, edge functions for agent execution). GitHub API for recipe ingestion and skills resolution.** This stack is compatible with eventual Domo deployment (swap Supabase for Domo AppDB + Code Engine).
+
+9. **What is the primary organizing unit — agents, pipeline stages, or deals?** → **Deals/accounts.** Recipes arrive per deal. SAs are assigned to deals. All views lead with the deal as the top-level entity. Pipeline (kanban), agent monitor, and skills registry are *secondary lenses* — useful for cross-deal analysis but not the daily operating view. An SA's day starts at "My Work" (their deals) or the dashboard (all deals), not at the agent monitor.
+
+10. **Who are the users?** → **A team of SAs (Solutions Architects / Solutions Engineers) who execute and build solutions for customers.** They are the operators. A lead/manager oversees team workload and deal assignment. The hub is their workspace — not a passive monitoring tool but an active workbench where they use agents to build deliverables for their accounts.
+
+11. **How does the process flow end-to-end?** → **TDR Inspection (deal-inspect) → Recipe (spec sheet) → GitHub repo → Asset Generation Hub → SA team builds solutions via agents → Deliverables to customer.** Deal-inspect is the intelligence collector and spec writer. The hub is the builder and delivery engine. The recipe is the contract between them. SAs are the operators in the hub.
 
 ---
 
@@ -254,6 +284,27 @@ The initial set of agents, mapped from the recipe's 19-asset catalog:
 
 ---
 
+## End-to-End Process Flow
+
+```
+  UPSTREAM (Intelligence)              CONTRACT              DOWNSTREAM (Execution)
+┌─────────────────────────┐         ┌──────────┐         ┌──────────────────────────┐
+│  deal-inspect            │         │          │         │  Asset Generation Hub     │
+│  (TDR Inspection App)    │         │  Recipe  │         │  (SA Team Home Base)      │
+│                          │ ──────► │  (.md)   │ ──────► │                          │
+│  • TDR inputs            │  Push   │          │  Ingest │  • Deal roster (by acct)  │
+│  • Gong transcripts      │  to     │  Lives   │  from   │  • SA assignment          │
+│  • Perplexity research   │  GitHub │  in      │  GitHub │  • Agent dispatch         │
+│  • Sumble enrichment     │         │  tdr-    │         │  • Asset generation       │
+│  • Cortex AI outputs     │         │  asset-  │         │  • Human review           │
+│  • CRM context           │         │  recipes │         │  • Delivery to customer   │
+│  • AI Value Continuum    │         │          │         │                          │
+│                          │         │          │         │  USERS: SA team           │
+│  USERS: SE Managers      │         │          │         │  (build solutions)        │
+│  (capture intelligence)  │         │          │         │                          │
+└─────────────────────────┘         └──────────┘         └──────────────────────────┘
+```
+
 ## System Architecture Diagram
 
 ```
@@ -262,13 +313,14 @@ The initial set of agents, mapped from the recipe's 19-asset catalog:
 │                     (React + Supabase)                          │
 │                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐ │
-│  │  Dashboard    │  │  Recipe      │  │  Asset Pipeline       │ │
-│  │  (Mission     │  │  Browser     │  │  (Kanban per deal)    │ │
-│  │   Control)    │  │              │  │                       │ │
+│  │  Dashboard    │  │  My Work     │  │  Deal Detail          │ │
+│  │  (Deal Roster │  │  (SA's       │  │  (Assets per deal,    │ │
+│  │   by Account) │  │   deals)     │  │   kanban lifecycle)   │ │
 │  └──────────────┘  └──────────────┘  └───────────────────────┘ │
 │  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐ │
-│  │  Review      │  │  Skills      │  │  Agent Monitor        │ │
-│  │  Workspace   │  │  Registry    │  │  & Analytics          │ │
+│  │  Team        │  │  Review      │  │  Skills Registry      │ │
+│  │  (Workload   │  │  Workspace   │  │  & Agent Monitor      │ │
+│  │   by SA)     │  │              │  │                       │ │
 │  └──────────────┘  └──────────────┘  └───────────────────────┘ │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐│
@@ -313,11 +365,14 @@ The hub consumes the recipe format defined in `shaping/sales-asset-generation-re
 
 ### Phase 1: Foundation (MVP) — Lovable.dev + Supabase
 
-Build the frontend shell and manual workflow. No agent automation yet.
+Build the frontend shell and manual workflow. Deal/account-centric from day one.
 
-- Dashboard (mission control with recipe metrics)
-- Recipe browser (ingest from GitHub, parse, display)
-- Asset pipeline view (kanban per deal)
+- Deal roster dashboard (all deals, grouped/filtered by account and assigned SA)
+- SA auth + profiles (Supabase Auth with role + expertise tags)
+- My Work page (SA's assigned deals with asset progress and next actions)
+- Team workload page (manager view of SA assignments and capacity)
+- Recipe ingestion (from GitHub, parse, display; organized by deal)
+- Deal detail page (assets as kanban within a deal)
 - Manual asset creation (human writes/uploads asset for a manifest entry)
 - Asset lifecycle tracking (status transitions, version history)
 - Skills registry browser (fetched from GitHub)
