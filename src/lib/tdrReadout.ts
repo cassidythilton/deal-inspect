@@ -271,9 +271,10 @@ export const tdrReadout = {
       return { success: true, summary: '**Deal Overview**\nAcme Corp is a $125K mid-market deal at Stage 3, positioning Domo as the unified analytics layer replacing a fragmented Tableau/ThoughtSpot stack.\n\n**Technical Positioning**\n- Key technical alignment on Snowflake + embedded analytics\n- Domo positioned to replace fragmented BI stack\n\n**Competitive Landscape**\n- Tableau and ThoughtSpot are incumbent tools\n- Domo differentiates with unified data + analytics platform\n\n**Risk & Recommendation**\n- Recommend scheduling architecture workshop and engaging CTO as champion\n- Proceed — close before ThoughtSpot POC in Q1 2026', cached: false };
     }
     try {
-      const dealTeamJson = dealTeam ? JSON.stringify(dealTeam) : '';
+      const dtPayload = dealTeam ? { ...dealTeam } : {} as Record<string, unknown>;
+      if (forceRegenerate) (dtPayload as Record<string, unknown>)._forceRegenerate = true;
+      const dealTeamJson = JSON.stringify(dtPayload);
       const args: Record<string, unknown> = { sessionId, dealTeamJson };
-      if (forceRegenerate) args.forceRegenerate = true;
       const raw = await callCodeEngine<unknown>('generateReadoutSummary', args);
       const result = extractResult(raw);
       return {

@@ -1886,7 +1886,8 @@ export function TDRIntelligence({
           <div className="flex items-center gap-2">
             <div
               className={cn(
-                'flex-1 flex items-center gap-2 rounded border border-dashed px-3 py-1.5 transition-colors cursor-text',
+                'group/paste flex-1 flex items-center gap-2 rounded border border-dashed px-3 py-1.5 transition-all duration-200 cursor-text',
+                'focus:outline-none focus:border-violet-500/50 focus:bg-violet-500/5 focus:ring-1 focus:ring-violet-500/20 focus:shadow-[0_0_8px_rgba(139,92,246,0.15)]',
                 screenshotParsing
                   ? 'border-violet-500/40 bg-violet-500/5'
                   : 'border-[#362f50] hover:border-[#4a3f6b] bg-transparent',
@@ -1897,9 +1898,9 @@ export function TDRIntelligence({
               {screenshotParsing ? (
                 <Loader2 className="h-3 w-3 animate-spin text-violet-400 shrink-0" />
               ) : (
-                <ImageIcon className="h-3 w-3 text-slate-600 shrink-0" />
+                <ImageIcon className="h-3 w-3 text-slate-600 group-focus/paste:text-violet-400 transition-colors shrink-0" />
               )}
-              <span className="text-[10px] text-slate-600 select-none">
+              <span className="text-[10px] text-slate-600 group-focus/paste:text-violet-300 transition-colors select-none">
                 {screenshotParsing ? 'Parsing screenshot with Gemini...' : 'Click here and ⌘V to paste a Sumble screenshot'}
               </span>
               {!screenshotParsing && (

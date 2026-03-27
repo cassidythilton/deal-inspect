@@ -432,8 +432,7 @@
       "alias": "generateReadoutSummary",
       "parameters": [
         { "alias": "sessionId", "type": "string", "nullable": false, "isList": false, "children": null },
-        { "alias": "dealTeamJson", "type": "string", "nullable": true, "isList": false, "children": null },
-        { "alias": "forceRegenerate", "type": "boolean", "nullable": true, "isList": false, "children": null }
+        { "alias": "dealTeamJson", "type": "string", "nullable": true, "isList": false, "children": null }
       ],
       "output": { "alias": "result", "type": "object", "isList": false, "children": null }
     },

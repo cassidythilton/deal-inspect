@@ -62,7 +62,7 @@ export interface UseTDRSessionReturn {
   isReadOnly: boolean;
 }
 
-export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
+export function useTDRSession(deal: Deal | null, initialSessionId?: string): UseTDRSessionReturn {
   const { user } = useDomoUser();
   const userName = user.displayName;
 
@@ -103,8 +103,9 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
       return;
     }
 
-    if (loadedForDealRef.current === deal.id) return;
-    loadedForDealRef.current = deal.id;
+    const loadKey = `${deal.id}::${initialSessionId || ''}`;
+    if (loadedForDealRef.current === loadKey) return;
+    loadedForDealRef.current = loadKey;
 
     const initSession = async () => {
       setIsLoading(true);
@@ -135,14 +136,27 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
       try {
         console.log(`[useTDRSession] Looking for active session for deal ${deal.id}...`);
         const existingSessions = await snowflakeStore.getSessionsByOpp(deal.id);
-        const activeSession = existingSessions.find(s => s.status === 'in-progress');
 
-        if (activeSession) {
-          console.log(`[useTDRSession] Found active session: ${activeSession.sessionId}`);
-          setSession(activeSession);
-          setIsReadOnly(false);
-          setCompletedSteps(new Set(parseCompletedSteps(activeSession.completedSteps)));
-          await loadSessionInputs(activeSession.sessionId);
+        // If a specific session was requested (e.g. from Admin), load that one
+        let targetSession: typeof existingSessions[number] | undefined;
+        if (initialSessionId) {
+          targetSession = existingSessions.find(s => s.sessionId === initialSessionId);
+          if (targetSession) {
+            console.log(`[useTDRSession] Loading requested session: ${targetSession.sessionId} (iteration ${targetSession.iteration}, ${targetSession.status})`);
+          }
+        }
+
+        // Fall back to the active in-progress session
+        if (!targetSession) {
+          targetSession = existingSessions.find(s => s.status === 'in-progress');
+        }
+
+        if (targetSession) {
+          console.log(`[useTDRSession] Found session: ${targetSession.sessionId}`);
+          setSession(targetSession);
+          setIsReadOnly(targetSession.status === 'completed');
+          setCompletedSteps(new Set(parseCompletedSteps(targetSession.completedSteps)));
+          await loadSessionInputs(targetSession.sessionId);
         } else {
           console.log(`[useTDRSession] No active session — creating new one for ${deal.account}`);
           const newSession = await snowflakeStore.createSession({
@@ -185,7 +199,7 @@ export function useTDRSession(deal: Deal | null): UseTDRSessionReturn {
     };
 
     initSession();
-  }, [deal, loadSessionInputs]);
+  }, [deal, initialSessionId, loadSessionInputs]);
 
   // ─── Save a field value ──────────────────────────────────────────────
   const saveInput = useCallback(

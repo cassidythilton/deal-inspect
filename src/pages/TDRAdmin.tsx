@@ -358,7 +358,7 @@ export default function TDRAdmin() {
                       <div
                         key={s.sessionId}
                         className="flex items-center gap-4 px-4 py-3 hover:bg-accent/30 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/workspace?deal=${s.opportunityId}`)}
+                        onClick={() => navigate(`/workspace?deal=${s.opportunityId}&session=${s.sessionId}`)}
                       >
                         {/* Status indicator */}
                         <div className={cn(

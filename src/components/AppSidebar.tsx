@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -35,6 +35,19 @@ function DealInspectLogo({ className = 'h-5 w-5' }: { className?: string }) {
 export function AppSidebar() {
   const [isExpanded, setIsExpanded] = useState(false);
   const location = useLocation();
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    hoverTimerRef.current = setTimeout(() => setIsExpanded(true), 300);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setIsExpanded(false);
+  }, []);
 
   return (
     <aside
@@ -42,8 +55,8 @@ export function AppSidebar() {
         'fixed left-0 top-0 z-40 flex h-screen flex-col bg-sidebar transition-all duration-200 ease-out',
         isExpanded ? 'w-52' : 'w-14'
       )}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Logo area */}
       <div className="flex h-12 items-center border-b border-sidebar-border px-3">

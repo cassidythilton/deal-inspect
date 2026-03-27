@@ -280,7 +280,8 @@ Provide:
 2. Relevant partner/platform guidance
 3. Specific recommendations for this TDR
 
-Keep the summary concise (3-5 bullet points). Focus on actionable intelligence.`;
+Keep the summary concise (3-5 bullet points). Focus on actionable intelligence.
+POSITIONING (MANDATORY): Snowflake/Cortex are strategic partners — Domo enhances Cortex, never competes with it. Never describe Domo advantages over Cortex or propose comparisons vs Cortex. Named BI/analytics competitors (Tableau, Power BI, ThoughtSpot, Sigma, Looker, etc.) should be treated competitively.`;
 
   try {
     const result = (await domo.post('/domo/ai/v1/text/generation', {
