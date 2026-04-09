@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
+import { cn, getFiscalQuarter } from '@/lib/utils';
 
 export interface SEFilterOptions {
   seManagers: string[];
@@ -89,13 +89,7 @@ export function TopBar({
     onSEFilterChange?.({ selectedQuarters: null });
   };
 
-  // Get current quarter for labeling
-  const getCurrentQuarter = () => {
-    const now = new Date();
-    const q = Math.floor(now.getMonth() / 3) + 1;
-    return `${now.getFullYear()}-Q${q}`;
-  };
-  const currentQuarter = getCurrentQuarter();
+  const currentQuarter = getFiscalQuarter().label;
 
   // Quarter display text
   const quarterDisplayText = selectedQuarters.length === 0

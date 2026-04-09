@@ -16,6 +16,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchOpportunities, fetchSEMapping, DomoSEMapping, isDomoEnvironment } from '@/lib/domo';
 import { Deal } from '@/types/tdr';
+import { getFiscalQuarter } from '@/lib/utils';
 import { getActiveManagers } from '@/lib/appSettings';
 import { calculateTDRScore } from '@/lib/tdrCriticalFactors';
 // AppDB retired in Sprint 12 — Snowflake is the single source of truth
@@ -491,9 +492,8 @@ export function useDeals() {
     }
 
     // Derive current FQ from date (replaces dataset-level CurrentFQ column)
-    const now = new Date();
-    const fq = Math.ceil((now.getMonth() + 1) / 3);
-    quarters.add(`${now.getFullYear()}-Q${fq}`);
+    const { label: currentFQ } = getFiscalQuarter();
+    quarters.add(currentFQ);
 
     // Remove anyone who appears in PoC from the Sales Engineers list
     for (const poc of pocSalesConsultants) {

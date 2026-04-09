@@ -4,6 +4,7 @@
  */
 
 import { MAX_STAGE_AGE_DAYS, CLOSE_DATE_PROXIMITY_DAYS } from './constants';
+import { getFiscalQuarterWindow } from './utils';
 
 export { MAX_STAGE_AGE_DAYS };
 
@@ -221,17 +222,8 @@ export async function fetchOpportunities(): Promise<DomoOpportunity[]> {
       'SeedExpectedUsers', 'SeedAdoptionSuccess',
     ];
 
-    // Quarter window: current quarter through current + 4
-    const now = new Date();
-    const curYear = now.getFullYear();
-    const curQ = Math.ceil((now.getMonth() + 1) / 3);
-    const quarters: string[] = [];
-    for (let offset = 0; offset <= 4; offset++) {
-      let q = curQ + offset;
-      let y = curYear;
-      while (q > 4) { q -= 4; y++; }
-      quarters.push(`${y}-Q${q}`);
-    }
+    // Quarter window: current fiscal quarter through current + 4
+    const quarters = getFiscalQuarterWindow(5);
 
     // Domo filter syntax (from @domoinc/query source):
     //   column names are single-quoted, string values are double-quoted

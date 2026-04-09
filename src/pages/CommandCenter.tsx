@@ -36,15 +36,12 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { calculateTDRScore, TDR_PRIORITY_THRESHOLDS_NEW } from '@/lib/tdrCriticalFactors';
+import { getFiscalQuarter } from '@/lib/utils';
 
 // null = show all managers (matches what TopBar sets when "All AE Managers" is selected)
 const DEFAULT_MANAGER: string | null = null;
 
-const getCurrentQuarter = () => {
-  const now = new Date();
-  const q = Math.ceil((now.getMonth() + 1) / 3);
-  return `${now.getFullYear()}-Q${q}`;
-};
+const getCurrentQuarter = () => getFiscalQuarter().label;
 
 const STALE_THRESHOLD_DAYS = 60;
 
