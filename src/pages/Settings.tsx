@@ -111,7 +111,7 @@ export default function Settings() {
 
   // Sync manager text + competitors text on mount + load usage stats
   useEffect(() => {
-    setManagerText(settings.allowedManagers.join('\n'));
+    setManagerText(settings.primaryManagers.join('\n'));
     setCompetitorsText((settings.dangerousCompetitors ?? []).join('\n'));
     loadUsageStats();
     loadFilesetMeta();
@@ -187,7 +187,7 @@ export default function Settings() {
   const handleSave = () => {
     const patch: Partial<AppSettings> = {
       ...settings,
-      allowedManagers: parsedManagers,
+      primaryManagers: parsedManagers,
       dangerousCompetitors: parsedCompetitors,
     };
     saveAppSettings(patch);
@@ -201,7 +201,7 @@ export default function Settings() {
     resetAppSettings();
     const defaults = { ...DEFAULT_APP_SETTINGS };
     setSettings(defaults);
-    setManagerText(defaults.allowedManagers.join('\n'));
+    setManagerText(defaults.primaryManagers.join('\n'));
     setCompetitorsText((defaults.dangerousCompetitors ?? []).join('\n'));
     setIsDirty(false);
     toast('Settings Reset', {
@@ -239,31 +239,31 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* ── 1. Manager Filter ────────────────────────────────────────── */}
+          {/* ── 1. Primary Managers ─────────────────────────────────────── */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5 text-muted-foreground" />
-                <CardTitle>Manager Filter</CardTitle>
+                <CardTitle>Primary Managers</CardTitle>
               </div>
               <CardDescription>
-                Control which managers appear in the filter dropdown. Leave empty to show all managers.
+                Managers listed here appear in the "Primary Managers" group of the AE Manager dropdown. All other managers from the data appear under "Other Managers".
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="managers">Allowed Managers (one per line)</Label>
+                <Label htmlFor="managers">Primary Managers (one per line)</Label>
                 <Textarea
                   id="managers"
-                  placeholder={`Andrew Rich\nJordan Kohler\nDave Scott`}
+                  placeholder={`Taylor Rust\nJordan Kohler\nDave Bauerle`}
                   value={managerText}
                   onChange={(e) => handleManagerTextChange(e.target.value)}
                   className="min-h-32 font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
                   {parsedManagers.length === 0
-                    ? 'All managers will be shown (no filter applied)'
-                    : `${parsedManagers.length} managers configured`}
+                    ? 'No primary managers set — all managers shown in a single list'
+                    : `${parsedManagers.length} primary managers configured`}
                 </p>
               </div>
 

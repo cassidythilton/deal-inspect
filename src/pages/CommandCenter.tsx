@@ -19,7 +19,6 @@ import { PropensityQuadrantChart } from '@/components/charts/PropensityQuadrantC
 import { mockDeals } from '@/data/mockData';
 import { useDeals } from '@/hooks/useDomo';
 import { MAX_STAGE_AGE_DAYS } from '@/lib/constants';
-import { getActiveManagers } from '@/lib/appSettings';
 import { Deal } from '@/types/tdr';
 import {
   ShieldAlert,
@@ -64,8 +63,6 @@ export default function CommandCenter() {
     showAgendaOnly: false,
   });
 
-  const activeManagers = useMemo(() => getActiveManagers(), []);
-
   // Fetch deals from Domo
   const {
     deals: domoDeals, filterOptions, isLoading, isDomoConnected, refetch,
@@ -85,19 +82,10 @@ export default function CommandCenter() {
     }
   }, [suggestedDealIds, hasAppliedSuggestions]);
 
-  // Pre-filter to only deals from ALLOWED_MANAGERS
   const baseDeals = useMemo(() => {
-    let deals: Deal[];
-    if (isDomoConnected && domoDeals.length > 0) {
-      deals = domoDeals;
-    } else {
-      deals = mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
-    }
-
-    const allowedSet = new Set(activeManagers.map(m => m.toLowerCase()));
-    const filtered = deals.filter((d) => allowedSet.has(d.owner?.toLowerCase() || ''));
-    return filtered;
-  }, [domoDeals, isDomoConnected, activeManagers]);
+    if (isDomoConnected && domoDeals.length > 0) return domoDeals;
+    return mockDeals.filter((d) => !d.stageAge || d.stageAge <= MAX_STAGE_AGE_DAYS);
+  }, [domoDeals, isDomoConnected]);
 
   // All deals (unfiltered by manager) for the global search
   const allDeals = useMemo(() => {
@@ -242,7 +230,6 @@ export default function CommandCenter() {
           onSEFilterChange={handleSEFilterChange}
           onRefresh={refetch}
           agendaCount={pinnedDeals.length}
-          managers={activeManagers}
         />
 
         <main className="flex-1 p-6 bg-background">

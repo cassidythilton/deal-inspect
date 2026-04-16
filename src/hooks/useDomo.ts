@@ -17,7 +17,6 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchOpportunities, fetchSEMapping, DomoSEMapping, isDomoEnvironment } from '@/lib/domo';
 import { Deal } from '@/types/tdr';
 import { getFiscalQuarter } from '@/lib/utils';
-import { getActiveManagers } from '@/lib/appSettings';
 import { calculateTDRScore } from '@/lib/tdrCriticalFactors';
 // AppDB retired in Sprint 12 — Snowflake is the single source of truth
 import type { TDRSession } from '@/lib/appDb';
@@ -425,8 +424,6 @@ export function useDeals() {
 
   // ── Filter options ──
   const filterOptions = useMemo(() => {
-    const activeManagers = getActiveManagers();
-    const allowedSet = new Set(activeManagers.map(m => m.toLowerCase()));
     const currentYear = new Date().getFullYear();
 
     // SE Managers — from the SE mapping dataset
@@ -448,9 +445,6 @@ export function useDeals() {
       }
     }
 
-    // SE names from Opportunities —
-    // SALES ENGINEERS  = names in "Sales Consultant" field
-    // POC ARCHITECTS   = names in "PoC Sales Consultant" field
     const salesConsultants = new Set<string>();
     const pocSalesConsultants = new Set<string>();
     const forecastManagers = new Set<string>();
@@ -470,28 +464,21 @@ export function useDeals() {
           (opp as Record<string, unknown>)['MgrForecastName'] ??
           opp['Domo Opportunity Owner'] ?? ''
         ).trim();
-        if (!allowedSet.has(mgrName.toLowerCase())) continue;
 
-        // Sales Consultant → SALES ENGINEERS group
         const sc = opp['Sales Consultant']?.trim();
-        if (sc) {
-          salesConsultants.add(sc);
-        }
+        if (sc) salesConsultants.add(sc);
 
-        // PoC Sales Consultant → POC ARCHITECTS group
         const pocSC = opp['PoC Sales Consultant']?.trim();
-        if (pocSC) {
-          pocSalesConsultants.add(pocSC);
-        }
+        if (pocSC) pocSalesConsultants.add(pocSC);
 
         if (mgrName) forecastManagers.add(mgrName);
 
         const closeFQ = String((opp as Record<string, unknown>)['Close Date FQ'] ?? (opp as Record<string, unknown>)['CloseDateFQ'] ?? '');
         if (closeFQ && isValidQuarter(closeFQ)) quarters.add(closeFQ);
-        }
+      }
     }
 
-    // Derive current FQ from date (replaces dataset-level CurrentFQ column)
+    // Derive current FQ from date
     const { label: currentFQ } = getFiscalQuarter();
     quarters.add(currentFQ);
 
@@ -510,9 +497,7 @@ export function useDeals() {
       seManagers: Array.from(seManagerSet).sort(),
       salesConsultants: Array.from(salesConsultants).sort(),
       pocSalesConsultants: Array.from(pocSalesConsultants).sort(),
-      forecastManagers: Array.from(forecastManagers).filter(mgr =>
-        activeManagers.includes(mgr)
-      ).sort(),
+      forecastManagers: Array.from(forecastManagers).sort(),
       quarters: Array.from(quarters).sort(),
     };
   }, [seMappingData, seMappingStatus, opportunities, deals]);

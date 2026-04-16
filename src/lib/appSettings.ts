@@ -8,7 +8,7 @@
  */
 
 export interface AppSettings {
-  allowedManagers: string[];
+  primaryManagers: string[];
   minTDRACV: number;
   defaultQuarterFilter: 'current' | 'all';
   includedForecastCategories: string[];
@@ -27,12 +27,20 @@ export interface AppSettings {
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  allowedManagers: [
-    'Andrew Rich',
-    'John Pasalano',
-    'Keith White',
+  primaryManagers: [
     'Taylor Rust',
     'Casey Morgan',
+    'Sione Havili',
+    'Eric Borland',
+    'Jordan Kohler',
+    'Doug Hut',
+    'Cameron Housley',
+    'Brock Kennick',
+    'Dave Bauerle',
+    'Mike Harding',
+    'Nathan Enderle',
+    'Tyler Yagi',
+    'Keith White',
   ],
   minTDRACV: 100000,
   defaultQuarterFilter: 'current',
@@ -72,6 +80,11 @@ export function getAppSettings(): AppSettings {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
+        // Migrate legacy allowedManagers → primaryManagers
+        if (parsed.allowedManagers && !parsed.primaryManagers) {
+          parsed.primaryManagers = parsed.allowedManagers;
+          delete parsed.allowedManagers;
+        }
         return { ...DEFAULT_APP_SETTINGS, ...parsed };
       } catch {
         // corrupted — fall through to defaults
@@ -106,10 +119,10 @@ export function parseManagerList(text: string): string[] {
 }
 
 /**
- * Returns the active manager list — Settings overrides take precedence,
- * falling back to DEFAULT_APP_SETTINGS.allowedManagers.
+ * Returns the primary manager list for dropdown grouping.
+ * These managers appear in the "Primary Managers" section of the AE Manager dropdown.
  */
-export function getActiveManagers(): string[] {
-  return getAppSettings().allowedManagers;
+export function getPrimaryManagers(): string[] {
+  return getAppSettings().primaryManagers;
 }
 

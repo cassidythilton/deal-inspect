@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn, getFiscalQuarter } from '@/lib/utils';
+import { getPrimaryManagers } from '@/lib/appSettings';
 
 export interface SEFilterOptions {
   seManagers: string[];
@@ -42,7 +43,6 @@ interface TopBarProps {
   onSEFilterChange?: (filters: Partial<SEFilterState>) => void;
   onRefresh?: () => void;
   agendaCount?: number;
-  managers?: readonly string[];
 }
 
 export function TopBar({
@@ -50,7 +50,6 @@ export function TopBar({
   seFilterState,
   onSEFilterChange,
   agendaCount = 0,
-  managers: managersProp,
 }: TopBarProps) {
   // Sort quarters in descending order (newest first)
   const quarters = (seFilterOptions?.quarters || [])
@@ -66,7 +65,11 @@ export function TopBar({
       return b.localeCompare(a);
     });
 
-  const managers = managersProp || [];
+  const allManagers = seFilterOptions?.forecastManagers || [];
+  const primarySet = new Set(getPrimaryManagers().map(m => m.toLowerCase()));
+  const primaryMgrs = allManagers.filter(m => primarySet.has(m.toLowerCase()));
+  const otherMgrs = allManagers.filter(m => !primarySet.has(m.toLowerCase()));
+
   const salesEngineers = seFilterOptions?.salesConsultants || [];
   const pocArchitects = seFilterOptions?.pocSalesConsultants || [];
   const seManagers = seFilterOptions?.seManagers || [];
@@ -194,7 +197,7 @@ export function TopBar({
 
         <div className="h-4 w-px bg-border" />
 
-        {/* AE Manager dropdown */}
+        {/* AE Manager dropdown — grouped by Primary / Other */}
         <Select
           value={seFilterState?.selectedManager || 'all'}
           onValueChange={(v) => onSEFilterChange?.({ selectedManager: v === 'all' ? null : v })}
@@ -207,13 +210,34 @@ export function TopBar({
           )}>
             <SelectValue placeholder="AE Manager" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[400px] min-w-[220px]">
             <SelectItem value="all" className="text-xs font-medium">All AE Managers</SelectItem>
-            {managers.map((m) => (
-              <SelectItem key={m} value={m} className="text-xs">
-                {m}
-              </SelectItem>
-            ))}
+
+            {primaryMgrs.length > 0 && (
+              <SelectGroup>
+                <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
+                  Primary Managers
+                </SelectLabel>
+                {primaryMgrs.map((m) => (
+                  <SelectItem key={m} value={m} className="text-xs pl-4">
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+
+            {otherMgrs.length > 0 && (
+              <SelectGroup>
+                <SelectLabel className="text-2xs uppercase tracking-wide text-muted-foreground px-2 py-1.5 font-semibold">
+                  Other Managers
+                </SelectLabel>
+                {otherMgrs.map((m) => (
+                  <SelectItem key={m} value={m} className="text-xs pl-4">
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
 
